@@ -33,22 +33,24 @@ func NewHandlerWithWeb(logger *slog.Logger, webDir string, database ...DBChecker
 
 // Options wires auth and DB functionality independently during migration.
 type Options struct {
-	WebDir            string
-	DB                DBChecker
-	Auth              *auth.Manager
-	Catalog           CatalogSearcher
-	Compact           CompactCatalog
-	Channels          ChannelLister
-	Roles             RoleReader
-	Vacancies         VacancyLister
-	VacancyDetails    VacancyDetailer
-	VacancyFlags      VacancyFlagWriter
-	Applications      ApplicationReader
-	CompanyFlags      CompanyFlagLister
-	CompanyFlagWrites CompanyFlagWriter
-	CompanyCRM        CompanyCRMReader
-	Tasks             TaskLister
-	TaskCompletion    TaskCompletionWriter
+	WebDir               string
+	DB                   DBChecker
+	Auth                 *auth.Manager
+	Catalog              CatalogSearcher
+	Compact              CompactCatalog
+	Channels             ChannelLister
+	Roles                RoleReader
+	Vacancies            VacancyLister
+	VacancyDetails       VacancyDetailer
+	VacancyFlags         VacancyFlagWriter
+	Applications         ApplicationReader
+	ApplicationCompanies ApplicationCompanyReader
+	ApplicationWrites    ApplicationMutator
+	CompanyFlags         CompanyFlagLister
+	CompanyFlagWrites    CompanyFlagWriter
+	CompanyCRM           CompanyCRMReader
+	Tasks                TaskLister
+	TaskCompletion       TaskCompletionWriter
 }
 
 // NewHandlerWithOptions constructs only explicitly implemented routes.
@@ -120,6 +122,13 @@ func NewHandlerWithOptions(logger *slog.Logger, opts Options) http.Handler {
 		if opts.Applications != nil {
 			mux.HandleFunc("GET /api/crm/applications", ApplicationsCRMHandler(opts.Auth, opts.Applications))
 			mux.HandleFunc("GET /api/applications/{id}", ApplicationDetailHandler(opts.Auth, opts.Applications))
+		}
+		if opts.ApplicationCompanies != nil {
+			mux.HandleFunc("GET /api/applications", CompanyApplicationsHandler(opts.Auth, opts.ApplicationCompanies))
+			if opts.ApplicationWrites != nil {
+				mux.HandleFunc("PUT /api/applications/{id}", ApplicationMutationHandler(opts.Auth, opts.ApplicationWrites, opts.ApplicationCompanies))
+				mux.HandleFunc("DELETE /api/applications/{id}", ApplicationMutationHandler(opts.Auth, opts.ApplicationWrites, opts.ApplicationCompanies))
+			}
 		}
 		if opts.TaskCompletion != nil {
 			mux.HandleFunc("PUT /api/tasks/{id}", TaskCompletionHandler(opts.Auth, opts.TaskCompletion))
