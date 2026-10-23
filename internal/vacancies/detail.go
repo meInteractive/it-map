@@ -152,6 +152,20 @@ func (r Repository) DetailByID(ctx context.Context, user string, id int64) (Deta
 		return DetailResponse{}, err
 	}
 	defer tx.Rollback()
+	resp, err := readDetailTx(ctx, tx, user, id, roleCatalog)
+	if err != nil {
+		return DetailResponse{}, err
+	}
+	if err := tx.Commit(); err != nil {
+		return DetailResponse{}, err
+	}
+	return resp, nil
+}
+
+// readDetailTx is shared by GET and the mutation optimistic-lock check.
+// For an update, the caller must first lock company_vacancies with FOR UPDATE.
+func readDetailTx(ctx context.Context, tx *sql.Tx, user string, id int64, roleCatalog roles.Catalog) (DetailResponse, error) {
+	var err error
 	// The converted MariaDB tables do not all have their old SQLite unique
 	// constraints. Correlated subqueries choose one deterministically without
 	// multiplying vacancy rows when old duplicate state records exist.
@@ -300,9 +314,6 @@ func (r Repository) DetailByID(ctx context.Context, user string, id int64) (Deta
 		TelegramRows   []string `json:"telegramRows"`
 	}{sharedSubject, sharedMD, nullableInt(letterRevision), override.Int64, personalSubject.String, personalMD.String, roleIDs, telegramRevisionRows(v.TelegramSources)})
 	if err != nil {
-		return DetailResponse{}, err
-	}
-	if err = tx.Commit(); err != nil {
 		return DetailResponse{}, err
 	}
 	return DetailResponse{Vacancy: v, Entities: entities}, nil
