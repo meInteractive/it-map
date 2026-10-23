@@ -38,3 +38,7 @@ node_modules/
 *.tsbuildinfo
 # Internal generated manifests and validation
 GIT_FILES_SHA256SUMS
+# Standalone Go build output (never commit locally compiled executables)
+/itmap
+*.test
+*.exe
