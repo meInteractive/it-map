@@ -32,9 +32,10 @@ func NewHandlerWithWeb(logger *slog.Logger, webDir string, database ...DBChecker
 
 // Options wires auth and DB functionality independently during migration.
 type Options struct {
-	WebDir string
-	DB     DBChecker
-	Auth   *auth.Manager
+	WebDir  string
+	DB      DBChecker
+	Auth    *auth.Manager
+	Catalog CatalogSearcher
 }
 
 // NewHandlerWithOptions constructs only explicitly implemented routes.
@@ -67,6 +68,9 @@ func NewHandlerWithOptions(logger *slog.Logger, opts Options) http.Handler {
 		mux.HandleFunc("POST /auth", LoginHandler(opts.Auth))
 		mux.HandleFunc("GET /logout", LogoutHandler())
 		mux.HandleFunc("GET /api/session", SessionHandler(opts.Auth))
+		if opts.Catalog != nil {
+			mux.HandleFunc("GET /api/companies/search", RequireSession(opts.Auth, CompanySearchHandler(opts.Catalog)))
+		}
 		protected = RequireSession(opts.Auth, unmigrated)
 	}
 	mux.HandleFunc("/api/", protected)

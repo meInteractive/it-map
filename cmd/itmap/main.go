@@ -12,15 +12,18 @@ import (
 	"time"
 
 	"itmap/internal/auth"
+	"itmap/internal/catalog"
 	"itmap/internal/config"
 	"itmap/internal/httpapi"
 	"itmap/internal/storage"
 )
 
 func httpHandler(logger *slog.Logger, db *sql.DB, manager *auth.Manager) http.Handler {
-	return httpapi.NewHandlerWithOptions(logger, httpapi.Options{
-		DB: db, Auth: manager, WebDir: os.Getenv("WEB_DIST_DIR"),
-	})
+	opts := httpapi.Options{DB: db, Auth: manager, WebDir: os.Getenv("WEB_DIST_DIR")}
+	if db != nil {
+		opts.Catalog = catalog.Repository{DB: db}
+	}
+	return httpapi.NewHandlerWithOptions(logger, opts)
 }
 
 func main() {
