@@ -33,14 +33,15 @@ func NewHandlerWithWeb(logger *slog.Logger, webDir string, database ...DBChecker
 
 // Options wires auth and DB functionality independently during migration.
 type Options struct {
-	WebDir    string
-	DB        DBChecker
-	Auth      *auth.Manager
-	Catalog   CatalogSearcher
-	Compact   CompactCatalog
-	Channels  ChannelLister
-	Roles     RoleReader
-	Vacancies VacancyLister
+	WebDir         string
+	DB             DBChecker
+	Auth           *auth.Manager
+	Catalog        CatalogSearcher
+	Compact        CompactCatalog
+	Channels       ChannelLister
+	Roles          RoleReader
+	Vacancies      VacancyLister
+	VacancyDetails VacancyDetailer
 }
 
 // NewHandlerWithOptions constructs only explicitly implemented routes.
@@ -97,6 +98,9 @@ func NewHandlerWithOptions(logger *slog.Logger, opts Options) http.Handler {
 		}
 		if opts.Vacancies != nil {
 			mux.HandleFunc("GET /api/vacancies/list", VacancyListHandler(opts.Auth, opts.Vacancies, time.Now))
+		}
+		if opts.VacancyDetails != nil {
+			mux.HandleFunc("GET /api/vacancies/{id}", VacancyDetailHandler(opts.Auth, opts.VacancyDetails))
 		}
 		if opts.Roles != nil {
 			mux.HandleFunc("GET /api/vacancy-roles", VacancyRoleHandler(opts.Auth, opts.Roles, "all"))
