@@ -1,14 +1,20 @@
 package httpapi
 
 import (
+	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"time"
 )
+
+// DBChecker is only used to verify the active DB connection; the readiness gate
+// remains closed until the entire API and parser have been accepted.
+type DBChecker interface{ PingContext(context.Context) error }
 
 // NewHandler returns the migration shell. No legacy business API returns success
 // until its handler has been ported and tested against the frozen contract.
-func NewHandler(logger *slog.Logger) http.Handler {
+func NewHandler(logger *slog.Logger, database ...DBChecker) http.Handler {
 	if logger == nil {
 		logger = slog.Default()
 	}
@@ -16,8 +22,18 @@ func NewHandler(logger *slog.Logger) http.Handler {
 	mux.HandleFunc("GET /health/live", func(w http.ResponseWriter, _ *http.Request) {
 		jsonReply(w, http.StatusOK, map[string]any{"status": "alive"})
 	})
-	mux.HandleFunc("GET /health/ready", func(w http.ResponseWriter, _ *http.Request) {
-		jsonReply(w, http.StatusServiceUnavailable, map[string]any{"status": "not_ready", "reason": "mariadb_not_connected"})
+	mux.HandleFunc("GET /health/ready", func(w http.ResponseWriter, r *http.Request) {
+		reason := "mariadb_not_connected"
+		if len(database) > 0 && database[0] != nil {
+			ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+			defer cancel()
+			if err := database[0].PingContext(ctx); err != nil {
+				reason = "mariadb_unavailable"
+			} else {
+				reason = "business_api_not_migrated"
+			}
+		}
+		jsonReply(w, http.StatusServiceUnavailable, map[string]any{"status": "not_ready", "reason": reason})
 	})
 	unmigrated := func(w http.ResponseWriter, _ *http.Request) {
 		jsonReply(w, http.StatusServiceUnavailable, map[string]any{"error": "backend_not_migrated"})

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -19,6 +20,7 @@ type Config struct {
 	DBPort      string
 	DBName      string
 	DBUser      string
+	DBEnabled   bool
 }
 
 func getenv(key, fallback string) string {
@@ -38,6 +40,7 @@ func Load() (Config, error) {
 		DBPort:      getenv("DB_PORT", "3306"),
 		DBName:      getenv("DB_NAME", ""),
 		DBUser:      getenv("DB_USER", ""),
+		DBEnabled:   getenv("DB_ENABLED", "false") == "true",
 	}
 	return cfg, cfg.Validate()
 }
@@ -57,6 +60,15 @@ func (cfg Config) Validate() error {
 	}
 	if host != "127.0.0.1" && host != "::1" && host != "localhost" {
 		return errors.New("HTTP_ADDR must bind to loopback; publish only through a reverse proxy")
+	}
+	if cfg.DBEnabled {
+		if cfg.DBName == "" || cfg.DBUser == "" {
+			return errors.New("DB_NAME and DB_USER required when DB_ENABLED=true")
+		}
+		port, err := strconv.Atoi(cfg.DBPort)
+		if err != nil || port <= 0 || port > 65535 {
+			return errors.New("invalid DB_PORT")
+		}
 	}
 	if cfg.DBHost != "127.0.0.1" && cfg.DBHost != "localhost" {
 		return errors.New("DB_HOST must be localhost for this deployment")
