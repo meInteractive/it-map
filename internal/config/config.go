@@ -21,6 +21,7 @@ type Config struct {
 	DBName      string
 	DBUser      string
 	DBEnabled   bool
+	AuthEnabled bool
 }
 
 func getenv(key, fallback string) string {
@@ -41,6 +42,7 @@ func Load() (Config, error) {
 		DBName:      getenv("DB_NAME", ""),
 		DBUser:      getenv("DB_USER", ""),
 		DBEnabled:   getenv("DB_ENABLED", "false") == "true",
+		AuthEnabled: getenv("AUTH_ENABLED", "false") == "true",
 	}
 	return cfg, cfg.Validate()
 }
@@ -60,6 +62,11 @@ func (cfg Config) Validate() error {
 	}
 	if host != "127.0.0.1" && host != "::1" && host != "localhost" {
 		return errors.New("HTTP_ADDR must bind to loopback; publish only through a reverse proxy")
+	}
+	if cfg.AuthEnabled {
+		if len(os.Getenv("SESSION_SECRET")) < 32 || os.Getenv("SITE_PASSWORD") == "" {
+			return errors.New("AUTH_ENABLED requires SESSION_SECRET (32+ bytes) and SITE_PASSWORD")
+		}
 	}
 	if cfg.DBEnabled {
 		if cfg.DBName == "" || cfg.DBUser == "" {

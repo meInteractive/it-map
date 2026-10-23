@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"os"
 	"time"
+
+	"itmap/internal/auth"
 )
 
 // DBChecker is only used to verify the active DB connection; the readiness gate
@@ -21,6 +23,22 @@ func NewHandler(logger *slog.Logger, database ...DBChecker) http.Handler {
 
 // NewHandlerWithWeb additionally serves built React static assets when configured.
 func NewHandlerWithWeb(logger *slog.Logger, webDir string, database ...DBChecker) http.Handler {
+	opts := Options{WebDir: webDir}
+	if len(database) > 0 {
+		opts.DB = database[0]
+	}
+	return NewHandlerWithOptions(logger, opts)
+}
+
+// Options wires auth and DB functionality independently during migration.
+type Options struct {
+	WebDir string
+	DB     DBChecker
+	Auth   *auth.Manager
+}
+
+// NewHandlerWithOptions constructs only explicitly implemented routes.
+func NewHandlerWithOptions(logger *slog.Logger, opts Options) http.Handler {
 	if logger == nil {
 		logger = slog.Default()
 	}
@@ -30,10 +48,10 @@ func NewHandlerWithWeb(logger *slog.Logger, webDir string, database ...DBChecker
 	})
 	mux.HandleFunc("GET /health/ready", func(w http.ResponseWriter, r *http.Request) {
 		reason := "mariadb_not_connected"
-		if len(database) > 0 && database[0] != nil {
+		if opts.DB != nil {
 			ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
 			defer cancel()
-			if err := database[0].PingContext(ctx); err != nil {
+			if err := opts.DB.PingContext(ctx); err != nil {
 				reason = "mariadb_unavailable"
 			} else {
 				reason = "business_api_not_migrated"
@@ -44,16 +62,25 @@ func NewHandlerWithWeb(logger *slog.Logger, webDir string, database ...DBChecker
 	unmigrated := func(w http.ResponseWriter, _ *http.Request) {
 		jsonReply(w, http.StatusServiceUnavailable, map[string]any{"error": "backend_not_migrated"})
 	}
-	mux.HandleFunc("/api/", unmigrated)
-	mux.HandleFunc("/auth", unmigrated)
-	mux.HandleFunc("/logout", unmigrated)
+	protected := unmigrated
+	if opts.Auth != nil {
+		mux.HandleFunc("POST /auth", LoginHandler(opts.Auth))
+		mux.HandleFunc("GET /logout", LogoutHandler())
+		mux.HandleFunc("GET /api/session", SessionHandler(opts.Auth))
+		protected = RequireSession(opts.Auth, unmigrated)
+	}
+	mux.HandleFunc("/api/", protected)
+	mux.HandleFunc("/api", protected)
 	mux.HandleFunc("/mcp", unmigrated)
-	mux.HandleFunc("/api", unmigrated)
+	mux.HandleFunc("/mcp/", unmigrated)
 	mux.HandleFunc("/auth/", unmigrated)
 	mux.HandleFunc("/logout/", unmigrated)
-	mux.HandleFunc("/mcp/", unmigrated)
-	if webDir != "" {
-		mux.Handle("/", StaticHandler(webDir))
+	if opts.Auth == nil {
+		mux.HandleFunc("/auth", unmigrated)
+		mux.HandleFunc("/logout", unmigrated)
+	}
+	if opts.WebDir != "" {
+		mux.Handle("/", StaticHandler(opts.WebDir))
 	} else {
 		mux.HandleFunc("/", unmigrated)
 	}

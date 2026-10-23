@@ -33,3 +33,17 @@ func TestLoadDoesNotExposeSecrets(t *testing.T) {
 		t.Fatal("secret leaked to config")
 	}
 }
+
+func TestAuthRequiresSecretsAtStartup(t *testing.T) {
+	t.Setenv("SESSION_SECRET", "")
+	t.Setenv("SITE_PASSWORD", "")
+	cfg := Config{Environment: "staging", HTTPAddr: "127.0.0.1:8080", DBHost: "127.0.0.1", AuthEnabled: true}
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("enabled auth without secrets accepted")
+	}
+	t.Setenv("SESSION_SECRET", strings.Repeat("s", 40))
+	t.Setenv("SITE_PASSWORD", "correct")
+	if err := cfg.Validate(); err != nil {
+		t.Fatal(err)
+	}
+}

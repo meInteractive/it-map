@@ -36,8 +36,14 @@ jobs:
         run: go vet ./...
       - name: Go tests
         run: go test -race ./...
-      - name: Build executable
+      - name: Build offline-compatible migration shell
         run: go build -o /tmp/itmap ./cmd/itmap
+      - name: Install pinned MariaDB driver (networked CI only)
+        run: go mod download github.com/go-sql-driver/mysql
+      - name: Verify MariaDB-tagged build
+        run: |
+          go test -tags mariadb ./...
+          go build -tags mariadb -o /tmp/itmap-mariadb ./cmd/itmap
 
   web:
     runs-on: ubuntu-latest

@@ -11,16 +11,16 @@ import (
 	"syscall"
 	"time"
 
+	"itmap/internal/auth"
 	"itmap/internal/config"
 	"itmap/internal/httpapi"
 	"itmap/internal/storage"
 )
 
-func httpHandler(logger *slog.Logger, db *sql.DB) http.Handler {
-	if db == nil {
-		return httpapi.NewHandler(logger)
-	}
-	return httpapi.NewHandler(logger, db)
+func httpHandler(logger *slog.Logger, db *sql.DB, manager *auth.Manager) http.Handler {
+	return httpapi.NewHandlerWithOptions(logger, httpapi.Options{
+		DB: db, Auth: manager, WebDir: os.Getenv("WEB_DIST_DIR"),
+	})
 }
 
 func main() {
@@ -44,9 +44,19 @@ func main() {
 		defer database.Close()
 		logger.Info("MariaDB baseline verified; business API migration still incomplete")
 	}
+	var manager *auth.Manager
+	if cfg.AuthEnabled {
+		manager, err = auth.NewManager(os.Getenv("SESSION_SECRET"), map[string]string{
+			"eugene": os.Getenv("SITE_PASSWORD"), "nastya": os.Getenv("NASTYA_PASSWORD"), "demo": os.Getenv("DEMO_PASSWORD"),
+		})
+		if err != nil {
+			logger.Error("authentication unavailable", "error", err)
+			os.Exit(1)
+		}
+	}
 	addr := cfg.HTTPAddr
 	server := &http.Server{
-		Addr: addr, Handler: httpHandler(logger, database),
+		Addr: addr, Handler: httpHandler(logger, database, manager),
 		ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 30 * time.Second,
 		WriteTimeout: 60 * time.Second, IdleTimeout: 120 * time.Second,
 	}
