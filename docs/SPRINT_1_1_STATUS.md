@@ -54,3 +54,9 @@ To run the SQL integration test on an isolated, non-production MariaDB loaded wi
 ## Tasks checkpoint
 
 `GET /api/tasks` now reads the signed-in user's task records, supports company/vacancy/completion filters, preserves calendar sync fields, and returns `{tasks,entities}`. Legacy `POST /api/tasks` and `PUT /api/tasks/{id}` are still unmigrated. A read-only MariaDB integration smoke test is provided under the `mariadb` build tag; live verification remains pending.
+
+## V5 continuation (2026-10-23)
+
+See `docs/SPRINT_1_1_V5.md` for four new implementation commits covering
+application reads, task completion, company favorites/hidden lists and company
+CRM state/history. The production readiness gate remains closed.
