@@ -17,17 +17,20 @@ This repository is an incomplete, fail-closed Go migration of the original GPT S
 - `/api/companies/list`, `/api/companies/map`, `/api/companies/detail?name=...`, `/api/companies/{numeric-id}`
 - `/api/agencies/list`, `/api/agencies/map`, `/api/agencies/detail?name=...`, `/api/agencies/{numeric-id}`
 - `/api/channels`
+- `/api/tasks?company=...&vacancy=...&includeCompleted=1` (authenticated, user-scoped, read-only; task creation/editing not yet ported)
 - `/api/vacancy-roles`, `/api/vacancy-roles/roots`, `/api/vacancy-roles/leaves`, `/api/vacancy-roles/{numeric-id}/descendants`
 - `/api/vacancies/list?period=week|month|twoMonths|archive|all` (authenticated, read-only; absent period shows all)
+- `/api/vacancies/{numeric-id}` (read-only drawer: description, effective letter, roles, sources)
+- `PUT /api/vacancies/{numeric-id}/state` (personal favorite/hidden flags, transactional)
 - Legacy session endpoints `/auth`, `/logout`, `/api/session`
 
-No source module writes to the database through these routes. Unsupported APIs remain behind authentication and respond as unmigrated; health readiness remains HTTP 503.
+Only the explicitly migrated vacancy flag PUT writes to the database; all migrated GET routes are read-only. Unsupported APIs remain behind authentication and respond as unmigrated; health readiness remains HTTP 503.
 
 ## Tests and limits
 
 `go test -race ./...`, `go vet ./...` and `python3 scripts/check-public-repo.py` pass in the local environment. Read-only fixture tests also parsed the attached D1 snapshot's 229 companies, 31 agencies, and eight vacancy roles. The private snapshot was never committed to Git and temporary copies were removed after verification.
 
-**Not yet verified:** MariaDB integration (server/driver unavailable locally); React build with downloaded npm dependencies; API compatibility against a running staging site; behavior under live concurrent writes; scheduling, parsing, backup/restore, Google Calendar, CRM writes, vacancy detail and editing. The vacancy listing is implemented but not yet proven against a live staging MariaDB.
+**Not yet verified:** MariaDB integration (server/driver unavailable locally); React build with downloaded npm dependencies; API compatibility against a running staging site; behavior under live concurrent writes; scheduling, parsing, backup/restore, Google Calendar, most CRM writes and vacancy editing. The vacancy listing is implemented but not yet proven against a live staging MariaDB.
 
 The initial schema conversion did not preserve all original UNIQUE constraints. In particular, the identity name columns remain LONGTEXT without uniqueness. Existing identity mappings in the supplied snapshot are complete, but new company imports need an explicit, tested identity creation and uniqueness migration. See `docs/GO_CATALOG_PORT.md` and `db/identity-preflight.sql`.
 
@@ -43,3 +46,11 @@ The initial schema conversion did not preserve all original UNIQUE constraints. 
 `internal/vacancies` implements a read-only projection matching `server/services/vacancy-projection.js` for the list endpoint. It supports Moscow calendar bounds, the new `all` filter, assigned leaf roles, Telegram sources, user-specific favorites/hidden/relevance and application statuses. The HTTP route does not accept writes or disclose SQL errors. The code deliberately does **not** run old lazy `prepareVacancyProjection` insert/backfill operations: any data absent from the staged MariaDB dump must be addressed by an explicit, independently validated migration.
 
 To run the SQL integration test on an isolated, non-production MariaDB loaded with private data, install module dependencies and invoke `ITMAP_TEST_MARIADB_DSN=... go test -tags mariadb ./internal/vacancies -run TestMariaDBVacancyListReadOnlyIntegration`. The DSN belongs in your runtime environment, never GitHub or CI logs. Use a SELECT-only user.
+
+## Next checkpoint: vacancy drawer and personal flags
+
+`GET /api/vacancies/{id}` and `PUT /api/vacancies/{id}/state` are implemented, with handler/unit tests but **not yet confirmed against live MariaDB**. See `docs/GO_VACANCY_DETAIL_AND_FLAGS.md` and `db/vacancy-state-preflight.sql`. The personal flag writer serializes Go writes with a vacancy row lock and synchronizes pre-existing duplicate user-state rows; an eventual uniqueness/index migration is still needed. The Go editor remains disabled.
+
+## Tasks checkpoint
+
+`GET /api/tasks` now reads the signed-in user's task records, supports company/vacancy/completion filters, preserves calendar sync fields, and returns `{tasks,entities}`. Legacy `POST /api/tasks` and `PUT /api/tasks/{id}` are still unmigrated. A read-only MariaDB integration smoke test is provided under the `mariadb` build tag; live verification remains pending.

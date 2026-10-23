@@ -77,6 +77,8 @@ func TestVacancyFlagWriteRequiresValidSessionAndOneBoolean(t *testing.T) {
 		{"/api/vacancies/4/state", `{"favorite":true,"hidden":false}`, "", "", "application/json", 400},
 		{"/api/vacancies/4/state", `{"relevance":99}`, "", "", "application/json", 400},
 		{"/api/vacancies/4/state", `{"favorite":1}`, "", "", "application/json", 400},
+		{"/api/vacancies/4/state", `{"favorite":true,"favorite":false}`, "", "", "application/json", 400},
+		{"/api/vacancies/4/state", `{"favorite":true}`, "", "", "application/jsonp", 400},
 		{"/api/vacancies/4/state", `{"favorite":"true"}`, "", "", "application/json", 400},
 		{"/api/vacancies/4/state", `{"favorite":true}{"hidden":true}`, "", "", "application/json", 400},
 		{"/api/vacancies/4/state", `{"favorite":true}`, "", "", "text/plain", 400},

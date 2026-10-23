@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"mime"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -34,33 +35,48 @@ func writeSameOrigin(r *http.Request) bool {
 }
 
 func parseFlagUpdate(w http.ResponseWriter, r *http.Request) (string, bool, error) {
-	if !strings.HasPrefix(strings.ToLower(r.Header.Get("Content-Type")), "application/json") {
-		return "", false, errors.New("content type")
+	mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+	if err != nil || mediaType != "application/json" {
+		return "", false, errors.New("invalid content type")
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, 4096)
 	dec := json.NewDecoder(r.Body)
-	var payload map[string]json.RawMessage
-	if err := dec.Decode(&payload); err != nil || len(payload) != 1 {
-		return "", false, errors.New("invalid flag payload")
+	first, err := dec.Token()
+	if err != nil || first != json.Delim('{') {
+		return "", false, errors.New("expected JSON object")
 	}
-	var extra any
-	if err := dec.Decode(&extra); err != io.EOF {
-		return "", false, errors.New("multiple payloads")
-	}
-	for key, raw := range payload {
-		if key != "favorite" && key != "hidden" {
-			return "", false, errors.New("invalid key")
-		}
-		var b bool
-		if string(raw) != "true" && string(raw) != "false" {
-			return "", false, errors.New("not boolean")
-		}
-		if err := json.Unmarshal(raw, &b); err != nil {
+	key := ""
+	var value bool
+	for dec.More() {
+		tok, err := dec.Token()
+		if err != nil {
 			return "", false, err
 		}
-		return key, b, nil
+		next, ok := tok.(string)
+		if !ok || (next != "favorite" && next != "hidden") || key != "" {
+			return "", false, errors.New("exactly one flag required")
+		}
+		var raw json.RawMessage
+		if err = dec.Decode(&raw); err != nil {
+			return "", false, err
+		}
+		if string(raw) != "true" && string(raw) != "false" {
+			return "", false, errors.New("expected boolean")
+		}
+		if err = json.Unmarshal(raw, &value); err != nil {
+			return "", false, err
+		}
+		key = next
 	}
-	return "", false, errors.New("empty payload")
+	last, err := dec.Token()
+	if err != nil || last != json.Delim('}') || key == "" {
+		return "", false, errors.New("invalid flag object")
+	}
+	var extra any
+	if err = dec.Decode(&extra); err != io.EOF {
+		return "", false, errors.New("trailing JSON input")
+	}
+	return key, value, nil
 }
 
 func VacancyStateHandler(m *auth.Manager, repo VacancyFlagWriter) http.HandlerFunc {
