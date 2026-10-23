@@ -1,0 +1,631 @@
+{
+  "description": "Static paths found in legacy code; dynamic regex routes and methods require manual review.",
+  "paths": [
+    {
+      "path": "/api",
+      "locations": [
+        {
+          "file": "server/routes/index.js",
+          "line": 244
+        }
+      ]
+    },
+    {
+      "path": "/api/apify",
+      "locations": [
+        {
+          "file": "server/routes/index.js",
+          "line": 339
+        },
+        {
+          "file": "server/services/apify-route.js",
+          "line": 14
+        }
+      ]
+    },
+    {
+      "path": "/api/applications",
+      "locations": [
+        {
+          "file": "server/routes/index.js",
+          "line": 964
+        },
+        {
+          "file": "server/routes/index.js",
+          "line": 979
+        }
+      ]
+    },
+    {
+      "path": "/api/applications/create",
+      "locations": [
+        {
+          "file": "server/routes/index.js",
+          "line": 964
+        }
+      ]
+    },
+    {
+      "path": "/api/applications/create-context",
+      "locations": [
+        {
+          "file": "server/routes/index.js",
+          "line": 954
+        }
+      ]
+    },
+    {
+      "path": "/api/automation/favorites",
+      "locations": [
+        {
+          "file": "server/routes/index.js",
+          "line": 68
+        }
+      ]
+    },
+    {
+      "path": "/api/automation/vacancy-import",
+      "locations": [
+        {
+          "file": "server/routes/index.js",
+          "line": 75
+        }
+      ]
+    },
+    {
+      "path": "/api/backup",
+      "locations": [
+        {
+          "file": "server/routes/index.js",
+          "line": 252
+        },
+        {
+          "file": "server/routes/index.js",
+          "line": 479
+        },
+        {
+          "file": "server/routes/index.js",
+          "line": 481
+        }
+      ]
+    },
+    {
+      "path": "/api/backup/validate",
+      "locations": [
+        {
+          "file": "server/routes/index.js",
+          "line": 252
+        },
+        {
+          "file": "server/routes/index.js",
+          "line": 479
+        },
+        {
+          "file": "server/routes/index.js",
+          "line": 492
+        }
+      ]
+    },
+    {
+      "path": "/api/channels",
+      "locations": [
+        {
+          "file": "server/routes/index.js",
+          "line": 648
+        }
+      ]
+    },
+    {
+      "path": "/api/classification/jobs",
+      "locations": [
+        {
+          "file": "server/routes/index.js",
+          "line": 338
+        }
+      ]
+    },
+    {
+      "path": "/api/classification/prompts",
+      "locations": [
+        {
+          "file": "server/routes/index.js",
+          "line": 387
+        }
+      ]
+    },
+    {
+      "path": "/api/classification/roles",
+      "locations": [
+        {
+          "file": "server/routes/index.js",
+          "line": 387
+        }
+      ]
+    },
+    {
+      "path": "/api/classification/settings",
+      "locations": [
+        {
+          "file": "server/routes/index.js",
+          "line": 387
+        },
+        {
+          "file": "server/routes/index.js",
+          "line": 390
+        }
+      ]
+    },
+    {
+      "path": "/api/classification/test",
+      "locations": [
+        {
+          "file": "server/routes/index.js",
+          "line": 375
+        }
+      ]
+    },
+    {
+      "path": "/api/companies/import",
+      "locations": [
+        {
+          "file": "server/routes/index.js",
+          "line": 253
+        },
+        {
+          "file": "server/routes/index.js",
+          "line": 549
+        }
+      ]
+    },
+    {
+      "path": "/api/companies/recalculate-rating",
+      "locations": [
+        {
+          "file": "server/routes/index.js",
+          "line": 254
+        },
+        {
+          "file": "server/routes/index.js",
+          "line": 572
+        }
+      ]
+    },
+    {
+      "path": "/api/crm",
+      "locations": [
+        {
+          "file": "server/routes/index.js",
+          "line": 1083
+        }
+      ]
+    },
+    {
+      "path": "/api/crm/applications",
+      "locations": [
+        {
+          "file": "server/routes/index.js",
+          "line": 1028
+        }
+      ]
+    },
+    {
+      "path": "/api/crm/favorite",
+      "locations": [
+        {
+          "file": "server/routes/index.js",
+          "line": 1041
+        }
+      ]
+    },
+    {
+      "path": "/api/crm/favorites",
+      "locations": [
+        {
+          "file": "server/routes/index.js",
+          "line": 1035
+        }
+      ]
+    },
+    {
+      "path": "/api/crm/hidden-companies",
+      "locations": [
+        {
+          "file": "server/routes/index.js",
+          "line": 1059
+        }
+      ]
+    },
+    {
+      "path": "/api/crm/hidden-company",
+      "locations": [
+        {
+          "file": "server/routes/index.js",
+          "line": 1065
+        }
+      ]
+    },
+    {
+      "path": "/api/docs",
+      "locations": [
+        {
+          "file": "server/routes/index.js",
+          "line": 402
+        },
+        {
+          "file": "server/routes/index.js",
+          "line": 405
+        },
+        {
+          "file": "server/routes/index.js",
+          "line": 406
+        }
+      ]
+    },
+    {
+      "path": "/api/exports/companies",
+      "locations": [
+        {
+          "file": "server/routes/index.js",
+          "line": 253
+        },
+        {
+          "file": "server/routes/index.js",
+          "line": 527
+        }
+      ]
+    },
+    {
+      "path": "/api/exports/companies-reviews",
+      "locations": [
+        {
+          "file": "server/routes/index.js",
+          "line": 252
+        },
+        {
+          "file": "server/routes/index.js",
+          "line": 516
+        }
+      ]
+    },
+    {
+      "path": "/api/exports/companies-vacancies",
+      "locations": [
+        {
+          "file": "server/routes/index.js",
+          "line": 252
+        },
+        {
+          "file": "server/routes/index.js",
+          "line": 504
+        }
+      ]
+    },
+    {
+      "path": "/api/exports/vacancies",
+      "locations": [
+        {
+          "file": "server/routes/index.js",
+          "line": 253
+        },
+        {
+          "file": "server/routes/index.js",
+          "line": 538
+        }
+      ]
+    },
+    {
+      "path": "/api/firecrawl",
+      "locations": [
+        {
+          "file": "server/routes/index.js",
+          "line": 340
+        },
+        {
+          "file": "server/services/firecrawl-route.js",
+          "line": 18
+        }
+      ]
+    },
+    {
+      "path": "/api/google-calendar/callback",
+      "locations": [
+        {
+          "file": "server/routes/index.js",
+          "line": 166
+        }
+      ]
+    },
+    {
+      "path": "/api/google-calendar/connect",
+      "locations": [
+        {
+          "file": "server/routes/index.js",
+          "line": 417
+        }
+      ]
+    },
+    {
+      "path": "/api/google-calendar/disconnect",
+      "locations": [
+        {
+          "file": "server/routes/index.js",
+          "line": 456
+        }
+      ]
+    },
+    {
+      "path": "/api/google-calendar/status",
+      "locations": [
+        {
+          "file": "server/routes/index.js",
+          "line": 412
+        }
+      ]
+    },
+    {
+      "path": "/api/google-calendar/sync",
+      "locations": [
+        {
+          "file": "server/routes/index.js",
+          "line": 442
+        }
+      ]
+    },
+    {
+      "path": "/api/hiring-contacts",
+      "locations": [
+        {
+          "file": "server/routes/index.js",
+          "line": 604
+        }
+      ]
+    },
+    {
+      "path": "/api/internal/database-export",
+      "locations": [
+        {
+          "file": "server/routes/index.js",
+          "line": 62
+        }
+      ]
+    },
+    {
+      "path": "/api/internal/scheduler/tick",
+      "locations": [
+        {
+          "file": "server/routes/index.js",
+          "line": 64
+        }
+      ]
+    },
+    {
+      "path": "/api/openai",
+      "locations": [
+        {
+          "file": "server/integrations/openai.js",
+          "line": 112
+        },
+        {
+          "file": "server/routes/index.js",
+          "line": 271
+        }
+      ]
+    },
+    {
+      "path": "/api/openrouter",
+      "locations": [
+        {
+          "file": "server/integrations/openrouter.js",
+          "line": 147
+        },
+        {
+          "file": "server/routes/index.js",
+          "line": 276
+        }
+      ]
+    },
+    {
+      "path": "/api/openrouter/jev",
+      "locations": [
+        {
+          "file": "server/routes/index.js",
+          "line": 278
+        }
+      ]
+    },
+    {
+      "path": "/api/profile/prompt-models",
+      "locations": [
+        {
+          "file": "server/routes/index.js",
+          "line": 298
+        },
+        {
+          "file": "server/routes/index.js",
+          "line": 301
+        },
+        {
+          "file": "server/routes/index.js",
+          "line": 302
+        }
+      ]
+    },
+    {
+      "path": "/api/profile/prompts",
+      "locations": [
+        {
+          "file": "server/routes/index.js",
+          "line": 322
+        },
+        {
+          "file": "server/routes/index.js",
+          "line": 325
+        },
+        {
+          "file": "server/routes/index.js",
+          "line": 326
+        },
+        {
+          "file": "server/routes/index.js",
+          "line": 327
+        }
+      ]
+    },
+    {
+      "path": "/api/profile/resume",
+      "locations": [
+        {
+          "file": "server/routes/index.js",
+          "line": 287
+        }
+      ]
+    },
+    {
+      "path": "/api/scheduler",
+      "locations": [
+        {
+          "file": "server/routes/index.js",
+          "line": 335
+        },
+        {
+          "file": "server/services/scheduler-route.js",
+          "line": 52
+        }
+      ]
+    },
+    {
+      "path": "/api/session",
+      "locations": [
+        {
+          "file": "server/routes/index.js",
+          "line": 250
+        }
+      ]
+    },
+    {
+      "path": "/api/tasks",
+      "locations": [
+        {
+          "file": "server/routes/index.js",
+          "line": 885
+        }
+      ]
+    },
+    {
+      "path": "/api/vacancies",
+      "locations": [
+        {
+          "file": "server/routes/index.js",
+          "line": 737
+        }
+      ]
+    },
+    {
+      "path": "/api/vacancies/import",
+      "locations": [
+        {
+          "file": "server/routes/index.js",
+          "line": 254
+        },
+        {
+          "file": "server/routes/index.js",
+          "line": 584
+        }
+      ]
+    },
+    {
+      "path": "/api/vacancies/list",
+      "locations": [
+        {
+          "file": "server/routes/index.js",
+          "line": 729
+        }
+      ]
+    },
+    {
+      "path": "/api/vacancy-candidates",
+      "locations": [
+        {
+          "file": "server/routes/index.js",
+          "line": 342
+        },
+        {
+          "file": "server/routes/index.js",
+          "line": 347
+        }
+      ]
+    },
+    {
+      "path": "/api/vacancy-details",
+      "locations": [
+        {
+          "file": "server/routes/index.js",
+          "line": 337
+        }
+      ]
+    },
+    {
+      "path": "/api/vacancy-import",
+      "locations": [
+        {
+          "file": "server/routes/index.js",
+          "line": 336
+        }
+      ]
+    },
+    {
+      "path": "/api/vacancy-roles",
+      "locations": [
+        {
+          "file": "server/routes/index.js",
+          "line": 685
+        }
+      ]
+    },
+    {
+      "path": "/api/vacancy-roles/leaves",
+      "locations": [
+        {
+          "file": "server/routes/index.js",
+          "line": 697
+        }
+      ]
+    },
+    {
+      "path": "/api/vacancy-roles/roots",
+      "locations": [
+        {
+          "file": "server/routes/index.js",
+          "line": 697
+        }
+      ]
+    },
+    {
+      "path": "/auth",
+      "locations": [
+        {
+          "file": "server/routes/index.js",
+          "line": 212
+        }
+      ]
+    },
+    {
+      "path": "/logout",
+      "locations": [
+        {
+          "file": "server/routes/index.js",
+          "line": 231
+        }
+      ]
+    },
+    {
+      "path": "/mcp",
+      "locations": [
+        {
+          "file": "server/routes/index.js",
+          "line": 63
+        }
+      ]
+    }
+  ]
+}
