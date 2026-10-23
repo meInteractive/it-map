@@ -49,7 +49,10 @@ type CRMResponse struct {
 	Entities []Entity `json:"entities"`
 }
 
-type Repository struct{ DB *sql.DB }
+type Repository struct {
+	DB             *sql.DB
+	CreationSecret []byte
+}
 
 func AllowedSources(raw string) []string {
 	var input []string
