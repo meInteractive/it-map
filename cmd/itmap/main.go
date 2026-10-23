@@ -37,6 +37,7 @@ func httpHandler(logger *slog.Logger, db *sql.DB, manager *auth.Manager) http.Ha
 		opts.VacancyDetails = vacancies.Repository{DB: db}
 		opts.VacancyCreates = vacancies.Repository{DB: db}
 		opts.VacancyDeletes = vacancies.Repository{DB: db}
+		opts.VacancyUpdates = vacancies.Repository{DB: db}
 		opts.VacancyFlags = vacancies.Repository{DB: db}
 		opts.Tasks = tasks.Repository{DB: db}
 		opts.Applications = applications.Repository{DB: db}
