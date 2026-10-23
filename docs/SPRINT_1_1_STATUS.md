@@ -70,3 +70,14 @@ ready. Authenticated `PUT /api/crm/favorite` and `PUT /api/crm/hidden-company`
 are exposed and tested, with a duplicate-user-state fail-closed policy. The
 Go driver DSN requests `clientFoundRows=true` for matched-row semantics.
 All changes remain subject to staging MariaDB integration testing.
+
+## V8 continuation (2026-10-23)
+
+See [`SPRINT_1_1_V8.md`](SPRINT_1_1_V8.md). Admin-only `POST /api/vacancies`
+now has transactional Go persistence and the legacy `{ok,vacancies}` response.
+Manual creation checks catalog ownership, leaf roles, Telegram provenance and
+user relevance, and uses a temporary MariaDB named lock while original
+UNIQUE URL constraints remain missing. This is **not** global uniqueness against
+parser writes and is not a substitute for a reviewed database migration.
+PUT/DELETE vacancy editing, MariaDB-tagged tests and staging deployment remain
+pending; `/health/ready` continues returning 503.
