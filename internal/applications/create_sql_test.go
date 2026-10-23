@@ -22,6 +22,7 @@ type receiptState struct {
 	exists                         bool
 	creates, commits, rollbacks    int
 	failHistory                    bool
+	rotateDuringTx                 bool
 	limit                          int
 	pending                        bool
 	pendingHash, pendingGen        string
@@ -79,6 +80,9 @@ func (c *receiptConn) QueryContext(_ context.Context, q string, _ []driver.Named
 	}
 	switch {
 	case strings.Contains(q, "FROM app_runtime_generation"):
+		if s.rotateDuringTx && strings.Contains(q, "FOR UPDATE") {
+			return rows([]string{"generation"}, []driver.Value{"cccccccc-cccc-4ccc-8ccc-cccccccccccc"})
+		}
 		return rows([]string{"generation"}, []driver.Value{s.generation})
 	case strings.Contains(q, "FROM application_creation_receipts"):
 		if !s.receipt {
@@ -193,5 +197,22 @@ func TestCreateReceiptRollback(t *testing.T) {
 				t.Fatal(err)
 			}
 		})
+	}
+}
+
+func TestCreateGenerationRotationBeforeWrite(t *testing.T) {
+	state := &receiptState{generation: testGeneration, rotateDuringTx: true}
+	repo := Repository{DB: newReceiptDB(t, state), CreationSecret: []byte(strings.Repeat("k", 64))}
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	token, err := repo.CreationContext(ctx, "Demo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	input := creationInput()
+	input.CreationContext = token
+	_, err = repo.CreateWithReceipt(ctx, "Demo", input)
+	if !errors.Is(err, ErrCreationContextExpired) || state.creates != 0 || state.receipt || state.commits != 0 || state.rollbacks != 1 {
+		t.Fatalf("rotation must abort: %v %+v", err, state)
 	}
 }

@@ -67,6 +67,9 @@ func TestGenerationBoundCreationContext(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if token != "ac1.LG5qC6hODagmJmOy8URlcUsDJoR2ZZwo4Biaux9YtXs" {
+		t.Fatalf("Sites HMAC mismatch: %q", token)
+	}
 	if !strings.HasPrefix(token, "ac1.") || len(token) != 47 {
 		t.Fatal(token)
 	}
