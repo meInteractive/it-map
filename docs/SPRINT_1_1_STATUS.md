@@ -60,3 +60,13 @@ To run the SQL integration test on an isolated, non-production MariaDB loaded wi
 See `docs/SPRINT_1_1_V5.md` for four new implementation commits covering
 application reads, task completion, company favorites/hidden lists and company
 CRM state/history. The production readiness gate remains closed.
+
+## V6 continuation (2026-10-23)
+
+See [`SPRINT_1_1_V6.md`](SPRINT_1_1_V6.md). Go-only transactional
+application editing/deletion repository methods have been implemented but NOT
+exposed over HTTP yet, because the legacy API's full company response is not
+ready. Authenticated `PUT /api/crm/favorite` and `PUT /api/crm/hidden-company`
+are exposed and tested, with a duplicate-user-state fail-closed policy. The
+Go driver DSN requests `clientFoundRows=true` for matched-row semantics.
+All changes remain subject to staging MariaDB integration testing.
