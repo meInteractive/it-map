@@ -45,6 +45,7 @@ type Options struct {
 	VacancyFlags   VacancyFlagWriter
 	Applications   ApplicationReader
 	CompanyFlags   CompanyFlagLister
+	CompanyCRM     CompanyCRMReader
 	Tasks          TaskLister
 	TaskCompletion TaskCompletionWriter
 }
@@ -103,6 +104,9 @@ func NewHandlerWithOptions(logger *slog.Logger, opts Options) http.Handler {
 		}
 		if opts.Tasks != nil {
 			mux.HandleFunc("GET /api/tasks", TaskListHandler(opts.Auth, opts.Tasks))
+		}
+		if opts.CompanyCRM != nil {
+			mux.HandleFunc("GET /api/crm", CompanyCRMHandler(opts.Auth, opts.CompanyCRM))
 		}
 		if opts.CompanyFlags != nil {
 			mux.HandleFunc("GET /api/crm/favorites", CompanyFlagListHandler(opts.Auth, opts.CompanyFlags, "favorite"))
