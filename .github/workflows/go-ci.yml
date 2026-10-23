@@ -1,0 +1,40 @@
+name: Public source security and Go checks
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+permissions:
+  contents: read
+jobs:
+  safe-source:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Check public files for prohibited data and token formats
+        run: python3 scripts/check-public-repo.py
+      - name: Verify no private payloads tracked
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git ls-files | grep -Ei '(^|/)(.*(dump|backup|secret|credential|\.env)|\.openai/|dist/)' | grep -vE '(^|/)\.env\.example$|(^|/)\.dev\.vars\.example$|server/generated/backup-schema\.json|docs/BACKUP_FORMAT\.md|server/backup/index\.js|scripts/test-backup-|server/import-export/database-dump\.js'; then
+            echo 'Unexpected sensitive-looking tracked path requires manual review'
+            exit 1
+          fi
+  go:
+    runs-on: ubuntu-latest
+    needs: safe-source
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Go vet
+        run: go vet ./...
+      - name: Go tests
+        run: go test -race ./...
+      - name: Build executable
+        run: go build -o /tmp/itmap ./cmd/itmap
