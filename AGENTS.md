@@ -8,3 +8,8 @@ OAuth client credentials, encryption keys, or live API responses.
 Original SQLite migrations/seed records, built dist, private operational notes, and
 hosting identity were intentionally excluded. Use privately stored MariaDB DDL/data
 for migration verification; never try to recreate production from this safe branch.
+
+Current implementation status and migration caveats: `docs/SPRINT_1_1_STATUS.md`,
+`docs/GO_CATALOG_PORT.md`. New endpoints must preserve the v316 response
+contract, respect user-specific state, remain fail-closed on error, and have
+HTTP tests before their route is enabled.
