@@ -16,6 +16,7 @@ import (
 	"itmap/internal/catalog"
 	"itmap/internal/channels"
 	"itmap/internal/config"
+	"itmap/internal/crm"
 	"itmap/internal/httpapi"
 	"itmap/internal/roles"
 	"itmap/internal/storage"
@@ -37,6 +38,7 @@ func httpHandler(logger *slog.Logger, db *sql.DB, manager *auth.Manager) http.Ha
 		opts.VacancyFlags = vacancies.Repository{DB: db}
 		opts.Tasks = tasks.Repository{DB: db}
 		opts.Applications = applications.Repository{DB: db}
+		opts.CompanyFlags = crm.Repository{DB: db}
 		opts.TaskCompletion = tasks.Repository{DB: db}
 	}
 	return httpapi.NewHandlerWithOptions(logger, opts)
