@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"os"
 	"time"
 )
 
@@ -15,6 +16,11 @@ type DBChecker interface{ PingContext(context.Context) error }
 // NewHandler returns the migration shell. No legacy business API returns success
 // until its handler has been ported and tested against the frozen contract.
 func NewHandler(logger *slog.Logger, database ...DBChecker) http.Handler {
+	return NewHandlerWithWeb(logger, os.Getenv("WEB_DIST_DIR"), database...)
+}
+
+// NewHandlerWithWeb additionally serves built React static assets when configured.
+func NewHandlerWithWeb(logger *slog.Logger, webDir string, database ...DBChecker) http.Handler {
 	if logger == nil {
 		logger = slog.Default()
 	}
@@ -42,7 +48,15 @@ func NewHandler(logger *slog.Logger, database ...DBChecker) http.Handler {
 	mux.HandleFunc("/auth", unmigrated)
 	mux.HandleFunc("/logout", unmigrated)
 	mux.HandleFunc("/mcp", unmigrated)
-	mux.HandleFunc("/", unmigrated)
+	mux.HandleFunc("/api", unmigrated)
+	mux.HandleFunc("/auth/", unmigrated)
+	mux.HandleFunc("/logout/", unmigrated)
+	mux.HandleFunc("/mcp/", unmigrated)
+	if webDir != "" {
+		mux.Handle("/", StaticHandler(webDir))
+	} else {
+		mux.HandleFunc("/", unmigrated)
+	}
 	return recoverMiddleware(logger, safeHeaders(mux))
 }
 
@@ -58,7 +72,7 @@ func safeHeaders(next http.Handler) http.Handler {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("Referrer-Policy", "no-referrer")
 		w.Header().Set("X-Frame-Options", "DENY")
-		w.Header().Set("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
+		w.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.openfreemap.org; connect-src 'self' https://*.openfreemap.org; worker-src 'self' blob:; font-src 'self' data: https://*.openfreemap.org; object-src 'none'; base-uri 'self'; frame-ancestors 'none'")
 		next.ServeHTTP(w, r)
 	})
 }
