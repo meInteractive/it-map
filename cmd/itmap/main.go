@@ -10,15 +10,18 @@ import (
 	"syscall"
 	"time"
 
+	"itmap/internal/config"
 	"itmap/internal/httpapi"
 )
 
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	addr := os.Getenv("HTTP_ADDR")
-	if addr == "" {
-		addr = "127.0.0.1:8080" // Bind to localhost; reverse proxy is the public entrypoint.
+	cfg, err := config.Load()
+	if err != nil {
+		logger.Error("invalid configuration", "error", err)
+		os.Exit(1)
 	}
+	addr := cfg.HTTPAddr
 	server := &http.Server{
 		Addr: addr, Handler: httpapi.NewHandler(logger),
 		ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 30 * time.Second,
