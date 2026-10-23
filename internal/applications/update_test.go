@@ -73,6 +73,12 @@ func (c updateConn) QueryContext(_ context.Context, q string, _ []driver.NamedVa
 			values = append(values, []driver.Value{"Example", s.status, s.snapshot})
 		}
 		return &updateRows{columns: []string{"company_name", "status", "snapshot"}, values: values}, nil
+	case strings.Contains(q, "SELECT company_name FROM company_applications"):
+		values := [][]driver.Value{}
+		if s.existing {
+			values = append(values, []driver.Value{"Example"})
+		}
+		return &updateRows{columns: []string{"company_name"}, values: values}, nil
 	case strings.Contains(q, "FROM company_vacancies"):
 		values := [][]driver.Value{}
 		if s.vacancyExists {
@@ -101,6 +107,13 @@ func (c updateConn) ExecContext(_ context.Context, q string, args []driver.Named
 			return nil, errors.New("update not scoped to owner, id, state")
 		}
 		s.updateCount++
+		return updateResult(1), nil
+	case strings.Contains(q, "DELETE FROM company_application_status_history"):
+		return updateResult(1), nil
+	case strings.Contains(q, "DELETE FROM company_applications"):
+		if len(args) != 2 || args[0].Value != "Demo" || args[1].Value != int64(4) {
+			return nil, errors.New("unscoped delete")
+		}
 		return updateResult(1), nil
 	case strings.Contains(q, "INSERT INTO company_application_status_history"):
 		if s.failHistory {
@@ -233,5 +246,27 @@ func TestUpdateValidation(t *testing.T) {
 	norm, err = good.normalize()
 	if err != nil || len(norm.ApplicationSources) != 1 || norm.ApplicationSources[0] != "hh" {
 		t.Fatal(norm, err)
+	}
+}
+
+func TestDeleteUserScopedAtomic(t *testing.T) {
+	s := &updateState{existing: true}
+	r, closeDB := testRepo(s)
+	defer closeDB()
+	company, err := r.Delete(context.Background(), "Demo", 4)
+	if err != nil || company != "Example" || !s.committed || s.rolledBack || len(s.queries) != 3 {
+		t.Fatal(company, err, s)
+	}
+	if !strings.Contains(s.queries[0], "FOR UPDATE") || !strings.Contains(s.queries[1], "DELETE FROM company_application_status_history") || !strings.Contains(s.queries[2], "user_name=?") {
+		t.Fatal(s.queries)
+	}
+}
+func TestDeleteUnknownIsNotFound(t *testing.T) {
+	s := &updateState{}
+	r, closeDB := testRepo(s)
+	defer closeDB()
+	_, err := r.Delete(context.Background(), "Demo", 4)
+	if !errors.Is(err, ErrNotFound) || !s.rolledBack || s.committed || len(s.queries) != 1 {
+		t.Fatal(err, s)
 	}
 }
