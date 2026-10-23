@@ -11,7 +11,7 @@ This repository is an incomplete, fail-closed Go migration of the original GPT S
 | `b07aa9b` | 1.1.14 (partial): independent Telegram channels GET; identity schema preflight | Go HTTP tests |
 | `eb57098` | 1.1.11 (partial): vacancy role tree, root/leaf/descendant projections | Go unit/HTTP tests and private role-tree smoke test |
 
-## Implemented GET endpoints
+## Initially implemented endpoints (historical checkpoint)
 
 - `/api/companies/search?q=...`, `/api/agencies/search?q=...` (legacy alias)
 - `/api/companies/list`, `/api/companies/map`, `/api/companies/detail?name=...`, `/api/companies/{numeric-id}`
@@ -24,7 +24,7 @@ This repository is an incomplete, fail-closed Go migration of the original GPT S
 - `PUT /api/vacancies/{numeric-id}/state` (personal favorite/hidden flags, transactional)
 - Legacy session endpoints `/auth`, `/logout`, `/api/session`
 
-Only the explicitly migrated vacancy flag PUT writes to the database; all migrated GET routes are read-only. Unsupported APIs remain behind authentication and respond as unmigrated; health readiness remains HTTP 503.
+At this historical checkpoint, only the vacancy flag PUT wrote to the database. Later checkpoints below add more mutations. Unsupported APIs remain authenticated and fail closed; health readiness stays HTTP 503.
 
 ## Tests and limits
 
@@ -89,3 +89,7 @@ See [`SPRINT_1_1_V9.md`](SPRINT_1_1_V9.md). Admin-only `DELETE /api/vacancies/{i
 ## V10 continuation (2026-10-24)
 
 See [`SPRINT_1_1_V10.md`](SPRINT_1_1_V10.md): admin-only vacancy editing with a shared GET/PUT revision snapshot, transactional roles/letters/Telegram/relevance, and fail-closed agency handling. Integration testing with real MariaDB and the driver is still pending.
+
+## V11 continuation (2026-10-24)
+
+See [`SPRINT_1_1_V11.md`](SPRINT_1_1_V11.md): signed creation contexts, transactional durable idempotency receipts, authenticated `POST /api/applications/create` and `/api/applications`, strict replay/restore checks, and SQL preflight. Offline Go tests passed. Real MariaDB validation, `go.sum`, backup/restore, and vacancy-card one-click applications remain pending.
