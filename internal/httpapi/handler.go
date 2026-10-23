@@ -44,6 +44,7 @@ type Options struct {
 	VacancyDetails VacancyDetailer
 	VacancyFlags   VacancyFlagWriter
 	Tasks          TaskLister
+	TaskCompletion TaskCompletionWriter
 }
 
 // NewHandlerWithOptions constructs only explicitly implemented routes.
@@ -100,6 +101,9 @@ func NewHandlerWithOptions(logger *slog.Logger, opts Options) http.Handler {
 		}
 		if opts.Tasks != nil {
 			mux.HandleFunc("GET /api/tasks", TaskListHandler(opts.Auth, opts.Tasks))
+		}
+		if opts.TaskCompletion != nil {
+			mux.HandleFunc("PUT /api/tasks/{id}", TaskCompletionHandler(opts.Auth, opts.TaskCompletion))
 		}
 		if opts.Vacancies != nil {
 			mux.HandleFunc("GET /api/vacancies/list", VacancyListHandler(opts.Auth, opts.Vacancies, time.Now))
