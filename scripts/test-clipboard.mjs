@@ -1,0 +1,54 @@
+import assert from 'node:assert/strict';
+import {createElement as h} from 'react';
+import {act,create} from 'react-test-renderer';
+import {moduleFor,render} from './test-support.mjs';
+const {writeRichClipboard,renderedClipboard}=await moduleFor('frontend/lib/clipboard.ts');
+const {default:CoverLetter,CopyLetterButton}=await moduleFor('frontend/features/vacancies/CoverLetter.tsx');
+globalThis.IS_REACT_ACT_ENVIRONMENT=true;
+const original=Object.fromEntries(['navigator','window','document','HTMLElement','setTimeout','clearTimeout'].map(k=>[k,Object.getOwnPropertyDescriptor(globalThis,k)]));
+const set=(key,value)=>Object.defineProperty(globalThis,key,{configurable:true,writable:true,value});
+let root;
+try {
+ let writes=[],plain=[];
+ set('navigator',{clipboard:{async write(items){writes.push(items)},async writeText(text){plain.push(text)}}});
+ set('window',{isSecureContext:true,ClipboardItem:class {constructor(parts){this.parts=parts}}});
+ const content={innerHTML:'<p>Здравствуйте, <strong>команда</strong>!</p><p>Вторая строка</p>',innerText:'Здравствуйте, команда!\n\nВторая строка'};
+ const payload=renderedClipboard(content);
+ await writeRichClipboard(payload.plain,payload.html);
+ assert.equal(await writes[0][0].parts['text/html'].text(),content.innerHTML);
+ assert.equal(await writes[0][0].parts['text/plain'].text(),content.innerText);
+ assert.deepEqual(plain,[]);
+ navigator.clipboard.write=async()=>{throw Error('rich blocked')};
+ await writeRichClipboard(payload.plain,payload.html);
+ assert.deepEqual(plain,[content.innerText]);
+ window.isSecureContext=false;
+ await writeRichClipboard('Subject <tag>','<span>Subject &lt;tag&gt;</span>');
+ assert.equal(plain.at(-1),'Subject <tag>');
+ navigator.clipboard.writeText=async()=>{throw Error('denied')};
+ await assert.rejects(()=>writeRichClipboard('x'),/denied/);
+ let removed=0,focused=0,selected=0,appended,command=true;
+ set('HTMLElement',class {focus(){focused++}});
+ set('document',{activeElement:new HTMLElement(),createElement:()=>({style:{},setAttribute(){},select(){selected++},remove(){removed++}}),body:{appendChild(el){appended=el}},execCommand(action){assert.equal(action,'copy');if(command instanceof Error)throw command;return command}});
+ set('navigator',{});
+ await writeRichClipboard('Legacy text');
+ assert.equal(appended.value,'Legacy text');assert.equal(selected,1);assert.equal(removed,1);assert.equal(focused,1);
+ command=false;await assert.rejects(()=>writeRichClipboard('x'),/не поддерживается/);assert.equal(removed,2);
+ command=Error('exec denied');await assert.rejects(()=>writeRichClipboard('x'),/exec denied/);assert.equal(removed,3);assert.equal(focused,3);
+ let timer,cleared=0,fail=false,release;
+ set('setTimeout',(fn,ms)=>{assert.equal(ms,1400);timer=fn;return 1});set('clearTimeout',()=>{cleared++});
+ set('navigator',{clipboard:{writeText:async text=>{plain.push(text);if(fail)throw Error('denied');if(release===null)await new Promise(r=>release=r)}}});
+ await act(async()=>{root=create(h(CopyLetterButton,{content:()=>content,disabled:false,label:'Copy text'}))});
+ const button=()=>root.root.findByType('button');
+ release=null;await act(async()=>button().props.onClick());assert.equal(button().props.disabled,true);
+ await act(async()=>release());assert.match(JSON.stringify(root.toJSON()),/Скопировано/);
+ await act(async()=>timer());assert.equal(button().props.disabled,false);
+ fail=true;await act(async()=>button().props.onClick());assert.match(JSON.stringify(root.toJSON()),/Не удалось/);
+ await act(async()=>timer());fail=false;await act(async()=>button().props.onClick());assert.match(JSON.stringify(root.toJSON()),/Скопировано/);assert.doesNotMatch(JSON.stringify(root.toJSON()),/Не удалось/);
+ await act(async()=>root.unmount());root=null;assert.ok(cleared);
+ const html=render(CoverLetter,{v:{id:900003,coverLetterMd:'**Опыт**\n\n- React\n- TypeScript\n\n<script>alert(1)</script>',coverLetterSubject:'Head <script>'}});
+ assert.match(html,/<strong>Опыт<\/strong>/);assert.match(html,/<ul><li>React<\/li><li>TypeScript<\/li><\/ul>/);assert.match(html,/&lt;script&gt;/);assert.doesNotMatch(html,/<script>/);assert.match(html,/cover-letter-copy/);
+ console.log('Clipboard: HTML/plain payloads, permission fallback, legacy cleanup, pending/success/error/reset and safe rendered Markdown passed.');
+} finally {
+ if(root)await act(async()=>root.unmount());
+ for(const [key,descriptor]of Object.entries(original)){if(descriptor)Object.defineProperty(globalThis,key,descriptor);else delete globalThis[key]}
+}

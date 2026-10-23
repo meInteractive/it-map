@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {moduleFor,render} from './test-support.mjs';
+const {default:Chart}=await moduleFor('frontend/features/settings/ParserErrorHistory.tsx');
+const {default:Issues}=await moduleFor('frontend/features/settings/ParserIssues.tsx');
+const points=Array.from({length:30},(_,i)=>({day:new Date(Date.UTC(2026,8,23+i)).toISOString().slice(0,10),p1:i<28?null:i===28?0:2,p2:i<28?null:i===28?0:20,observedAt:i<28?null:1}));
+const history={timezone:'Europe/Moscow',metric:'daily_peak_active',days:30,observedDays:2,average:{p1:1,p2:10},points};
+let html=render(Chart,{history});assert.match(html,/Ошибки за 30 дней/);assert.match(html,/Данных: 2 из 30 дней/);assert.match(html,/Пропуски не считаются нулём/);assert.match(html,/текущий день неполный/);assert.match(html,/stroke-dasharray="6 4"/);assert.match(html,/role="img"/);assert.match(html,/Значения по дням/);assert.match(html,/>20<\/td>/);assert.match(html,/>0<\/td>/);assert.match(html,/Нет данных/);assert.equal((html.match(/<tbody>.*?<\/tbody>/s)[0].match(/<tr>/g)||[]).length,30);
+html=render(Chart,{history:{...history,observedDays:0,average:{p1:null,p2:null},points:points.map(p=>({...p,p1:null,p2:null}))}});assert.ok(!html.includes('NaN'));assert.ok(!html.includes('stroke-dasharray'));assert.match(html,/Сегодня, пик: —/);
+html=render(Chart,{history:{...history,observedDays:30,average:{p1:0,p2:0},points:points.map(p=>({...p,p1:0,p2:0}))}});assert.match(html,/Сегодня, пик: 0/);assert.ok(!html.includes('NaN'));
+html=render(Issues,{report:{checkedAt:Date.now(),issues:[],historicalFailed:0,sampleLimited:false,limit:120,history},loading:false,onReload(){},onOpen(){}});assert.ok(html.indexOf('Ошибки за 30 дней')<html.indexOf('Известные проблемы и задачи'));
+console.log('Parser history UI: chart before issue list, 30 accessible daily rows, P1/P2 series and dashed means, exact zero vs unknown, partial coverage explanation and zero/empty scaling passed.');

@@ -1,0 +1,40 @@
+# Local credentials and configuration
+.env
+.env.*
+!.env.example
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa*
+id_ed25519*
+# DB, backups, snapshots, exports and runtime
+*.db
+*.sqlite
+*.sqlite3
+*-dump.sql
+*mariadb*.sql
+*d1-original*.sql
+*.sql.gz
+*.dump
+*.bak
+*backup*.json
+!server/generated/backup-schema.json
+*snapshot*.json
+*d1-original*
+*mariadb*
+.wrangler/
+.sites-runtime/
+.migration/
+.tests/
+.next/
+.vinext/
+.openai/
+dist/
+node_modules/
+*.tsbuildinfo
+# Internal generated manifests and validation
+GIT_FILES_SHA256SUMS

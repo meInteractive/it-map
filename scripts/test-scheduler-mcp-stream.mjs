@@ -1,0 +1,30 @@
+import assert from 'node:assert/strict';
+import {moduleFor} from './test-support.mjs';
+import {schedulerFixture} from './scheduler-test-support.mjs';
+const {streamSchedulerMcpCall}=await moduleFor('server/services/scheduler-mcp-stream.js');
+const rpc={jsonrpc:'2.0',id:'tick-1',params:{_meta:{progressToken:'progress-1'}}};
+let finish,entered;const gate=new Promise(r=>finish=r),started=new Promise(r=>entered=r),wait=[];
+const response=streamSchedulerMcpCall(new Request('https://fixture.test/mcp'),{},{waitUntil:p=>wait.push(p)},rpc,async(_,options)=>{entered();options.onProgress({processed:1,errors:0});await gate;return{processed:2,continuationRequestId:'next'};},{heartbeatMs:5});
+assert.match(response.headers.get('content-type'),/text\/event-stream/);
+const reader=response.body.getReader(),decoder=new TextDecoder();let text=decoder.decode((await reader.read()).value);assert.match(text,/: it-map scheduler/);await started;
+await new Promise(r=>setTimeout(r,12));finish();for(;;){const c=await reader.read();if(c.done)break;text+=decoder.decode(c.value);}await Promise.all(wait);
+assert.match(text,/: keepalive/);const events=text.split('\n').filter(l=>l.startsWith('data: ')).map(l=>JSON.parse(l.slice(6)));
+assert.equal(events[0].method,'notifications/progress');assert.equal(events[0].params.progressToken,'progress-1');
+assert.equal(events.at(-1).id,rpc.id);assert.equal(JSON.parse(events.at(-1).result.content[0].text).processed,2);
+let cleanup=false,ready;const active=[],began=new Promise(r=>ready=r);
+const cancelled=streamSchedulerMcpCall(new Request('https://fixture.test/mcp'),{},{waitUntil:p=>active.push(p)},rpc,async(_,options)=>{ready();await new Promise(resolve=>options.signal.addEventListener('abort',resolve,{once:true}));cleanup=true;options.signal.throwIfAborted();});
+const cr=cancelled.body.getReader();await cr.read();await began;await cr.cancel();await Promise.all(active);assert.equal(cleanup,true);
+const failed=streamSchedulerMcpCall(new Request('https://fixture.test/mcp'),{},undefined,{id:7},async()=>{throw Error('PRIVATE SECRET');});const errorText=await failed.text();assert.ok(!errorText.includes('PRIVATE SECRET'));assert.match(errorText,/"isError":true/);assert.doesNotMatch(errorText,/notifications\/progress/);
+console.log('MCP SSE: immediate headers/comment, heartbeat, opt-in progress token, terminal JSON-RPC result, disconnected provider abort and cleanup, private errors passed');
+const fixture=await schedulerFixture();
+try{
+ const {api,db,env,sqlite}=fixture,s=await api.schedulerSettings(db);await api.saveSchedulerSettings(db,{enabled:true,dayBudgetUsd:0,monthBudgetUsd:0,revision:s.revision},'Eugene');
+ const job=await api.enqueueScheduledJob(db,{type:'diagnostic',key:'transport-interruption'}),promises=[];let enter;const ready=new Promise(r=>enter=r);
+ const options={handlers:{diagnostic:async(_,claim,{signal})=>{enter();await new Promise(resolve=>signal.addEventListener('abort',resolve,{once:true}));signal.throwIfAborted();}}};
+ const stream=streamSchedulerMcpCall(new Request('https://fixture.test/mcp'),env,{waitUntil:p=>promises.push(p)},{id:8},(_,o)=>api.runScheduledSeriesTick(env,'transport-cancel',{...options,...o}));
+ const reader=stream.body.getReader();await reader.read();await ready;await reader.cancel();await Promise.all(promises);
+ const run=sqlite.prepare("SELECT * FROM scheduler_runs ORDER BY started_at DESC LIMIT 1").get();assert.ok(run.finished_at);assert.equal(run.lease_until,0);assert.equal(run.status,'partial');
+ const stored=sqlite.prepare('SELECT * FROM scheduler_jobs WHERE id=?').get(job.id);assert.equal(stored.status,'pending');assert.equal(stored.reason_code,'timeout');assert.equal(sqlite.prepare('SELECT status FROM scheduler_attempts WHERE job_id=?').get(job.id).status,'pending');
+ const replay=await api.runScheduledSeriesTick(env,'transport-cancel',{handlers:{diagnostic:()=>assert.fail('lost ACK replay must not execute again')}});assert.equal(replay.reused,true);assert.equal(replay.id,run.id);
+ console.log('MCP disconnect through actual dispatcher: final run receipt, cleared cycle lease, saved pending attempt/job and no duplicate on replay passed');
+}finally{fixture.close();}

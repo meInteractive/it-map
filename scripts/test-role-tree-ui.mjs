@@ -1,0 +1,66 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import {createElement as h} from 'react';
+import {create,act} from 'react-test-renderer';
+import {moduleFor} from './test-support.mjs';
+
+fs.mkdirSync('.tests',{recursive:true});
+fs.writeFileSync('.tests/role-tree-ui.tsx',"export {default as Roles} from '../frontend/features/settings/Roles';export * from '../frontend/features/vacancies/RoleTree';export {clearCache} from '../frontend/api/client';");
+const ui=await moduleFor('.tests/role-tree-ui.tsx');
+const make=(id,name,parentId,path,children=[],usageCount=0)=>({id,name,parentId,path,children,stableKey:'role-'+id,sortOrder:10,usageCount,childCount:children.length,isLeaf:!children.length,descendantIds:children.flatMap(child=>[child.id,...child.descendantIds])});
+const developer=make(2,'Руководитель разработки',1,'IT Manager → Руководитель разработки',[],1);
+const editor=make(4,'Редактор',3,'Журналист → Редактор');
+const manager=make(1,'IT Manager',null,'IT Manager',[developer]);
+const journalist=make(3,'Журналист',null,'Журналист',[editor]);
+const catalog={tree:[manager,journalist],roles:[manager,developer,journalist,editor],roots:[manager,journalist],leaves:[developer,editor]};
+const previous={fetch:globalThis.fetch,prompt:globalThis.prompt,confirm:globalThis.confirm};
+let root,hold=false,release,fail=false,promptValue='',calls=[];
+globalThis.IS_REACT_ACT_ENVIRONMENT=true;
+globalThis.prompt=()=>promptValue;globalThis.confirm=()=>true;
+globalThis.fetch=async(url,options={})=>{
+ if(options.method){calls.push({url,method:options.method,body:options.body?JSON.parse(options.body):undefined});if(hold)await new Promise(resolve=>{release=resolve;});if(fail)return Response.json({error:'Роль используется в вакансиях'},{status:400});}
+ return Response.json(catalog);
+};
+const button=text=>root.root.findAllByType('button').find(node=>node.children.join('')===text);
+const row=name=>root.root.findAllByProps({className:'role-admin-node'}).find(node=>node.findAllByType('b')[0]?.children.join('')===name);
+try{
+ await act(async()=>{root=create(h(ui.Roles));});
+ const toggle=()=>root.root.findAllByProps({className:'role-admin-toggle'})[0];
+ assert.equal(toggle().props['aria-expanded'],true);
+ await act(async()=>toggle().props.onClick());assert.equal(toggle().props['aria-expanded'],false);
+ assert.equal(root.root.findByProps({id:'role-children-1'}).props.hidden,true);
+ await act(async()=>toggle().props.onClick());assert.equal(root.root.findByProps({id:'role-children-1'}).props.hidden,false);
+ const parent=root.root.findByProps({'aria-label':'Родитель роли «IT Manager»'});
+ assert.ok(parent.props.className.includes('settings-select'));
+ assert.deepEqual(parent.findAllByType('option').map(node=>node.props.value),['',3,4],'self, descendants and used leaves cannot become a parent');
+ const usedButtons=row('Руководитель разработки').findAllByType('button');
+ assert.equal(usedButtons.find(node=>node.children.join('')==='Удалить').props.disabled,true);
+ assert.equal(usedButtons.find(node=>node.children.join('')==='Добавить дочернюю').props.disabled,true);
+ promptValue='Новая категория';await act(async()=>button('Добавить корневую категорию').props.onClick());
+ assert.deepEqual(calls.at(-1),{url:'/api/vacancy-roles',method:'POST',body:{name:'Новая категория',parentId:null}});
+ promptValue='Новая роль';await act(async()=>row('Журналист').findAllByType('button').find(node=>node.children.join('')==='Добавить дочернюю').props.onClick());
+ assert.deepEqual(calls.at(-1).body,{name:'Новая роль',parentId:3});
+ promptValue='Новое название';await act(async()=>row('Редактор').findAllByType('button').find(node=>node.children.join('')==='Переименовать').props.onClick());
+ assert.deepEqual(calls.at(-1),{url:'/api/vacancy-roles/4',method:'PUT',body:{name:'Новое название'}});
+ hold=true;fail=true;
+ await act(async()=>root.root.findByProps({'aria-label':'Родитель роли «Редактор»'}).props.onChange({target:{value:'1'}}));
+ assert.equal(root.root.findByType('fieldset').props.disabled,true,'all role mutations blocked while saving');
+ assert.deepEqual(calls.at(-1),{url:'/api/vacancy-roles/4',method:'PUT',body:{parentId:1}});
+ await act(async()=>release());hold=false;fail=false;
+ assert.equal(root.root.findByType('fieldset').props.disabled,false);
+ assert.match(JSON.stringify(root.toJSON()),/Роль используется в вакансиях/);
+ await act(async()=>row('Редактор').findAllByType('button').find(node=>node.children.join('')==='Удалить').props.onClick());assert.equal(calls.at(-1).method,'DELETE');
+ await act(async()=>root.unmount());
+ let selected=[];const change=ids=>{selected=ids;root.update(h(ui.VacancyRolePicker,{selected,onChange:change}));};
+ await act(async()=>{root=create(h(ui.VacancyRolePicker,{selected,onChange:change}));});
+ assert.equal(root.root.findAllByType('input').filter(node=>node.props.disabled).length,2,'categories cannot be assigned');
+ const checkbox=name=>root.root.findAllByType('label').find(node=>node.findAllByType('span')[0]?.children.join('')===name).findByType('input');
+ await act(async()=>checkbox('Руководитель разработки').props.onChange({target:{checked:true}}));
+ await act(async()=>checkbox('Редактор').props.onChange({target:{checked:true}}));assert.deepEqual(selected,[2,4]);
+ const labels=root.root.findByProps({className:'vacancy-role-selection'}).findAllByType('span').map(node=>node.children.join(''));assert.deepEqual(labels,[developer.path,editor.path]);
+ await act(async()=>root.unmount());
+ await act(async()=>{root=create(h(ui.RoleTreeOptions,{selected:[],onChange:ids=>{selected=ids;}}));});
+ assert.equal(checkbox('IT Manager').props.disabled,false,'parent categories selectable in filters');
+ await act(async()=>checkbox('IT Manager').props.onChange({target:{checked:true}}));assert.deepEqual(selected,[1]);
+ console.log('Role tree UI: collapse/expand, CRUD payloads, parent guards, busy/error recovery, multiple leaf paths and selectable filter categories passed.');
+}finally{if(root)await act(async()=>root.unmount());ui.clearCache();Object.assign(globalThis,previous);}

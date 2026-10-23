@@ -1,0 +1,53 @@
+{
+  "revision": 225,
+  "updatedAt": "2026-10-23",
+  "versions": {
+    "api": "Без версии в URL; контракт 2026-10-22",
+    "schema": "0083_parser_candidate_intakes",
+    "backup": 39,
+    "rating": 5,
+    "excel": "Без встроенного номера; контракт 2026-10-12"
+  },
+  "sections": [
+    {
+      "id": "user",
+      "title": "Для соискателя",
+      "file": "USER_GUIDE.md"
+    },
+    {
+      "id": "admin",
+      "title": "Для администратора",
+      "file": "ADMIN_GUIDE.md"
+    },
+    {
+      "id": "transfer",
+      "title": "Импорт и экспорт",
+      "file": "TRANSFER_FORMATS.md"
+    },
+    {
+      "id": "code",
+      "title": "Устройство кода",
+      "file": "CODE_GUIDE.md"
+    },
+    {
+      "id": "api",
+      "title": "Методы API",
+      "file": "API.md"
+    },
+    {
+      "id": "database",
+      "title": "База данных",
+      "file": "DATABASE.md"
+    },
+    {
+      "id": "changelog",
+      "title": "Журнал изменений",
+      "file": "CHANGELOG.md"
+    },
+    {
+      "id": "maintenance",
+      "title": "Обновление документации",
+      "file": "MAINTENANCE.md"
+    }
+  ]
+}

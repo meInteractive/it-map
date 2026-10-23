@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {moduleFor} from './test-support.mjs';
+const {apifyVacancy}=await moduleFor('server/services/apify-vacancies.js');
+const {checkVacancyMarkdown}=await moduleFor('server/services/vacancy-fulltext.js');
+const url='https://hh.ru/vacancy/123',description='<p>Обязанности: управление инженерной командой.</p>'.repeat(12)+'<p>Требования: опыт руководства.</p><ul><li>Условия: удалённо &amp; офис.</li></ul>';
+const source={sourceUrl:url,detail:true},base={title:'Менеджер',url,vacancy_id:'123',description_html:'<script>PRIVATE_SCRIPT</script><style>PRIVATE_STYLE</style><!--PRIVATE_COMMENT-->'+description};
+const job=apifyVacancy(base,source);assert.equal(job.descriptionFormat,'html');assert.equal(checkVacancyMarkdown(job.description,{sourceUrl:url,finalUrl:url,targetStatus:200}).valid,true);assert.match(job.description,/- Условия: удалённо & офис/);assert.doesNotMatch(job.description,/<[^>]+>|PRIVATE_/);
+assert.equal(apifyVacancy({...base,description_text:'Plain source'},source).description,'Plain source');assert.equal(apifyVacancy({...base,description_text:'  '},source).descriptionFormat,'html');
+for(const item of [{...base,url:'https://evil.test/vacancy/123'},{...base,vacancy_id:'124'},{...base,archived:true},{...base,title:''}])assert.throws(()=>apifyVacancy(item,source));
+assert.equal(apifyVacancy({title:'Empty',url},source).description,'','missing both fields never invented');
+console.log('Apify HTML fallback: plain precedence, whitespace fallback, script/style/comment removal, text quality, exact ID/URL/archive/title guards and no invented descriptions passed.');

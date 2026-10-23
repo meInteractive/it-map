@@ -1,0 +1,31 @@
+import assert from 'node:assert/strict';
+import {fileURLToPath} from 'node:url';
+import {prepareBackend,moduleFor} from './test-support.mjs';
+import {buildBackupSchema} from './backup-schema.mjs';
+await prepareBackend();
+const {Miniflare,convertV4MiniflareOptions}=await import('miniflare');
+const {databaseExportTicket,readDirectDatabaseSnapshot}=await moduleFor('server/import-export/database-dump.js');
+const options={cf:false,modules:true,scriptPath:fileURLToPath(new URL('../.tests/worker.mjs',import.meta.url)),compatibilityDate:'2026-05-15',d1Databases:{DB:'raw-dump'},bindings:{SESSION_SECRET:'raw-test-secret',SITE_PASSWORD:'test'},outboundService:()=>{throw Error('No external requests allowed');}};
+const mf=new Miniflare(convertV4MiniflareOptions?convertV4MiniflareOptions(options):options);
+try{
+ const db=await mf.getD1Database('DB');await db.batch(buildBackupSchema(process.cwd()).objects.map(o=>db.prepare(o.sql)));
+ await db.prepare("INSERT INTO app_runtime_generation(id,generation) VALUES(1,'00000000-0000-0000-0000-000000000001')").run();
+ await db.prepare('INSERT INTO firecrawl_settings(id,scheduler_json) VALUES(1,?)').bind(JSON.stringify({cloudOwnerId:'owner'})).run();
+ await db.prepare('CREATE TABLE raw_fixture(id INTEGER PRIMARY KEY AUTOINCREMENT,t TEXT,n INTEGER,r REAL,b BLOB,empty TEXT,absent TEXT)').run();
+ const text='Полный текст 😀\n\r\t\u0000'+('Описание '.repeat(15000));
+ await db.prepare("INSERT INTO raw_fixture(t,n,r,b,empty,absent) VALUES(?,9007199254740993,1.2345678901234567,X'00FF4100','',NULL)").bind(text).run();
+ await db.prepare("UPDATE sqlite_sequence SET seq=900 WHERE name='raw_fixture'").run();
+ const env={DB:db,SESSION_SECRET:'raw-test-secret'},ticket=await databaseExportTicket(env,'owner');
+ const request=(token=ticket.token,method='GET')=>mf.dispatchFetch('https://fixture'+ticket.path,{method,headers:{authorization:'Bearer '+token}});
+ assert.equal((await request('')).status,401);assert.equal((await request(ticket.token+'x')).status,401);assert.equal((await request(ticket.token,'POST')).status,405);
+ let response=await request();assert.equal(response.status,200,await response.clone().text());assert.match(response.headers.get('cache-control'),/no-store/);
+ const snapshot=await response.json();assert.equal(snapshot.format,'it-map-direct-d1-snapshot');
+ const cells=snapshot.tables.find(t=>t.name==='raw_fixture').rows[0];assert.deepEqual(cells.slice(0,3),[['integer','1'],['text',text],['integer','9007199254740993']]);
+ assert.deepEqual(cells.slice(4),[['blob','00FF4100'],['text',''],['null',null]]);assert.equal(Number(cells[3][1]),1.2345678901234567);
+ assert.ok(snapshot.tables.some(t=>t.name==='scheduler_jobs'));assert.ok(snapshot.tables.some(t=>t.name==='apify_runs'));assert.equal(snapshot.sequences.find(s=>s.name==='raw_fixture').seq,900);
+ const before=JSON.stringify(await readDirectDatabaseSnapshot(db));await request();const after=JSON.stringify(await readDirectDatabaseSnapshot(db));assert.equal(before.replace(/"createdAt":"[^"]+"/,''),after.replace(/"createdAt":"[^"]+"/,''),'Export performs no writes');
+ const oldNow=Date.now;Date.now=()=>oldNow()-600000;const expired=await databaseExportTicket(env,'owner');Date.now=oldNow;assert.equal((await request(expired.token)).status,401);
+ await db.prepare("UPDATE firecrawl_settings SET scheduler_json='{}'").run();assert.equal((await request()).status,403);
+ await db.prepare('UPDATE firecrawl_settings SET scheduler_json=?').bind(JSON.stringify({cloudOwnerId:'owner'})).run();await db.prepare('UPDATE app_runtime_generation SET generation=?').bind(crypto.randomUUID()).run();assert.equal((await request()).status,403);
+ console.log('Direct D1 dump: actual native D1, all operational/unknown tables, raw DDL/FKs/sequences, long Unicode/NUL text, exact int64/real/BLOB/NULL/empty, no writes/network, signature/method/expiry/owner/generation guards passed.');
+}finally{await mf.dispose();}

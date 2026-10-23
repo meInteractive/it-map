@@ -1,0 +1,30 @@
+import assert from 'node:assert/strict';
+import {createElement as h} from 'react';
+import {create,act} from 'react-test-renderer';
+import {moduleFor} from './test-support.mjs';
+const ui=await moduleFor('frontend/api/client.ts');
+const original=Object.fromEntries(['fetch','window','document','setInterval','clearInterval','IS_REACT_ACT_ENVIRONMENT'].map(k=>[k,globalThis[k]]));
+const realNow=Date.now;let clock=realNow();Date.now=()=>clock;
+const timers=new Map();let timerId=0,root,calls=0,version=1,hold=false,release,fail=false;
+globalThis.IS_REACT_ACT_ENVIRONMENT=true;
+globalThis.window=new EventTarget();globalThis.document=Object.assign(new EventTarget(),{visibilityState:'visible'});
+globalThis.setInterval=(fn,ms)=>{assert.equal(ms,60000);timers.set(++timerId,fn);return timerId;};globalThis.clearInterval=id=>timers.delete(id);
+globalThis.fetch=async(url)=>{assert.equal(url,'/api/vacancies/list');calls++;if(hold)return new Promise(r=>release=r);return fail?Response.json({error:'temporary'},{status:503}):Response.json({version});};
+const Probe=()=>{const q=ui.useApi('/api/vacancies/list',{refreshIntervalMs:60000});return h('output',null,JSON.stringify({data:q.data,error:q.error?.message}));};
+const text=()=>JSON.stringify(root.toJSON());
+const event=(target,name)=>act(async()=>target.dispatchEvent(new Event(name)));
+const tick=()=>act(async()=>{for(const fn of timers.values())fn();});
+try{
+ await ui.load('/api/vacancies/list');assert.equal(calls,1);
+ await act(async()=>{root=create(h(Probe));});assert.equal(calls,1,'fresh prefetch is not downloaded again on mount');await act(async()=>root.unmount());root=null;clock+=60001;version=2;
+ await act(async()=>{root=create(h(Probe));});assert.equal(calls,2,'entering cached list revalidates');assert.match(text(),/2/);assert.equal(timers.size,1);
+ hold=true;await event(window,'focus');assert.equal(calls,3);await event(document,'visibilitychange');await tick();assert.equal(calls,3,'focus/visibility/timer share pending GET');assert.match(text(),/2/,'keep previous rows while refreshing');
+ await act(async()=>release(Response.json({version:3})));hold=false;assert.match(text(),/3/);
+ document.visibilityState='hidden';await tick();await event(window,'focus');await event(document,'visibilitychange');assert.equal(calls,3,'hidden tab performs no refresh');
+ document.visibilityState='visible';version=4;await event(document,'visibilitychange');assert.equal(calls,4);assert.match(text(),/4/);
+ fail=true;await tick();assert.match(text(),/temporary/);assert.match(text(),/4/,'error preserves displayed rows');fail=false;version=5;await tick();assert.match(text(),/5/);assert.doesNotMatch(text(),/temporary/);
+ hold=true;await event(window,'focus');const before=calls;await act(async()=>ui.clearCache());assert.doesNotMatch(text(),/5/);hold=false;version=6;await act(async()=>release(Response.json({version:999})));assert.equal(calls,before+1,'reset fences old result and reissues one GET');assert.match(text(),/6/);assert.doesNotMatch(text(),/999/);
+ await act(async()=>root.unmount());root=null;assert.equal(timers.size,0);const stopped=calls;await event(window,'focus');await event(document,'visibilitychange');assert.equal(calls,stopped,'unmounted list removes listeners');
+ ui.clearCache();hold=true;await act(async()=>{root=create(h(Probe));});const cold=calls;await tick();await event(window,'focus');assert.equal(calls,cold,'cold initial request not duplicated by refresh');hold=false;await act(async()=>release(Response.json({version:7})));assert.match(text(),/7/);
+ console.log('Vacancy refresh: cached reentry, one cold GET, visible minute/focus, hidden pause, concurrent coalescing, old-row preservation, error retry, session reset fence, unmount timer/listener cleanup passed.');
+}finally{Date.now=realNow;if(root)await act(async()=>root.unmount());ui.clearCache();for(const [k,v]of Object.entries(original))if(v===undefined)delete globalThis[k];else globalThis[k]=v;}

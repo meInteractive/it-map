@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {moduleFor} from './test-support.mjs';
+const {schedulerMcpRoute}=await moduleFor('server/services/scheduler-mcp.js');
+const modern={'mcp-protocol-version':'2026-07-28','content-type':'application/json'};
+const req=async(method,params={},headers=modern,env={})=>schedulerMcpRoute(new Request('https://fixture.test/mcp',{method:'POST',headers,body:JSON.stringify({jsonrpc:'2.0',id:'wire-discovery',method,params})}),env,{});
+const discovery=await req('server/discover',{_meta:{'io.modelcontextprotocol/protocolVersion':'2026-07-28','io.modelcontextprotocol/clientCapabilities':{}}});assert.equal(discovery.status,200);
+const d=await discovery.json();assert.equal(d.id,'wire-discovery');assert.equal(d.result.resultType,'complete');assert.ok(d.result.supportedVersions.includes('2026-07-28'));assert.deepEqual(d.result.capabilities,{tools:{listChanged:false}});assert.equal(d.result.cacheScope,'public');assert.ok(d.result.ttlMs>0);assert.equal(d.result._meta['io.modelcontextprotocol/serverInfo'].name,'it-map-scheduler');
+const listing=await (await req('tools/list')).json();assert.equal(listing.result.resultType,'complete');assert.equal(listing.result.tools.length,3);assert.equal(listing.result.cacheScope,'public');assert.ok(!JSON.stringify(listing).includes('cloudOwnerId'));
+const legacy=await (await req('initialize',{protocolVersion:'2025-03-26'},{'content-type':'application/json'})).json();assert.equal(legacy.result.protocolVersion,'2025-03-26');assert.equal(legacy.result.resultType,undefined);
+assert.equal((await req('tools/call',{name:'scheduler_status',arguments:{}})).status,401,'public discovery never grants data access');
+console.log('MCP discovery: actual 2026-07-28 server/discover and tools/list envelopes/cache/metadata succeed without DB, legacy initialize and data ACL preserved');
