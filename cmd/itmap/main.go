@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"itmap/internal/applications"
 	"itmap/internal/auth"
 	"itmap/internal/catalog"
 	"itmap/internal/channels"
@@ -35,6 +36,7 @@ func httpHandler(logger *slog.Logger, db *sql.DB, manager *auth.Manager) http.Ha
 		opts.VacancyDetails = vacancies.Repository{DB: db}
 		opts.VacancyFlags = vacancies.Repository{DB: db}
 		opts.Tasks = tasks.Repository{DB: db}
+		opts.Applications = applications.Repository{DB: db}
 		opts.TaskCompletion = tasks.Repository{DB: db}
 	}
 	return httpapi.NewHandlerWithOptions(logger, opts)
