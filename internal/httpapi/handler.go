@@ -42,6 +42,7 @@ type Options struct {
 	Roles                RoleReader
 	Vacancies            VacancyLister
 	VacancyDetails       VacancyDetailer
+	VacancyCreates       ManualVacancyCreator
 	VacancyFlags         VacancyFlagWriter
 	Applications         ApplicationReader
 	ApplicationCompanies ApplicationCompanyReader
@@ -135,6 +136,9 @@ func NewHandlerWithOptions(logger *slog.Logger, opts Options) http.Handler {
 		}
 		if opts.Vacancies != nil {
 			mux.HandleFunc("GET /api/vacancies/list", VacancyListHandler(opts.Auth, opts.Vacancies, time.Now))
+		}
+		if opts.VacancyCreates != nil {
+			mux.HandleFunc("POST /api/vacancies", ManualVacancyCreateHandler(opts.Auth, opts.VacancyCreates))
 		}
 		if opts.VacancyFlags != nil {
 			mux.HandleFunc("PUT /api/vacancies/{id}/state", VacancyStateHandler(opts.Auth, opts.VacancyFlags))
