@@ -33,21 +33,22 @@ func NewHandlerWithWeb(logger *slog.Logger, webDir string, database ...DBChecker
 
 // Options wires auth and DB functionality independently during migration.
 type Options struct {
-	WebDir         string
-	DB             DBChecker
-	Auth           *auth.Manager
-	Catalog        CatalogSearcher
-	Compact        CompactCatalog
-	Channels       ChannelLister
-	Roles          RoleReader
-	Vacancies      VacancyLister
-	VacancyDetails VacancyDetailer
-	VacancyFlags   VacancyFlagWriter
-	Applications   ApplicationReader
-	CompanyFlags   CompanyFlagLister
-	CompanyCRM     CompanyCRMReader
-	Tasks          TaskLister
-	TaskCompletion TaskCompletionWriter
+	WebDir            string
+	DB                DBChecker
+	Auth              *auth.Manager
+	Catalog           CatalogSearcher
+	Compact           CompactCatalog
+	Channels          ChannelLister
+	Roles             RoleReader
+	Vacancies         VacancyLister
+	VacancyDetails    VacancyDetailer
+	VacancyFlags      VacancyFlagWriter
+	Applications      ApplicationReader
+	CompanyFlags      CompanyFlagLister
+	CompanyFlagWrites CompanyFlagWriter
+	CompanyCRM        CompanyCRMReader
+	Tasks             TaskLister
+	TaskCompletion    TaskCompletionWriter
 }
 
 // NewHandlerWithOptions constructs only explicitly implemented routes.
@@ -107,6 +108,10 @@ func NewHandlerWithOptions(logger *slog.Logger, opts Options) http.Handler {
 		}
 		if opts.CompanyCRM != nil {
 			mux.HandleFunc("GET /api/crm", CompanyCRMHandler(opts.Auth, opts.CompanyCRM))
+		}
+		if opts.CompanyFlagWrites != nil {
+			mux.HandleFunc("PUT /api/crm/favorite", CompanyFlagWriteHandler(opts.Auth, opts.CompanyFlagWrites, "favorite"))
+			mux.HandleFunc("PUT /api/crm/hidden-company", CompanyFlagWriteHandler(opts.Auth, opts.CompanyFlagWrites, "hidden"))
 		}
 		if opts.CompanyFlags != nil {
 			mux.HandleFunc("GET /api/crm/favorites", CompanyFlagListHandler(opts.Auth, opts.CompanyFlags, "favorite"))
