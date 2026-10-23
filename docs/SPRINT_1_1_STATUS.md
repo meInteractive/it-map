@@ -81,3 +81,7 @@ UNIQUE URL constraints remain missing. This is **not** global uniqueness against
 parser writes and is not a substitute for a reviewed database migration.
 PUT/DELETE vacancy editing, MariaDB-tagged tests and staging deployment remain
 pending; `/health/ready` continues returning 503.
+
+## V9 continuation (2026-10-24)
+
+See [`SPRINT_1_1_V9.md`](SPRINT_1_1_V9.md). Admin-only `DELETE /api/vacancies/{id}` now implements transactional archive/preserved-CRM deletion for companies and Telegram channels. Agency deletion is explicitly blocked until salary projection is migrated. Tests use fake SQL; real MariaDB validation is pending. `PUT /api/vacancies/{id}` remains disabled.
