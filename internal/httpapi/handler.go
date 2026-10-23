@@ -49,6 +49,7 @@ type Options struct {
 	Applications         ApplicationReader
 	ApplicationCompanies ApplicationCompanyReader
 	ApplicationWrites    ApplicationMutator
+	ApplicationCreates   ApplicationCreator
 	CompanyFlags         CompanyFlagLister
 	CompanyFlagWrites    CompanyFlagWriter
 	CompanyCRM           CompanyCRMReader
@@ -125,6 +126,11 @@ func NewHandlerWithOptions(logger *slog.Logger, opts Options) http.Handler {
 		if opts.Applications != nil {
 			mux.HandleFunc("GET /api/crm/applications", ApplicationsCRMHandler(opts.Auth, opts.Applications))
 			mux.HandleFunc("GET /api/applications/{id}", ApplicationDetailHandler(opts.Auth, opts.Applications))
+		}
+		if opts.ApplicationCreates != nil {
+			mux.HandleFunc("GET /api/applications/create-context", ApplicationCreateContextHandler(opts.Auth, opts.ApplicationCreates))
+			mux.HandleFunc("POST /api/applications/create", ApplicationCreateHandler(opts.Auth, opts.ApplicationCreates))
+			mux.HandleFunc("POST /api/applications", ApplicationCreateHandler(opts.Auth, opts.ApplicationCreates))
 		}
 		if opts.ApplicationCompanies != nil {
 			mux.HandleFunc("GET /api/applications", CompanyApplicationsHandler(opts.Auth, opts.ApplicationCompanies))
