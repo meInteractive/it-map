@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"itmap/internal/auth"
+	"itmap/internal/catalog"
 )
 
 // DBChecker is only used to verify the active DB connection; the readiness gate
@@ -36,6 +37,7 @@ type Options struct {
 	DB      DBChecker
 	Auth    *auth.Manager
 	Catalog CatalogSearcher
+	Compact CompactCatalog
 }
 
 // NewHandlerWithOptions constructs only explicitly implemented routes.
@@ -70,6 +72,22 @@ func NewHandlerWithOptions(logger *slog.Logger, opts Options) http.Handler {
 		mux.HandleFunc("GET /api/session", SessionHandler(opts.Auth))
 		if opts.Catalog != nil {
 			mux.HandleFunc("GET /api/companies/search", RequireSession(opts.Auth, CompanySearchHandler(opts.Catalog)))
+			// v316 agencies/search is an alias to the company name search.
+			mux.HandleFunc("GET /api/agencies/search", RequireSession(opts.Auth, CompanySearchHandler(opts.Catalog)))
+		}
+		if opts.Compact != nil {
+			for _, entry := range []struct {
+				prefix string
+				kind   catalog.EntityType
+			}{
+				{"companies", catalog.CompanyType}, {"agencies", catalog.AgencyType},
+			} {
+				path := "/api/" + entry.prefix
+				mux.HandleFunc("GET "+path+"/list", compactListHandler(opts.Auth, opts.Compact, entry.kind, catalog.ListView))
+				mux.HandleFunc("GET "+path+"/map", compactListHandler(opts.Auth, opts.Compact, entry.kind, catalog.MapView))
+				mux.HandleFunc("GET "+path+"/detail", compactDetailHandler(opts.Auth, opts.Compact, entry.kind, false))
+				mux.HandleFunc("GET "+path+"/{id}", compactDetailHandler(opts.Auth, opts.Compact, entry.kind, true))
+			}
 		}
 		protected = RequireSession(opts.Auth, unmigrated)
 	}
