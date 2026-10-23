@@ -18,6 +18,7 @@ import (
 	"itmap/internal/httpapi"
 	"itmap/internal/roles"
 	"itmap/internal/storage"
+	"itmap/internal/tasks"
 	"itmap/internal/vacancies"
 )
 
@@ -33,6 +34,7 @@ func httpHandler(logger *slog.Logger, db *sql.DB, manager *auth.Manager) http.Ha
 		opts.Vacancies = vacancies.Repository{DB: db}
 		opts.VacancyDetails = vacancies.Repository{DB: db}
 		opts.VacancyFlags = vacancies.Repository{DB: db}
+		opts.Tasks = tasks.Repository{DB: db}
 	}
 	return httpapi.NewHandlerWithOptions(logger, opts)
 }
