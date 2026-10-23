@@ -85,3 +85,7 @@ pending; `/health/ready` continues returning 503.
 ## V9 continuation (2026-10-24)
 
 See [`SPRINT_1_1_V9.md`](SPRINT_1_1_V9.md). Admin-only `DELETE /api/vacancies/{id}` now implements transactional archive/preserved-CRM deletion for companies and Telegram channels. Agency deletion is explicitly blocked until salary projection is migrated. Tests use fake SQL; real MariaDB validation is pending. `PUT /api/vacancies/{id}` remains disabled.
+
+## V10 continuation (2026-10-24)
+
+See [`SPRINT_1_1_V10.md`](SPRINT_1_1_V10.md): admin-only vacancy editing with a shared GET/PUT revision snapshot, transactional roles/letters/Telegram/relevance, and fail-closed agency handling. Integration testing with real MariaDB and the driver is still pending.
