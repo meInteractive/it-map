@@ -19,8 +19,9 @@ import (
 )
 
 func httpHandler(logger *slog.Logger, db *sql.DB, manager *auth.Manager) http.Handler {
-	opts := httpapi.Options{DB: db, Auth: manager, WebDir: os.Getenv("WEB_DIST_DIR")}
+	opts := httpapi.Options{Auth: manager, WebDir: os.Getenv("WEB_DIST_DIR")}
 	if db != nil {
+		opts.DB = db
 		opts.Catalog = catalog.Repository{DB: db}
 	}
 	return httpapi.NewHandlerWithOptions(logger, opts)
