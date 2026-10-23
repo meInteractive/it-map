@@ -32,6 +32,7 @@ func httpHandler(logger *slog.Logger, db *sql.DB, manager *auth.Manager) http.Ha
 		opts.Roles = roles.Repository{DB: db}
 		opts.Vacancies = vacancies.Repository{DB: db}
 		opts.VacancyDetails = vacancies.Repository{DB: db}
+		opts.VacancyFlags = vacancies.Repository{DB: db}
 	}
 	return httpapi.NewHandlerWithOptions(logger, opts)
 }
