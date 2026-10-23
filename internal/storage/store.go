@@ -43,7 +43,10 @@ func MakeDSN(s Settings, password string) (string, error) {
 		return "", errors.New("DB_PASSWORD must be provided")
 	}
 	params := url.Values{
-		"charset":         {"utf8mb4"},
+		"charset": {"utf8mb4"},
+		// UPDATE optimistic locking must distinguish matched rows from
+		// physically changed rows when timestamp precision is one second.
+		"clientFoundRows": {"true"},
 		"collation":       {"utf8mb4_nopad_bin"},
 		"parseTime":       {"true"},
 		"multiStatements": {"false"},

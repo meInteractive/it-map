@@ -14,7 +14,7 @@ func TestDSNValidationAndRedaction(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(dsn, secret+"@tcp(") || !strings.Contains(dsn, "parseTime=true") || !strings.Contains(dsn, "multiStatements=false") {
+	if !strings.Contains(dsn, secret+"@tcp(") || !strings.Contains(dsn, "parseTime=true") || !strings.Contains(dsn, "multiStatements=false") || !strings.Contains(dsn, "clientFoundRows=true") {
 		t.Fatalf("bad DSN parameters (password redacted)")
 	}
 	cases := []Settings{
