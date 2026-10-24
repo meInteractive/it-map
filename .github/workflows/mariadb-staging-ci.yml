@@ -52,15 +52,15 @@ jobs:
             "SELECT COUNT(*) FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = 'itmap_ci'")"
           [[ "$fk_count" == 50 ]] || { echo "Expected 50 foreign keys, found $fk_count" >&2; exit 1; }
           [[ "$trigger_count" == 22 ]] || { echo "Expected 22 triggers, found $trigger_count" >&2; exit 1; }
-      - name: Resolve external Go driver on networked CI
-        run: go mod tidy
-      - name: Export resolved module checksum manifest for a reviewed PR
-        uses: actions/upload-artifact@v4
-        with:
-          name: itmap-mariadb-go-sum
-          path: go.sum
-          if-no-files-found: error
-          retention-days: 7
+      - name: Verify locked MariaDB driver dependencies without modifying manifests
+        shell: bash
+        run: |
+          set -euo pipefail
+          git ls-files --error-unmatch go.sum >/dev/null
+          go mod download
+          go mod verify
+          go mod tidy -diff
+          git diff --exit-code -- go.mod go.sum
       - name: Verify real MariaDB SELECT and rollback/locking semantics
         env:
           ITMAP_REQUIRE_MARIADB_INTEGRATION: '1'
@@ -104,7 +104,7 @@ jobs:
             sleep 1
           done
           bash scripts/staging-smoke.sh http://127.0.0.1:18080
-      - name: Require reviewed, tracked dependency checksums
+      - name: Ensure dependency manifest remains tracked and unchanged
         shell: bash
         run: |
           set -euo pipefail

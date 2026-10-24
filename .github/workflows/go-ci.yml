@@ -40,8 +40,12 @@ jobs:
         run: python3 scripts/test-staging-smoke.py
       - name: Build offline-compatible migration shell
         run: go build -o /tmp/itmap ./cmd/itmap
-      - name: Resolve pinned Go dependencies (networked CI only)
-        run: go mod tidy
+      - name: Verify locked Go dependencies (networked CI only)
+        run: |
+          set -euo pipefail
+          go mod download
+          go mod verify
+          go mod tidy -diff
       - name: Require committed go.sum for reproducible Go release
         shell: bash
         run: |
