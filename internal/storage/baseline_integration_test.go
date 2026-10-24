@@ -16,6 +16,9 @@ import (
 func TestMariaDBSchemaBaselineIntegration(t *testing.T) {
 	dsn := os.Getenv("ITMAP_TEST_MARIADB_DSN")
 	if dsn == "" {
+		if os.Getenv("ITMAP_REQUIRE_MARIADB_INTEGRATION") == "1" {
+			t.Fatal("required isolated read-only MariaDB DSN not provided")
+		}
 		t.Skip("isolated read-only MariaDB DSN not provided")
 	}
 	db, err := sql.Open("mysql", dsn)
