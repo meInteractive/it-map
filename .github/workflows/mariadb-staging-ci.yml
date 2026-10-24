@@ -40,16 +40,64 @@ jobs:
           docker exec '${{ job.services.mariadb.id }}' mariadb \
             -u root -pci_only_disposable_root itmap_ci -e \
             "CREATE USER 'itmap_readonly_ci'@'%' IDENTIFIED BY 'ci_only_disposable_reader'; GRANT SELECT ON itmap_ci.* TO 'itmap_readonly_ci'@'%';"
-      - name: Resolve external Go driver on networked CI
-        run: go mod tidy
-      - name: Verify baseline and READ-ONLY integration contracts
-        env:
-          ITMAP_TEST_MARIADB_DSN: 'itmap_readonly_ci:ci_only_disposable_reader@tcp(127.0.0.1:3306)/itmap_ci?parseTime=true&collation=utf8mb4_nopad_bin'
+      - name: Verify imported foreign keys and triggers exist in MariaDB
+        shell: bash
         run: |
           set -euo pipefail
-          test -n "$ITMAP_TEST_MARIADB_DSN"
-          go test -tags mariadb ./internal/storage -run '^TestMariaDBSchemaBaselineIntegration$' -count=1 -v
+          fk_count="$(docker exec '${{ job.services.mariadb.id }}' mariadb \
+            -u root -pci_only_disposable_root --batch --skip-column-names itmap_ci -e \
+            "SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = 'itmap_ci' AND CONSTRAINT_TYPE = 'FOREIGN KEY'")"
+          trigger_count="$(docker exec '${{ job.services.mariadb.id }}' mariadb \
+            -u root -pci_only_disposable_root --batch --skip-column-names itmap_ci -e \
+            "SELECT COUNT(*) FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = 'itmap_ci'")"
+          [[ "$fk_count" == 50 ]] || { echo "Expected 50 foreign keys, found $fk_count" >&2; exit 1; }
+          [[ "$trigger_count" == 22 ]] || { echo "Expected 22 triggers, found $trigger_count" >&2; exit 1; }
+      - name: Resolve external Go driver on networked CI
+        run: go mod tidy
+      - name: Export resolved module checksum manifest for a reviewed PR
+        uses: actions/upload-artifact@v4
+        with:
+          name: itmap-mariadb-go-sum
+          path: go.sum
+          if-no-files-found: error
+          retention-days: 7
+      - name: Verify real MariaDB SELECT and rollback/locking semantics
+        env:
+          ITMAP_REQUIRE_MARIADB_INTEGRATION: '1'
+          ITMAP_TEST_MARIADB_DSN: 'itmap_readonly_ci:ci_only_disposable_reader@tcp(127.0.0.1:3306)/itmap_ci?parseTime=true&collation=utf8mb4_nopad_bin'
+          ITMAP_TEST_MARIADB_WRITE_DSN: 'itmap_ci:ci_only_disposable_writer@tcp(127.0.0.1:3306)/itmap_ci?parseTime=true&clientFoundRows=true&collation=utf8mb4_nopad_bin'
+        run: |
+          set -euo pipefail
+          # Both integration tests MUST run; missing DSNs are failures, not skips.
+          go test -tags mariadb ./internal/storage -run '^TestMariaDB' -count=1 -v
           go test -tags mariadb ./internal/... -count=1
           go build -tags mariadb -o /tmp/itmap-mariadb ./cmd/itmap
+      - name: Smoke the running Go server against disposable MariaDB
+        env:
+          APP_ENV: staging
+          HTTP_ADDR: 127.0.0.1:18080
+          DB_ENABLED: 'true'
+          DB_HOST: 127.0.0.1
+          DB_PORT: '3306'
+          DB_NAME: itmap_ci
+          DB_USER: itmap_readonly_ci
+          DB_PASSWORD: ci_only_disposable_reader
+          AUTH_ENABLED: 'false'
+        shell: bash
+        run: |
+          set -euo pipefail
+          log_file="$(mktemp)"
+          /tmp/itmap-mariadb >"$log_file" 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true; wait "$server_pid" 2>/dev/null || true; rm -f "$log_file"' EXIT
+          for i in {1..30}; do
+            if curl -fsS --connect-timeout 1 --max-time 2 http://127.0.0.1:18080/health/live >/dev/null; then break; fi
+            if ! kill -0 "$server_pid" 2>/dev/null; then
+              echo 'Go server stopped before staging smoke test' >&2
+              exit 1
+            fi
+            sleep 1
+          done
+          bash scripts/staging-smoke.sh http://127.0.0.1:18080
       - name: Assert no unexpected dependency manifest changes
         run: git diff --exit-code -- go.mod
