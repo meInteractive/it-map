@@ -40,6 +40,7 @@ func httpHandler(logger *slog.Logger, db *sql.DB, manager *auth.Manager) http.Ha
 		opts.VacancyUpdates = vacancies.Repository{DB: db}
 		opts.VacancyFlags = vacancies.Repository{DB: db}
 		opts.Tasks = tasks.Repository{DB: db}
+		opts.TaskCreates = tasks.Repository{DB: db}
 		opts.Applications = applications.Repository{DB: db, CreationSecret: []byte(os.Getenv("SESSION_SECRET"))}
 		opts.ApplicationCompanies = applications.Repository{DB: db, CreationSecret: []byte(os.Getenv("SESSION_SECRET"))}
 		opts.ApplicationWrites = applications.Repository{DB: db, CreationSecret: []byte(os.Getenv("SESSION_SECRET"))}
@@ -49,6 +50,7 @@ func httpHandler(logger *slog.Logger, db *sql.DB, manager *auth.Manager) http.Ha
 		opts.CompanyFlagWrites = crm.Repository{DB: db}
 		opts.CompanyCRM = crm.Repository{DB: db}
 		opts.TaskCompletion = tasks.Repository{DB: db}
+		opts.TaskReschedule = tasks.Repository{DB: db}
 	}
 	return httpapi.NewHandlerWithOptions(logger, opts)
 }

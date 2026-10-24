@@ -55,7 +55,9 @@ type Options struct {
 	CompanyFlagWrites    CompanyFlagWriter
 	CompanyCRM           CompanyCRMReader
 	Tasks                TaskLister
+	TaskCreates          TaskCreator
 	TaskCompletion       TaskCompletionWriter
+	TaskReschedule       TaskRescheduler
 }
 
 // NewHandlerWithOptions constructs only explicitly implemented routes.
@@ -113,6 +115,9 @@ func NewHandlerWithOptions(logger *slog.Logger, opts Options) http.Handler {
 		if opts.Tasks != nil {
 			mux.HandleFunc("GET /api/tasks", TaskListHandler(opts.Auth, opts.Tasks))
 		}
+		if opts.TaskCreates != nil {
+			mux.HandleFunc("POST /api/tasks", TaskCreateHandler(opts.Auth, opts.TaskCreates))
+		}
 		if opts.CompanyCRM != nil {
 			mux.HandleFunc("GET /api/crm", CompanyCRMHandler(opts.Auth, opts.CompanyCRM))
 		}
@@ -144,7 +149,9 @@ func NewHandlerWithOptions(logger *slog.Logger, opts Options) http.Handler {
 			mux.HandleFunc("POST /api/vacancies/{id}/apply", VacancyApplyHandler(opts.Auth, opts.VacancyApplies))
 			mux.HandleFunc("POST /api/vacancies/{id}/apply/create", VacancyApplyHandler(opts.Auth, opts.VacancyApplies))
 		}
-		if opts.TaskCompletion != nil {
+		if opts.TaskReschedule != nil {
+			mux.HandleFunc("PUT /api/tasks/{id}", TaskMutationHandler(opts.Auth, opts.TaskCompletion, opts.TaskReschedule))
+		} else if opts.TaskCompletion != nil {
 			mux.HandleFunc("PUT /api/tasks/{id}", TaskCompletionHandler(opts.Auth, opts.TaskCompletion))
 		}
 		if opts.Vacancies != nil {
