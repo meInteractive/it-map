@@ -50,4 +50,18 @@ triggers = len(re.findall(r'^CREATE TRIGGER ', sql, re.M))
 foreign_keys = len(re.findall(r'^ALTER TABLE .* ADD CONSTRAINT .* FOREIGN KEY ', sql, re.M))
 if triggers != 22 or foreign_keys != 50:
     raise SystemExit(f'FAIL: expected 22 triggers and 50 foreign keys, got {triggers} and {foreign_keys}')
+# Keep the embedded Go object manifest synchronized with the fixture. This
+# catches drift before any CI runner attempts an SQL import or connects to DB.
+object_manifest = json.loads((root / 'internal/storage/schema-objects.json').read_text(encoding='utf-8'))
+source_foreign_keys = sorted(
+    ({'table': table, 'name': name} for table, name in
+     re.findall(r'^ALTER TABLE `([^`]+)` ADD CONSTRAINT `([^`]+)` FOREIGN KEY ', sql, re.M)),
+    key=lambda obj: (obj['table'], obj['name']))
+source_triggers = sorted(
+    ({'table': table, 'name': name, 'timing': timing, 'event': event}
+     for name, timing, event, table in re.findall(
+         r'^CREATE TRIGGER `([^`]+)` (BEFORE|AFTER) (INSERT|UPDATE|DELETE) ON `([^`]+)` FOR EACH ROW', sql, re.M)),
+    key=lambda obj: (obj['table'], obj['name']))
+if object_manifest != {'foreign_keys': source_foreign_keys, 'triggers': source_triggers}:
+    raise SystemExit('FAIL: embedded schema-object manifest differs from the CI SQL fixture')
 print('PASS: empty MariaDB CI schema matches 72 tables/606 columns; 22 triggers, 50 FKs; no row SQL')

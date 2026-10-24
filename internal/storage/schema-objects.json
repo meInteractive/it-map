@@ -1,0 +1,338 @@
+{
+  "foreign_keys": [
+    {
+      "table": "company_application_status_history",
+      "name": "d1fk_company_application_status_history_0"
+    },
+    {
+      "table": "company_applications",
+      "name": "d1fk_company_applications_0"
+    },
+    {
+      "table": "company_applications",
+      "name": "d1fk_company_applications_1"
+    },
+    {
+      "table": "company_status_history",
+      "name": "d1fk_company_status_history_0"
+    },
+    {
+      "table": "company_tasks",
+      "name": "d1fk_company_tasks_0"
+    },
+    {
+      "table": "company_tasks",
+      "name": "d1fk_company_tasks_1"
+    },
+    {
+      "table": "company_user_state",
+      "name": "d1fk_company_user_state_0"
+    },
+    {
+      "table": "company_vacancies",
+      "name": "d1fk_company_vacancies_0"
+    },
+    {
+      "table": "company_vacancy_state",
+      "name": "d1fk_company_vacancy_state_0"
+    },
+    {
+      "table": "company_vacancy_user_state",
+      "name": "d1fk_company_vacancy_user_state_0"
+    },
+    {
+      "table": "hiring_contacts",
+      "name": "d1fk_hiring_contacts_0"
+    },
+    {
+      "table": "vacancy_candidate_classification_leases",
+      "name": "d1fk_vacancy_candidate_classification_leases_0"
+    },
+    {
+      "table": "vacancy_candidate_identities",
+      "name": "d1fk_vacancy_candidate_identities_0"
+    },
+    {
+      "table": "vacancy_candidates",
+      "name": "d1fk_vacancy_candidates_0"
+    },
+    {
+      "table": "vacancy_candidates",
+      "name": "d1fk_vacancy_candidates_1"
+    },
+    {
+      "table": "vacancy_candidates",
+      "name": "d1fk_vacancy_candidates_2"
+    },
+    {
+      "table": "vacancy_classification_attempts",
+      "name": "d1fk_vacancy_classification_attempts_0"
+    },
+    {
+      "table": "vacancy_classifications",
+      "name": "d1fk_vacancy_classifications_0"
+    },
+    {
+      "table": "vacancy_classifications",
+      "name": "d1fk_vacancy_classifications_1"
+    },
+    {
+      "table": "vacancy_classifications",
+      "name": "d1fk_vacancy_classifications_2"
+    },
+    {
+      "table": "vacancy_content_fetches",
+      "name": "d1fk_vacancy_content_fetches_0"
+    },
+    {
+      "table": "vacancy_content_fetches",
+      "name": "d1fk_vacancy_content_fetches_1"
+    },
+    {
+      "table": "vacancy_cover_letters",
+      "name": "d1fk_vacancy_cover_letters_0"
+    },
+    {
+      "table": "vacancy_employer_guesses",
+      "name": "d1fk_vacancy_employer_guesses_0"
+    },
+    {
+      "table": "vacancy_employer_guesses",
+      "name": "d1fk_vacancy_employer_guesses_1"
+    },
+    {
+      "table": "vacancy_employer_guesses",
+      "name": "d1fk_vacancy_employer_guesses_2"
+    },
+    {
+      "table": "vacancy_extractions",
+      "name": "d1fk_vacancy_extractions_0"
+    },
+    {
+      "table": "vacancy_extractions",
+      "name": "d1fk_vacancy_extractions_1"
+    },
+    {
+      "table": "vacancy_import_operations",
+      "name": "d1fk_vacancy_import_operations_0"
+    },
+    {
+      "table": "vacancy_import_operations",
+      "name": "d1fk_vacancy_import_operations_1"
+    },
+    {
+      "table": "vacancy_parser_fields",
+      "name": "d1fk_vacancy_parser_fields_0"
+    },
+    {
+      "table": "vacancy_parser_fields",
+      "name": "d1fk_vacancy_parser_fields_1"
+    },
+    {
+      "table": "vacancy_parser_roles",
+      "name": "d1fk_vacancy_parser_roles_0"
+    },
+    {
+      "table": "vacancy_parser_roles",
+      "name": "d1fk_vacancy_parser_roles_1"
+    },
+    {
+      "table": "vacancy_publication_keys",
+      "name": "d1fk_vacancy_publication_keys_0"
+    },
+    {
+      "table": "vacancy_publication_sources",
+      "name": "d1fk_vacancy_publication_sources_0"
+    },
+    {
+      "table": "vacancy_publication_sources",
+      "name": "d1fk_vacancy_publication_sources_1"
+    },
+    {
+      "table": "vacancy_publication_sources",
+      "name": "d1fk_vacancy_publication_sources_2"
+    },
+    {
+      "table": "vacancy_raw_snapshot_parts",
+      "name": "d1fk_vacancy_raw_snapshot_parts_0"
+    },
+    {
+      "table": "vacancy_raw_snapshots",
+      "name": "d1fk_vacancy_raw_snapshots_0"
+    },
+    {
+      "table": "vacancy_role_assignments",
+      "name": "d1fk_vacancy_role_assignments_0"
+    },
+    {
+      "table": "vacancy_role_assignments",
+      "name": "d1fk_vacancy_role_assignments_1"
+    },
+    {
+      "table": "vacancy_role_classification",
+      "name": "d1fk_vacancy_role_classification_0"
+    },
+    {
+      "table": "vacancy_role_results",
+      "name": "d1fk_vacancy_role_results_0"
+    },
+    {
+      "table": "vacancy_role_results",
+      "name": "d1fk_vacancy_role_results_1"
+    },
+    {
+      "table": "vacancy_roles",
+      "name": "d1fk_vacancy_roles_0"
+    },
+    {
+      "table": "vacancy_source_parsing",
+      "name": "d1fk_vacancy_source_parsing_0"
+    },
+    {
+      "table": "vacancy_source_parsing",
+      "name": "d1fk_vacancy_source_parsing_1"
+    },
+    {
+      "table": "vacancy_telegram_sources",
+      "name": "d1fk_vacancy_telegram_sources_0"
+    },
+    {
+      "table": "vacancy_telegram_sources",
+      "name": "d1fk_vacancy_telegram_sources_1"
+    }
+  ],
+  "triggers": [
+    {
+      "table": "company_applications",
+      "name": "company_applications_max_10",
+      "timing": "BEFORE",
+      "event": "INSERT"
+    },
+    {
+      "table": "company_crm",
+      "name": "d1_guesses_company_delete",
+      "timing": "BEFORE",
+      "event": "DELETE"
+    },
+    {
+      "table": "company_vacancies",
+      "name": "d1_guesses_vacancy_delete",
+      "timing": "BEFORE",
+      "event": "DELETE"
+    },
+    {
+      "table": "company_vacancies",
+      "name": "parser_protect_description_md",
+      "timing": "AFTER",
+      "event": "UPDATE"
+    },
+    {
+      "table": "company_vacancies",
+      "name": "parser_protect_level",
+      "timing": "AFTER",
+      "event": "UPDATE"
+    },
+    {
+      "table": "company_vacancies",
+      "name": "parser_protect_published_at",
+      "timing": "AFTER",
+      "event": "UPDATE"
+    },
+    {
+      "table": "company_vacancies",
+      "name": "parser_protect_salary_from",
+      "timing": "AFTER",
+      "event": "UPDATE"
+    },
+    {
+      "table": "company_vacancies",
+      "name": "parser_protect_salary_to",
+      "timing": "AFTER",
+      "event": "UPDATE"
+    },
+    {
+      "table": "company_vacancies",
+      "name": "parser_protect_title",
+      "timing": "AFTER",
+      "event": "UPDATE"
+    },
+    {
+      "table": "company_vacancies",
+      "name": "parser_protect_url",
+      "timing": "AFTER",
+      "event": "UPDATE"
+    },
+    {
+      "table": "vacancy_candidates",
+      "name": "d1_check_vacancy_candidates_0_insert",
+      "timing": "AFTER",
+      "event": "INSERT"
+    },
+    {
+      "table": "vacancy_candidates",
+      "name": "d1_check_vacancy_candidates_0_update",
+      "timing": "AFTER",
+      "event": "UPDATE"
+    },
+    {
+      "table": "vacancy_employer_guesses",
+      "name": "d1_check_vacancy_employer_guesses_1_insert",
+      "timing": "AFTER",
+      "event": "INSERT"
+    },
+    {
+      "table": "vacancy_employer_guesses",
+      "name": "d1_check_vacancy_employer_guesses_1_update",
+      "timing": "AFTER",
+      "event": "UPDATE"
+    },
+    {
+      "table": "vacancy_employer_guesses",
+      "name": "d1_check_vacancy_employer_guesses_2_insert",
+      "timing": "AFTER",
+      "event": "INSERT"
+    },
+    {
+      "table": "vacancy_employer_guesses",
+      "name": "d1_check_vacancy_employer_guesses_2_update",
+      "timing": "AFTER",
+      "event": "UPDATE"
+    },
+    {
+      "table": "vacancy_employer_guesses",
+      "name": "vacancy_employer_guesses_agency_insert",
+      "timing": "BEFORE",
+      "event": "INSERT"
+    },
+    {
+      "table": "vacancy_employer_guesses",
+      "name": "vacancy_employer_guesses_agency_update",
+      "timing": "BEFORE",
+      "event": "UPDATE"
+    },
+    {
+      "table": "vacancy_employer_guesses",
+      "name": "vacancy_employer_guesses_company_match_insert",
+      "timing": "BEFORE",
+      "event": "INSERT"
+    },
+    {
+      "table": "vacancy_employer_guesses",
+      "name": "vacancy_employer_guesses_company_match_update",
+      "timing": "BEFORE",
+      "event": "UPDATE"
+    },
+    {
+      "table": "vacancy_roles",
+      "name": "d1_check_vacancy_roles_3_insert",
+      "timing": "AFTER",
+      "event": "INSERT"
+    },
+    {
+      "table": "vacancy_roles",
+      "name": "d1_check_vacancy_roles_3_update",
+      "timing": "AFTER",
+      "event": "UPDATE"
+    }
+  ]
+}
