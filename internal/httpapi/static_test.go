@@ -27,6 +27,7 @@ func TestStaticAndAPIIsolation(t *testing.T) {
 		contains     string
 	}{
 		{"GET", "/", 200, "React app"},
+		{"HEAD", "/", 200, ""},
 		{"GET", "/settings", 200, "React app"},
 		{"GET", "/assets/app.js", 200, "console.log"},
 		{"GET", "/assets/missing.js", 404, "404"},
