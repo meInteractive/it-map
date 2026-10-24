@@ -40,14 +40,16 @@ test('страница входа: React, SPA fallback, стили и manifest',
   }
 });
 
-test('вход → задачи → список компаний → вакансии → выход', async ({ page, context }) => {
+test('вход → задачи → список компаний → вакансии → выход', async ({ page, context, baseURL }) => {
   const password = process.env.ITMAP_SMOKE_PASSWORD;
   if (!password) throw new Error('Explicit synthetic CI password is required.');
   await page.goto('/');
   await page.getByLabel('Логин', { exact: true }).fill('eugene');
   await page.getByLabel('Пароль', { exact: true }).fill(password);
   const login = page.waitForResponse(response => new URL(response.url()).pathname === '/auth');
+  const form = page.waitForRequest(request => new URL(request.url()).pathname === '/auth' && request.method() === 'POST');
   await page.getByRole('button', { name: 'Открыть карту', exact: true }).click();
+  expect((await form).headers().origin).toBe(new URL(baseURL!).origin);
   expect((await login).status()).toBe(303);
   await expect(page.getByRole('navigation', { name: 'Основные разделы' })).toBeVisible();
   const session = await page.request.get('/api/session');

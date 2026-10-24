@@ -4,6 +4,12 @@
 
 Node.js 24 и `npm ci` устанавливают зависимости по lockfile. Версия `@playwright/test` закреплена; команда `npx playwright install --with-deps --only-shell chromium` устанавливает соответствующий headless Chromium на CI runner. После `npm run build:web` Go получает `WEB_DIST_DIR`, указывающий только на `dist/web`. В том же жизненном цикле сервера выполняются существующий SQL/API smoke и `npm run test:browser`. Ошибка браузерного сценария проваливает job; retries, пропусков и `continue-on-error` нет.
 
+## Найденный браузером дефект входа
+
+Первый Actions run для этой порции реально провалил оба авторизованных сценария: форма получала 403 вместо 303. Локальная диагностика в Chromium подтвердила `Origin: null` при `Sec-Fetch-Site: same-origin`: политика HTML `Referrer-Policy: no-referrer` делала origin нативного POST непрозрачным. curl-smoke без браузерного Origin этого не выявлял.
+
+Только для успешно отдаваемого SPA HTML теперь устанавливается `Referrer-Policy: same-origin`. Это позволяет форме отправлять настоящий origin своему серверу и не раскрывает referrer внешним сайтам. Для API, assets и ошибок сохраняется прежний `no-referrer`; обработчик `/auth` по-прежнему отвергает `Origin: null` и чужой origin. Добавлены Go-регрессии для области действия заголовка и отказа null-origin, а браузерный сценарий дополнительно проверяет origin фактически отправленного POST. JSON/API-контракт и свойства cookie не меняются.
+
 ## Четыре обязательных сценария
 
 На настольном viewport 1280×800 и мобильном 390×844 выполняются по две проверки:

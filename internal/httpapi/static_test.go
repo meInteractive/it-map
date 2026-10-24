@@ -44,6 +44,13 @@ func TestStaticAndAPIIsolation(t *testing.T) {
 		if w.Code != tc.status || !strings.Contains(w.Body.String(), tc.contains) {
 			t.Errorf("%s %s -> %d (%s), want %d %s", tc.method, tc.path, w.Code, w.Body.String(), tc.status, tc.contains)
 		}
+		wantPolicy := "no-referrer"
+		if w.Code == http.StatusOK && strings.HasPrefix(w.Header().Get("Content-Type"), "text/html") {
+			wantPolicy = "same-origin"
+		}
+		if w.Header().Get("Referrer-Policy") != wantPolicy {
+			t.Errorf("%s %s: referrer policy = %q, want %q", tc.method, tc.path, w.Header().Get("Referrer-Policy"), wantPolicy)
+		}
 	}
 }
 
