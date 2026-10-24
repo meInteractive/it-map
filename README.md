@@ -6,7 +6,7 @@ it-map — CRM и карта работодателей с вакансиями,
 
 1. Прочитать [AGENTS.md](AGENTS.md): обязательные ограничения, проверка и PR.
 2. Открыть [PLANS.md](PLANS.md): общий план 1.1–1.4, cutover и rollback.
-3. В [tasks/README.md](tasks/README.md) выбрать одну задачу и проверить зависимости. **Не менять `master` напрямую** и не выполнять production deployment/слияние автоматически.
+3. В [tasks/README.md](tasks/README.md) выбрать одну задачу и проверить зависимости. **Не менять `main` и `master` напрямую** и не выполнять production deployment/слияние автоматически.
 4. Сверять изменения с [архитектурой](docs/ARCHITECTURE.md), [старой БД D1](docs/DATABASE.md) и [целевой MariaDB](docs/MARIADB.md). [Решения и открытые вопросы](docs/DECISIONS.md).
 
 ## Исходники
