@@ -11,7 +11,8 @@
     "start": "node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js dev --config dist/server/wrangler.json --local --persist-to .wrangler/state --ip 127.0.0.1 --inspector-port 0",
     "typecheck": "tsc --noEmit",
     "build:web": "vite build --config vite.web.config.ts",
-    "dev:web": "vite --config vite.web.config.ts"
+    "dev:web": "vite --config vite.web.config.ts",
+    "test:browser": "playwright test"
   },
   "dependencies": {
     "drizzle-orm": "0.45.2",
@@ -23,6 +24,7 @@
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.37.1",
     "@cloudflare/workers-types": "4.20260515.1",
+    "@playwright/test": "1.64.1",
     "@types/node": "22.19.19",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
