@@ -1,0 +1,55 @@
+name: MariaDB isolated staging gate
+on:
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  mariadb-schema:
+    runs-on: ubuntu-latest
+    # This container database is disposable and has ZERO production credentials.
+    services:
+      mariadb:
+        image: mariadb:10.11
+        ports:
+          - 3306:3306
+        env:
+          MARIADB_ROOT_PASSWORD: ci_only_disposable_root
+          MARIADB_DATABASE: itmap_ci
+          MARIADB_USER: itmap_ci
+          MARIADB_PASSWORD: ci_only_disposable_writer
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Confirm synthetic fixture matches source baseline and has no rows
+        run: |
+          python3 scripts/check-ci-schema.py
+          python3 scripts/check-public-repo.py
+      - name: Load empty schema ONLY into disposable CI database
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker exec -i '${{ job.services.mariadb.id }}' mariadb \
+            -u root -pci_only_disposable_root itmap_ci < db/testdata/empty-schema.sql
+          docker exec '${{ job.services.mariadb.id }}' mariadb \
+            -u root -pci_only_disposable_root itmap_ci -e \
+            "CREATE USER 'itmap_readonly_ci'@'%' IDENTIFIED BY 'ci_only_disposable_reader'; GRANT SELECT ON itmap_ci.* TO 'itmap_readonly_ci'@'%';"
+      - name: Resolve external Go driver on networked CI
+        run: go mod tidy
+      - name: Verify baseline and READ-ONLY integration contracts
+        env:
+          ITMAP_TEST_MARIADB_DSN: 'itmap_readonly_ci:ci_only_disposable_reader@tcp(127.0.0.1:3306)/itmap_ci?parseTime=true&collation=utf8mb4_nopad_bin'
+        run: |
+          set -euo pipefail
+          test -n "$ITMAP_TEST_MARIADB_DSN"
+          go test -tags mariadb ./internal/storage -run '^TestMariaDBSchemaBaselineIntegration$' -count=1 -v
+          go test -tags mariadb ./internal/... -count=1
+          go build -tags mariadb -o /tmp/itmap-mariadb ./cmd/itmap
+      - name: Assert no unexpected dependency manifest changes
+        run: git diff --exit-code -- go.mod
