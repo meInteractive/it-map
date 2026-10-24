@@ -45,9 +45,11 @@ func parseTaskUpdate(w http.ResponseWriter, r *http.Request) (key string, comple
 	}
 	switch key {
 	case "completed":
-		if e = d.Decode(&completed); e != nil {
+		var raw json.RawMessage
+		if e = d.Decode(&raw); e != nil || (string(raw) != "true" && string(raw) != "false") {
 			return "", false, "", errors.New("invalid completion")
 		}
+		completed = string(raw) == "true"
 	case "dueAt":
 		if e = d.Decode(&dueAt); e != nil || !taskDeadlinePattern.MatchString(dueAt) {
 			return "", false, "", errors.New("invalid deadline")

@@ -70,6 +70,7 @@ func TestTaskRescheduleHTTPContract(t *testing.T) {
 		{`{"dueAt":"2026-10-24T12:00:00Z","dueAt":"2026-10-24T12:00:01Z"}`, "", "application/json", 400},
 		{`{"dueAt":"2026-10-24T12:00:00Z"}junk`, "", "application/json", 400},
 		{`{"completed":false}`, "", "application/json", 503},
+		{`{"completed":null}`, "", "application/json", 400},
 	} {
 		w := call(tc.body, tc.origin, tc.ctype, true)
 		if w.Code != tc.status || p.calls != 0 {
