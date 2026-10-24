@@ -620,11 +620,11 @@
 - **Результат:** ветка codex/GO-050-source-history от PR #6. gpt-site создана и подтверждена ls-remote; локально перед коммитом проверены 119 commits / 836 blobs. [PR #7](https://github.com/meInteractive/it-map/pull/7), `adc6652`: [source/Go/web CI](https://github.com/meInteractive/it-map/actions/runs/40139665656) и [MariaDB/browser CI](https://github.com/meInteractive/it-map/actions/runs/40139665635) прошли. Узкий результат реализован и проверен, merge не выполнялся. GO-001 остаётся открытой для полной внешней приёмки приватности/источника, без ложной гарантии нулевых PII.
 
 
-### [ ] GO-051. Browser read-matrix трёх аккаунтов (часть GO-006/GO-008)
+### [x] GO-051. Browser read-matrix трёх аккаунтов (часть GO-006/GO-008)
 
 - **Цель:** подтвердить чтение реализованных экранов и разделение личных данных Eugene/Nastya/Demo на desktop/mobile.
 - **Зависимости:** GO-003, существующие manager/auth/read repositories, браузерный код GO-006; только synthetic CI. Не требует приватного снимка, внешнего staging или решения по интеграционным секретам.
 - **Компоненты:** tests/browser/read-matrix.spec.ts, web/main.tsx/layout.css; только синтетические NASTYA_PASSWORD/DEMO_PASSWORD в disposable CI. Матрица выявила нулевую высоту .main из-за Vite #root; добавлена высота контейнера и browser-регрессия, без force-click.
 - **Критерии:** session сообщает правильные name/role/isAdmin; Eugene видит свою 1 задачу/отклик, остальные 0; общие карточки компании/вакансии открываются и закрываются; вкладки Инфо/Задачи показывают данные своего пользователя; не-админы не видят edit и получают 403 от admin POST до SQL-записи; logout работает.
 - **Проверки:** TypeScript, список 14 обязательных browser-тестов, source/history gate/actionlint, фактический MariaDB/browser CI. Мутации данных тест не выполняет; user POST проверяет ранний 403 на SELECT-only БД.
-- **Результат:** codex/GO-051-browser-read-matrix от adc6652 / PR #7; номер и CI после создания. Полные GO-006/GO-008 не закрываются.
+- **Результат:** codex/GO-051-browser-read-matrix от adc6652 / PR #7; [PR #8](https://github.com/meInteractive/it-map/pull/8), код `667d459`: [MariaDB/API/browser CI](https://github.com/meInteractive/it-map/actions/runs/40140705085) и [source/Go/web CI](https://github.com/meInteractive/it-map/actions/runs/40140705072) успешны. Все 14 браузерных сценариев прошли без пропусков. Merge не выполнялся; полные GO-006/GO-008 не закрываются.

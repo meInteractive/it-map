@@ -65,3 +65,6 @@ GO-049 подтверждён [PR #6](https://github.com/meInteractive/it-map/pu
 
 
 Матрица GO-051 выявила отдельный дефект standalone Vite-разметки: #root не имел высоты, поэтому .app получал только 64 px заголовка, а .main — 0 px. Видимость DOM-текста не гарантировала возможность нажатия; обычные клики в карточки блокировались header/body. Локально воспроизведено без SQL: root/app/main = 64/64/0, после задания высоты root = 800/800/736. Добавлен web/layout.css только для standalone #root (height:100%, min-height:0), существующий frontend/старый Sites не переписываются. Новый browser invariant проверяет, что рабочая область занимает более половины viewport, затем выполняются реальные клики/tap без force. JSON/API/данные не меняются.
+
+
+GO-051 подтверждён [PR #8](https://github.com/meInteractive/it-map/pull/8), код `667d459`: [MariaDB/API/browser run 40140705085](https://github.com/meInteractive/it-map/actions/runs/40140705085) и [source/Go/web run 40140705072](https://github.com/meInteractive/it-map/actions/runs/40140705072) успешны. Все 14 сценариев (по 7 desktop/mobile) завершились без пропусков. Первоначальный сбой кликов воспроизведён и устранён исправлением размеров #root; force-click и обходы проверок не применялись.
