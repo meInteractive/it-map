@@ -65,7 +65,17 @@ test('вход → задачи → список компаний → вакан
   await page.getByRole('button', { name: 'Список', exact: true }).click();
   await expect(page.locator('.company-list-name', { hasText: 'CI Synthetic Employer' })).toBeVisible();
   await page.getByRole('button', { name: 'Вакансии', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'CI Synthetic Vacancy', exact: true })).toBeVisible();
+  await expect(page.locator('.app')).toHaveAttribute('data-section', 'vacancies');
+  const list = await page.request.get('/api/vacancies/list?period=week');
+  expect(list.status()).toBe(200);
+  expect((await list.json()).vacancies).toHaveLength(1);
+  const diagnostic = JSON.stringify({
+    section: await page.locator('.app').getAttribute('data-section'),
+    period: await page.getByLabel('Дата публикации вакансии', { exact: true }).inputValue(),
+    titleButtons: await page.locator('.vacancy-title-button').count(),
+    organizationType: await page.locator('[data-section-menu="vacancies"] [aria-current="page"]').allTextContents(),
+  });
+  await expect(page.getByRole('button', { name: 'CI Synthetic Vacancy', exact: true }), diagnostic).toBeVisible();
   await page.goto('/logout');
   await expect(page.getByRole('button', { name: 'Открыть карту', exact: true })).toBeVisible();
   expect((await page.request.get('/api/session')).status()).toBe(401);
