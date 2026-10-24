@@ -72,7 +72,7 @@ func TestLoginSessionAndLogout(t *testing.T) {
 func TestLoginRejectsCrossOriginAndOversizedForms(t *testing.T) {
 	manager, _ := auth.NewManager(strings.Repeat("s", 64), map[string]string{"eugene": "secret"})
 	h := NewHandlerWithOptions(nil, Options{Auth: manager})
-	for _, origin := range []string{"https://evil.example", "https://127.0.0.1:80"} {
+	for _, origin := range []string{"https://evil.example", "https://127.0.0.1:80", "null"} {
 		r := httptest.NewRequest("POST", "http://itmap.local/auth", strings.NewReader("login=eugene&password=secret"))
 		r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		r.Header.Set("Origin", origin)

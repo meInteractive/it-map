@@ -45,6 +45,10 @@ func StaticHandler(directory string) http.Handler {
 				return
 			}
 			defer f.Close()
+			// Native POST forms can send Origin: null under no-referrer. Keep
+			// same-origin referrers for the SPA login form without disclosing
+			// them to external sites or relaxing the /auth Origin check.
+			w.Header().Set("Referrer-Policy", "same-origin")
 			w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			if r.Method == http.MethodGet {

@@ -114,10 +114,21 @@ jobs:
           done <<< "$all_packages"
           go test -tags mariadb "${packages[@]}" -count=1 -v
           go build -tags mariadb -o /tmp/itmap-mariadb ./cmd/itmap
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Build SPA and install pinned Chromium for browser smoke
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build:web
+          npx playwright install --with-deps --only-shell chromium
       - name: Smoke the running Go server against disposable MariaDB
         env:
           APP_ENV: staging
           HTTP_ADDR: 127.0.0.1:18080
+          WEB_DIST_DIR: ${{ github.workspace }}/dist/web
+          ITMAP_BROWSER_URL: http://127.0.0.1:18080
           DB_ENABLED: 'true'
           DB_HOST: 127.0.0.1
           DB_PORT: '3306'
@@ -146,6 +157,7 @@ jobs:
             sleep 1
           done
           bash scripts/staging-smoke.sh http://127.0.0.1:18080
+          npm run test:browser
       - name: Ensure dependency manifest remains tracked and unchanged
         shell: bash
         run: |
