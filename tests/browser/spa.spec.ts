@@ -1,9 +1,17 @@
-import { test as base, expect } from '@playwright/test';
+import { test as base, expect, type Locator } from '@playwright/test';
 
 // These are real browser requests to the Go/MariaDB service, never mocked APIs.
 // Restrict all traffic to this loopback origin; providers and map tiles are not
 // part of this smoke. Do not persist cookies, passwords, traces or screenshots.
-const test = base.extend<{ browserErrors: string[] }>({
+const test = base.extend<{ browserErrors: string[]; activate: (target: Locator) => Promise<void> }>({
+  activate: async ({ isMobile }, use) => {
+    // click() sends mouse/hover events even in a mobile browser context.
+    // Touch navigation must exercise the component's real pointerType branch.
+    await use(async target => {
+      if (isMobile) await target.tap();
+      else await target.click();
+    });
+  },
   browserErrors: [async ({ page, context, baseURL }, use) => {
     const errors: string[] = [];
     page.on('pageerror', () => errors.push('Uncaught browser exception'));
@@ -40,7 +48,7 @@ test('страница входа: React, SPA fallback, стили и manifest',
   }
 });
 
-test('вход → задачи → список компаний → вакансии → выход', async ({ page, context, baseURL }) => {
+test('вход → задачи → список компаний → вакансии → выход', async ({ page, context, baseURL, activate }) => {
   const password = process.env.ITMAP_SMOKE_PASSWORD;
   if (!password) throw new Error('Explicit synthetic CI password is required.');
   await page.goto('/');
@@ -48,7 +56,7 @@ test('вход → задачи → список компаний → вакан
   await page.getByLabel('Пароль', { exact: true }).fill(password);
   const login = page.waitForResponse(response => new URL(response.url()).pathname === '/auth');
   const form = page.waitForRequest(request => new URL(request.url()).pathname === '/auth' && request.method() === 'POST');
-  await page.getByRole('button', { name: 'Открыть карту', exact: true }).click();
+  await activate(page.getByRole('button', { name: 'Открыть карту', exact: true }));
   expect((await form).headers().origin).toBe(new URL(baseURL!).origin);
   expect((await login).status()).toBe(303);
   await expect(page.getByRole('navigation', { name: 'Основные разделы' })).toBeVisible();
@@ -62,9 +70,9 @@ test('вход → задачи → список компаний → вакан
   await expect(tasks.getByRole('button', { name: 'CI Synthetic Vacancy', exact: true })).toBeVisible();
   // Calendar integration remains explicitly unavailable in the migration shell;
   // these checks use the real independent task/catalog/vacancy read endpoints.
-  await page.getByRole('button', { name: 'Список', exact: true }).click();
+  await activate(page.getByRole('button', { name: 'Список', exact: true }));
   await expect(page.locator('.company-list-name', { hasText: 'CI Synthetic Employer' })).toBeVisible();
-  await page.getByRole('button', { name: 'Вакансии', exact: true }).click();
+  await activate(page.getByRole('button', { name: 'Вакансии', exact: true }));
   await expect(page.locator('.app')).toHaveAttribute('data-section', 'vacancies');
   const list = await page.request.get('/api/vacancies/list?period=week');
   expect(list.status()).toBe(200);
