@@ -13,6 +13,7 @@ SMOKE = Path(__file__).with_name("staging-smoke.sh")
 
 class Endpoint(http.server.BaseHTTPRequestHandler):
     reason = "business_api_not_migrated"
+    catalog_unavailable = False
     def do_GET(self):
         if self.path == "/health/live":
             status, body = 200, {"status": "alive"}
@@ -24,7 +25,12 @@ class Endpoint(http.server.BaseHTTPRequestHandler):
             else:
                 status, body = 401, {"error": "authentication required"}
         elif self.path == "/api/companies/list":
-            status, body = 401, {"error": "authentication required"}
+            if self.headers.get("Cookie") != "it_map_session=synthetic-verified":
+                status, body = 401, {"error": "authentication required"}
+            elif type(self).catalog_unavailable:
+                status, body = 503, {"error": "storage unavailable"}
+            else:
+                status, body = 200, {"companies": [{"name": "CI Synthetic Employer", "id": 1}]}
         else:
             status, body = 404, {"error": "not_found"}
         payload = json.dumps(body).encode()
@@ -76,7 +82,17 @@ class StagingSmokeTests(unittest.TestCase):
                 "ITMAP_SMOKE_AUTH": "1", "ITMAP_SMOKE_LOGIN": "eugene", "ITMAP_SMOKE_PASSWORD": "TEST_SYNTHETIC_PASSWORD",
             })
             self.assertEqual(auth.returncode, 0, auth.stderr)
+            Endpoint.catalog_unavailable = True
+            broken_api = subprocess.run(["bash", str(SMOKE), url], capture_output=True, text=True, timeout=15, env={
+                **os.environ,
+                "ITMAP_SMOKE_AUTH": "1", "ITMAP_SMOKE_LOGIN": "eugene", "ITMAP_SMOKE_PASSWORD": "TEST_SYNTHETIC_PASSWORD",
+            })
+            self.assertNotEqual(broken_api.returncode, 0, "smoke must fail on a broken authenticated SQL API")
+            self.assertIn("company API returned HTTP 503", broken_api.stderr)
+            Endpoint.catalog_unavailable = False
         finally:
+            Endpoint.catalog_unavailable = False
+            Endpoint.reason = "business_api_not_migrated"
             httpd.shutdown()
             httpd.server_close()
             worker.join(timeout=5)

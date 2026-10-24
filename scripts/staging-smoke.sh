@@ -65,5 +65,21 @@ with open(sys.argv[1], encoding='utf-8') as f:
     doc = json.load(f)
 assert doc.get('name', '').casefold() == sys.argv[2].casefold(), 'unexpected authenticated account'
 PYTHON
+  # This route exercises a real authenticated SQL transaction: app_catalog,
+  # identity tables and CRM-related catalog state, not just cookie verification.
+  # Its single synthetic record is injected only into the disposable CI DB.
+  catalog_status="$(curl -sS --connect-timeout 3 --max-time 10 \
+    -H "Cookie: $(cat "$tmp/cookie")" -o "$tmp/catalog" -w '%{http_code}' \
+    "$url/api/companies/list")"
+  [[ "$catalog_status" == 200 ]] || { echo "Authenticated company API returned HTTP $catalog_status" >&2; exit 1; }
+  python3 - "$tmp/catalog" <<'PYTHON'
+import json, sys
+with open(sys.argv[1], encoding='utf-8') as f:
+    doc = json.load(f)
+items = doc.get('companies')
+assert isinstance(items, list) and len(items) == 1, 'unexpected synthetic catalog count'
+assert items[0].get('name') == 'CI Synthetic Employer', 'synthetic catalog entry missing'
+assert items[0].get('id') == 1, 'company identity was not loaded from MariaDB'
+PYTHON
 fi
-printf '%s\n' 'PASS: staging liveness OK; MariaDB reachable; production readiness remains closed; optional authentication gate OK'
+printf '%s\n' 'PASS: staging liveness; MariaDB-backed readiness; production gate closed; synthetic authenticated catalog verified when enabled'
