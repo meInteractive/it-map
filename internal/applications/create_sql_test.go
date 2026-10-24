@@ -26,6 +26,9 @@ type receiptState struct {
 	limit                          int
 	pending                        bool
 	pendingHash, pendingGen        string
+	shortcutOwner                  string
+	shortcutLinkedCount            int64
+	shortcutReceipt                bool
 }
 type receiptConn struct{ st *receiptState }
 type receiptTx struct{ st *receiptState }
@@ -57,7 +60,9 @@ func (t *receiptTx) Commit() error {
 		t.st.receiptID = 41
 		t.st.receiptHash = t.st.pendingHash
 		t.st.receiptGeneration = t.st.pendingGen
-		t.st.creates++
+		if !t.st.shortcutReceipt {
+			t.st.creates++
+		}
 	}
 	t.st.pending = false
 	return nil
@@ -101,6 +106,16 @@ func (c *receiptConn) QueryContext(_ context.Context, q string, _ []driver.Named
 		return rows([]string{"data_json"}, []driver.Value{`{"companies":[{"name":"Example"}],"agencies":[]}`})
 	case strings.Contains(q, "SELECT company_name FROM company_crm"):
 		return rows([]string{"company_name"}, []driver.Value{"Example"})
+	case strings.Contains(q, "SELECT company_name FROM company_vacancies WHERE id="):
+		if s.shortcutOwner == "" {
+			return rows([]string{"company_name"})
+		}
+		return rows([]string{"company_name"}, []driver.Value{s.shortcutOwner})
+	case strings.Contains(q, "SELECT COUNT(*),COALESCE(MIN(id),0) FROM company_applications"):
+		if s.shortcutLinkedCount > 0 {
+			return rows([]string{"count", "min_id"}, []driver.Value{s.shortcutLinkedCount, int64(41)})
+		}
+		return rows([]string{"count", "min_id"}, []driver.Value{int64(0), int64(0)})
 	case strings.Contains(q, "SELECT COUNT(*) FROM company_applications"):
 		return rows([]string{"count"}, []driver.Value{int64(s.limit)})
 	default:
@@ -121,6 +136,10 @@ func (c *receiptConn) ExecContext(_ context.Context, q string, args []driver.Nam
 		}
 		return receiptResult{affected: 1}, nil
 	case strings.Contains(q, "INSERT INTO application_creation_receipts"):
+		if s.shortcutLinkedCount == 1 {
+			s.shortcutReceipt = true
+			s.pending = true
+		}
 		if len(args) != 5 {
 			return nil, errors.New("wrong receipt arguments")
 		}
@@ -214,5 +233,63 @@ func TestCreateGenerationRotationBeforeWrite(t *testing.T) {
 	_, err = repo.CreateWithReceipt(ctx, "Demo", input)
 	if !errors.Is(err, ErrCreationContextExpired) || state.creates != 0 || state.receipt || state.commits != 0 || state.rollbacks != 1 {
 		t.Fatalf("rotation must abort: %v %+v", err, state)
+	}
+}
+
+// Shortcut claims existing records, never changing their original status or
+// making a second application. In particular it must not use real_company_name
+// to accept a stale/mismatched owner submitted from the browser.
+func TestShortcutReusesApplicationWithReceipt(t *testing.T) {
+	state := &receiptState{generation: testGeneration, shortcutOwner: "Example", shortcutLinkedCount: 1, exists: true}
+	repo := Repository{DB: newReceiptDB(t, state), CreationSecret: []byte(strings.Repeat("k", 64))}
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	signed, err := repo.CreationContext(ctx, "Demo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	id := int64(72)
+	input := creationInput()
+	input.VacancyID = &id
+	input.CreationContext = signed
+	result, err := repo.createWithReceipt(ctx, "Demo", input, true)
+	if err != nil || result.CreatedApplicationID != 41 || result.Replayed || state.creates != 0 || !state.receipt {
+		t.Fatalf("unexpected reuse result=%+v err=%v state=%+v", result, err, state)
+	}
+	result, err = repo.createWithReceipt(ctx, "Demo", input, true)
+	if err != nil || !result.Replayed || result.CreatedApplicationID != 41 || state.creates != 0 {
+		t.Fatalf("retry result=%+v err=%v state=%+v", result, err, state)
+	}
+	changed := input
+	changed.Comment = "other"
+	if _, err = repo.createWithReceipt(ctx, "Demo", changed, true); !errors.Is(err, ErrIntentConflict) {
+		t.Fatal(err)
+	}
+}
+func TestShortcutOwnerAndDuplicateProtection(t *testing.T) {
+	for _, tc := range []struct {
+		name, owner string
+		linked      int64
+		want        error
+	}{
+		{"owner changed", "Changed", 0, ErrVacancyOwnerChanged},
+		{"vacancy missing", "", 0, ErrShortcutVacancyMissing},
+		{"ambiguous linked vacancy", "Example", 2, ErrAmbiguousVacancyLink},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			state := &receiptState{generation: testGeneration, shortcutOwner: tc.owner, shortcutLinkedCount: tc.linked}
+			repo := Repository{DB: newReceiptDB(t, state), CreationSecret: []byte(strings.Repeat("k", 64))}
+			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			defer cancel()
+			signed, _ := repo.CreationContext(ctx, "Demo")
+			id := int64(72)
+			in := creationInput()
+			in.VacancyID = &id
+			in.CreationContext = signed
+			_, err := repo.createWithReceipt(ctx, "Demo", in, true)
+			if !errors.Is(err, tc.want) || state.creates != 0 || state.receipt || state.commits != 0 {
+				t.Fatalf("want %v got %v state=%+v", tc.want, err, state)
+			}
+		})
 	}
 }

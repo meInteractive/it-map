@@ -25,6 +25,9 @@ var (
 	ErrApplicationDeleted      = errors.New("created application has been deleted")
 	ErrApplicationLimit        = errors.New("application limit reached")
 	ErrGenerationUnavailable   = errors.New("runtime generation not initialized")
+	ErrVacancyOwnerChanged     = errors.New("vacancy owner changed")
+	ErrShortcutVacancyMissing  = errors.New("shortcut vacancy missing")
+	ErrAmbiguousVacancyLink    = errors.New("multiple applications linked to the same vacancy")
 )
 
 var uuidV4 = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`)
@@ -174,6 +177,13 @@ func (r Repository) CreationContext(ctx context.Context, user string) (string, e
 // serializes creation and database restore generation-rotation across Go nodes.
 // An existing receipt is never discarded or automatically re-used after deletion.
 func (r Repository) CreateWithReceipt(ctx context.Context, user string, raw CreateInput) (CreationResult, error) {
+	return r.createWithReceipt(ctx, user, raw, false)
+}
+
+// createWithReceipt optionally enables the vacancy-card shortcut. A shortcut
+// can claim an existing user/vacancy application without modifying that record
+// or its status history. Both modes share the exact same signed intent receipts.
+func (r Repository) createWithReceipt(ctx context.Context, user string, raw CreateInput, shortcut bool) (CreationResult, error) {
 	if r.DB == nil || user == "" {
 		return CreationResult{}, ErrInvalidInput
 	}
@@ -232,23 +242,27 @@ func (r Repository) CreateWithReceipt(ctx context.Context, user string, raw Crea
 		if err = tx.Commit(); err != nil {
 			return CreationResult{}, err
 		}
-		return r.finishCreate(ctx, user, in.CompanyName, gen, present, true)
+		return r.finishCreateForMode(ctx, user, in.CompanyName, gen, present, true, shortcut)
 	}
 	if !errors.Is(err, sql.ErrNoRows) {
 		return CreationResult{}, err
 	}
 
-	// Verify membership against current catalog, not stale identity caches.
-	var catalogJSON []byte
-	if err = tx.QueryRowContext(ctx, `SELECT data_json FROM app_catalog WHERE id=1`).Scan(&catalogJSON); err != nil {
-		return CreationResult{}, err
-	}
-	known, err := isKnownForCreation(catalogJSON, in.CompanyName)
-	if err != nil {
-		return CreationResult{}, err
-	}
-	if !known {
-		return CreationResult{}, ErrCompanyNotFound
+	// Ordinary CRM creation only accepts organizations in the catalog. The
+	// vacancy-card shortcut also supports channel-owned vacancies, using the
+	// locked vacancy's exact owner as its authority.
+	if !shortcut {
+		var catalogJSON []byte
+		if err = tx.QueryRowContext(ctx, `SELECT data_json FROM app_catalog WHERE id=1`).Scan(&catalogJSON); err != nil {
+			return CreationResult{}, err
+		}
+		known, catalogErr := isKnownForCreation(catalogJSON, in.CompanyName)
+		if catalogErr != nil {
+			return CreationResult{}, catalogErr
+		}
+		if !known {
+			return CreationResult{}, ErrCompanyNotFound
+		}
 	}
 	// The CRM primary-key row serializes count/insert across all Go writers for
 	// a company. A database UNIQUE (user,vacancy) constraint is still needed
@@ -259,6 +273,42 @@ func (r Repository) CreateWithReceipt(ctx context.Context, user string, raw Crea
 	var name string
 	if err = tx.QueryRowContext(ctx, `SELECT company_name FROM company_crm WHERE company_name=? FOR UPDATE`, in.CompanyName).Scan(&name); err != nil {
 		return CreationResult{}, err
+	}
+	// Locking order is generation -> company_crm -> vacancy, matching normal
+	// creation and avoiding a lock-order inversion on concurrent writes.
+	if shortcut {
+		if in.VacancyID == nil {
+			return CreationResult{}, ErrInvalidInput
+		}
+		var owner string
+		err = tx.QueryRowContext(ctx, `SELECT company_name FROM company_vacancies WHERE id=? FOR UPDATE`, *in.VacancyID).Scan(&owner)
+		if errors.Is(err, sql.ErrNoRows) {
+			return CreationResult{}, ErrShortcutVacancyMissing
+		}
+		if err != nil {
+			return CreationResult{}, err
+		}
+		if owner != in.CompanyName {
+			return CreationResult{}, ErrVacancyOwnerChanged
+		}
+		// The imported schema does not guarantee uniqueness. Never silently
+		// claim an arbitrary one of multiple linked applications.
+		var linkedCount, linkedID int64
+		if err = tx.QueryRowContext(ctx, `SELECT COUNT(*),COALESCE(MIN(id),0) FROM company_applications WHERE user_name=? AND vacancy_id=?`, user, *in.VacancyID).Scan(&linkedCount, &linkedID); err != nil {
+			return CreationResult{}, err
+		}
+		if linkedCount > 1 {
+			return CreationResult{}, ErrAmbiguousVacancyLink
+		}
+		if linkedCount == 1 {
+			if _, err = tx.ExecContext(ctx, `INSERT INTO application_creation_receipts(user_name,idempotency_key,generation,request_hash,created_application_id) VALUES(?,?,?,?,?)`, user, in.IdempotencyKey, gen, hash, linkedID); err != nil {
+				return CreationResult{}, err
+			}
+			if err = tx.Commit(); err != nil {
+				return CreationResult{}, err
+			}
+			return r.finishCreateForMode(ctx, user, in.CompanyName, gen, linkedID, false, true)
+		}
 	}
 	var count int
 	if err = tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM company_applications WHERE user_name=? AND company_name=?`, user, in.CompanyName).Scan(&count); err != nil {
@@ -308,7 +358,7 @@ func (r Repository) CreateWithReceipt(ctx context.Context, user string, raw Crea
 	if err = tx.Commit(); err != nil {
 		return CreationResult{}, err
 	}
-	return r.finishCreate(ctx, user, in.CompanyName, gen, id, false)
+	return r.finishCreateForMode(ctx, user, in.CompanyName, gen, id, false, shortcut)
 }
 func isKnownForCreation(data []byte, name string) (bool, error) {
 	// Explicitly typed fields preserve the original companies/agencies JSON names.
