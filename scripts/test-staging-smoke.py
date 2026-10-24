@@ -2,6 +2,8 @@
 """Offline contract tests for the read-only staging smoke script."""
 import http.server
 import json
+import os
+import urllib.parse
 import subprocess
 import threading
 import unittest
@@ -16,6 +18,13 @@ class Endpoint(http.server.BaseHTTPRequestHandler):
             status, body = 200, {"status": "alive"}
         elif self.path == "/health/ready":
             status, body = 503, {"status": "not_ready", "reason": type(self).reason}
+        elif self.path == "/api/session":
+            if self.headers.get("Cookie") == "it_map_session=synthetic-verified":
+                status, body = 200, {"name": "Eugene", "role": "admin", "isAdmin": True}
+            else:
+                status, body = 401, {"error": "authentication required"}
+        elif self.path == "/api/companies/list":
+            status, body = 401, {"error": "authentication required"}
         else:
             status, body = 404, {"error": "not_found"}
         payload = json.dumps(body).encode()
@@ -24,6 +33,18 @@ class Endpoint(http.server.BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(payload)))
         self.end_headers()
         self.wfile.write(payload)
+    def do_POST(self):
+        body = self.rfile.read(int(self.headers.get("Content-Length", "0"))).decode()
+        form = urllib.parse.parse_qs(body)
+        if self.path == "/auth" and form.get("login") == ["eugene"] and form.get("password") == ["TEST_SYNTHETIC_PASSWORD"]:
+            self.send_response(303)
+            self.send_header("Set-Cookie", "it_map_session=synthetic-verified; Path=/; HttpOnly; Secure")
+            self.send_header("Location", "/")
+            self.end_headers()
+        else:
+            self.send_response(401)
+            self.end_headers()
+
     def log_message(self, *_args):
         pass
 
@@ -43,6 +64,18 @@ class StagingSmokeTests(unittest.TestCase):
             Endpoint.reason = "mariadb_unavailable"
             down = subprocess.run(["bash", str(SMOKE), url], capture_output=True, text=True, timeout=15)
             self.assertNotEqual(down.returncode, 0)
+            auth = subprocess.run(["bash", str(SMOKE), url], capture_output=True, text=True, timeout=15, env={
+                **os.environ,
+                "ITMAP_SMOKE_AUTH": "1", "ITMAP_SMOKE_LOGIN": "eugene", "ITMAP_SMOKE_PASSWORD": "TEST_SYNTHETIC_PASSWORD",
+            })
+            # The previous case intentionally left readiness unavailable.
+            self.assertNotEqual(auth.returncode, 0)
+            Endpoint.reason = "business_api_not_migrated"
+            auth = subprocess.run(["bash", str(SMOKE), url], capture_output=True, text=True, timeout=15, env={
+                **os.environ,
+                "ITMAP_SMOKE_AUTH": "1", "ITMAP_SMOKE_LOGIN": "eugene", "ITMAP_SMOKE_PASSWORD": "TEST_SYNTHETIC_PASSWORD",
+            })
+            self.assertEqual(auth.returncode, 0, auth.stderr)
         finally:
             httpd.shutdown()
             httpd.server_close()
