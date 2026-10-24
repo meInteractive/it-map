@@ -87,7 +87,7 @@ func NewHandlerWithOptions(logger *slog.Logger, opts Options) http.Handler {
 	}
 	protected := unmigrated
 	if opts.Auth != nil {
-		mux.HandleFunc("POST /auth", LoginHandler(opts.Auth))
+		mux.HandleFunc("POST /auth", loginHandler(opts.Auth, opts.WebDir))
 		mux.HandleFunc("GET /logout", LogoutHandler())
 		mux.HandleFunc("GET /api/session", SessionHandler(opts.Auth))
 		if opts.Catalog != nil {

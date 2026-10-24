@@ -1,5 +1,30 @@
 import { test, expect } from './fixtures.js';
 
+test('неверный пароль: ошибка в форме и успешная повторная попытка', async ({ page, context, activate }) => {
+  const password = process.env.ITMAP_SMOKE_PASSWORD;
+  if (!password) throw new Error('Explicit synthetic CI password is required.');
+  await page.goto('/');
+  await page.getByLabel('Логин', { exact: true }).fill('eugene');
+  await page.getByLabel('Пароль', { exact: true }).fill('CI_INVALID_PASSWORD');
+  const failed = page.waitForResponse(response => new URL(response.url()).pathname === '/auth');
+  await activate(page.getByRole('button', { name: 'Открыть карту', exact: true }));
+  const response = await failed;
+  expect(response.status()).toBe(401);
+  expect(response.headers()['x-app-login-error']).toBe('1');
+  expect(response.headers()['content-type']).toContain('text/html');
+  await expect(page.getByRole('alert')).toHaveText('Логин или пароль не подошли.');
+  await expect(page.getByLabel('Пароль', { exact: true })).toHaveValue('');
+  expect((await context.cookies()).some(cookie => cookie.name === 'it_map_session')).toBe(false);
+  await page.getByLabel('Логин', { exact: true }).fill('eugene');
+  await page.getByLabel('Пароль', { exact: true }).fill(password);
+  const succeeded = page.waitForResponse(result => new URL(result.url()).pathname === '/auth');
+  await activate(page.getByRole('button', { name: 'Открыть карту', exact: true }));
+  expect((await succeeded).status()).toBe(303);
+  await expect(page.getByRole('navigation', { name: 'Основные разделы' })).toBeVisible();
+  expect((await page.request.get('/api/session')).status()).toBe(200);
+  await page.goto('/logout');
+});
+
 test('страница входа: React, SPA fallback, стили и manifest', async ({ page }) => {
   const response = await page.goto('/browser-smoke/deep-link');
   expect(response?.status()).toBe(200);
