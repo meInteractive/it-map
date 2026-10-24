@@ -13,6 +13,8 @@ for (const account of [
     await page.getByLabel('Пароль', { exact: true }).fill(password);
     await activate(page.getByRole('button', { name: 'Открыть карту', exact: true }));
     await expect(page.getByRole('navigation', { name: 'Основные разделы' })).toBeVisible();
+    const contentHeight = await page.locator('.main').evaluate(element => element.getBoundingClientRect().height);
+    expect(contentHeight).toBeGreaterThan(page.viewportSize()!.height / 2);
     const session = await page.request.get('/api/session');
     expect(session.status()).toBe(200);
     expect(await session.json()).toEqual({ name: account.name, role: account.admin ? 'admin' : 'user', isAdmin: account.admin });

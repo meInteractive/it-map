@@ -624,7 +624,7 @@
 
 - **Цель:** подтвердить чтение реализованных экранов и разделение личных данных Eugene/Nastya/Demo на desktop/mobile.
 - **Зависимости:** GO-003, существующие manager/auth/read repositories, браузерный код GO-006; только synthetic CI. Не требует приватного снимка, внешнего staging или решения по интеграционным секретам.
-- **Компоненты:** tests/browser/read-matrix.spec.ts; только синтетические NASTYA_PASSWORD/DEMO_PASSWORD в disposable CI.
+- **Компоненты:** tests/browser/read-matrix.spec.ts, web/main.tsx/layout.css; только синтетические NASTYA_PASSWORD/DEMO_PASSWORD в disposable CI. Матрица выявила нулевую высоту .main из-за Vite #root; добавлена высота контейнера и browser-регрессия, без force-click.
 - **Критерии:** session сообщает правильные name/role/isAdmin; Eugene видит свою 1 задачу/отклик, остальные 0; общие карточки компании/вакансии открываются и закрываются; вкладки Инфо/Задачи показывают данные своего пользователя; не-админы не видят edit и получают 403 от admin POST до SQL-записи; logout работает.
 - **Проверки:** TypeScript, список 14 обязательных browser-тестов, source/history gate/actionlint, фактический MariaDB/browser CI. Мутации данных тест не выполняет; user POST проверяет ранний 403 на SELECT-only БД.
 - **Результат:** codex/GO-051-browser-read-matrix от adc6652 / PR #7; номер и CI после создания. Полные GO-006/GO-008 не закрываются.
