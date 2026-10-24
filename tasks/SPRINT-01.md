@@ -580,11 +580,21 @@
 - **Результат:** не завершено; коммита или PR нет.
 
 
-### [ ] GO-047. Stacked PR и проверки дочерних веток (часть GO-007)
+### [x] GO-047. Stacked PR и проверки дочерних веток (часть GO-007)
 
 - **Цель:** исполнять утверждённый план без ожидания промежуточного merge, сохраняя отдельные проверяемые этапы.
 - **Зависимости:** GO-003; пользовательский порядок от 25.10.2026, родительская ветка GO-006 с проверенным браузерным кодом.
 - **Компоненты:** AGENTS.md, tasks/README.md, tasks/STACK.md, оба GitHub workflow.
 - **Критерии:** отдельные ветки/коммиты/PR; base дочернего PR — предыдущая ветка; Go/web/security/MariaDB/browser CI запускаются для такого PR; автоматического merge нет; блокировки фиксируются отдельно.
 - **Проверки:** actionlint, YAML-события main/codex, shell-синтаксис, фактический Actions run stacked PR.
-- **Результат:** ветка codex/GO-007-stacked-workflow от codex/GO-006-browser-smoke. До подтверждения CI пункт остаётся открытым. GO-007 не закрывается.
+- **Результат:** [PR #4](https://github.com/meInteractive/it-map/pull/4), `e3fcd23`, база codex/GO-006-browser-smoke. [Stacked MariaDB/browser CI](https://github.com/meInteractive/it-map/actions/runs/40138090643) и [Go/web/security](https://github.com/meInteractive/it-map/actions/runs/40138090656) прошли. Узкий результат реализован и проверен; merge не выполнялся. GO-007 не закрывается.
+
+
+### [ ] GO-048. PWA: worker и границы offline-кэша (часть GO-006)
+
+- **Цель:** подтвердить установку существующего service worker, доступность публичных manifest/icons offline и отсутствие приватных API/HTML в кэше.
+- **Зависимости:** GO-003, проверенный браузерный код GO-006 из PR #3 и stacked CI GO-047. Не зависит от импорта реального снимка или внешнего staging.
+- **Компоненты:** tests/browser/fixtures.ts, pwa.spec.ts, docs/BROWSER_SMOKE.md; существующий public/service-worker.js не меняется.
+- **Критерии:** на desktop/mobile worker активен и управляет страницей; cache содержит только 4 публичных URL; после настоящего чтения session/tasks/HTML они не появляются в cache; offline публичные ресурсы доступны, приватные API/HTML недоступны.
+- **Проверки:** TypeScript, список 6 обязательных browser-тестов, локальная частичная проверка без БД, полный disposable MariaDB/browser CI.
+- **Результат:** ветка codex/GO-048-pwa-cache от e3fcd23 предыдущего PR #4; номер/результат PR фиксируются после создания и CI. OS-install, полный offline app и внешний staging не подтверждаются; GO-006 остаётся открытой.
