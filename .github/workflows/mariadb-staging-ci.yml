@@ -1,7 +1,7 @@
 name: MariaDB isolated staging gate
 on:
   pull_request:
-    branches: [main]
+    branches: [main, 'codex/**']
   workflow_dispatch:
 permissions:
   contents: read
