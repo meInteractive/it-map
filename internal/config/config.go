@@ -24,6 +24,21 @@ type Config struct {
 	AuthEnabled bool
 }
 
+// enabledEnv is strict: an accidental AUTH_ENABLED=tru must not silently
+// disable the staging authentication gate.  Keep the environment contract
+// explicit and easy to audit in deployment configuration.
+func enabledEnv(key string) (bool, error) {
+	raw := getenv(key, "false")
+	switch raw {
+	case "true":
+		return true, nil
+	case "false":
+		return false, nil
+	default:
+		return false, fmt.Errorf("%s must be true or false", key)
+	}
+}
+
 func getenv(key, fallback string) string {
 	if value, ok := os.LookupEnv(key); ok {
 		return strings.TrimSpace(value)
@@ -34,6 +49,14 @@ func getenv(key, fallback string) string {
 // Load reads environment variables and ensures that the migration shell cannot
 // be accidentally promoted to production before the business API and DB are ready.
 func Load() (Config, error) {
+	dbEnabled, err := enabledEnv("DB_ENABLED")
+	if err != nil {
+		return Config{}, err
+	}
+	authEnabled, err := enabledEnv("AUTH_ENABLED")
+	if err != nil {
+		return Config{}, err
+	}
 	cfg := Config{
 		Environment: getenv("APP_ENV", "development"),
 		HTTPAddr:    getenv("HTTP_ADDR", "127.0.0.1:8080"),
@@ -41,8 +64,8 @@ func Load() (Config, error) {
 		DBPort:      getenv("DB_PORT", "3306"),
 		DBName:      getenv("DB_NAME", ""),
 		DBUser:      getenv("DB_USER", ""),
-		DBEnabled:   getenv("DB_ENABLED", "false") == "true",
-		AuthEnabled: getenv("AUTH_ENABLED", "false") == "true",
+		DBEnabled:   dbEnabled,
+		AuthEnabled: authEnabled,
 	}
 	return cfg, cfg.Validate()
 }
@@ -50,7 +73,13 @@ func Load() (Config, error) {
 // Validate is kept separate from Load so tests do not mutate global env state.
 func (cfg Config) Validate() error {
 	switch cfg.Environment {
-	case "development", "test", "staging":
+	case "development", "test":
+	case "staging":
+		// A test domain must never expose the new application with auth or
+		// database disabled due to missing/misspelled environment settings.
+		if !cfg.DBEnabled || !cfg.AuthEnabled {
+			return errors.New("staging requires DB_ENABLED=true and AUTH_ENABLED=true")
+		}
 	case "production":
 		return errors.New("production is explicitly disabled until sprint 1.1 has passed acceptance")
 	default:
