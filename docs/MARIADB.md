@@ -6,7 +6,7 @@
 
 - GPT Sites сейчас использует Cloudflare D1 (SQLite). Старый сервис пишет туда независимо от Go; схема/описания: [DATABASE.md](DATABASE.md), `db/schema.ts`, `server/generated/backup-schema.json`.
 - План для Go: MariaDB **10.11+ на том же сервере**, локальное соединение `127.0.0.1:3306`, разные базы и пользователи для staging и production.
-- В Go уже есть `internal/storage/store.go` (`database/sql`, DSN, pool, транзакции), `baseline.go`/`baseline.json` (ожидаемая схема) и `mysql_driver.go` за build tag `mariadb`. Наличие кода **не равно** успешному тесту на MariaDB: драйвер/`go.sum` и серверные интеграционные проверки ещё не подтверждены.
+- В Go уже есть `internal/storage/store.go` (`database/sql`, DSN, pool, транзакции), `baseline.go`/`baseline.json` (ожидаемая схема) и `mysql_driver.go` за build tag `mariadb`. Наличие кода **не равно** успешному тесту на MariaDB: серверные интеграционные проверки ещё не подтверждены. Статус `go.sum` см. в разделе 11.
 
 ## 2. Проверенная исходная структура
 
@@ -80,3 +80,11 @@ CI обязан получить зависимости по сети и про�
 В `internal/storage/store.go` и CI DSN теперь указано `charset=utf8mb4`, `collation=utf8mb4_bin` (известное драйверу значение). **Сортировка существующих столбцов и таблиц `utf8mb4_nopad_bin` сохранена без DDL**: именно определение столбца управляет большинством сравнений с ним. Любые SQL-выражения, зависящие от collation строкового литерала или соединения, требуют отдельной проверки на реальной MariaDB.
 
 В `TestMariaDBSchemaBaselineIntegration` добавлена read-only проверка `@@collation_connection = utf8mb4_bin` и `information_schema.COLUMNS` (`agency_identity.agency_name = utf8mb4_nopad_bin`). CI проверяет обе настройки после запуска настоящего драйвера. **Проверка пока не запускалась на MariaDB 10.11**: в текущем окружении не получен `go.sum`, нет MariaDB. GO-005/GO-007 остаются открытыми.
+
+## 11. Зафиксированные суммы зависимостей и сетевой gate (v17)
+
+`go.sum` добавлен в ветке `codex/GO-005-locked-dependencies-v17` для уже закреплённых в `go.mod` версий `github.com/go-sql-driver/mysql v1.9.3` и `filippo.io/edwards25519 v1.1.0`. Четыре значения `h1:` (модули и файлы `go.mod`) сверены между публичными Go-проектами (например, `github.com/digicert/ca-extension-mtc-playground` и `github.com/chenjia404/meshserver`). Это независимое сопоставление **опубликованных сумм**, а не локальная проверка скачанного содержимого.
+
+CI теперь использует `go mod download`, `go mod verify`, `go mod tidy -diff` и `git diff --exit-code -- go.mod go.sum`, вместо `go mod tidy`, меняющего файл в процессе сборки. Любое несовпадение зависимостей приводит к ошибке. На изолированном runner с сетью Go проверяет соответствие загруженных архивов значениям `go.sum` и своей базе контрольных сумм. **Здесь сеть Go Modules недоступна, поэтому эта проверка и тесты `-tags mariadb` пока НЕ выполнялись.**
+
+Ранее описанный в разделах 8–10 этап временного получения `go.sum` как CI-артефакта заменён отслеживаемым в Git файлом. По-прежнему требуются успешные результаты сетевого CI на disposable MariaDB 10.11, затем внешний staging-домен и проверка контрактов React. Ни GO-005, ни GO-007 ещё не закрыты.
