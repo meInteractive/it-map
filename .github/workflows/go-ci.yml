@@ -40,8 +40,18 @@ jobs:
         run: python3 scripts/test-staging-smoke.py
       - name: Build offline-compatible migration shell
         run: go build -o /tmp/itmap ./cmd/itmap
-      - name: Install pinned MariaDB driver (networked CI only)
-        run: go mod download github.com/go-sql-driver/mysql
+      - name: Resolve pinned Go dependencies (networked CI only)
+        run: go mod tidy
+      - name: Require committed go.sum for reproducible Go release
+        shell: bash
+        run: |
+          set -euo pipefail
+          git ls-files --error-unmatch go.sum >/dev/null || {
+            echo '::error::Commit reviewed go.sum in a PR before Go release acceptance'
+            exit 1
+          }
+          test -s go.sum
+          git diff --exit-code -- go.mod go.sum
       - name: Verify MariaDB-tagged build
         run: |
           go test -tags mariadb ./...

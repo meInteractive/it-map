@@ -82,7 +82,12 @@ jobs:
           DB_NAME: itmap_ci
           DB_USER: itmap_readonly_ci
           DB_PASSWORD: ci_only_disposable_reader
-          AUTH_ENABLED: 'false'
+          AUTH_ENABLED: 'true'
+          SESSION_SECRET: 'CI_SYNTHETIC_SESSION_SECRET_NOT_FOR_PRODUCTION_2026'
+          SITE_PASSWORD: 'CI_SYNTHETIC_ACCOUNT_PASSWORD_NOT_FOR_PRODUCTION'
+          ITMAP_SMOKE_AUTH: '1'
+          ITMAP_SMOKE_LOGIN: 'eugene'
+          ITMAP_SMOKE_PASSWORD: 'CI_SYNTHETIC_ACCOUNT_PASSWORD_NOT_FOR_PRODUCTION'
         shell: bash
         run: |
           set -euo pipefail
@@ -99,5 +104,13 @@ jobs:
             sleep 1
           done
           bash scripts/staging-smoke.sh http://127.0.0.1:18080
-      - name: Assert no unexpected dependency manifest changes
-        run: git diff --exit-code -- go.mod
+      - name: Require reviewed, tracked dependency checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! git ls-files --error-unmatch go.sum >/dev/null 2>&1; then
+            echo '::error::go.sum is not committed. Review the uploaded checksum artifact and commit it through a PR.'
+            exit 1
+          fi
+          git diff --exit-code -- go.mod go.sum
+          test -s go.sum
