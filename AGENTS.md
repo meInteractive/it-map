@@ -1,15 +1,35 @@
-# it-map migration instructions (public-safe)
-This branch contains a *sanitized legacy reference*, not a deployable copy of production.
-Read `docs/MIGRATION_PUBLIC_REPOSITORY.md` before porting functionality.
-The active rewrite is in `master` / feature branches off master, not in this snapshot.
-Do not run hosted Site Automations or connect to production data here.
-Do not commit production dumps, backups, real resumes, recruiter contacts, tokens, passwords,
-OAuth client credentials, encryption keys, or live API responses.
-Original SQLite migrations/seed records, built dist, private operational notes, and
-hosting identity were intentionally excluded. Use privately stored MariaDB DDL/data
-for migration verification; never try to recreate production from this safe branch.
+# it-map: правила для Codex Cloud
 
-Current implementation status and migration caveats: `docs/SPRINT_1_1_STATUS.md`,
-`docs/GO_CATALOG_PORT.md`. New endpoints must preserve the v316 response
-contract, respect user-specific state, remain fail-closed on error, and have
-HTTP tests before their route is enabled.
+**Назначение.** it-map — карта московских IT-работодателей, вакансий и откликов с CRM и конвейером поиска вакансий. Этот репозиторий — **переходная версия**, не подтверждённая как production-ready.
+
+## Где что находится
+
+- `cmd/itmap/main.go` — вход Go-приложения; `internal/` — Go-пакеты; `go.mod` — модуль `itmap`, Go 1.23.
+- `internal/httpapi/` — HTTP через стандартный `net/http` (`ServeMux`), **не Gin**; `internal/storage/` — `database/sql`, MariaDB-драйвер за build tag `mariadb`.
+- `frontend/`, `web/`, `vite.web.config.ts` — React/TypeScript и Vite. `server/`, `build/`, `db/schema.ts` — старый JavaScript/D1-код для сравнения контрактов, а не Go-production.
+- Прочитать `PLANS.md`, `docs/ARCHITECTURE.md`, `docs/DATABASE.md` (историческая D1), `docs/MARIADB.md` (целевая БД), `docs/DECISIONS.md`, `tasks/README.md`; API: `docs/LEGACY_API_BASELINE.md` и `docs/API.md`.
+
+## Неприкосновенные ограничения
+
+1. GPT Sites, его D1 и Site Automation **продолжают работать**, пока пользователь отдельно не утвердил cutover. Не запускать с этого репозитория старые автоматизации, фоновые задания против production или платные провайдеры без разрешения.
+2. Новый Go-бекенд разрабатывать отдельно. Не ломать работающие API/парсеры; в спринте 1.1 сохранять метод, URL, права, JSON, коды статусов, версии записей и поведение React.
+3. MariaDB на том же сервере — целевая БД. Основа — исходная структура D1 с минимально необходимыми изменениями; **не изменять/удалять реальные данные и не выполнять DDL без отдельного согласования**. D1 и MariaDB не синхронизируются автоматически.
+4. Никаких реальных `.env`, секретов, токенов, SQL-дампов, резервных копий, персональных данных, зашифрованных ключей или скриншотов приватных данных в Git, PR, логах и тестовых фикстурах. Использовать только синтетические тестовые данные; `.env.example` без значений.
+5. **Запрещены автоматический production-деплой, прямые изменения `master`, автоматическое слияние PR**, переключение домена, импорт/синхронизация реальных БД и необратимые операции. Для них всегда требуется отдельное явное утверждение.
+
+## Правила инженерной работы
+
+- Работать в отдельной ветке `codex/GO-NNN-short-title`, **только по конкретной задаче или утверждённому диапазону** из `tasks/`. До изменений прочитать относящиеся к задаче исходники, зависимости и контракт старого API. Не брать соседние крупные задачи самостоятельно.
+- Go: использовать существующие `cmd/` и `internal/`, `context.Context`, параметризованные запросы, ограниченные транзакции и минимальные интерфейсы у потребителей. Сохранять `net/http` до отдельного архитектурного решения. Ошибки возвращать с контекстом, но без DSN, секретов и персональных данных; не скрывать ошибку успешным HTTP-ответом.
+- DB: новые миграции — отдельные версионированные, рецензируемые файлы; не менять исходный D1-справочник `docs/DATABASE.md`. Сначала тест на изолированной MariaDB и восстановимость. Учитывать FK, триггеры, revision/CAS, идемпотентность платных вызовов.
+- API: сначала тест контракта (включая ошибки/авторизацию), затем реализация. Любое несовместимое изменение требует согласования и обновления фронтенда/документации.
+- Проверки согласно затронутому коду: `gofmt`, `go vet ./...`, `go test -race ./...`, `go build ./cmd/itmap`, `npm run build:web`, `python3 scripts/check-public-repo.py`; для MariaDB: `go test -tags mariadb ./...` и staging-интеграция **только при доступном драйвере и безопасной тестовой БД**. Если проверка недоступна/падает, явно указать её статус, не считать выполненной.
+
+## Задачи, Git и отчёт
+
+1. Проверить зависимости задачи и критерии в `tasks/SPRINT-*.md`; если задача крупная — предложить разделение **до реализации** с новыми неизменяемыми ID.
+2. Сделать одну самостоятельно проверяемую порцию изменений. Запустить проверки; ошибки исправить или честно сообщить блокировку. Никакого merge и перехода к следующей задаче без поручения.
+3. Создать коммит(ы) в рабочей ветке и **подготовить PR** в `master`; не закрывать задачу на основании только сгенерированного кода. `[x]` ставить лишь при выполненных критериях и зафиксированном результате (коммит/PR); частичную реализацию описывать без отметки завершения.
+4. В отчёте по задаче указать: `GO-NNN`, ветку/коммит/PR, что изменено, список файлов, тесты (`успех`/`ошибка`/`не запускались`), сопоставление со старым API, риски и ограничения, нужна ли ручная приёмка, следующую разрешённую задачу. Для данных/деплоя/инфраструктуры — обязательно остановиться перед исполнением и запросить утверждение.
+
+Этот файл задаёт правила, но не заменяет техзадания в `tasks/` и не разрешает автоматических действий с production.
