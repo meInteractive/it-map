@@ -4,16 +4,8 @@ from pathlib import Path
 import re,sys
 root=Path(__file__).resolve().parents[1]
 banned_paths=['dist/','.openai/','.vinext/','worker/','drizzle/']
-token_rules={
-  'private-key':r'-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----',
-  'github-token':r'\b(?:gh[pousr]_[a-zA-Z0-9_]{20,}|github_pat_[a-zA-Z0-9_]{20,})',
-  'openai-token':r'\bsk-(?:proj-)?[A-Za-z0-9_-]{24,}',
-  'apify-token':r'\bapify_api_[A-Za-z0-9]{20,}',
-  'google-api-key':r'\bAIza[0-9A-Za-z_-]{30,}',
-  'aws-key-id':r'\b(?:AKIA|ASIA)[A-Z0-9]{16}',
-  'db-credentials-in-url':r'(?i)\b(?:mysql|mariadb|postgres|mongodb)(?:\+srv)?://[^\s]+:[^\s]+@',
-  'sites-project-identity':r'\bappgprj_[0-9a-f]{20,}',
-}
+from public_repo_rules import TOKEN_RULES
+token_rules=TOKEN_RULES
 issues=[]
 for f in root.rglob('*'):
   if not f.is_file(): continue
