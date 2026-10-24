@@ -1,7 +1,7 @@
 name: MariaDB isolated staging gate
 on:
   pull_request:
-    branches: [master]
+    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
@@ -73,18 +73,17 @@ jobs:
           go mod verify
           go mod tidy -diff
           git diff --exit-code -- go.mod go.sum
-      - name: Verify real MariaDB SELECT and rollback/locking semantics
+      - name: Verify empty-schema storage and rollback semantics
         env:
           ITMAP_REQUIRE_MARIADB_INTEGRATION: '1'
           ITMAP_TEST_MARIADB_DSN: 'itmap_readonly_ci:ci_only_disposable_reader@tcp(127.0.0.1:3306)/itmap_ci?parseTime=true&collation=utf8mb4_bin'
           ITMAP_TEST_MARIADB_WRITE_DSN: 'itmap_ci:ci_only_disposable_writer@tcp(127.0.0.1:3306)/itmap_ci?parseTime=true&clientFoundRows=true&collation=utf8mb4_bin'
         run: |
           set -euo pipefail
-          # Both integration tests MUST run; missing DSNs are failures, not skips.
-          go test -tags mariadb ./internal/storage -run '^TestMariaDB' -count=1 -v
-          go test -tags mariadb ./internal/... -count=1
-          go build -tags mariadb -o /tmp/itmap-mariadb ./cmd/itmap
-      - name: Seed a synthetic catalog for authenticated SQL/API smoke
+          # All storage tests run before business data; rollback requires an
+          # empty agency_identity. Missing DSNs are failures, not skips.
+          go test -tags mariadb ./internal/storage -count=1 -v
+      - name: Seed synthetic catalog and business read models
         shell: bash
         run: |
           set -euo pipefail
@@ -92,10 +91,29 @@ jobs:
           # container, never the private D1/MariaDB dump or a shared staging DB.
           docker exec -i '${{ job.services.mariadb.id }}' mariadb \
             -u root -pci_only_disposable_root itmap_ci < db/testdata/smoke-catalog.sql
+          docker exec -i '${{ job.services.mariadb.id }}' mariadb \
+            -u root -pci_only_disposable_root itmap_ci < db/testdata/read-models.sql
           rows="$(docker exec '${{ job.services.mariadb.id }}' mariadb \
             -u root -pci_only_disposable_root --batch --skip-column-names itmap_ci -e \
             'SELECT COUNT(*) FROM app_catalog WHERE id=1')"
           [[ "$rows" == 1 ]] || { echo 'Synthetic catalog seed failed' >&2; exit 1; }
+      - name: Verify business reads against synthetic MariaDB data
+        env:
+          ITMAP_REQUIRE_MARIADB_INTEGRATION: '1'
+          ITMAP_TEST_SYNTHETIC_READS: '1'
+          ITMAP_TEST_MARIADB_DSN: 'itmap_readonly_ci:ci_only_disposable_reader@tcp(127.0.0.1:3306)/itmap_ci?parseTime=true&collation=utf8mb4_bin'
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Cover every other internal package. Storage already ran on the
+          # empty schema above; no test is disabled or silently filtered out.
+          all_packages="$(go list -tags mariadb ./internal/...)"
+          packages=()
+          while IFS= read -r package; do
+            if [[ "$package" != itmap/internal/storage ]]; then packages+=("$package"); fi
+          done <<< "$all_packages"
+          go test -tags mariadb "${packages[@]}" -count=1 -v
+          go build -tags mariadb -o /tmp/itmap-mariadb ./cmd/itmap
       - name: Smoke the running Go server against disposable MariaDB
         env:
           APP_ENV: staging

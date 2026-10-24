@@ -17,6 +17,9 @@ import (
 func TestCompanyVacanciesStaging(t *testing.T) {
 	dsn := os.Getenv("ITMAP_TEST_MARIADB_DSN")
 	if dsn == "" {
+		if os.Getenv("ITMAP_REQUIRE_MARIADB_INTEGRATION") == "1" {
+			t.Fatal("required MariaDB DSN or business fixture unavailable")
+		}
 		t.Skip("staging MariaDB DSN not configured")
 	}
 	db, err := sql.Open("mysql", dsn)
@@ -33,6 +36,9 @@ func TestCompanyVacanciesStaging(t *testing.T) {
 		var name string
 		err = db.QueryRowContext(ctx, `SELECT company_name FROM company_vacancies WHERE company_name<>'' ORDER BY id LIMIT 1`).Scan(&name)
 		if err == sql.ErrNoRows {
+			if os.Getenv("ITMAP_REQUIRE_MARIADB_INTEGRATION") == "1" {
+				t.Fatal("required MariaDB DSN or business fixture unavailable")
+			}
 			t.Skip("no staging vacancies")
 		}
 		if err != nil {

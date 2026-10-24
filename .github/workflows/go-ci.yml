@@ -1,9 +1,9 @@
 name: Public source security and Go checks
 on:
   push:
-    branches: [master]
+    branches: [main]
   pull_request:
-    branches: [master]
+    branches: [main]
 permissions:
   contents: read
 jobs:
@@ -18,7 +18,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if git ls-files | grep -Ei '(^|/)(.*(dump|backup|secret|credential|\.env)|\.openai/|dist/)' | grep -vE '(^|/)\.env\.example$|(^|/)\.dev\.vars\.example$|server/generated/backup-schema\.json|docs/BACKUP_FORMAT\.md|server/backup/index\.js|scripts/test-backup-|server/import-export/database-dump\.js'; then
+          if git ls-files | grep -Ei '(^|/)(.*(dump|backup|secret|credential|\.env)|\.openai/|dist/)' | grep -vE '(^|/)\.env\.example$|(^|/)\.dev\.vars\.example$|server/generated/backup-schema\.json|docs/BACKUP_FORMAT\.md|server/backup/index\.js|scripts/test-backup-|server/import-export/database-dump\.js|^scripts/(backup-schema|test-database-dump)\.mjs$'; then
             echo 'Unexpected sensitive-looking tracked path requires manual review'
             exit 1
           fi
