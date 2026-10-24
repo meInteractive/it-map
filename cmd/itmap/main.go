@@ -44,6 +44,7 @@ func httpHandler(logger *slog.Logger, db *sql.DB, manager *auth.Manager) http.Ha
 		opts.ApplicationCompanies = applications.Repository{DB: db, CreationSecret: []byte(os.Getenv("SESSION_SECRET"))}
 		opts.ApplicationWrites = applications.Repository{DB: db, CreationSecret: []byte(os.Getenv("SESSION_SECRET"))}
 		opts.ApplicationCreates = applications.Repository{DB: db, CreationSecret: []byte(os.Getenv("SESSION_SECRET"))}
+		opts.VacancyApplies = applications.Repository{DB: db, CreationSecret: []byte(os.Getenv("SESSION_SECRET"))}
 		opts.CompanyFlags = crm.Repository{DB: db}
 		opts.CompanyFlagWrites = crm.Repository{DB: db}
 		opts.CompanyCRM = crm.Repository{DB: db}

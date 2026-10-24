@@ -50,6 +50,7 @@ type Options struct {
 	ApplicationCompanies ApplicationCompanyReader
 	ApplicationWrites    ApplicationMutator
 	ApplicationCreates   ApplicationCreator
+	VacancyApplies       VacancyApplicationCreator
 	CompanyFlags         CompanyFlagLister
 	CompanyFlagWrites    CompanyFlagWriter
 	CompanyCRM           CompanyCRMReader
@@ -138,6 +139,10 @@ func NewHandlerWithOptions(logger *slog.Logger, opts Options) http.Handler {
 				mux.HandleFunc("PUT /api/applications/{id}", ApplicationMutationHandler(opts.Auth, opts.ApplicationWrites, opts.ApplicationCompanies))
 				mux.HandleFunc("DELETE /api/applications/{id}", ApplicationMutationHandler(opts.Auth, opts.ApplicationWrites, opts.ApplicationCompanies))
 			}
+		}
+		if opts.VacancyApplies != nil {
+			mux.HandleFunc("POST /api/vacancies/{id}/apply", VacancyApplyHandler(opts.Auth, opts.VacancyApplies))
+			mux.HandleFunc("POST /api/vacancies/{id}/apply/create", VacancyApplyHandler(opts.Auth, opts.VacancyApplies))
 		}
 		if opts.TaskCompletion != nil {
 			mux.HandleFunc("PUT /api/tasks/{id}", TaskCompletionHandler(opts.Auth, opts.TaskCompletion))
