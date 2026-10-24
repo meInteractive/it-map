@@ -30,6 +30,7 @@ jobs:
       - name: Confirm synthetic fixture matches source baseline and has no rows
         run: |
           python3 scripts/check-ci-schema.py
+          python3 scripts/check-ci-smoke-seed.py
           python3 scripts/check-public-repo.py
       - name: Load empty schema ONLY into disposable CI database
         shell: bash
@@ -72,6 +73,18 @@ jobs:
           go test -tags mariadb ./internal/storage -run '^TestMariaDB' -count=1 -v
           go test -tags mariadb ./internal/... -count=1
           go build -tags mariadb -o /tmp/itmap-mariadb ./cmd/itmap
+      - name: Seed a synthetic catalog for authenticated SQL/API smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Schema-only tests have finished. Seed only the disposable itmap_ci
+          # container, never the private D1/MariaDB dump or a shared staging DB.
+          docker exec -i '${{ job.services.mariadb.id }}' mariadb \
+            -u root -pci_only_disposable_root itmap_ci < db/testdata/smoke-catalog.sql
+          rows="$(docker exec '${{ job.services.mariadb.id }}' mariadb \
+            -u root -pci_only_disposable_root --batch --skip-column-names itmap_ci -e \
+            'SELECT COUNT(*) FROM app_catalog WHERE id=1')"
+          [[ "$rows" == 1 ]] || { echo 'Synthetic catalog seed failed' >&2; exit 1; }
       - name: Smoke the running Go server against disposable MariaDB
         env:
           APP_ENV: staging
