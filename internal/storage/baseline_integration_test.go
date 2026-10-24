@@ -41,4 +41,22 @@ func TestMariaDBSchemaBaselineIntegration(t *testing.T) {
 	if tables != 72 {
 		t.Fatalf("unexpected table count: %d, expected 72", tables)
 	}
+	// The Go driver negotiates a supported connection collation (utf8mb4_bin).
+	// The migrated D1 columns retain MariaDB's NO PAD semantics: this must
+	// not be changed just to work around a driver handshake limitation.
+	var sessionCollation string
+	if err := db.QueryRowContext(ctx, "SELECT @@collation_connection").Scan(&sessionCollation); err != nil {
+		t.Fatal("cannot inspect connection collation")
+	}
+	if sessionCollation != "utf8mb4_bin" {
+		t.Fatalf("unexpected connection collation: %q", sessionCollation)
+	}
+	var columnCollation string
+	if err := db.QueryRowContext(ctx, `SELECT COLLATION_NAME FROM information_schema.COLUMNS
+		WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'agency_identity' AND COLUMN_NAME = 'agency_name'`).Scan(&columnCollation); err != nil {
+		t.Fatal("cannot inspect migrated text column collation")
+	}
+	if columnCollation != "utf8mb4_nopad_bin" {
+		t.Fatalf("source schema text collation unexpectedly changed: %q", columnCollation)
+	}
 }
