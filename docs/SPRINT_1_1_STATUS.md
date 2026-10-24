@@ -93,3 +93,12 @@ See [`SPRINT_1_1_V10.md`](SPRINT_1_1_V10.md): admin-only vacancy editing with a 
 ## V11 continuation (2026-10-24)
 
 See [`SPRINT_1_1_V11.md`](SPRINT_1_1_V11.md): signed creation contexts, transactional durable idempotency receipts, authenticated `POST /api/applications/create` and `/api/applications`, strict replay/restore checks, and SQL preflight. Offline Go tests passed. Real MariaDB validation, `go.sum`, backup/restore, and vacancy-card one-click applications remain pending.
+
+## V12 continuation (2026-10-24)
+
+See [`SPRINT_1_1_V12.md`](SPRINT_1_1_V12.md). Both vacancy-card shortcut
+routes now reuse the V11 durable signed creation intent, preserve existing
+application status/history during an existing-link claim, and return the
+original `{ok,vacancy,createdApplicationId,replayed}` response. Offline Go
+and HTTP tests pass. A real MariaDB integration test and all remaining
+production readiness gates are still mandatory.
