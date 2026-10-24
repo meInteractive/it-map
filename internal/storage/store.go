@@ -47,7 +47,11 @@ func MakeDSN(s Settings, password string) (string, error) {
 		// UPDATE optimistic locking must distinguish matched rows from
 		// physically changed rows when timestamp precision is one second.
 		"clientFoundRows": {"true"},
-		"collation":       {"utf8mb4_nopad_bin"},
+		// The driver v1.9.3 only recognizes handshake collation IDs in its
+		// collations map; MariaDB-specific utf8mb4_nopad_bin is NOT there.
+		// Use the supported connection collation. Table/column collations
+		// remain utf8mb4_nopad_bin and are NOT migrated or rewritten.
+		"collation":       {"utf8mb4_bin"},
 		"parseTime":       {"true"},
 		"multiStatements": {"false"},
 		"timeout":         {"5s"},

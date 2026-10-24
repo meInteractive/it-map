@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"net/url"
 	"strings"
 	"testing"
 )
@@ -16,6 +17,19 @@ func TestDSNValidationAndRedaction(t *testing.T) {
 	}
 	if !strings.Contains(dsn, secret+"@tcp(") || !strings.Contains(dsn, "parseTime=true") || !strings.Contains(dsn, "multiStatements=false") || !strings.Contains(dsn, "clientFoundRows=true") {
 		t.Fatalf("bad DSN parameters (password redacted)")
+	}
+	// The driver v1.9.3 rejects MariaDB-only utf8mb4_nopad_bin in the
+	// handshake; only columns use it, the connection uses utf8mb4_bin.
+	parts := strings.SplitN(dsn, "?", 2)
+	if len(parts) != 2 {
+		t.Fatal("DSN query parameters missing")
+	}
+	query, err := url.ParseQuery(parts[1])
+	if err != nil {
+		t.Fatal("DSN query could not be parsed")
+	}
+	if query.Get("collation") != "utf8mb4_bin" || query.Get("charset") != "utf8mb4" {
+		t.Fatal("unsupported MariaDB handshake collation/charset")
 	}
 	cases := []Settings{
 		{Host: "external.example", Port: "3306", Database: "staging", User: "a"},
