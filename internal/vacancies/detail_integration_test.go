@@ -20,6 +20,9 @@ import (
 func TestMariaDBVacancyDetailReadOnlyIntegration(t *testing.T) {
 	dsn := os.Getenv("ITMAP_TEST_MARIADB_DSN")
 	if dsn == "" {
+		if os.Getenv("ITMAP_REQUIRE_MARIADB_INTEGRATION") == "1" {
+			t.Fatal("required MariaDB DSN or business fixture unavailable")
+		}
 		t.Skip("set a read-only staging MariaDB DSN to exercise SQL queries")
 	}
 	db, err := sql.Open("mysql", dsn)
@@ -32,6 +35,9 @@ func TestMariaDBVacancyDetailReadOnlyIntegration(t *testing.T) {
 	var id int64
 	err = db.QueryRowContext(ctx, "SELECT id FROM company_vacancies ORDER BY id LIMIT 1").Scan(&id)
 	if errors.Is(err, sql.ErrNoRows) {
+		if os.Getenv("ITMAP_REQUIRE_MARIADB_INTEGRATION") == "1" {
+			t.Fatal("required MariaDB DSN or business fixture unavailable")
+		}
 		t.Skip("staging has no vacancies")
 	}
 	if err != nil {
