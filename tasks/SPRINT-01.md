@@ -29,7 +29,7 @@
 - **Компоненты:** `gpt-site`, Git, `.gitignore`, security CI.
 - **Критерии готовности:** В GitHub две ветки, скан всей опубликованной истории и контроль отсутствия чувствительных данных.
 - **Как проверить:** `git ls-files`; `python3 scripts/check-public-repo.py`; внешний аудит истории.
-- **Известные ограничения:** Локальный `f51aacb` есть, факт загрузки в GitHub не подтверждён.
+- **Известные ограничения:** 25.10.2026 gpt-site опубликована как указатель на уже достижимый очищенный f51aacb; объектная целостность и известные token/path правила проверены. Это не доказывает отсутствие всех видов персональных данных и не восстанавливает исключённую приватную историю.
 - **Результат:** коммиты f51aacb; PR не подтверждён.
 
 ### [ ] GO-002. Полная матрица API и эталонных сценариев
@@ -600,11 +600,21 @@
 - **Результат:** ветка codex/GO-048-pwa-cache от e3fcd23 предыдущего PR #4; [PR #5](https://github.com/meInteractive/it-map/pull/5), `2727287`: [MariaDB/browser CI](https://github.com/meInteractive/it-map/actions/runs/40138597181) прошёл, все 6 browser-тестов успешны; [Go/web/security](https://github.com/meInteractive/it-map/actions/runs/40138597196) также прошли. Узкий результат реализован и проверен, merge не выполнялся. OS-install, полный offline app и внешний staging не подтверждаются; GO-006 остаётся открытой.
 
 
-### [ ] GO-049. Форма ошибки входа и повторная попытка (часть GO-006/GO-008)
+### [x] GO-049. Форма ошибки входа и повторная попытка (часть GO-006/GO-008)
 
 - **Цель:** неверный пароль не оставляет браузер на пустом HTTP 401; React показывает существующую ошибку и позволяет повторить вход.
 - **Зависимости:** GO-003 и браузерный код GO-006. Не зависит от полного импорта GO-005 или внешнего staging; менеджер сессий уже работает и проверен.
 - **Компоненты:** internal/httpapi/{auth_routes,handler,static}.go и тесты, tests/browser/spa.spec.ts.
 - **Критерии:** сохранить 401/X-App-Login-Error/private no-store; вернуть только публичный SPA index, не отражая credentials и не выдавая cookie; null/cross-origin остаются 403; API-only без web сохраняет пустой 401; отсутствующий build остаётся реальным 503. Повторный корректный вход даёт 303/session 200 на desktop и mobile.
 - **Проверки:** Go-регрессия сначала воспроизвела ошибку, затем race/vet/tagged build, локальные browser-сценарии без БД и все 8 сценариев на synthetic MariaDB CI.
-- **Результат:** ветка codex/GO-049-login-retry от PR #5; номер и фактический результат CI фиксируются после создания. Эпики GO-006/008 остаются открытыми.
+- **Результат:** ветка codex/GO-049-login-retry от PR #5; [PR #6](https://github.com/meInteractive/it-map/pull/6), `64f3caf`: [MariaDB/browser CI](https://github.com/meInteractive/it-map/actions/runs/40139037979) и [Go/web/security](https://github.com/meInteractive/it-map/actions/runs/40139038007) успешны; 8 browser-сценариев pass. Узкий результат реализован и проверен, merge не выполнялся. Эпики GO-006/008 остаются открытыми.
+
+
+### [ ] GO-050. Исторический эталон и аудит Git-истории (часть GO-001)
+
+- **Цель:** закрепить очищенный gpt-site и проверять опубликованную историю, включая удалённые файлы, а не только рабочую папку.
+- **Зависимости:** нет нерешённых инфраструктурных зависимостей; f51aacb уже достижим из опубликованного main. Ветка задачи основана на предыдущем PR #6.
+- **Компоненты:** scripts/check-git-history.py, public_repo_rules.py, test_git_history.py, source CI, docs/SOURCE_REFERENCE.md.
+- **Критерии:** gpt-site точно f51aacb37a03a0cef6bffcc2c590aafd803a8c3f без reset/delete существующих веток; full-depth checkout; scan всех достижимых blobs (включая binary) и исторических путей; значения секретов не печатаются; shallow/unreadable history не объявляется полной.
+- **Проверки:** 6 тестов на одноразовых synthetic Git repos, включая удалённый token/archive, binary, env/template и shallow; неизменность старых token rules; source/history gate, fsck, actionlint, обязательный stacked CI.
+- **Результат:** ветка codex/GO-050-source-history от PR #6. gpt-site создана и подтверждена ls-remote; локально перед коммитом проверены 119 commits / 836 blobs. Номер PR и конечный CI фиксируются после создания. GO-001 остаётся открытой для полной внешней приёмки приватности/источника, без ложной гарантии нулевых PII.
