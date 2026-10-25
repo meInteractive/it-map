@@ -54,6 +54,6 @@ GO-054 обновляет статусы по доказательствам и 
 | Задача | Ветка | База | PR | Проверки |
 | --- | --- | --- | --- | --- |
 | GO-056: receiver/recovery | codex/GO-056-release-receiver | main | [#13](https://github.com/meInteractive/it-map/pull/13) | 40f2be5: 16 изолированных тестов и все mandatory CI прошли |
-| GO-057: Actions/native package/SSH | codex/GO-057-actions-publish | codex/GO-056-release-receiver | После создания | 23 unit/protocol tests; native real Go/readonly MariaDB rollback — mandatory CI |
+| GO-057: Actions/native package/SSH | codex/GO-057-actions-publish | codex/GO-056-release-receiver | После создания | 25 unit/protocol tests; dd6141d прошёл [Go/web/security](https://github.com/meInteractive/it-map/actions/runs/40192480838) и [native Go/MariaDB rollback](https://github.com/meInteractive/it-map/actions/runs/40192480824); финальные усиления проверяются повторно |
 
 Внешний сервер/SSH-ключи/GitHub Environments пока не подключены; repo flag ITMAP_DEPLOY_ENABLED не включался. Это блокирует реальную инфраструктурную приёмку GO-007, но не написание/проверку автоматики. После неё — критическая receipt write часть GO-031. Для действующих старых Go-веток требуется перенести publish.yml перед автоматическим push; архивный Worker не деплоится как Go.

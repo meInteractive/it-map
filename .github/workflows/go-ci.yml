@@ -41,6 +41,8 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+      - name: Validate all workflow syntax and reusable calls
+        run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 -shellcheck= -pyflakes=
       - name: Go vet
         run: go vet ./...
       - name: Go tests

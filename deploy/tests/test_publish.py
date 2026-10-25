@@ -130,6 +130,16 @@ class PublishTests(unittest.TestCase):
             with self.assertRaisesRegex(p.Rejected, 'ssh_request_failed'):
                 client.request({'operation':'status'})
 
+    def test_invalid_ssh_settings_fail_before_any_connection(self):
+        for values in [{}, {'DEPLOY_SSH_KEY':'CI KEY','DEPLOY_KNOWN_HOSTS':'CI HOST',
+                           'DEPLOY_HOST':'-oProxyCommand=bad','DEPLOY_USER':'deploy'},
+                          {'DEPLOY_SSH_KEY':'CI KEY','DEPLOY_KNOWN_HOSTS':'CI HOST',
+                           'DEPLOY_HOST':'ci.example.invalid','DEPLOY_USER':'bad;command'}]:
+            with patch.object(p.subprocess, 'run') as execute:
+                with self.assertRaises(p.Rejected):
+                    p.Client(values)
+                execute.assert_not_called()
+
     def test_wrong_remote_head_blocks_publication(self):
         class Response(io.BytesIO):
             def __enter__(self):return self

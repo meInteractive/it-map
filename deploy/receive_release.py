@@ -119,6 +119,14 @@ def health(url):
         with response:
             if response.code != code or json.loads(response.read(4096)) != expected:
                 raise Rejected('health_failed')
+    try:
+        response = opener.open(url + '/', timeout=2)
+    except urllib.error.HTTPError as error:
+        response = error
+    with response:
+        if (response.code != 200 or not response.headers.get('Content-Type', '').startswith('text/html')
+                or b'id="root"' not in response.read(8192)):
+            raise Rejected('spa_unavailable')
 
 
 class Receiver:
@@ -297,7 +305,7 @@ class Receiver:
                 raise Rejected('current_is_not_symlink')
             return None
         value = os.readlink(path)
-        if not re.fullmatch(r'releases/[1-9][0-9]*-[0-9a-f]{40}', value) or not (self.root / value).is_dir():
+        if not re.fullmatch(r'releases/(?:[1-9][0-9]*-)?[0-9a-f]{40}', value) or not (self.root / value).is_dir():
             raise Rejected('invalid_current')
         return value
 

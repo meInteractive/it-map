@@ -8,7 +8,7 @@
 2. На разрешённом сервере выполнить SERVER.md и RECEIVER.md: отдельные runtime/SSH пользователи, root-owned приёмник, точные sudo/forced commands, env/schema/DB, TLS. Оба процесса пока `APP_ENV=staging`: имя main-домена не включает production. Фактическое подключение сервера/данных этой задачей не выполняется.
 3. Установить unit template, выполнить `systemctl daemon-reload`, **enable без --now** для itmap@main/itmap@dev. Первая доставка создаст current и выполнит restart; запускать службу с отсутствующим current заранее не требуется. Убедиться, что env заполнены и MariaDB/schema готовы; иначе первая публикация будет отклонена health gate.
 4. Создать GitHub Environments `itmap-main` и `itmap-dev`. main разрешает только branch main. dev разрешает доверенные рабочие ветки **и main**: delete-событие обрабатывается workflow из default main, но направляется в dev-приёмник по удалённому ref. Для полностью автоматического режима не ставить required reviewer перед каждой регистрацией; если он нужен по политике, регистрация ожидает ручного решения и режим уже не полностью автоматический.
-5. В **каждом Environment** задать variables `DEPLOY_HOST`, `DEPLOY_USER`, необязательный `DEPLOY_PORT` (по умолчанию 22); secrets `DEPLOY_SSH_KEY` и `DEPLOY_KNOWN_HOSTS`. Разные deploy-user/key для main/dev. Файл known_hosts получить после независимой проверки fingerprint администратором, не доверять первому ssh-keyscan. Полные строки ключей не помещать в .env.example/Git. Приватный адрес при необходимости хранить через отдельную согласованную конфигурацию; текущий workflow читает DEPLOY_HOST именно из Variables.
+5. В **каждом Environment** задать variables `DEPLOY_HOST`, `DEPLOY_USER`, необязательный `DEPLOY_PORT` (по умолчанию 22); secrets `DEPLOY_SSH_KEY` и `DEPLOY_KNOWN_HOSTS`. Разные deploy-user/key для main/dev. Файл known_hosts получить после независимой проверки fingerprint администратором, не доверять первому ssh-keyscan. Полные строки ключей не помещать в .env.example/Git. Чтобы адрес не отображался в публичных Actions logs, задайте DEPLOY_HOST как Environment secret: он имеет приоритет над одноимённой variable. Реальные домены в публичных файлах не нужны.
 6. Repository variable `ITMAP_GOARCH`: `amd64` по умолчанию, либо `arm64` для сервера ARM64. Оба контура предполагаются на одном Linux-сервере одной архитектуры. Receiver проверит ELF против своей машины и не запустит другой platform.
 7. Проверить SSH/firewall/место на диске и настройки доступа авторов веток. Затем установить **repository variable `ITMAP_DEPLOY_ENABLED=true`**. До этого publish workflow не подключается к серверу. Переменную не добавлять в Go `.env`: это управление Actions.
 
@@ -43,7 +43,7 @@ sudo systemctl status itmap@dev --no-pager
 sudo journalctl -u itmap@dev -n 50 --no-pager
 ```
 
-Status может возобновить queued/interrupted worker. Не публиковать stdout приложения/заполненный env/SSH key или cookie в чат/PR. Проверить HTTPS/вход на своём домене отдельно: локальный worker проверяет Go/DB readiness, не ACME/DNS внешнего клиента.
+Status может возобновить queued/interrupted worker. Не публиковать stdout приложения/заполненный env/SSH key или cookie в чат/PR. Проверить HTTPS/вход на своём домене отдельно: локальный worker проверяет Go/DB readiness и доступность SPA, не ACME/DNS внешнего клиента.
 
 - `superseded`: другой push выбран позднее; не перезапускать старую ветку новым dispatch без намерения снова выбрать её.
 - `branch_head_changed`: SHA ref изменился/force-push; доставлять новый проверенный кандидат.

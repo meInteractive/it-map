@@ -81,7 +81,7 @@ def main():
             assert receiver.current() == previous, 'previous release pointer lost'
             health(url)
             check_login(url)
-            print('PASS: native real Go/SPA/readonly MariaDB publish, authenticated session and failed-exec rollback')
+            print('::notice::PASS: native real Go/SPA/readonly MariaDB publish, authenticated SQL/API and failed-exec rollback')
         finally:
             service.stop()
 
@@ -94,13 +94,16 @@ def check_login(url):
     assert b'root' in opener.open(url + '/', timeout=5).read(), 'SPA unavailable'
     body = urllib.parse.urlencode({'login':'eugene','password':os.environ['SITE_PASSWORD']}).encode()
     try:
-        opener.open(urllib.request.Request(url+'/auth', data=body, headers={'Origin':url}), timeout=5)
+        opener.open(urllib.request.Request(url+'/auth', data=body, headers={'Origin':url,'Content-Type':'application/x-www-form-urlencoded'}), timeout=5)
         raise AssertionError('login must redirect')
     except urllib.error.HTTPError as response:
         assert response.code == 303, 'login did not succeed'
         cookie = response.headers['Set-Cookie'].split(';')[0]
     with opener.open(urllib.request.Request(url+'/api/session', headers={'Cookie':cookie}), timeout=5) as response:
         assert json.load(response)['name'] == 'Eugene', 'session mismatch'
+    with opener.open(urllib.request.Request(url+'/api/companies/list', headers={'Cookie':cookie}), timeout=5) as response:
+        companies = json.load(response)['companies']
+        assert len(companies) == 1 and companies[0]['id'] == 1 and companies[0]['name'] == 'CI Synthetic Employer', 'native SQL/API fixture mismatch'
 
 
 if __name__ == '__main__':

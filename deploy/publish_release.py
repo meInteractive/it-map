@@ -76,8 +76,6 @@ def package(request, binary, web, output, verify_checkout=True):
 
 class Client:
     def __init__(self, env):
-        self.temp = tempfile.TemporaryDirectory(prefix='itmap-ssh-')
-        root = Path(self.temp.name)
         key, known = env.get('DEPLOY_SSH_KEY', ''), env.get('DEPLOY_KNOWN_HOSTS', '')
         host, user = env.get('DEPLOY_HOST', ''), env.get('DEPLOY_USER', '')
         try:
@@ -88,10 +86,16 @@ class Client:
                 not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9.:-]{0,252}', host) or
                 not re.fullmatch(r'[a-z_][a-z0-9_-]{0,63}', user)):
             raise Rejected('missing_or_invalid_ssh_settings')
-        for name, value in [('identity', key), ('known_hosts', known)]:
-            path = root / name
-            path.write_text(value + ('\n' if not value.endswith('\n') else ''))
-            path.chmod(0o600)
+        self.temp = tempfile.TemporaryDirectory(prefix='itmap-ssh-')
+        root = Path(self.temp.name)
+        try:
+            for name, value in [('identity', key), ('known_hosts', known)]:
+                path = root / name
+                path.write_text(value + ('\n' if not value.endswith('\n') else ''))
+                path.chmod(0o600)
+        except OSError:
+            self.temp.cleanup()
+            raise Rejected('ssh_key_setup_failed') from None
         self.command = ['ssh', '-F', '/dev/null', '-T', '-p', str(port), '-i', str(root / 'identity'),
                         '-o', 'BatchMode=yes', '-o', 'IdentitiesOnly=yes', '-o', 'StrictHostKeyChecking=yes',
                         '-o', 'GlobalKnownHostsFile=/dev/null', '-o', 'UserKnownHostsFile=' + str(root / 'known_hosts'),
