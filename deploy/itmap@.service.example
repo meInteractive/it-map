@@ -1,0 +1,27 @@
+[Unit]
+Description=it-map %i (limited migration build)
+After=network-online.target mariadb.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=itmap-%i
+Group=itmap-%i
+EnvironmentFile=/etc/itmap/%i.env
+WorkingDirectory=/opt/itmap/%i/current
+ExecStart=/opt/itmap/%i/current/itmap
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=20s
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectProc=invisible
+RestrictSUIDSGID=true
+CapabilityBoundingSet=
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

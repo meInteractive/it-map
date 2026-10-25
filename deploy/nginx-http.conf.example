@@ -1,0 +1,9 @@
+# First-time certificate issuance on a NEW host. Replace both example names.
+server {
+    listen 80;
+    server_name app.example.org app-dev.example.org;
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/letsencrypt;
+    }
+    location / { return 503; }
+}

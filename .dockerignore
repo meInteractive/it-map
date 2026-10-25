@@ -1,0 +1,34 @@
+# Only build inputs enter the context; local env, Git, dumps and dist stay out.
+**
+!deploy/
+!deploy/Dockerfile
+!go.mod
+!go.sum
+!package.json
+!package-lock.json
+!vite.web.config.ts
+!cmd/
+!cmd/**
+!internal/
+!internal/**
+!web/
+!web/**
+!frontend/
+!frontend/**
+!shared/
+!shared/**
+!src/
+!src/**
+!public/
+!public/**
+# Also exclude misplaced private/runtime files inside otherwise allowed trees.
+**/.env
+**/.env.*
+**/*.pem
+**/*.key
+**/*.db
+**/*.sqlite*
+**/*.dump
+**/*.bak
+**/*-dump.sql
+**/node_modules

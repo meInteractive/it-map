@@ -1,0 +1,123 @@
+# Ubuntu 24.04 LTS без Docker
+
+Это подготовка **нового изолированного** сервера/контуров. Не применять команды установки, DDL, DNS и перезапуска к действующему сервису без разрешения владельца. Выбор main/dev не разрешает production: до приёмки оба процесса работают как staging. Код Go и его fail-closed проверки не менять ради запуска.
+
+## 1. Пакеты и доступ
+
+Администратору нужны sudo, SSH, управление DNS и входящие TCP 80/443. SSH разрешайте только с административных адресов/VPN. Порты 18080/18081 и MariaDB не открывайте наружу. Если сервер доступен только по IPv4, не создавайте неработающую AAAA-запись. Настройте время/NTP.
+
+На новом Ubuntu:
+
+```bash
+sudo apt-get update
+sudo apt-get install --yes git ca-certificates curl openssl python3 nginx certbot mariadb-server
+```
+
+Go 1.27.3 и Node.js 24/npm 11 установите из официальных дистрибутивов с проверкой опубликованных контрольных сумм; штатный `apt install golang nodejs` может дать другие версии. Сборку предпочтительно выполняет GitHub Actions: тогда эти SDK на runtime-сервере не нужны. Зафиксированные зависимости ставятся через `go mod download`/`npm ci`, не `npm install` с обновлением lockfile.
+
+Создайте раздельных runtime-пользователей и root-owned каталоги:
+
+```bash
+sudo useradd --system --user-group --home-dir /nonexistent --shell /usr/sbin/nologin itmap-main
+sudo useradd --system --user-group --home-dir /nonexistent --shell /usr/sbin/nologin itmap-dev
+sudo install -d -o root -g root -m 0755 /opt/itmap/main/releases /opt/itmap/dev/releases
+sudo install -d -o root -g root -m 0700 /etc/itmap
+```
+
+Команды useradd выполняются один раз; при существующих пользователях сначала проверьте их назначение. Runtime-пользователям не нужны sudo, права на Git, SQL-admin или запись в бинарники/статические файлы. Загрузку релизов выполняет отдельный ограниченный deploy-пользователь; детали автоматики в [RELEASES.md](RELEASES.md).
+
+## 2. MariaDB: два изолированных набора данных
+
+Настройте MariaDB на `bind-address=127.0.0.1`, порт 3306 и проверьте `ss -ltn`: внешнего listener БД быть не должно. Рекомендуется UTC для сервера/DB-сессий; Go DSN использует UTC. Точный конфиг зависит от установленного пакета, на Ubuntu обычно `/etc/mysql/mariadb.conf.d/50-server.cnf`.
+
+Для двух контуров нужны `itmap_main` и `itmap_dev` и два разных SQL-пользователя. Создание схемы/пользователей выполняет администратор через защищённый SQL-сеанс. Пример ниже — **шаблон**, не готовые пароли; замените обозначения приватно и не сохраняйте заполненный SQL в Git/history:
+
+```sql
+CREATE DATABASE itmap_main CHARACTER SET utf8mb4 COLLATE utf8mb4_nopad_bin;
+CREATE DATABASE itmap_dev CHARACTER SET utf8mb4 COLLATE utf8mb4_nopad_bin;
+CREATE USER 'itmap_main'@'127.0.0.1' IDENTIFIED BY '<MAIN_DB_PASSWORD>';
+CREATE USER 'itmap_dev'@'127.0.0.1' IDENTIFIED BY '<DEV_DB_PASSWORD>';
+GRANT SELECT, INSERT, UPDATE, DELETE ON itmap_main.* TO 'itmap_main'@'127.0.0.1';
+GRANT SELECT, INSERT, UPDATE, DELETE ON itmap_dev.* TO 'itmap_dev'@'127.0.0.1';
+```
+
+Учитывайте настройки разрешения имён MariaDB: при необходимости используйте соответствующую **локальную** host-учётную запись и подтвердите `CURRENT_USER()`; не решайте ошибку выдачей прав на `%` или `*.*`. Для первой проверки чтения можно временно выдать только SELECT. Права CREATE/ALTER/DROP/TRIGGER/GRANT приложению не выдаются; миграции и импорт выполняет отдельный администратор. Шаблон не задаёт окончательную production-политику SQL-прав.
+
+Создание DATABASE не создаёт таблицы. Go ожидает baseline 72 таблицы / 606 столбцов, InnoDB и совместимые FK/триггеры. Нужны отдельно согласованные schema-only миграции и данные; **универсального production bootstrap/migrator пока нет** (ADR-015). `db/testdata/empty-schema.sql`, `smoke-catalog.sql`, `read-models.sql` — публичные **одноразовые CI-фикстуры**, их нельзя выдавать за production-миграцию или реальные данные. В этой задаче импорт не выполняется. После отдельного разрешения проверяют схему, поколения, FK/триггеры, восстановимость и бизнес-сценарии по [MARIADB.md](../MARIADB.md).
+
+## 3. Конфигурация main и dev
+
+Из корневого `.env.example` создайте `/etc/itmap/main.env` и `/etc/itmap/dev.env`, root:root, mode 0600. Не включайте их в каталог релизов. Systemd читает файлы от имени менеджера и передаёт значения процессам; runtime-пользователю читать файл не требуется.
+
+| Переменная | main-контур | dev-контур |
+| --- | --- | --- |
+| APP_ENV | staging до приёмки | staging |
+| HTTP_ADDR | 127.0.0.1:18080 | 127.0.0.1:18081 |
+| DB_ENABLED / AUTH_ENABLED | true / true | true / true |
+| DB_HOST / DB_PORT | 127.0.0.1 / 3306 | 127.0.0.1 / 3306 |
+| DB_NAME / DB_USER | itmap_main / itmap_main | itmap_dev / itmap_dev |
+| DB_PASSWORD | свой секрет main | другой секрет dev |
+| SESSION_SECRET / SITE_PASSWORD | свои секреты main | другие секреты dev |
+| NASTYA_PASSWORD / DEMO_PASSWORD | заполнить при необходимости | тестовые отдельные пароли при необходимости |
+| WEB_DIST_DIR | /opt/itmap/main/current/web | /opt/itmap/dev/current/web |
+
+Не использовать одинаковые секреты двух контуров. Cookie Go имеет Secure/HttpOnly/SameSite=Strict и не задаёт Domain: домены получают независимые cookie. Поддомены одного сайта всё равно не являются полноценной защитной границей от недоверенного кода: dev-контур допускает только доверенные ветки/авторов, права ОС/БД раздельны. Для полностью недоверенных экспериментов нужен отдельный сервер/контур, а не общий production-хост.
+
+## 4. Артефакт и systemd
+
+Релиз — согласованная пара `itmap` + каталог `web/` из **одного SHA**. Соберите по [LOCAL.md](LOCAL.md), создайте на сборочной машине staging-каталог вне checkout и поместите в него бинарник и содержимое dist/web. Запишите SHA и SHA-256 артефакта. Для автоматики эту работу выполняет Actions после CI.
+
+Пример установки уже полученного проверенного релиза администратором (здесь `release_sha` — полный 40-символьный SHA; `release_dir` содержит только бинарник и web):
+
+```bash
+release_sha=<ПРОВЕРЕННЫЙ_ПОЛНЫЙ_SHA>
+release_dir=<АБСОЛЮТНЫЙ_ПУТЬ_К_ПРОВЕРЕННОМУ_АРТЕФАКТУ>
+sudo install -d -m 0755 "/opt/itmap/dev/releases/$release_sha"
+sudo install -m 0755 "$release_dir/itmap" "/opt/itmap/dev/releases/$release_sha/itmap"
+sudo cp -a "$release_dir/web" "/opt/itmap/dev/releases/$release_sha/web"
+sudo chown -R root:root "/opt/itmap/dev/releases/$release_sha"
+sudo chmod -R a+rX "/opt/itmap/dev/releases/$release_sha"
+sudo ln -s "releases/$release_sha" /opt/itmap/dev/current.next
+sudo mv -Tf /opt/itmap/dev/current.next /opt/itmap/dev/current
+```
+
+Это пример **первой** установки dev. Перед повторным обновлением сохраните `readlink /opt/itmap/dev/current`, проверьте отсутствие старого current.next и используйте блокировку всего переключения/проверки/отката. Автоматизация должна выполнять этот алгоритм централизованно, не параллельными SSH-командами.
+
+Установите [deploy/itmap@.service.example](../../deploy/itmap@.service.example) как `/etc/systemd/system/itmap@.service`, проверьте и запустите **только после** готовности DB/env/release:
+
+```bash
+sudo systemd-analyze verify /etc/systemd/system/itmap@.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now itmap@dev
+sudo systemctl status itmap@dev --no-pager
+sudo journalctl -u itmap@dev -n 50 --no-pager
+curl --fail http://127.0.0.1:18081/health/live
+bash scripts/staging-smoke.sh http://127.0.0.1:18081
+```
+
+Main устанавливается аналогично в свой каталог/службу/порт, когда отдельно разрешён его запуск. Service-файл не включает миграций, фоновых JS-заданий или записи в БД при pre-start. `systemctl enable` обеспечивает старт после перезагрузки; перезагрузку проверьте отдельно на тестовом сервере. Graceful shutdown Go ждёт до 15 секунд, unit оставляет 20 секунд перед принудительной остановкой.
+
+`/health/live` должен быть 200. `/health/ready` пока обязан быть 503 с `business_api_not_migrated`, когда MariaDB подключена. `mariadb_not_connected`/`mariadb_unavailable` — не успешная проверка staging. Не используйте текущий `/health/ready=200` как условие запуска: такого ответа пока нет. Smoke проверяет текущий ограниченный контракт, а не снимает release gate.
+
+## 5. HTTPS через Nginx
+
+Создайте DNS A/при необходимости AAAA для двух собственных доменов, направленных на сервер. На **новом** сервере установите HTTP-шаблон [nginx-http.conf.example](../../deploy/nginx-http.conf.example) в `/etc/nginx/sites-available/itmap`, замените оба имени и включите сайт symlink в sites-enabled. Если default-site мешает, отключите только стандартный default на новом сервере, не чужой действующий сайт. Создайте `/var/www/letsencrypt`, проверьте `sudo nginx -t`, затем reload.
+
+Получите один SAN-сертификат для обоих доменов (заменить имена и email):
+
+```bash
+sudo certbot certonly --webroot -w /var/www/letsencrypt \
+  --cert-name app.example.org \
+  -d app.example.org -d app-dev.example.org \
+  --email <EMAIL_АДМИНИСТРАТОРА> --agree-tos
+```
+
+Замените HTTP-only конфигурацию на [nginx.conf.example](../../deploy/nginx.conf.example) с реальными именами/путями сертификата. Оба TLS-блока в примере используют этот SAN-сертификат. `sudo nginx -t` должен пройти перед reload. Для продления настройте deploy hook `systemctl reload nginx` в `/etc/letsencrypt/renewal-hooks/deploy/`, проверьте `sudo certbot renew --dry-run` и timer Certbot. Сам сертификат, ключ и env-файлы остаются вне Git.
+
+Proxy должен сохранять исходный `Host`, включая порт при нестандартном внешнем порте: `/auth` сравнивает Origin с Host. Не подменяйте Host на 127.0.0.1 и не включайте общий cache для HTML/API/auth. TLS завершается на Nginx, Go остаётся на HTTP loopback. Шаблон ограничивает тело 2 MiB для текущего ограниченного режима; будущий импорт/restore больших файлов потребует отдельной настройки и реализации API. Не обещайте его работу сейчас.
+
+## 6. Приёмка сервера
+
+Проверьте оба домена: HTTPS/цепочку сертификата, правильный контур, вход/неверный пароль/выход трёх нужных аккаунтов, cookie, глубокую ссылку, компании/вакансии/задачи и изоляцию данных. Не публикуйте HAR, cookies, скриншоты или ответы с личными данными. `bash scripts/staging-smoke.sh https://app-dev.example.org` выполняет read-only health-проверку; режим ITMAP_SMOKE_AUTH разрешён только loopback и **синтетическим CI**-учётным данным, не реальным паролям сервера.
+
+Настройте мониторинг процесса, liveness, свободного места, MariaDB, сроков TLS, ошибок 5xx и ротацию журналов. Резервные копии и восстановление проверяются отдельно; Go backup ещё не заменяет штатный защищённый DB backup. Не удаляйте старый релиз, пока не проверены новый запуск и путь отката.
