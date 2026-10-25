@@ -60,3 +60,26 @@ GO-054 обновляет статусы по доказательствам и 
 
 
 Уточнение конфигурации пользователя: две базы на одном MariaDB-сервере, общий DB_USER/DB_PASSWORD; два server env с разными DB_NAME. Выбор закреплён ADR-019 и в GO-057 документации. Это не меняет код workflow/Go и не включает реальный deploy. SESSION_SECRET/SSH/runtime учётные записи контуров раздельны.
+
+
+## История продолжения после объединения PR #14 пользователем
+
+PR #14 объединён пользователем в открытую родительскую ветку PR #13 (27d4da1); main пока 59dd75b. Последующее уточнение общей SQL-учётной записи 52e20b9 сохраняется отдельной GO-059/новым PR в открытую ветку #13. Тесты GO-058 (PR #15) направляются поверх этой новой doc-ветки, чтобы изменения не уходили в уже закрытый PR #14. Автоматического merge нет; код/root-server не меняются этим doc-этапом.
+
+
+| Актуальное продолжение | Ветка | База | PR | Проверки |
+| --- | --- | --- | --- | --- |
+| GO-059: общий SQL profile/two env | codex/GO-059-shared-db-config | codex/GO-056-release-receiver | [#16](https://github.com/meInteractive/it-map/pull/16) | e4f7ce9: [public CI](https://github.com/meInteractive/it-map/actions/runs/40197308011) и [MariaDB/API/browser/native](https://github.com/meInteractive/it-map/actions/runs/40197308055) успешны; docs-only |
+| GO-058: durable receipts | codex/GO-058-receipt-roundtrip | codex/GO-059-shared-db-config | [#15](https://github.com/meInteractive/it-map/pull/15) | ab38269: [public CI](https://github.com/meInteractive/it-map/actions/runs/40196634843) и [live receipt gate/API/browser/native](https://github.com/meInteractive/it-map/actions/runs/40196634823) успешны, ноль skips |
+
+Критический GO-058 завершён в узком sequential create/retry/error/delete/limit контракте. Live SQL выполнялся только на disposable CI; API/схема/реальный сервер не менялись. Конкурентность/mid-write fault/crash/CAS остаются отдельной незавершённой частью GO-031. На этой контрольной точке PR #13 ещё был открыт и содержал объединённый пользователем #14; следующий порядок review был #13 → #16 → #15. Ни один PR агент не объединял.
+
+
+Финальный повтор GO-058 после присоединения актуального parent registry/manifest: d5fa211 прошёл [Go/web/security](https://github.com/meInteractive/it-map/actions/runs/40197422949) и [MariaDB receipt/API/browser/native](https://github.com/meInteractive/it-map/actions/runs/40197422957). Открытые критерии — реальный SSH/systemd/TLS/сервер для GO-007 и concurrent/mid-write/CAS для GO-031; они не выдаются за завершённые.
+
+
+## Актуальная база GO-058 после merge родительских PR
+
+Пользователь объединил PR #13 (включая #14) и #16 в main; его проверенная при разрешении конфликта вершина — 1c426cd. Открытый PR #15 / codex/GO-058-receipt-roundtrip теперь направлен в main. Main присоединён обычным merge без rebase/force-push; конфликт касался только сохранённых выше записей журнала. Код receipt-теста, fixture guards и порядок CI не изменялись. SHA256SUMS пересчитан по итоговым файлам вместо выбора устаревшей стороны.
+
+Исходные результаты GO-058 и выбранная пользователем конфигурация (два DB_NAME, общий SQL-user/password, отдельные server env) сохранены. Следующие обязательные проверки должны пройти для нового merge-коммита PR #15. Сам PR агент не объединял, production/server/DB вне CI не менялись.
