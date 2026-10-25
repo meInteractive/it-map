@@ -1,6 +1,6 @@
 # Спринт 1.1 — функциональная миграция Go
 
-**Текущий активный спринт.** Релиз и переключение ещё не выполнены. `GO-001…GO-028` сохраняют исходную нумерацию работ `1.1.01…1.1.28`. `GO-029…GO-059` — выделенные узкие задачи, не подменяющие критерии крупных пунктов. Ни один коммит сам по себе не доказывает полную приёмку на MariaDB.
+**Текущий активный спринт.** Релиз и переключение ещё не выполнены. `GO-001…GO-028` сохраняют исходную нумерацию работ `1.1.01…1.1.28`. `GO-029…GO-060` — выделенные узкие задачи, не подменяющие критерии крупных пунктов. Ни один коммит сам по себе не доказывает полную приёмку на MariaDB.
 
 **Актуальный статус на 25.10.2026:** `[x]` — завершён именно указанный результат с доказательствами; `[ ]` — остаются критерии. Для больших GO-001…028 дополнительно отмечены проверенные части, чтобы не путать «код существует», «прошёл synthetic CI» и «принят внешний staging/релиз». Исторические v12–v21 ниже не являются текущим статусом: впоследствии прошли Go vet/race/tagged build, web, MariaDB schema/rollback/locking, авторизованный API и 14 browser-сценариев. [Актуальная контрольная точка](STACK.md), [инструкция запуска](../docs/deployment/README.md).
 
@@ -562,8 +562,8 @@
 - **Компоненты:** `internal/applications`.
 - **Критерии готовности:** Ни одного дубля при concurrent/retry/restart.
 - **Как проверить:** Go integration + controlled HTTP replay.
-- **Известные ограничения:** unit/SQL mock есть; MariaDB-чтение подтверждено, но write receipts/concurrency/restart ещё не проверены.
-- **Результат:** 4b105ab/e973776: unit/SQL mocks есть; read SQL проверен, но это не receipt write test. Concurrent/retry/deleted/generation/rollback на MariaDB ещё предстоит; GO-055 — независимый предварительный hash/normalization contract.
+- **Известные ограничения:** GO-058 подтвердил последовательный durable create/replay/error/delete/limit; конкурентность выделена в GO-060, mid-write faults/restart и update/CAS остаются открыты.
+- **Результат:** unit/SQL mocks, synthetic reads и GO-055 JS→Go hash подтверждены; GO-058 / PR #15 объединён пользователем в main `0c473e0`. Полная GO-031 не закрыта; controlled HTTP replay и восстановление требуют дальнейших порций.
 
 
 ### [ ] GO-032. Вакансии: завершить операции агентств
@@ -918,3 +918,13 @@
 - **Критерии:** два server env main.env/dev.env, одинаковые DB_HOST/PORT/USER/PASSWORD, разные DB_NAME; SessionSecret/SSH/runtime пользователи раздельны; SQL GRANT на обе базы для одного пользователя, без утверждения изоляции SQL-привилегий. Секреты пустые/вне Git, реальные настройки не применяются.
 - **Проверки:** env completeness, source/history/links/manifest, обязательный CI на точном SHA; без SQL/server действий.
 - **Результат:** codex/GO-059-shared-db-config, `e4f7ce9`, [PR #16](https://github.com/meInteractive/it-map/pull/16) в открытую ветку PR #13 после пользовательского merge #14. [Go/web/security](https://github.com/meInteractive/it-map/actions/runs/40197308011) и [MariaDB/API/browser/native](https://github.com/meInteractive/it-map/actions/runs/40197308055) прошли. PR #15 / GO-058 направлен поверх этой конфигурации; итоговый [CI d5fa211](https://github.com/meInteractive/it-map/actions/runs/40197422957) также успешен. Реальный SQL/server не изменялся.
+
+### [ ] GO-060. Конкурентное создание откликов на MariaDB (часть GO-031/GO-013)
+
+- **Приоритет:** Критический.
+- **Зависимости:** GO-055/058, объединённые в main 0c473e0; synthetic CI/DSN/target/generation guards. Свободный номер проверен по реестру и открытым PR.
+- **Границы:** только конкурирующие обычные CreateWithReceipt; без изменения API/схемы, shortcut/update/delete races, mid-write faults, crash/restart или CAS.
+- **Компоненты:** application_concurrency_integration_test.go, общий test-only receipt fixture, обязательный receiptwrites gate после readonly business suite.
+- **Критерии:** два разных физических соединения одновременно достигли generation FOR UPDATE при удерживаемой третьей транзакцией блокировке; одинаковый ключ даёт один create/один replay с общим ID; разные intent/одна vacancy/десятый слот дают одного победителя и точную доменную ошибку проигравшего. Число applications/receipts/history, отсутствие incomplete receipts и replay победителя проверяются SQL. Cleanup возвращает Demo=0, полностью сохраняет Eugene/history/generation.
+- **Проверки:** vet/race/обе сборки/tagged tests, четыре fail-closed guard сценария без SQL, source/history/schema/fixture/JS-oracle/actionlint/manifest; затем обязательный disposable MariaDB/все прежние API/browser/native smoke на точном SHA. Локальная БД не запускается.
+- **Результат:** реализация в codex/GO-060-receipt-concurrency от main 0c473e0; локально прошли vet (обычный/tagged), race, обе сборки, tagged suite (live SQL явно пропущен без DSN), module verify/tidy-diff, source/history/schema/fixture/JS-oracle/actionlint и frontend build. Все четыре negative guards подтвердили failure до соединения с нулём skips. До live CI задача открыта.
