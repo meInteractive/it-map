@@ -77,4 +77,6 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci --no-audit --no-fund
+      - name: Verify synthetic creation contract against unchanged legacy JS
+        run: node scripts/check-creation-contract.mjs
       - run: npm run build:web

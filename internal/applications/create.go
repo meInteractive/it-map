@@ -56,7 +56,7 @@ type CreationResult struct {
 }
 
 func (in CreateInput) normalize() (CreateInput, error) {
-	in.CompanyName = strings.TrimSpace(in.CompanyName)
+	in.CompanyName = trimLegacyText(in.CompanyName)
 	if in.CompanyName == "" || !uuidV4.MatchString(in.IdempotencyKey) {
 		return in, ErrInvalidInput
 	}
