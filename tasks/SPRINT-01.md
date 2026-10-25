@@ -1,6 +1,6 @@
 # Спринт 1.1 — функциональная миграция Go
 
-**Текущий активный спринт.** Релиз и переключение ещё не выполнены. `GO-001…GO-028` сохраняют исходную нумерацию работ `1.1.01…1.1.28`. `GO-029…GO-062` — выделенные узкие задачи, не подменяющие критерии крупных пунктов. Ни один коммит сам по себе не доказывает полную приёмку на MariaDB.
+**Текущий активный спринт.** Релиз и переключение ещё не выполнены. `GO-001…GO-028` сохраняют исходную нумерацию работ `1.1.01…1.1.28`. `GO-029…GO-063` — выделенные узкие задачи, не подменяющие критерии крупных пунктов. Ни один коммит сам по себе не доказывает полную приёмку на MariaDB.
 
 **Актуальный статус на 25.10.2026:** `[x]` — завершён именно указанный результат с доказательствами; `[ ]` — остаются критерии. Для больших GO-001…028 дополнительно отмечены проверенные части, чтобы не путать «код существует», «прошёл synthetic CI» и «принят внешний staging/релиз». Исторические v12–v21 ниже не являются текущим статусом: впоследствии прошли Go vet/race/tagged build, web, MariaDB schema/rollback/locking, авторизованный API и 14 browser-сценариев. [Актуальная контрольная точка](STACK.md), [инструкция запуска](../docs/deployment/README.md).
 
@@ -941,7 +941,7 @@
 - **Результат:** реализация в codex/GO-061-receipt-fault-recovery; локально прошли обычный/tagged vet, tagged race suite (live SQL явно пропущен без DSN), обе сборки, Go 1.23.12 storage compile/tests, source/history/schema/fixture/actionlint и четыре отрицательных guards до соединения без skips. [PR #19](https://github.com/meInteractive/it-map/pull/19), код `62b8b46`: [Go/web/security](https://github.com/meInteractive/it-map/actions/runs/40237125022) и [MariaDB faults/receipt/concurrency/API/14 browser/native](https://github.com/meInteractive/it-map/actions/runs/40237125124) успешны; три именованных SQL targets реально прошли без skips. Полная GO-031 остаётся открытой.
 
 
-### [ ] GO-062. Kill/restart писателя отклика на границе commit (часть GO-031/GO-013)
+### [x] GO-062. Kill/restart писателя отклика на границе commit (часть GO-031/GO-013)
 
 - **Приоритет:** Критический.
 - **Зависимости:** GO-058/060/061; ветка от проверенного CI 62b8b46. Внешний сервер и реальные БД не нужны.
@@ -949,4 +949,14 @@
 - **Компоненты:** application_crash_integration_test.go, общий неизменный synthetic intent, четвёртый обязательный pass/no-skip target.
 - **Критерии:** parent получает commit barrier от живого worker, Process.Kill действительно завершает процесс до deadline, SQL видит ноль строк до commit либо один комплект после него. Второй новый Go-процесс повторяет исходные key/context/body: fresh после rollback, replay исходного durable ID после commit; затем ещё один replay, поля/единственная история/cleanup проверяются parent SQL.
 - **Проверки:** Go 1.23 compile/tagged vet/race/сборки, четыре fail-closed guards, source/history/schema/fixtures/actionlint/manifest; реальный subprocess/MariaDB только в CI, после него прежние API/14 browser/native smoke.
-- **Результат:** реализация в codex/GO-062-receipt-process-crash поверх GO-061 / PR #19. Локально прошли обычный/tagged vet, tagged race suite (live SQL без DSN явно пропущен), обе сборки, Go 1.23.12 compile/tests, source/history/schema/fixtures/actionlint и четыре negative guards до соединения с нулём skips. До live CI остаётся открытой.
+- **Результат:** реализация в codex/GO-062-receipt-process-crash поверх GO-061 / PR #19. Локально прошли обычный/tagged vet, tagged race suite (live SQL без DSN явно пропущен), обе сборки, Go 1.23.12 compile/tests, source/history/schema/fixtures/actionlint и четыре negative guards до соединения с нулём skips. [PR #20](https://github.com/meInteractive/it-map/pull/20), код `96f13a0`: [Go/web/security](https://github.com/meInteractive/it-map/actions/runs/40237455813) и [MariaDB kill/restart/receipts/concurrency/faults/API/14 browser/native](https://github.com/meInteractive/it-map/actions/runs/40237455777) успешны, четыре SQL targets реально прошли без skips. Полный GO-031 остаётся открытым.
+
+
+### [ ] GO-063. Revision/CAS и атомарная история отклика на MariaDB (часть GO-031/GO-013)
+
+- **Приоритет:** Критический.
+- **Зависимости:** GO-060/061/062, проверенный 96f13a0; test-only row barrier и real-driver fault injection используются повторно.
+- **Границы:** обновления одного личного отклика без изменения vacancy; без смешанных create/update/delete/vacancy races, новых API/схемы или HTTP replay.
+- **Критерии:** два физических SQL writer одновременно достигли application FOR UPDATE, из одной revision сохраняется только один winner, другой получает ErrConflict без ложной history. Stale retries не меняют snapshot/history. На замороженном только в одной сессии времени content меняет revision в ту же секунду, no-op update успешен с clientFoundRows и не добавляет history. Comment-only update меняет revision без status history; чужой пользователь получает ErrNotFound. Ошибка перед history после реального UPDATE откатывает поля/revision/history; исходная revision затем пригодна для успешного retry.
+- **Проверки:** tagged vet/race/обе сборки/Go 1.23, guards/source/history/schema/fixtures/actionlint/manifest, обязательный пятый SQL target с pass/no-skip в disposable CI и все прежние API/14 browser/native gates.
+- **Результат:** реализация в codex/GO-063-application-cas от проверенного GO-062 / PR #20. Локально прошли обычный/tagged vet, tagged race suite (live SQL без DSN явно пропущен), обе сборки, Go 1.23.12 storage, source/history/schema/fixture/actionlint и четыре negative guards до соединения без skips. До live SQL CI задача открыта.

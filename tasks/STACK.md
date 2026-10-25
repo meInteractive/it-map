@@ -97,3 +97,6 @@ GO-061 / codex/GO-061-receipt-fault-recovery начинается от 8978512 (
 
 
 GO-061 / [PR #19](https://github.com/meInteractive/it-map/pull/19) в main: `62b8b46` прошёл [Go/web/security](https://github.com/meInteractive/it-map/actions/runs/40237125022) и [MariaDB faults/receipts/concurrency/API/14 browser/native](https://github.com/meInteractive/it-map/actions/runs/40237125124), ноль skips. GO-062 / codex/GO-062-receipt-process-crash начинается от этого проверенного SHA; на старте #19 открыт, база нового stacked PR — ветка GO-061. Порция проверяет реальный kill/restart отдельного Go writer перед/после commit. Server crash/неопределённый COMMIT/CAS/HTTP replay остаются открытыми критериями GO-031.
+
+
+GO-062 / [PR #20](https://github.com/meInteractive/it-map/pull/20) поверх #19: `96f13a0` прошёл [Go/web/security](https://github.com/meInteractive/it-map/actions/runs/40237455813) и [MariaDB kill/restart/API/14 browser/native](https://github.com/meInteractive/it-map/actions/runs/40237455777); все четыре receipt targets реально выполнены без skips. GO-063 / codex/GO-063-application-cas начинается от этого проверенного SHA и направляется поверх открытого #20. Узкий результат — revision/CAS одного application, same-second/no-op, атомарный rollback истории; GO-031 остаётся открыт для смешанных операций/controlled HTTP replay.
