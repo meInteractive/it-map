@@ -2,7 +2,7 @@
 
 **Текущий активный спринт.** Релиз и переключение ещё не выполнены. `GO-001…GO-028` сохраняют исходную нумерацию работ `1.1.01…1.1.28`. `GO-029…GO-063` — выделенные узкие задачи, не подменяющие критерии крупных пунктов. Ни один коммит сам по себе не доказывает полную приёмку на MariaDB.
 
-**Актуальный статус на 25.10.2026:** `[x]` — завершён именно указанный результат с доказательствами; `[ ]` — остаются критерии. Для больших GO-001…028 дополнительно отмечены проверенные части, чтобы не путать «код существует», «прошёл synthetic CI» и «принят внешний staging/релиз». Исторические v12–v21 ниже не являются текущим статусом: впоследствии прошли Go vet/race/tagged build, web, MariaDB schema/rollback/locking, авторизованный API и 14 browser-сценариев. [Актуальная контрольная точка](STACK.md), [инструкция запуска](../docs/deployment/README.md).
+**Актуальный статус на 26.10.2026:** `[x]` — завершён именно указанный результат с доказательствами; `[ ]` — остаются критерии. Для больших GO-001…028 дополнительно отмечены проверенные части, чтобы не путать «код существует», «прошёл synthetic CI» и «принят внешний staging/релиз». Исторические v12–v21 ниже не являются текущим статусом: впоследствии прошли Go vet/race/tagged build, web, MariaDB schema/rollback/locking, авторизованный API и 14 browser-сценариев. [Актуальная контрольная точка](STACK.md), [инструкция запуска](../docs/deployment/README.md).
 
 **Приоритет пользователя от 25.10.2026 — заменяет порядок от 24.10:**
 
@@ -248,7 +248,7 @@
 ### [ ] GO-013. Отклики, idempotency и история
 
 - **Приоритет:** Критический.
-- **Критическая часть:** [x] Синтетическое чтение/join/history/user isolation проверены. [x] JS→Go нормализация/хеш (GO-055, PR #12). [ ] Receipts retry/conflict/deleted/generation, 10-limit, CAS/rollback/concurrent SQL (GO-031).
+- **Критическая часть:** [x] Синтетическое чтение/join/history/user isolation проверены. [x] JS→Go нормализация/хеш (GO-055, PR #12). [x] Sequential receipts/10-limit (GO-058), concurrent create (GO-060), mid-write rollback/fresh connection (GO-061), writer kill/restart (GO-062), single-record revision/CAS/history (GO-063). [ ] Controlled HTTP write/replay, shortcut и смешанные create/update/delete/vacancy SQL-сценарии (GO-031).
 - **Средняя часть:** [ ] Функциональный UI create/edit/delete/shortcut после SQL gates.
 - **Низкая часть:** [ ] Косметика форм/истории/анимаций отклика.
 
@@ -260,7 +260,7 @@
 - **Критерии готовности:** До 10 откликов; version/CAS и повторный запрос/сбой без дублей на MariaDB.
 - **Как проверить:** go race/unit, real MariaDB, browser/HTTP round trip.
 - **Известные ограничения:** Go-код реализован, staging с настоящей БД не подтверждён.
-- **Результат:** 4b105ab/62c7d1d/e973776/89add93: unit/SQL mocks есть; read/history/isolation подтверждены synthetic PR #1/#9. Durable receipts/CAS/concurrent write SQL ещё не приняты; следующий GO-055 проверяет JS→Go canonical intent.
+- **Результат:** unit/SQL mocks и synthetic reads подтверждены; GO-055 / #12 — нормализация/hash. GO-058 / #15, GO-060 / #18, GO-061 / #19, GO-062 / #20, GO-063 / #21 подтвердили узкие реальные MariaDB write/receipt/concurrency/rollback/restart/CAS части. Полная GO-013 остаётся открытой: контролируемый HTTP write/replay, shortcut/смешанные операции и функциональный UI round-trip ещё не приняты.
 
 
 ### [ ] GO-014. Задачи, каналы и контакты
@@ -562,8 +562,8 @@
 - **Компоненты:** `internal/applications`.
 - **Критерии готовности:** Ни одного дубля при concurrent/retry/restart.
 - **Как проверить:** Go integration + controlled HTTP replay.
-- **Известные ограничения:** GO-058 подтвердил последовательный durable create/replay/error/delete/limit; конкурентность выделена в GO-060, mid-write faults/restart и update/CAS остаются открыты.
-- **Результат:** unit/SQL mocks, synthetic reads и GO-055 JS→Go hash подтверждены; GO-058 / PR #15 объединён пользователем в main `0c473e0`. Полная GO-031 не закрыта; controlled HTTP replay и восстановление требуют дальнейших порций.
+- **Известные ограничения:** GO-058 подтвердил sequential receipts, GO-060 — concurrent ordinary create, GO-061 — mid-write rollback/fresh connection, GO-062 — kill/restart writer, GO-063 — same-record revision/CAS/history. Controlled HTTP replay, shortcut и смешанные операции/смена vacancy не покрыты этими узкими gates; авария MariaDB/хоста и неизвестный сетевой COMMIT не моделировались.
+- **Результат:** GO-058 / #15 и GO-060 / #18 объединены пользователем в main; следующие GO-061 / #19 → GO-062 / #20 → GO-063 / #21 подтверждены обязательными CI на точных code SHA. Пять именованных write targets выполняются без skips после readonly suite и до API/14 browser/native smoke. Полная GO-031 остаётся открытой; следующий небольшой результат — авторизованный controlled HTTP create/replay/error/delete на disposable CI с writable Go dependency и сохранением readonly smoke.
 
 
 ### [ ] GO-032. Вакансии: завершить операции агентств
@@ -952,11 +952,11 @@
 - **Результат:** реализация в codex/GO-062-receipt-process-crash поверх GO-061 / PR #19. Локально прошли обычный/tagged vet, tagged race suite (live SQL без DSN явно пропущен), обе сборки, Go 1.23.12 compile/tests, source/history/schema/fixtures/actionlint и четыре negative guards до соединения с нулём skips. [PR #20](https://github.com/meInteractive/it-map/pull/20), код `96f13a0`: [Go/web/security](https://github.com/meInteractive/it-map/actions/runs/40237455813) и [MariaDB kill/restart/receipts/concurrency/faults/API/14 browser/native](https://github.com/meInteractive/it-map/actions/runs/40237455777) успешны, четыре SQL targets реально прошли без skips. Полный GO-031 остаётся открытым.
 
 
-### [ ] GO-063. Revision/CAS и атомарная история отклика на MariaDB (часть GO-031/GO-013)
+### [x] GO-063. Revision/CAS и атомарная история отклика на MariaDB (часть GO-031/GO-013)
 
 - **Приоритет:** Критический.
 - **Зависимости:** GO-060/061/062, проверенный 96f13a0; test-only row barrier и real-driver fault injection используются повторно.
 - **Границы:** обновления одного личного отклика без изменения vacancy; без смешанных create/update/delete/vacancy races, новых API/схемы или HTTP replay.
 - **Критерии:** два физических SQL writer одновременно достигли application FOR UPDATE, из одной revision сохраняется только один winner, другой получает ErrConflict без ложной history. Stale retries не меняют snapshot/history. На замороженном только в одной сессии времени content меняет revision в ту же секунду, no-op update успешен с clientFoundRows и не добавляет history. Comment-only update меняет revision без status history; чужой пользователь получает ErrNotFound. Ошибка перед history после реального UPDATE откатывает поля/revision/history; исходная revision затем пригодна для успешного retry.
 - **Проверки:** tagged vet/race/обе сборки/Go 1.23, guards/source/history/schema/fixtures/actionlint/manifest, обязательный пятый SQL target с pass/no-skip в disposable CI и все прежние API/14 browser/native gates.
-- **Результат:** реализация в codex/GO-063-application-cas от проверенного GO-062 / PR #20. Локально прошли обычный/tagged vet, tagged race suite (live SQL без DSN явно пропущен), обе сборки, Go 1.23.12 storage, source/history/schema/fixture/actionlint и четыре negative guards до соединения без skips. До live SQL CI задача открыта.
+- **Результат:** реализация в codex/GO-063-application-cas от проверенного GO-062 / PR #20. Локально прошли обычный/tagged vet, tagged race suite (live SQL без DSN явно пропущен), обе сборки, Go 1.23.12 storage, source/history/schema/fixture/actionlint и четыре negative guards до соединения без skips. [PR #21](https://github.com/meInteractive/it-map/pull/21), код `36b0133`: [Go/web/security](https://github.com/meInteractive/it-map/actions/runs/40237800951) и [MariaDB CAS/receipts/concurrency/faults/kill-restart/API/14 browser/native](https://github.com/meInteractive/it-map/actions/runs/40237800814) успешны; пять именованных targets реально выполнились без skips. Узкий GO-063 завершён, полная GO-031 открыта.

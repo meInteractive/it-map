@@ -100,3 +100,17 @@ GO-061 / [PR #19](https://github.com/meInteractive/it-map/pull/19) в main: `62b
 
 
 GO-062 / [PR #20](https://github.com/meInteractive/it-map/pull/20) поверх #19: `96f13a0` прошёл [Go/web/security](https://github.com/meInteractive/it-map/actions/runs/40237455813) и [MariaDB kill/restart/API/14 browser/native](https://github.com/meInteractive/it-map/actions/runs/40237455777); все четыре receipt targets реально выполнены без skips. GO-063 / codex/GO-063-application-cas начинается от этого проверенного SHA и направляется поверх открытого #20. Узкий результат — revision/CAS одного application, same-second/no-op, атомарный rollback истории; GO-031 остаётся открыт для смешанных операций/controlled HTTP replay.
+
+
+## Проверенный стек после GO-060…063, 26.10.2026
+
+| Задача | Ветка | База / PR | Проверенный code SHA | Обязательные CI |
+| --- | --- | --- | --- | --- |
+| GO-060 concurrent create | codex/GO-060-receipt-concurrency | main / #18, объединён пользователем как 20f9fc1 | 660c3d1 | [public](https://github.com/meInteractive/it-map/actions/runs/40236682531), [MariaDB/API/browser/native](https://github.com/meInteractive/it-map/actions/runs/40236682675) |
+| GO-061 mid-write rollback/fresh connection | codex/GO-061-receipt-fault-recovery | main / #19 | 62b8b46 | [public](https://github.com/meInteractive/it-map/actions/runs/40237125022), [MariaDB/API/browser/native](https://github.com/meInteractive/it-map/actions/runs/40237125124) |
+| GO-062 writer kill/restart | codex/GO-062-receipt-process-crash | GO-061 / #20 | 96f13a0 | [public](https://github.com/meInteractive/it-map/actions/runs/40237455813), [MariaDB/API/browser/native](https://github.com/meInteractive/it-map/actions/runs/40237455777) |
+| GO-063 single-record revision/CAS/history | codex/GO-063-application-cas | GO-062 / #21 | 36b0133 | [public](https://github.com/meInteractive/it-map/actions/runs/40237800951), [MariaDB/API/browser/native](https://github.com/meInteractive/it-map/actions/runs/40237800814) |
+
+Все указанные code SHA прошли соответствующие обязательные CI. Пять receiptwrites targets теперь реально выполняются без skips; cleanup сохраняет прежний readonly API/14 browser/native smoke. Локально live SQL явно пропускался без DSN, а четыре negative guards отказали до соединения. Go 1.23.12 compile/tagged tests, Go 1.27.3 vet/race/сборки, source/history/schema/fixtures/actionlint/manifest проверены; frontend build выполнен на GO-060, последующие изменения только test-only Go/workflow/docs. Build artifact вынесен в work перед source gate; generated dist в Git не добавлялся.
+
+Реальный сервер/SSH/systemd/TLS/согласованный снимок по-прежнему не подключены. Полные GO-005/007/013/031 остаются открыты. Следующая разрешённая узкая часть GO-031 — controlled authenticated HTTP create/replay/error/delete поверх disposable MariaDB, с отдельной фазой записи и восстановлением readonly fixtures; затем shortcut/смешанные операции и GO-032 по зависимостям. Новый номер выбирать после проверки актуального реестра/GitHub. Агент не выполнял merge PR, прямой push main/master, включение публикации, production/GPT Sites/D1 или реальную SQL-операцию вне CI.
