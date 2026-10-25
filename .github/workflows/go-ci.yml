@@ -1,5 +1,6 @@
 name: Public source security and Go checks
 on:
+  workflow_call:
   push:
     branches: [main]
   pull_request:
@@ -16,6 +17,8 @@ jobs:
           fetch-depth: 0
       - name: Check public files for prohibited data and token formats
         run: python3 scripts/check-public-repo.py
+      - name: Test isolated release receiver state, archives and rollback
+        run: python3 -m unittest discover -s deploy/tests -v
       - name: Audit full reachable Git history without exposing values
         run: |
           python3 scripts/test_git_history.py
@@ -38,6 +41,8 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+      - name: Validate all workflow syntax and reusable calls
+        run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 -shellcheck= -pyflakes=
       - name: Go vet
         run: go vet ./...
       - name: Go tests
