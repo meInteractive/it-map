@@ -33,3 +33,12 @@
 Общий test-only fixture требует пустого Demo, очищает только его company/key namespace 9000, проверяет отсутствие любых остатков Demo и полную неизменность Eugene/history/generation. Исходный GO-058 с namespace 8000 и все прежние empty-schema/read/API/14 browser/native gates сохраняются. API, SQL-схема, зависимости и legacy не меняются. Смешанные create/update/delete races, one-click shortcut, mid-write error/crash/restart и CAS не покрыты этим результатом и не закрывают GO-031.
 
 Подтверждение GO-060: [PR #18](https://github.com/meInteractive/it-map/pull/18), код `660c3d1`, [обязательный SQL/API/browser/native CI](https://github.com/meInteractive/it-map/actions/runs/40236682675) и [Go/web/security](https://github.com/meInteractive/it-map/actions/runs/40236682531) успешны. Все четыре concurrent сценария реально выполнены; локальный skip без DSN не использован как доказательство SQL.
+
+
+## GO-061: ошибка внутри записи и post-commit read failure
+
+TestMariaDBApplicationFaultsDisposable использует test-only Connector/Conn/Stmt/Tx обёртку настоящего mysql driver v1.9.3. Бизнес-SQL, параметризованные statement, INSERT, COMMIT и ROLLBACK выполняются MariaDB; одно искусственное клиентское исключение вставляется перед history, перед receipt или при первом generation read после успешного commit. Никаких production hooks, DDL/новых grants, отключения прежних gates или fake SQL engine. До открытия обёртки обязательны прежние CI/parsed target/current-generation guards.
+
+Счётчики успешно выполненных реальных INSERT и commit подтверждают точку сбоя; тест требует именно вооружённую sentinel-ошибку. Независимое соединение проверяет ноль application/history/receipt после mid-write rollback либо ровно один комплект после потерянного ответа. Весь interrupted pool закрывается; новый repository/pool повторяет исходный key/context/body. После rollback это fresh create, после commit — replay исходного durable ID. Следующие replay/changed-intent, поля и единственная история сохраняются; общий cleanup полностью восстанавливает readonly-фикстуры.
+
+Это проверка отката реальной транзакции при клиентской ошибке и восстановления по durable receipt на новом соединении. Она **не** доказывает аварийное завершение процесса/сервера, сетевой COMMIT с неизвестным исходом, полный restore или update/CAS. Полная GO-031 остаётся открытой. CI требует фактический pass третьего target без skips вместе с GO-058/060 перед прежними API/14 browser/native smoke.
