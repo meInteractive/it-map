@@ -119,6 +119,14 @@ def health(url):
         with response:
             if response.code != code or json.loads(response.read(4096)) != expected:
                 raise Rejected('health_failed')
+    try:
+        response = opener.open(url + '/', timeout=2)
+    except urllib.error.HTTPError as error:
+        response = error
+    with response:
+        if (response.code != 200 or not response.headers.get('Content-Type', '').startswith('text/html')
+                or b'id="root"' not in response.read(8192)):
+            raise Rejected('spa_unavailable')
 
 
 class Receiver:
@@ -297,7 +305,7 @@ class Receiver:
                 raise Rejected('current_is_not_symlink')
             return None
         value = os.readlink(path)
-        if not re.fullmatch(r'releases/[1-9][0-9]*-[0-9a-f]{40}', value) or not (self.root / value).is_dir():
+        if not re.fullmatch(r'releases/(?:[1-9][0-9]*-)?[0-9a-f]{40}', value) or not (self.root / value).is_dir():
             raise Rejected('invalid_current')
         return value
 
@@ -344,7 +352,8 @@ class Receiver:
                 return state
             release = self.root / 'releases' / pending['release']
             archive = self.state_dir / pending['archive']
-            old = state.get('previous') if state['result'] == 'applying' else self.current()
+            recovering = state['result'] == 'applying'
+            old = state.get('previous') if recovering else self.current()
             # Persist the rollback point BEFORE changing the symlink; retry after
             # a crash never mistakes an interrupted new release for previous.
             state.update(result='applying', previous=old)
@@ -363,8 +372,8 @@ class Receiver:
                     finally:
                         if temp.exists():
                             shutil.rmtree(temp)
-                self.switch('releases/' + release.name)
                 switched = True
+                self.switch('releases/' + release.name)
                 self.service.restart()
                 self.wait_health()
                 state.update(result='success', current={'identity': pending['identity'],
@@ -372,11 +381,11 @@ class Receiver:
             except Exception:
                 # Never print subprocess output, raw input or arbitrary errors.
                 try:
-                    if old:
+                    if old and (switched or recovering):
                         self.switch(old)
                         self.service.restart()
                         self.wait_health()
-                    elif switched or state['result'] == 'applying':
+                    elif not old and (switched or recovering):
                         self.service.stop()
                         (self.root / 'current').unlink(missing_ok=True)
                         fsync_dir(self.root)

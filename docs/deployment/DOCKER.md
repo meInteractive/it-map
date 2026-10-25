@@ -1,6 +1,6 @@
 # Запуск с Docker на Linux
 
-Основной вариант — [systemd без Docker](SERVER.md). Docker здесь упаковывает Go и React; он не включает отсутствующие функции и не снимает запрет production. Kubernetes и Compose не требуются.
+Основной вариант — [systemd без Docker](SERVER.md). Реализованный publish.yml публикует native-релизы; контейнерный вариант в этом документе пока ручной, без автоматического переключения Docker из Actions. Docker здесь упаковывает Go и React; он не включает отсутствующие функции и не снимает запрет production. Kubernetes и Compose не требуются.
 
 ## Ограничение сети текущего Go
 

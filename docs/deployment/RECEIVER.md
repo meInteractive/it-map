@@ -7,7 +7,8 @@
 Сначала выполнить подготовку из SERVER.md: MariaDB/schema, runtime-пользователи, `/etc/itmap/{main,dev}.env`, systemd template и HTTPS. Не запускать эти команды на чужой/production инфраструктуре без разрешения. Бинарник/SPA будет доставлять последующий workflow GO-057. На **новом** сервере:
 
 ```bash
-sudo install -d -o root -g root -m 0755 /usr/local/libexec /opt/itmap/main/releases /opt/itmap/dev/releases
+sudo install -d -o root -g root -m 0755 /usr/local/libexec /opt/itmap /opt/itmap/main /opt/itmap/dev /var/lib/itmap-deploy
+sudo install -d -o root -g root -m 0755 /opt/itmap/main/releases /opt/itmap/dev/releases
 sudo install -d -o root -g root -m 0700 /var/lib/itmap-deploy/main /var/lib/itmap-deploy/dev
 sudo install -o root -g root -m 0755 deploy/receive_release.py /usr/local/libexec/itmap-receive.py
 ```
@@ -44,9 +45,9 @@ Upload передаёт ту же identity плюс size/digest SHA-256; пос�
 
 ## Переключение и восстановление
 
-Артефакт поступает в root-only `/var/lib/itmap-deploy/<slot>`. `systemd-run` запускает отдельный transient unit `itmap-release-<slot>-<sequence>.service`; он переживает закрытие SSH. Worker блокирует контур через flock, проверяет кандидата/digest/manifest/ELF, распаковывает в новый каталог и атомарно переключает current. `previous` сохраняется/fsync до переключения; после перезапуска прерванный apply не примет недопроверенную новую версию за предыдущую.
+Артефакт поступает в root-only `/var/lib/itmap-deploy/<slot>`. `systemd-run` запускает отдельный transient unit `itmap-release-<slot>-<sequence>.service`; он переживает закрытие SSH. Worker блокирует контур через flock, проверяет кандидата/digest/manifest/ELF, распаковывает в новый каталог и атомарно переключает current. При переходе с ручной инструкции допускается существующий root-owned current вида releases/<40-char-SHA>; новые релизы имеют releases/<sequence>-<SHA>. Невалидный архив до переключения не перезапускает здоровую службу. `previous` сохраняется/fsync до переключения; после перезапуска прерванный apply не примет недопроверенную новую версию за предыдущую.
 
-Перезапуск только `itmap@<slot>.service`, ожидание liveness 200 и readiness **503 с business_api_not_migrated**. Ошибки подключения MariaDB не считаются успешным staging. Внешний HTTPS/логин и полноценный SQL parity проверяются отдельно. Тест readiness не снимает production gate.
+Перезапуск только `itmap@<slot>.service`, ожидание liveness 200, readiness **503 с business_api_not_migrated** и HTML SPA 200. Неправильный WEB_DIST_DIR также провалит переключение. Ошибки подключения MariaDB не считаются успешным staging. Внешний HTTPS/логин и полноценный SQL parity проверяются отдельно. Тест readiness не снимает production gate.
 
 При ошибке восстанавливается previous current и перезапускается служба; при первой неудачной установке процесс останавливается. `failed_rolled_back` остаётся failed; `rollback_failed` требует оператора. Автоматического отката БД, удаления релизов или повторного импорта нет. Повтор успешной доставки immutable archive не делает второй restart.
 

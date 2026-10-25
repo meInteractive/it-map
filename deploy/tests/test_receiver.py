@@ -208,6 +208,7 @@ class ReceiverTests(unittest.TestCase):
         h, payload = archive(identity(20), wrong_manifest=True)
         self.receiver.upload(h, io.BytesIO(payload))
         self.assertEqual(self.receiver.apply()['result'], 'failed_rolled_back')
+        self.assertFalse(any(call[0] in ('restart', 'stop') for call in self.service.calls))
 
     def test_independent_processes_keep_newest_registration(self):
         ctx = multiprocessing.get_context('fork')
@@ -238,6 +239,17 @@ class ReceiverTests(unittest.TestCase):
         self.assertEqual(self.receiver.load(), before)
         self.assertEqual(self.service.calls.count(('restart',)), 1)
 
+    def test_existing_manual_sha_release_is_a_valid_rollback_point(self):
+        self.publish(identity(1))
+        previous = self.receiver.root / self.receiver.current()
+        manual = self.receiver.root / 'releases' / identity(1)['sha']
+        previous.rename(manual)
+        self.receiver.switch('releases/' + manual.name)
+        self.receiver.probe = lambda: (_ for _ in ()).throw(r.Rejected('bad')) if self.receiver.current().startswith('releases/2-') else None
+        with patch.object(r.time, 'sleep'):
+            self.assertEqual(self.publish(identity(2))['result'], 'failed_rolled_back')
+        self.assertEqual(self.receiver.current(), 'releases/' + manual.name)
+
     def test_corrupt_state_is_not_reset(self):
         self.receiver.state_file.write_text('{')
         with self.assertRaisesRegex(r.Rejected, 'state_unreadable'):
@@ -248,6 +260,12 @@ class ReceiverTests(unittest.TestCase):
         class Handler(BaseHTTPRequestHandler):
             mode = 'good'
             def do_GET(self):
+                if self.path == '/':
+                    self.send_response(503 if self.mode == 'spa' else 200)
+                    self.send_header('Content-Type', 'text/html')
+                    self.end_headers()
+                    self.wfile.write(b'<div id="root"></div>')
+                    return
                 status, body = (200, {'status': 'alive'}) if self.path.endswith('live') else (503, {'status': 'not_ready', 'reason': 'business_api_not_migrated'})
                 if self.mode == 'db' and self.path.endswith('ready'):
                     body['reason'] = 'mariadb_unavailable'
@@ -267,7 +285,7 @@ class ReceiverTests(unittest.TestCase):
         try:
             url = f'http://127.0.0.1:{server.server_port}'
             r.health(url)
-            for mode in ('db', 'redirect'):
+            for mode in ('db', 'redirect', 'spa'):
                 Handler.mode = mode
                 with self.assertRaises(r.Rejected):
                     r.health(url)

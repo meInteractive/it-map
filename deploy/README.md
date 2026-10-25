@@ -2,7 +2,7 @@
 
 Актуальная инструкция запуска на своём сервере: [docs/deployment/README.md](../docs/deployment/README.md). Там описаны Ubuntu 24.04, два изолированных main/dev-контура, обязательные переменные, systemd/Nginx/TLS, Docker и требования к автоматическому GitHub Actions деплою. Этот исторический runbook ниже сохраняет этапы подготовки; старые сообщения о недоступном CI уточняются последующими отчётами.
 
-Дополнительные шаблоны: `itmap@.service.example` (два native-процесса), `nginx-http.conf.example`/`nginx.conf.example` (ACME и HTTPS), `Dockerfile` (только сборка образа). Они не устанавливаются и не запускаются автоматически. CI Go/web/MariaDB/API/browser уже подтверждён на синтетических данных; внешний staging и согласованный снимок всё ещё требуют подготовки.
+Дополнительные шаблоны: `itmap@.service.example` (два native-процесса), `nginx-http.conf.example`/`nginx.conf.example` (ACME и HTTPS), `Dockerfile` (только сборка образа). Установка и включение native автоматики — [ACTIONS.md](../docs/deployment/ACTIONS.md) и [RECEIVER.md](../docs/deployment/RECEIVER.md); до ITMAP_DEPLOY_ENABLED=true и подготовки сервера публикация выключена. CI Go/web/MariaDB/API/browser уже подтверждён на синтетических данных; внешний staging и согласованный снимок всё ещё требуют подготовки.
 
 **Только тестовый контур. Не развёртывать на production и не импортировать реальные данные без отдельного разрешения.**
 
