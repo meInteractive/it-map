@@ -69,7 +69,10 @@ PR #14 объединён пользователем в открытую род�
 
 | Актуальное продолжение | Ветка | База | PR | Проверки |
 | --- | --- | --- | --- | --- |
-| GO-059: общий SQL profile/two env | codex/GO-059-shared-db-config | codex/GO-056-release-receiver | [#16](https://github.com/meInteractive/it-map/pull/16) | e4f7ce9; docs-only, mandatory CI |
+| GO-059: общий SQL profile/two env | codex/GO-059-shared-db-config | codex/GO-056-release-receiver | [#16](https://github.com/meInteractive/it-map/pull/16) | e4f7ce9: [public CI](https://github.com/meInteractive/it-map/actions/runs/40197308011) и [MariaDB/API/browser/native](https://github.com/meInteractive/it-map/actions/runs/40197308055) успешны; docs-only |
 | GO-058: durable receipts | codex/GO-058-receipt-roundtrip | codex/GO-059-shared-db-config | [#15](https://github.com/meInteractive/it-map/pull/15) | ab38269: [public CI](https://github.com/meInteractive/it-map/actions/runs/40196634843) и [live receipt gate/API/browser/native](https://github.com/meInteractive/it-map/actions/runs/40196634823) успешны, ноль skips |
 
 Критический GO-058 завершён в узком sequential create/retry/error/delete/limit контракте. Live SQL выполнялся только на disposable CI; API/схема/реальный сервер не менялись. Конкурентность/mid-write fault/crash/CAS остаются отдельной незавершённой частью GO-031. Root PR #13 открыт и содержит объединённый пользователем #14; новый порядок review — #13 → #16 → #15. Ни один PR агент не объединял.
+
+
+Финальный повтор GO-058 после присоединения актуального parent registry/manifest: d5fa211 прошёл [Go/web/security](https://github.com/meInteractive/it-map/actions/runs/40197422949) и [MariaDB receipt/API/browser/native](https://github.com/meInteractive/it-map/actions/runs/40197422957). Открытые критерии — реальный SSH/systemd/TLS/сервер для GO-007 и concurrent/mid-write/CAS для GO-031; они не выдаются за завершённые.

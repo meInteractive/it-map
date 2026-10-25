@@ -910,11 +910,11 @@
 - **Результат:** codex/GO-058-receipt-roundtrip, код `ab38269`, [PR #15](https://github.com/meInteractive/it-map/pull/15), актуальная база GO-059 / PR #16 после пользовательского merge #14. [Go/web/security](https://github.com/meInteractive/it-map/actions/runs/40196634843) и [реальный durable MariaDB receipt/API/browser/native smoke](https://github.com/meInteractive/it-map/actions/runs/40196634823) прошли, write gate с нулём skips; Demo после cleanup снова пуст. Четыре negative guard проверки завершились failure до соединения. Конфликты обновления registry/manifest при присоединении doc-ветки разрешены без изменения теста/API. Конкурентность/mid-write crash/CAS — оставшиеся отдельные критерии GO-031.
 
 
-### [ ] GO-059. Два server env с общей SQL-учётной записью (часть GO-004/GO-007)
+### [x] GO-059. Два server env с общей SQL-учётной записью (часть GO-004/GO-007)
 
 - **Приоритет:** Критический (корректная настройка выбранной публикации).
 - **Цель:** закрепить явный выбор пользователя: один MariaDB host/user/password, разные DB_NAME для main/dev.
 - **Компоненты:** .env.example, docs/deployment/*, ADR-019; Go/workflow используют прежние runtime-переменные одного процесса.
 - **Критерии:** два server env main.env/dev.env, одинаковые DB_HOST/PORT/USER/PASSWORD, разные DB_NAME; SessionSecret/SSH/runtime пользователи раздельны; SQL GRANT на обе базы для одного пользователя, без утверждения изоляции SQL-привилегий. Секреты пустые/вне Git, реальные настройки не применяются.
 - **Проверки:** env completeness, source/history/links/manifest, обязательный CI на точном SHA; без SQL/server действий.
-- **Результат:** codex/GO-059-shared-db-config содержит doc-уточнение после пользовательского merge PR #14 в открытый родительский PR #13. Отдельный PR в ветку #13; GO-058 будет направлен поверх этой конфигурации. Номера/CI после создания.
+- **Результат:** codex/GO-059-shared-db-config, `e4f7ce9`, [PR #16](https://github.com/meInteractive/it-map/pull/16) в открытую ветку PR #13 после пользовательского merge #14. [Go/web/security](https://github.com/meInteractive/it-map/actions/runs/40197308011) и [MariaDB/API/browser/native](https://github.com/meInteractive/it-map/actions/runs/40197308055) прошли. PR #15 / GO-058 направлен поверх этой конфигурации; итоговый [CI d5fa211](https://github.com/meInteractive/it-map/actions/runs/40197422957) также успешен. Реальный SQL/server не изменялся.
