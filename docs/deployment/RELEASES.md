@@ -42,23 +42,7 @@ GitHub Actions workflow на push берётся из соответствующ
 
 Все jobs используют один SHA и зафиксированные lockfile. Публикация зависит от **обоих** обязательных наборов, не только Go build. Проверять head_sha и заключение success, а не находить «какой-то зелёный» запуск ветки. Skipped/cancelled/timed_out/отсутствующий gate блокируют публикацию. Fork/внешний PR не получает deploy secrets. Сторонние Actions и container builders зафиксировать на проверенные версии/digest по принятой политике.
 
-Исторический упрощённый фрагмент ниже — не исполняемый workflow. Актуальный publish.yml намеренно не использует отмену общих jobs: сериализация и stale-guard находятся на сервере; delete routing вычисляется из payload.
-
-```yaml
-on:
-  push:
-    branches: ['**']
-  delete: {}
-permissions:
-  contents: read
-  actions: read
-# concurrency уменьшает число работ, но не заменяет серверную проверку кандидата.
-concurrency:
-  group: itmap-${{ github.ref_name == 'main' && 'main' || 'dev' }}
-  cancel-in-progress: true
-```
-
-Delete-событие нужно разбирать по payload ref/ref_type: github.ref_name в нём может указывать default branch; приведённую общую concurrency для delete необходимо заменить вычисленным slot либо обрабатывать удаление отдельным workflow. Не давать delete-событию случайно отменять main-публикацию. Для main желательно не прерывать уже начатое серверное переключение; отмена runner не завершает удалённый процесс безопасно. Основная защита — серверный приёмник и журнал состояния, а не флаг cancel-in-progress.
+Исполняемая реализация — `.github/workflows/publish.yml`. Текущий контроллер не отменяет runner посередине удалённого переключения: stale-guard и блокировка находятся на сервере, worker отделён через systemd. Delete routing берётся из payload, не из default github.ref_name. Внешние Acceptance gates описаны в ACTIONS.md.
 
 Если все push обрабатывает один неизменный workflow, его `run_number` можно использовать как последовательность **созданных этим контроллером запросов**, с отдельным пространством имён/version. Это не Git commit timestamp. При переименовании/пересоздании workflow, потере журнала или первичной регистрации нужен явный reset/инициализация оператором; не сравнивать номера разных workflow как универсальные GitHub push-времена. Повторный run сохраняет тот же выбор, новый run_attempt лишь обновляет результат того же запроса.
 
