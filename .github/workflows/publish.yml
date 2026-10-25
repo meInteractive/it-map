@@ -1,0 +1,138 @@
+name: Publish native main and latest dev
+on:
+  push:
+    branches: ['**']
+  delete:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  context:
+    if: vars.ITMAP_DEPLOY_ENABLED == 'true' && (github.event_name != 'delete' || github.event.ref_type == 'branch')
+    runs-on: ubuntu-24.04
+    outputs:
+      slot: ${{ steps.context.outputs.slot }}
+      operation: ${{ steps.context.outputs.operation }}
+      request: ${{ steps.context.outputs.request }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - id: context
+        run: python3 deploy/publish_release.py context
+
+  register:
+    needs: context
+    if: needs.context.outputs.operation == 'register'
+    runs-on: ubuntu-24.04
+    environment: itmap-${{ needs.context.outputs.slot }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Register push before waiting for CI
+        env:
+          REQUEST_JSON: ${{ needs.context.outputs.request }}
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+          DEPLOY_PORT: ${{ vars.DEPLOY_PORT }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: python3 deploy/publish_release.py register
+
+  checks:
+    needs: context
+    if: needs.context.outputs.operation == 'register'
+    uses: ./.github/workflows/go-ci.yml
+
+  mariadb:
+    needs: context
+    if: needs.context.outputs.operation == 'register'
+    uses: ./.github/workflows/mariadb-staging-ci.yml
+
+  package:
+    needs: [context, register, checks, mariadb]
+    runs-on: ubuntu-24.04
+    outputs:
+      artifact_name: ${{ steps.meta.outputs.name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: go mod download && go mod verify
+      - run: npm ci --no-audit --no-fund
+      - run: npm run build:web
+      - name: Build static MariaDB binary
+        env:
+          CGO_ENABLED: '0'
+          GOARCH: ${{ vars.ITMAP_GOARCH || 'amd64' }}
+        run: go build -mod=readonly -trimpath -tags mariadb -o '${{ runner.temp }}/itmap-release' ./cmd/itmap
+      - name: Package the exact checked commit
+        env:
+          REQUEST_JSON: ${{ needs.context.outputs.request }}
+        run: python3 deploy/publish_release.py package --binary '${{ runner.temp }}/itmap-release' --web dist/web --archive '${{ runner.temp }}/release.tar'
+      - id: meta
+        env:
+          ARTIFACT_NAME: release-${{ github.run_id }}-${{ github.run_attempt }}
+        run: echo "name=$ARTIFACT_NAME" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.meta.outputs.name }}
+          path: ${{ runner.temp }}/release.tar
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    needs: [context, register, checks, mariadb, package]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: itmap-${{ needs.context.outputs.slot }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.package.outputs.artifact_name }}
+          path: ${{ runner.temp }}/release
+      - name: Deliver and wait for server smoke or rollback
+        env:
+          REQUEST_JSON: ${{ needs.context.outputs.request }}
+          GH_TOKEN: ${{ github.token }}
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+          DEPLOY_PORT: ${{ vars.DEPLOY_PORT }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: python3 deploy/publish_release.py publish --archive '${{ runner.temp }}/release/release.tar'
+
+  invalidate:
+    needs: context
+    if: needs.context.outputs.operation == 'invalidate'
+    runs-on: ubuntu-24.04
+    environment: itmap-${{ needs.context.outputs.slot }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Record deleted branch without touching a different candidate
+        env:
+          REQUEST_JSON: ${{ needs.context.outputs.request }}
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+          DEPLOY_PORT: ${{ vars.DEPLOY_PORT }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: python3 deploy/publish_release.py invalidate

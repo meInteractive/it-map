@@ -7,7 +7,8 @@
 Сначала выполнить подготовку из SERVER.md: MariaDB/schema, runtime-пользователи, `/etc/itmap/{main,dev}.env`, systemd template и HTTPS. Не запускать эти команды на чужой/production инфраструктуре без разрешения. Бинарник/SPA будет доставлять последующий workflow GO-057. На **новом** сервере:
 
 ```bash
-sudo install -d -o root -g root -m 0755 /usr/local/libexec /opt/itmap/main/releases /opt/itmap/dev/releases
+sudo install -d -o root -g root -m 0755 /usr/local/libexec /opt/itmap /opt/itmap/main /opt/itmap/dev /var/lib/itmap-deploy
+sudo install -d -o root -g root -m 0755 /opt/itmap/main/releases /opt/itmap/dev/releases
 sudo install -d -o root -g root -m 0700 /var/lib/itmap-deploy/main /var/lib/itmap-deploy/dev
 sudo install -o root -g root -m 0755 deploy/receive_release.py /usr/local/libexec/itmap-receive.py
 ```

@@ -1,5 +1,6 @@
 name: Public source security and Go checks
 on:
+  workflow_call:
   push:
     branches: [main]
   pull_request:

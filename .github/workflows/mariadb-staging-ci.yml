@@ -1,5 +1,6 @@
 name: MariaDB isolated staging gate
 on:
+  workflow_call:
   pull_request:
     branches: [main, 'codex/**']
   workflow_dispatch:
@@ -113,7 +114,7 @@ jobs:
             if [[ "$package" != itmap/internal/storage ]]; then packages+=("$package"); fi
           done <<< "$all_packages"
           go test -tags mariadb "${packages[@]}" -count=1 -v
-          go build -tags mariadb -o /tmp/itmap-mariadb ./cmd/itmap
+          CGO_ENABLED=0 go build -trimpath -tags mariadb -o /tmp/itmap-mariadb ./cmd/itmap
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -160,6 +161,7 @@ jobs:
           done
           bash scripts/staging-smoke.sh http://127.0.0.1:18080
           npm run test:browser
+          python3 deploy/tests/native_smoke.py
       - name: Ensure dependency manifest remains tracked and unchanged
         shell: bash
         run: |

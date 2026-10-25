@@ -208,6 +208,7 @@ class ReceiverTests(unittest.TestCase):
         h, payload = archive(identity(20), wrong_manifest=True)
         self.receiver.upload(h, io.BytesIO(payload))
         self.assertEqual(self.receiver.apply()['result'], 'failed_rolled_back')
+        self.assertFalse(any(call[0] in ('restart', 'stop') for call in self.service.calls))
 
     def test_independent_processes_keep_newest_registration(self):
         ctx = multiprocessing.get_context('fork')

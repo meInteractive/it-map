@@ -881,14 +881,14 @@
 - **Результат:** codex/GO-055-creation-contract, код `a9d735c`, [PR #12](https://github.com/meInteractive/it-map/pull/12) от PR #11. 43 synthetic JS-oracle примера сначала выявили 12 расхождений Go: ECMAScript trim/whitespace, email и Number-safe ID. Исправление прошло [Go/web/security/JS oracle](https://github.com/meInteractive/it-map/actions/runs/40185165580) и [MariaDB/API/14 browser](https://github.com/meInteractive/it-map/actions/runs/40185165597). Новые зависимости, SQL/вёрстка/старый JS не менялись. Границы: [GO_CREATION_CONTRACT.md](../docs/GO_CREATION_CONTRACT.md). Узкая задача закрыта; GO-002/013/031 остаются открыты для остальных контрактов и live write.
 
 
-### [ ] GO-056. Native приёмник релизов и восстановление (часть GO-007)
+### [x] GO-056. Native приёмник релизов и восстановление (часть GO-007)
 
 - **Приоритет:** Критический; пользователь поставил автоматику публикации перед следующей бизнес-логикой.
 - **Зависимости:** GO-053, проверенный текущий стек; внешний сервер для реализации/изолированных тестов не нужен.
 - **Компоненты:** deploy/receive_release.py, deploy/tests, инструкция SSH/sudo/systemd.
 - **Критерии:** контур привязан forced command; durable ref/SHA/sequence, поздний/rerun/deleted запрос не оживляет старый кандидат; tar/digest/manifest/platform validation; detached worker; lock/symlink/restart/health/rollback; restart recovery; без SQL и изменений соседнего контура.
 - **Проверки:** реальные временные каталоги/межпроцессная блокировка, synthetic HTTP health, negative tar, откат/его отказ/прерывание; source/history/actionlint и mandatory CI. Реальный server/systemd/SSH ещё требует настройки.
-- **Результат:** codex/GO-056-release-receiver от проверенного GO-055 с присоединением актуального main 59dd75b; PR после проверок.
+- **Результат:** codex/GO-056-release-receiver, `40f2be5`, [PR #13](https://github.com/meInteractive/it-map/pull/13) в main. 16 изолированных тестов, [Go/web/security](https://github.com/meInteractive/it-map/actions/runs/40191405366) и [MariaDB/API/browser](https://github.com/meInteractive/it-map/actions/runs/40191405593) прошли. Внешняя инфраструктурная приёмка остаётся открытой.
 
 ### [ ] GO-057. Автоматическая публикация main/dev из Actions (часть GO-007)
 
@@ -897,4 +897,4 @@
 - **Компоненты:** publication workflow, reusable CI, packer/client, настройки GitHub Environments/SSH/receiver.
 - **Критерии:** register до тестов, publish после обоих успешных CI, один immutable SHA/artifact, отдельные main/dev Environments, выбор по порядку push workflow без commit timestamps, rerun/deletion/ошибки fail closed; по умолчанию публикация отключена до настройки оператора.
 - **Проверки:** packer/protocol/selection negatives, workflow actionlint и контроль структуры/gates, реальный synthetic CI. При наличии отдельно настроенного сервера — live SSH/systemd/TLS smoke, иначе явно указать блокировку подключения.
-- **Результат:** следующая ветка от GO-056; production/SQL/GPT Sites/D1 не меняются.
+- **Результат:** codex/GO-057-actions-publish от 40f2be5 / PR #13. Native push/delete/dispatch workflow, reusable CI, deterministic tar и строгий SSH client реализованы; 23 unit/protocol теста и actionlint прошли. Native real Go/MariaDB publish/failed-exec rollback добавлен в mandatory CI, локальная БД не создаётся. PR/точный CI после публикации; реальные server/SSH/systemd/TLS ещё не подключены. Production/SQL/GPT Sites/D1 не меняются.
