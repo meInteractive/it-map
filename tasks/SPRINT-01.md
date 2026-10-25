@@ -1,6 +1,6 @@
 # Спринт 1.1 — функциональная миграция Go
 
-**Текущий активный спринт.** Релиз и переключение ещё не выполнены. `GO-001…GO-028` сохраняют исходную нумерацию работ `1.1.01…1.1.28`. `GO-029…GO-061` — выделенные узкие задачи, не подменяющие критерии крупных пунктов. Ни один коммит сам по себе не доказывает полную приёмку на MariaDB.
+**Текущий активный спринт.** Релиз и переключение ещё не выполнены. `GO-001…GO-028` сохраняют исходную нумерацию работ `1.1.01…1.1.28`. `GO-029…GO-062` — выделенные узкие задачи, не подменяющие критерии крупных пунктов. Ни один коммит сам по себе не доказывает полную приёмку на MariaDB.
 
 **Актуальный статус на 25.10.2026:** `[x]` — завершён именно указанный результат с доказательствами; `[ ]` — остаются критерии. Для больших GO-001…028 дополнительно отмечены проверенные части, чтобы не путать «код существует», «прошёл synthetic CI» и «принят внешний staging/релиз». Исторические v12–v21 ниже не являются текущим статусом: впоследствии прошли Go vet/race/tagged build, web, MariaDB schema/rollback/locking, авторизованный API и 14 browser-сценариев. [Актуальная контрольная точка](STACK.md), [инструкция запуска](../docs/deployment/README.md).
 
@@ -930,7 +930,7 @@
 - **Результат:** реализация в codex/GO-060-receipt-concurrency от main 0c473e0; локально прошли vet (обычный/tagged), race, обе сборки, tagged suite (live SQL явно пропущен без DSN), module verify/tidy-diff, source/history/schema/fixture/JS-oracle/actionlint и frontend build. Все четыре negative guards подтвердили failure до соединения с нулём skips. [PR #18](https://github.com/meInteractive/it-map/pull/18), код `660c3d1`: [Go/web/security](https://github.com/meInteractive/it-map/actions/runs/40236682531) и [MariaDB concurrency/receipt/API/14 browser/native smoke](https://github.com/meInteractive/it-map/actions/runs/40236682675) прошли. Узкий GO-060 завершён; GO-031 открыт.
 
 
-### [ ] GO-061. Откат незавершённого create и повтор после потери ответа (часть GO-031/GO-013)
+### [x] GO-061. Откат незавершённого create и повтор после потери ответа (часть GO-031/GO-013)
 
 - **Приоритет:** Критический.
 - **Зависимости:** GO-058/060, обязательный CI кода 660c3d1; ветка от проверенной GO-060 с отдельным doc checkpoint 8978512.
@@ -938,4 +938,15 @@
 - **Компоненты:** test-only прозрачная обёртка реального pinned mysql driver, application_faults_integration_test.go и третий обязательный receiptwrites target.
 - **Критерии:** однократная ошибка точно в указанной точке не маскируется; подтверждены реальные предыдущие INSERT. До commit все applications/history/receipts откатываются, после commit сохраняется ровно один комплект. После закрытия всего interrupted pool новый repository/соединение повторяет тот же key/context/intent: fresh после rollback, replay с исходным ID после commit. Повтор/другой intent/поля/история и cleanup проверяются SQL.
 - **Проверки:** обычный/tagged vet, race, tagged tests/build/Go 1.23, fail-closed guards, source/history/schema/fixtures/actionlint/manifest; live SQL только в existing disposable CI, затем все прежние API/browser/native gates.
-- **Результат:** реализация в codex/GO-061-receipt-fault-recovery; локально прошли обычный/tagged vet, tagged race suite (live SQL явно пропущен без DSN), обе сборки, Go 1.23.12 storage compile/tests, source/history/schema/fixture/actionlint и четыре отрицательных guards до соединения без skips. До обязательного live CI остаётся открытой.
+- **Результат:** реализация в codex/GO-061-receipt-fault-recovery; локально прошли обычный/tagged vet, tagged race suite (live SQL явно пропущен без DSN), обе сборки, Go 1.23.12 storage compile/tests, source/history/schema/fixture/actionlint и четыре отрицательных guards до соединения без skips. [PR #19](https://github.com/meInteractive/it-map/pull/19), код `62b8b46`: [Go/web/security](https://github.com/meInteractive/it-map/actions/runs/40237125022) и [MariaDB faults/receipt/concurrency/API/14 browser/native](https://github.com/meInteractive/it-map/actions/runs/40237125124) успешны; три именованных SQL targets реально прошли без skips. Полная GO-031 остаётся открытой.
+
+
+### [ ] GO-062. Kill/restart писателя отклика на границе commit (часть GO-031/GO-013)
+
+- **Приоритет:** Критический.
+- **Зависимости:** GO-058/060/061; ветка от проверенного CI 62b8b46. Внешний сервер и реальные БД не нужны.
+- **Границы:** принудительно завершается только дочерний Go test writer, работающий с настоящим Repository/MariaDB в disposable CI. До commit после всех INSERT и после успешного commit до ответа. Не проверяются авария самой MariaDB/хоста, разрыв во время COMMIT с неизвестным исходом, HTTP replay или CAS.
+- **Компоненты:** application_crash_integration_test.go, общий неизменный synthetic intent, четвёртый обязательный pass/no-skip target.
+- **Критерии:** parent получает commit barrier от живого worker, Process.Kill действительно завершает процесс до deadline, SQL видит ноль строк до commit либо один комплект после него. Второй новый Go-процесс повторяет исходные key/context/body: fresh после rollback, replay исходного durable ID после commit; затем ещё один replay, поля/единственная история/cleanup проверяются parent SQL.
+- **Проверки:** Go 1.23 compile/tagged vet/race/сборки, четыре fail-closed guards, source/history/schema/fixtures/actionlint/manifest; реальный subprocess/MariaDB только в CI, после него прежние API/14 browser/native smoke.
+- **Результат:** реализация в codex/GO-062-receipt-process-crash поверх GO-061 / PR #19. Локально прошли обычный/tagged vet, tagged race suite (live SQL без DSN явно пропущен), обе сборки, Go 1.23.12 compile/tests, source/history/schema/fixtures/actionlint и четыре negative guards до соединения с нулём skips. До live CI остаётся открытой.

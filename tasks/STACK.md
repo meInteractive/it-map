@@ -94,3 +94,6 @@ GO-060 / [PR #18](https://github.com/meInteractive/it-map/pull/18) в main: `660
 
 
 GO-061 / codex/GO-061-receipt-fault-recovery начинается от 8978512 (код GO-060 660c3d1 уже прошёл оба обязательных CI; parent 8978512 меняет только отчёт/manifest). Во время работы пользователь объединил #18 как main 20f9fc1 до добавления doc checkpoint 8978512. Main присоединён обычным merge; отчёт 8978512 сохранён. Новый PR направляется в main, а не в закрытую родительскую ветку. Проверяются mid-write rollback и fresh-connection retry после post-commit read failure, без production hooks/DDL/локальной DB. Process kill/неопределённый COMMIT и update/CAS остаются отдельными критериями.
+
+
+GO-061 / [PR #19](https://github.com/meInteractive/it-map/pull/19) в main: `62b8b46` прошёл [Go/web/security](https://github.com/meInteractive/it-map/actions/runs/40237125022) и [MariaDB faults/receipts/concurrency/API/14 browser/native](https://github.com/meInteractive/it-map/actions/runs/40237125124), ноль skips. GO-062 / codex/GO-062-receipt-process-crash начинается от этого проверенного SHA; на старте #19 открыт, база нового stacked PR — ветка GO-061. Порция проверяет реальный kill/restart отдельного Go writer перед/после commit. Server crash/неопределённый COMMIT/CAS/HTTP replay остаются открытыми критериями GO-031.

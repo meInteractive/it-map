@@ -86,9 +86,7 @@ func openReceiptFixture(t *testing.T) *receiptFixture {
 	if err != nil {
 		t.Fatal("cannot issue synthetic creation context")
 	}
-	f.input = applications.CreateInput{CompanyName: receiptCompany, Status: "Откликнулся",
-		Comment: "CI synthetic concurrent receipt", ApplicationSources: []string{"site"},
-		IdempotencyKey: receiptKey(1), CreationContext: token}
+	f.input = receiptInput(token)
 	return f
 }
 
@@ -108,4 +106,10 @@ func (f *receiptFixture) assertCounts(apps, receipts, history int) {
 		f.count("SELECT COUNT(*) FROM company_application_status_history h JOIN company_applications a ON a.id=h.application_id WHERE a.user_name=?", receiptUser) != history {
 		f.t.Fatal("unexpected durable application/receipt/history counts")
 	}
+}
+
+func receiptInput(token string) applications.CreateInput {
+	return applications.CreateInput{CompanyName: receiptCompany, Status: "Откликнулся",
+		Comment: "CI synthetic concurrent receipt", ApplicationSources: []string{"site"},
+		IdempotencyKey: receiptKey(1), CreationContext: token}
 }
