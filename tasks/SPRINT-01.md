@@ -862,13 +862,13 @@
 - **Результат:** codex/GO-053-launch-deploy-docs, `6527b69`, [PR #10](https://github.com/meInteractive/it-map/pull/10) от PR #9. Docker build/runtime без БД, env/systemd/Nginx/ссылки/source gates прошли; [Go/web/security](https://github.com/meInteractive/it-map/actions/runs/40184309517) и [MariaDB/API/browser](https://github.com/meInteractive/it-map/actions/runs/40184309541) подтверждены после завершения CI. Полная GO-007 не закрывается.
 
 
-### [ ] GO-054. Актуальные статусы и три приоритета спринта 1
+### [x] GO-054. Актуальные статусы и три приоритета спринта 1
 
 - **Приоритет:** Критический (управление порядком работ).
 - **Цель:** отразить проверенные результаты/блокировки и отделить логику от функциональной/декоративной приёмки UI по поручению пользователя 25.10.2026.
 - **Критерии:** все GO-001–053 имеют явный уровень; исходные GO-001–028 разделены на критическую/среднюю/низкую части; parent epic не закрывается по одному CI; PLANS.md заменяет прежний приоритет и сохраняет зависимости/запреты production.
 - **Проверки:** все ID уникальны, полнота уровней/частей, корректность локальных ссылок и источников доказательств, source/history gates; CI на точном SHA.
-- **Результат:** codex/GO-054-sprint-priorities от GO-053; номер PR после создания.
+- **Результат:** codex/GO-054-sprint-priorities, `edbc353`, [PR #11](https://github.com/meInteractive/it-map/pull/11) от PR #10. Проверка 55 ID/уровней и 28 трёхчастных эпиков прошла; [Go/web/security](https://github.com/meInteractive/it-map/actions/runs/40184887385) и [MariaDB/API/browser](https://github.com/meInteractive/it-map/actions/runs/40184887329) успешны.
 
 ### [ ] GO-055. JS→Go parity нормализации и хеша отклика (часть GO-002/GO-013)
 
@@ -878,4 +878,4 @@
 - **Компоненты:** синтетические golden cases из настоящих normalizeApplicationCreation/applicationCreationHash, Go regression и CI-проверка эталона.
 - **Критерии:** пустые/границы/Unicode/контакты/sources/vacancy проходят одинаковую нормализацию/отказ; hashes совпадают; старый JS не переписывается под Go; расхождения исправляются с сохранением API. Квитанции/SQL concurrency — следующая отдельная часть GO-031.
 - **Проверки:** исходные JS-функции → goldens, Go tests/vet/race/tagged build, обязательный CI; только публичные synthetic cases.
-- **Результат:** следующая разрешённая задача после GO-054, без ожидания merge/идеальной вёрстки.
+- **Результат:** codex/GO-055-creation-contract от edbc353 / PR #11. 43 synthetic JS-oracle примера сначала выявили 12 расхождений Go: ECMAScript trim/whitespace, email и Number-safe ID. Минимальное исправление Go проходит те же 43 примера; новые зависимости, SQL/вёрстка/старый JS не меняются. Номер PR и полный CI фиксируются после создания.

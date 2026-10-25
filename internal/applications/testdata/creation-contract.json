@@ -1,0 +1,771 @@
+{
+  "oracle": "Sites v316: normalizeApplicationCreation/applicationCreationHash; synthetic valid-Unicode typed inputs",
+  "vectors": [
+    {
+      "name": "defaults",
+      "input": {
+        "companyName": "CI Synthetic Employer"
+      },
+      "valid": true,
+      "normalized": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "status": "",
+        "comment": "",
+        "recruiterName": "",
+        "recruiterPhone": "",
+        "recruiterEmail": "",
+        "recruiterContactType": "",
+        "applicationSources": [
+          "hh"
+        ]
+      },
+      "hash": "83f930f51db04844c5fb392457ba5fbe0d801fd808110bea5f9494f8354ab1c3"
+    },
+    {
+      "name": "trim-and-source-set",
+      "input": {
+        "companyName": " CI Synthetic Employer ",
+        "recruiterName": " CI Synthetic Recruiter ",
+        "recruiterPhone": " +1-555-0100 ",
+        "recruiterEmail": " ci@example.invalid ",
+        "recruiterContactType": "direct",
+        "applicationSources": [
+          "telegram",
+          "hh",
+          "hh",
+          " site "
+        ]
+      },
+      "valid": true,
+      "normalized": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "status": "",
+        "comment": "",
+        "recruiterName": "CI Synthetic Recruiter",
+        "recruiterPhone": "+1-555-0100",
+        "recruiterEmail": "ci@example.invalid",
+        "recruiterContactType": "direct",
+        "applicationSources": [
+          "hh",
+          "site",
+          "telegram"
+        ]
+      },
+      "hash": "fe8388beb34d98b94eb2909214113a09f42f3749d85d42bf29db3160a186017f"
+    },
+    {
+      "name": "unicode-json",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "comment": "Тест 😀 <&>     \" \\ / \u0000\n",
+        "recruiterName": "Синтетический контакт"
+      },
+      "valid": true,
+      "normalized": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "status": "",
+        "comment": "Тест 😀 <&>     \" \\ / \u0000\n",
+        "recruiterName": "Синтетический контакт",
+        "recruiterPhone": "",
+        "recruiterEmail": "",
+        "recruiterContactType": "",
+        "applicationSources": [
+          "hh"
+        ]
+      },
+      "hash": "2a08e00dbc0b971dee025f8791f8897a07e0d070bad8bd4757e99c2535623ae2"
+    },
+    {
+      "name": "all-sources",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "applicationSources": [
+          "site",
+          "hh",
+          "habr",
+          "email",
+          "telegram",
+          "hcm"
+        ]
+      },
+      "valid": true,
+      "normalized": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "status": "",
+        "comment": "",
+        "recruiterName": "",
+        "recruiterPhone": "",
+        "recruiterEmail": "",
+        "recruiterContactType": "",
+        "applicationSources": [
+          "email",
+          "habr",
+          "hcm",
+          "hh",
+          "site",
+          "telegram"
+        ]
+      },
+      "hash": "a105288ada3420069bd655c5edec8f06e3304798e818b2c746707fdc13938fe4"
+    },
+    {
+      "name": "null-defaults",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "applicationSources": null
+      },
+      "valid": true,
+      "normalized": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "status": "",
+        "comment": "",
+        "recruiterName": "",
+        "recruiterPhone": "",
+        "recruiterEmail": "",
+        "recruiterContactType": "",
+        "applicationSources": [
+          "hh"
+        ]
+      },
+      "hash": "83f930f51db04844c5fb392457ba5fbe0d801fd808110bea5f9494f8354ab1c3"
+    },
+    {
+      "name": "linked-vacancy",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": 42,
+        "status": "Откликнулся"
+      },
+      "valid": true,
+      "normalized": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": 42,
+        "status": "Откликнулся",
+        "comment": "",
+        "recruiterName": "",
+        "recruiterPhone": "",
+        "recruiterEmail": "",
+        "recruiterContactType": "",
+        "applicationSources": [
+          "hh"
+        ]
+      },
+      "hash": "a3b70bd07f176e25cbb31892121d13faf098fd461262873a45d835a58ae312fe"
+    },
+    {
+      "name": "largest-safe-vacancy",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": 9007199254740991
+      },
+      "valid": true,
+      "normalized": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": 9007199254740991,
+        "status": "",
+        "comment": "",
+        "recruiterName": "",
+        "recruiterPhone": "",
+        "recruiterEmail": "",
+        "recruiterContactType": "",
+        "applicationSources": [
+          "hh"
+        ]
+      },
+      "hash": "cd87311c8483363abefd49663d2b7f7ef12aae5b27f2f7848e3d37d44403b050"
+    },
+    {
+      "name": "unsafe-vacancy",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": 9007199254740992
+      },
+      "valid": false,
+      "status": 400
+    },
+    {
+      "name": "empty-company",
+      "input": {
+        "companyName": " "
+      },
+      "valid": false,
+      "status": 400
+    },
+    {
+      "name": "unknown-status",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "status": "CI INVALID STATUS"
+      },
+      "valid": false,
+      "status": 400
+    },
+    {
+      "name": "comment-limit",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "comment": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀"
+      },
+      "valid": true,
+      "normalized": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "status": "",
+        "comment": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+        "recruiterName": "",
+        "recruiterPhone": "",
+        "recruiterEmail": "",
+        "recruiterContactType": "",
+        "applicationSources": [
+          "hh"
+        ]
+      },
+      "hash": "f6c6f2758956a125fe85b76458d49725fa59b3bf7ae17b6a70cbe60e88c5e179"
+    },
+    {
+      "name": "comment-over-limit",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "comment": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀x"
+      },
+      "valid": false,
+      "status": 400
+    },
+    {
+      "name": "name-limit",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "recruiterName": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀"
+      },
+      "valid": true,
+      "normalized": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "status": "",
+        "comment": "",
+        "recruiterName": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+        "recruiterPhone": "",
+        "recruiterEmail": "",
+        "recruiterContactType": "",
+        "applicationSources": [
+          "hh"
+        ]
+      },
+      "hash": "c70a8555764c3c09c5f1e2c7cddc18dc0c1bc57362a43ace987a008d26567f4d"
+    },
+    {
+      "name": "name-over-limit",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "recruiterName": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀x"
+      },
+      "valid": false,
+      "status": 400
+    },
+    {
+      "name": "phone-limit",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "recruiterPhone": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      },
+      "valid": true,
+      "normalized": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "status": "",
+        "comment": "",
+        "recruiterName": "",
+        "recruiterPhone": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "recruiterEmail": "",
+        "recruiterContactType": "",
+        "applicationSources": [
+          "hh"
+        ]
+      },
+      "hash": "4c67d874ab0469edaae9f6f20e8e5fd2b8bafa4ee963f55cc3f43501854ce432"
+    },
+    {
+      "name": "phone-over-limit",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "recruiterPhone": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      },
+      "valid": false,
+      "status": 400
+    },
+    {
+      "name": "email-limit",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "recruiterEmail": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx@a.b"
+      },
+      "valid": true,
+      "normalized": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "status": "",
+        "comment": "",
+        "recruiterName": "",
+        "recruiterPhone": "",
+        "recruiterEmail": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx@a.b",
+        "recruiterContactType": "",
+        "applicationSources": [
+          "hh"
+        ]
+      },
+      "hash": "c3e7f2b85324126d2f14b72c06c61866dc7a4628c39286ebd079f5b0cf06901c"
+    },
+    {
+      "name": "email-over-limit",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "recruiterEmail": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx@a.b"
+      },
+      "valid": false,
+      "status": 400
+    },
+    {
+      "name": "invalid-email",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "recruiterEmail": "ci@@example.invalid"
+      },
+      "valid": false,
+      "status": 400
+    },
+    {
+      "name": "invalid-contact-type",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "recruiterContactType": "CI UNKNOWN"
+      },
+      "valid": false,
+      "status": 400
+    },
+    {
+      "name": "empty-source-set",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "applicationSources": []
+      },
+      "valid": false,
+      "status": 400
+    },
+    {
+      "name": "unknown-source",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "applicationSources": [
+          "CI UNKNOWN"
+        ]
+      },
+      "valid": false,
+      "status": 400
+    },
+    {
+      "name": "bom-company",
+      "input": {
+        "companyName": "﻿CI Synthetic Employer﻿"
+      },
+      "valid": true,
+      "normalized": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "status": "",
+        "comment": "",
+        "recruiterName": "",
+        "recruiterPhone": "",
+        "recruiterEmail": "",
+        "recruiterContactType": "",
+        "applicationSources": [
+          "hh"
+        ]
+      },
+      "hash": "83f930f51db04844c5fb392457ba5fbe0d801fd808110bea5f9494f8354ab1c3"
+    },
+    {
+      "name": "only-bom-company",
+      "input": {
+        "companyName": "﻿"
+      },
+      "valid": false,
+      "status": 400
+    },
+    {
+      "name": "nel-company-preserved",
+      "input": {
+        "companyName": "CI Synthetic Employer"
+      },
+      "valid": true,
+      "normalized": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "status": "",
+        "comment": "",
+        "recruiterName": "",
+        "recruiterPhone": "",
+        "recruiterEmail": "",
+        "recruiterContactType": "",
+        "applicationSources": [
+          "hh"
+        ]
+      },
+      "hash": "dc9e240be6b58da5f9dfdf61faa835ec83ab2704d74179aeb144712f0a0ea061"
+    },
+    {
+      "name": "bom-contacts",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "recruiterName": "﻿CI Synthetic Recruiter﻿",
+        "recruiterPhone": "﻿+1-555-0100﻿",
+        "recruiterEmail": "﻿ci@example.invalid﻿"
+      },
+      "valid": true,
+      "normalized": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "status": "",
+        "comment": "",
+        "recruiterName": "CI Synthetic Recruiter",
+        "recruiterPhone": "+1-555-0100",
+        "recruiterEmail": "ci@example.invalid",
+        "recruiterContactType": "",
+        "applicationSources": [
+          "hh"
+        ]
+      },
+      "hash": "8a5dded7d16fbf0476317bffbf93c1253b0dd7260eee26ea4e468c00328f0e1e"
+    },
+    {
+      "name": "nel-contact-preserved",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "recruiterName": "CI Synthetic Recruiter"
+      },
+      "valid": true,
+      "normalized": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "status": "",
+        "comment": "",
+        "recruiterName": "CI Synthetic Recruiter",
+        "recruiterPhone": "",
+        "recruiterEmail": "",
+        "recruiterContactType": "",
+        "applicationSources": [
+          "hh"
+        ]
+      },
+      "hash": "3138e4a451b2457254a9d78dcddd6e7026f482167a8eb1565c30fd305c3b8421"
+    },
+    {
+      "name": "bom-source",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "applicationSources": [
+          "﻿hh﻿"
+        ]
+      },
+      "valid": true,
+      "normalized": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "status": "",
+        "comment": "",
+        "recruiterName": "",
+        "recruiterPhone": "",
+        "recruiterEmail": "",
+        "recruiterContactType": "",
+        "applicationSources": [
+          "hh"
+        ]
+      },
+      "hash": "83f930f51db04844c5fb392457ba5fbe0d801fd808110bea5f9494f8354ab1c3"
+    },
+    {
+      "name": "nel-source-invalid",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "applicationSources": [
+          "hh"
+        ]
+      },
+      "valid": false,
+      "status": 400
+    },
+    {
+      "name": "email-nbsp-invalid",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "recruiterEmail": "ci name@example.invalid"
+      },
+      "valid": false,
+      "status": 400
+    },
+    {
+      "name": "email-separator-invalid",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "recruiterEmail": "ci name@example.invalid"
+      },
+      "valid": false,
+      "status": 400
+    },
+    {
+      "name": "email-bom-invalid",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "recruiterEmail": "ci﻿name@example.invalid"
+      },
+      "valid": false,
+      "status": 400
+    },
+    {
+      "name": "email-nel-preserved",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "recruiterEmail": "ciname@example.invalid"
+      },
+      "valid": true,
+      "normalized": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "status": "",
+        "comment": "",
+        "recruiterName": "",
+        "recruiterPhone": "",
+        "recruiterEmail": "ciname@example.invalid",
+        "recruiterContactType": "",
+        "applicationSources": [
+          "hh"
+        ]
+      },
+      "hash": "9851d697bfe7c8386f90e8eed245cbf9145900ccd4fd6ae1de083ecc4da27ec7"
+    },
+    {
+      "name": "ecmascript-whitespace",
+      "input": {
+        "companyName": "\t\u000b\f\r                  　﻿CI Synthetic Employer\n"
+      },
+      "valid": true,
+      "normalized": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "status": "",
+        "comment": "",
+        "recruiterName": "",
+        "recruiterPhone": "",
+        "recruiterEmail": "",
+        "recruiterContactType": "",
+        "applicationSources": [
+          "hh"
+        ]
+      },
+      "hash": "83f930f51db04844c5fb392457ba5fbe0d801fd808110bea5f9494f8354ab1c3"
+    },
+    {
+      "name": "status-empty",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "status": ""
+      },
+      "valid": true,
+      "normalized": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "status": "",
+        "comment": "",
+        "recruiterName": "",
+        "recruiterPhone": "",
+        "recruiterEmail": "",
+        "recruiterContactType": "",
+        "applicationSources": [
+          "hh"
+        ]
+      },
+      "hash": "83f930f51db04844c5fb392457ba5fbe0d801fd808110bea5f9494f8354ab1c3"
+    },
+    {
+      "name": "status-Откликнулся",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "status": "Откликнулся"
+      },
+      "valid": true,
+      "normalized": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "status": "Откликнулся",
+        "comment": "",
+        "recruiterName": "",
+        "recruiterPhone": "",
+        "recruiterEmail": "",
+        "recruiterContactType": "",
+        "applicationSources": [
+          "hh"
+        ]
+      },
+      "hash": "6e43cf54e0968e9d0e46a8c24cd868020a575d1456bf0779ac53c32841af3865"
+    },
+    {
+      "name": "status-Получил ответ",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "status": "Получил ответ"
+      },
+      "valid": true,
+      "normalized": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "status": "Получил ответ",
+        "comment": "",
+        "recruiterName": "",
+        "recruiterPhone": "",
+        "recruiterEmail": "",
+        "recruiterContactType": "",
+        "applicationSources": [
+          "hh"
+        ]
+      },
+      "hash": "af4e0ed0e3f699dc95c4aaf9cc23d8001c6fe34d6a26dae3139166b41ff46c56"
+    },
+    {
+      "name": "status-Скрининг",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "status": "Скрининг"
+      },
+      "valid": true,
+      "normalized": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "status": "Скрининг",
+        "comment": "",
+        "recruiterName": "",
+        "recruiterPhone": "",
+        "recruiterEmail": "",
+        "recruiterContactType": "",
+        "applicationSources": [
+          "hh"
+        ]
+      },
+      "hash": "7081e756a4eb16f6ab49070442d300f3454c5d9dd0337e8013263c77d3dc8f59"
+    },
+    {
+      "name": "status-Собес 2",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "status": "Собес 2"
+      },
+      "valid": true,
+      "normalized": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "status": "Собес 2",
+        "comment": "",
+        "recruiterName": "",
+        "recruiterPhone": "",
+        "recruiterEmail": "",
+        "recruiterContactType": "",
+        "applicationSources": [
+          "hh"
+        ]
+      },
+      "hash": "7b548a5d97dd3ec7da511a23a4fb79671f963a15f700b4d732f0328b62584219"
+    },
+    {
+      "name": "status-Собес 3",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "status": "Собес 3"
+      },
+      "valid": true,
+      "normalized": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "status": "Собес 3",
+        "comment": "",
+        "recruiterName": "",
+        "recruiterPhone": "",
+        "recruiterEmail": "",
+        "recruiterContactType": "",
+        "applicationSources": [
+          "hh"
+        ]
+      },
+      "hash": "7f5ee9a39d924fdfcf0075765aade1f172e4662f9c6b167aa84906581163ba80"
+    },
+    {
+      "name": "status-Собес 4",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "status": "Собес 4"
+      },
+      "valid": true,
+      "normalized": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "status": "Собес 4",
+        "comment": "",
+        "recruiterName": "",
+        "recruiterPhone": "",
+        "recruiterEmail": "",
+        "recruiterContactType": "",
+        "applicationSources": [
+          "hh"
+        ]
+      },
+      "hash": "2414848bc510b31492e80499fc3960b3300f00d36341aaba1aca52dcf17d8768"
+    },
+    {
+      "name": "status-Офер",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "status": "Офер"
+      },
+      "valid": true,
+      "normalized": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "status": "Офер",
+        "comment": "",
+        "recruiterName": "",
+        "recruiterPhone": "",
+        "recruiterEmail": "",
+        "recruiterContactType": "",
+        "applicationSources": [
+          "hh"
+        ]
+      },
+      "hash": "5f908b00a15a00eba0c2011730292cfda4d0bd33c345fce7d1a7c832b982f7e2"
+    },
+    {
+      "name": "status-Отказ",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "status": "Отказ"
+      },
+      "valid": true,
+      "normalized": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "status": "Отказ",
+        "comment": "",
+        "recruiterName": "",
+        "recruiterPhone": "",
+        "recruiterEmail": "",
+        "recruiterContactType": "",
+        "applicationSources": [
+          "hh"
+        ]
+      },
+      "hash": "0451d8adb76b910ca7e49e0753855bf99d0bcfb2318cf6dec556f9d4ebde7d75"
+    }
+  ]
+}

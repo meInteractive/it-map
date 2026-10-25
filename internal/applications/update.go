@@ -42,7 +42,7 @@ func (in UpdateInput) normalize() (UpdateInput, error) {
 	if !revisionPattern.MatchString(in.Revision) {
 		return in, ErrRevisionRequired
 	}
-	if in.VacancyID != nil && *in.VacancyID < 1 {
+	if in.VacancyID != nil && (*in.VacancyID < 1 || *in.VacancyID > maxLegacyInteger) {
 		return in, fmt.Errorf("%w: invalid vacancy ID", ErrInvalidInput)
 	}
 	knownStatus := false
@@ -55,10 +55,10 @@ func (in UpdateInput) normalize() (UpdateInput, error) {
 	if !knownStatus || len(utf16.Encode([]rune(in.Comment))) > 1000 {
 		return in, fmt.Errorf("%w: invalid status or comment", ErrInvalidInput)
 	}
-	in.RecruiterName = strings.TrimSpace(in.RecruiterName)
-	in.RecruiterPhone = strings.TrimSpace(in.RecruiterPhone)
-	in.RecruiterEmail = strings.TrimSpace(in.RecruiterEmail)
-	if len(utf16.Encode([]rune(in.RecruiterName))) > 160 || len(utf16.Encode([]rune(in.RecruiterPhone))) > 64 || len(utf16.Encode([]rune(in.RecruiterEmail))) > 254 || (in.RecruiterEmail != "" && !emailPattern.MatchString(in.RecruiterEmail)) {
+	in.RecruiterName = trimLegacyText(in.RecruiterName)
+	in.RecruiterPhone = trimLegacyText(in.RecruiterPhone)
+	in.RecruiterEmail = trimLegacyText(in.RecruiterEmail)
+	if len(utf16.Encode([]rune(in.RecruiterName))) > 160 || len(utf16.Encode([]rune(in.RecruiterPhone))) > 64 || len(utf16.Encode([]rune(in.RecruiterEmail))) > 254 || (in.RecruiterEmail != "" && (!emailPattern.MatchString(in.RecruiterEmail) || strings.IndexFunc(in.RecruiterEmail, legacyWhitespace) >= 0)) {
 		return in, fmt.Errorf("%w: invalid recruiter contact", ErrInvalidInput)
 	}
 	if in.RecruiterContactType != "" && in.RecruiterContactType != "direct" && in.RecruiterContactType != "agency" {
@@ -71,7 +71,7 @@ func (in UpdateInput) normalize() (UpdateInput, error) {
 	seen := map[string]bool{}
 	normalized := make([]string, 0, len(in.ApplicationSources))
 	for _, source := range in.ApplicationSources {
-		source = strings.TrimSpace(source)
+		source = trimLegacyText(source)
 		if !allowed[source] {
 			return in, fmt.Errorf("%w: unknown application source", ErrInvalidInput)
 		}
