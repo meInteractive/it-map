@@ -26,19 +26,18 @@ sudo install -d -o root -g root -m 0700 /etc/itmap
 
 Команды useradd выполняются один раз; при существующих пользователях сначала проверьте их назначение. Runtime-пользователям не нужны sudo, права на Git, SQL-admin или запись в бинарники/статические файлы. Загрузку релизов выполняет отдельный ограниченный deploy-пользователь; детали автоматики в [RELEASES.md](RELEASES.md).
 
-## 2. MariaDB: два изолированных набора данных
+## 2. MariaDB: две базы и общая SQL-учётная запись
 
 Настройте MariaDB на `bind-address=127.0.0.1`, порт 3306 и проверьте `ss -ltn`: внешнего listener БД быть не должно. Рекомендуется UTC для сервера/DB-сессий; Go DSN использует UTC. Точный конфиг зависит от установленного пакета, на Ubuntu обычно `/etc/mysql/mariadb.conf.d/50-server.cnf`.
 
-Для двух контуров нужны `itmap_main` и `itmap_dev` и два разных SQL-пользователя. Создание схемы/пользователей выполняет администратор через защищённый SQL-сеанс. Пример ниже — **шаблон**, не готовые пароли; замените обозначения приватно и не сохраняйте заполненный SQL в Git/history:
+По выбору пользователя от 25.10.2026 используются две базы `itmap_main`/`itmap_dev` на одном сервере и **одна SQL-учётная запись `itmap_app` с общим паролем**. Пароль принадлежит user@host, а не отдельной базе. Создание баз/учётной записи выполняет администратор через защищённый SQL-сеанс. Пример ниже — **шаблон**, не готовые пароли; замените обозначения приватно и не сохраняйте заполненный SQL в Git/history:
 
 ```sql
 CREATE DATABASE itmap_main CHARACTER SET utf8mb4 COLLATE utf8mb4_nopad_bin;
 CREATE DATABASE itmap_dev CHARACTER SET utf8mb4 COLLATE utf8mb4_nopad_bin;
-CREATE USER 'itmap_main'@'127.0.0.1' IDENTIFIED BY '<MAIN_DB_PASSWORD>';
-CREATE USER 'itmap_dev'@'127.0.0.1' IDENTIFIED BY '<DEV_DB_PASSWORD>';
-GRANT SELECT, INSERT, UPDATE, DELETE ON itmap_main.* TO 'itmap_main'@'127.0.0.1';
-GRANT SELECT, INSERT, UPDATE, DELETE ON itmap_dev.* TO 'itmap_dev'@'127.0.0.1';
+CREATE USER 'itmap_app'@'127.0.0.1' IDENTIFIED BY '<DB_PASSWORD>';
+GRANT SELECT, INSERT, UPDATE, DELETE ON itmap_main.* TO 'itmap_app'@'127.0.0.1';
+GRANT SELECT, INSERT, UPDATE, DELETE ON itmap_dev.* TO 'itmap_app'@'127.0.0.1';
 ```
 
 Учитывайте настройки разрешения имён MariaDB: при необходимости используйте соответствующую **локальную** host-учётную запись и подтвердите `CURRENT_USER()`; не решайте ошибку выдачей прав на `%` или `*.*`. Для первой проверки чтения можно временно выдать только SELECT. Права CREATE/ALTER/DROP/TRIGGER/GRANT приложению не выдаются; миграции и импорт выполняет отдельный администратор. Шаблон не задаёт окончательную production-политику SQL-прав.
@@ -55,13 +54,16 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON itmap_dev.* TO 'itmap_dev'@'127.0.0.1';
 | HTTP_ADDR | 127.0.0.1:18080 | 127.0.0.1:18081 |
 | DB_ENABLED / AUTH_ENABLED | true / true | true / true |
 | DB_HOST / DB_PORT | 127.0.0.1 / 3306 | 127.0.0.1 / 3306 |
-| DB_NAME / DB_USER | itmap_main / itmap_main | itmap_dev / itmap_dev |
-| DB_PASSWORD | свой секрет main | другой секрет dev |
+| DB_NAME | itmap_main | itmap_dev |
+| DB_USER | itmap_app | itmap_app (тот же пользователь) |
+| DB_PASSWORD | общий секрет БД | то же значение |
 | SESSION_SECRET / SITE_PASSWORD | свои секреты main | другие секреты dev |
 | NASTYA_PASSWORD / DEMO_PASSWORD | заполнить при необходимости | тестовые отдельные пароли при необходимости |
 | WEB_DIST_DIR | /opt/itmap/main/current/web | /opt/itmap/dev/current/web |
 
-Не использовать одинаковые секреты двух контуров. Cookie Go имеет Secure/HttpOnly/SameSite=Strict и не задаёт Domain: домены получают независимые cookie. Поддомены одного сайта всё равно не являются полноценной защитной границей от недоверенного кода: dev-контур допускает только доверенные ветки/авторов, права ОС/БД раздельны. Для полностью недоверенных экспериментов нужен отдельный сервер/контур, а не общий production-хост.
+DB_USER/DB_PASSWORD общие по принятому решению. SESSION_SECRET и пароли входа приложения задавайте отдельно для каждого контура. Cookie Go имеет Secure/HttpOnly/SameSite=Strict и не задаёт Domain: домены получают независимые cookie. Поддомены одного сайта всё равно не являются полноценной защитной границей от недоверенного кода: dev-контур допускает только доверенные ветки/авторов, пользователи ОС раздельны; SQL-учётная запись имеет права на обе базы. Это разделение данных по DB_NAME, а не изоляция SQL-привилегий. Для полностью недоверенных экспериментов нужен отдельный сервер/контур, а не общий production-хост.
+
+Один `.env.example` не означает одну БД для всего сервера: он описывает один Go-процесс. Копируйте его дважды; `systemd` выбирает `/etc/itmap/%i.env` по имени экземпляра службы. DB_HOST/DB_PORT/DB_USER/DB_PASSWORD в файлах совпадают, **DB_NAME обязательно различается**. На сервере DB_ENABLED и AUTH_ENABLED должны быть true в обоих файлах; false в шаблоне — безопасный локальный default. В GitHub Environments находятся SSH-параметры доставки, а настройки БД остаются на сервере. Не добавлять DB_MAIN_NAME/DB_DEV_NAME: текущий Go такие переменные не читает.
 
 ## 4. Артефакт и systemd
 
