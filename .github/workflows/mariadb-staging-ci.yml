@@ -115,7 +115,7 @@ jobs:
           done <<< "$all_packages"
           go test -tags mariadb "${packages[@]}" -count=1 -v
           CGO_ENABLED=0 go build -trimpath -tags mariadb -o /tmp/itmap-mariadb ./cmd/itmap
-      - name: Verify durable receipt writes ONLY in disposable CI
+      - name: Verify durable and concurrent receipt writes ONLY in disposable CI
         env:
           ITMAP_REQUIRE_MARIADB_INTEGRATION: '1'
           ITMAP_TEST_MARIADB_WRITE_DSN: 'itmap_ci:ci_only_disposable_writer@tcp(127.0.0.1:3306)/itmap_ci?parseTime=true&clientFoundRows=true&collation=utf8mb4_bin'
@@ -126,12 +126,13 @@ jobs:
           # synthetic Demo rows and removes them before HTTP/browser smoke.
           result_file="$(mktemp)"
           trap 'rm -f "$result_file"' EXIT
-          go test -race -tags mariadb,receiptwrites ./internal/storage -run '^TestMariaDBApplicationReceiptsDisposable$' -count=1 -json | tee "$result_file"
+          go test -race -tags mariadb,receiptwrites ./internal/storage -run '^TestMariaDBApplication(Receipts|Concurrency)Disposable$' -count=1 -json | tee "$result_file"
           python3 - "$result_file" <<'PY'
           import json,sys
           events=[json.loads(line) for line in open(sys.argv[1],encoding='utf8')]
-          target='TestMariaDBApplicationReceiptsDisposable'
-          assert any(e.get('Test')==target and e.get('Action')=='pass' for e in events), 'required receipt test did not pass/run'
+          targets=['TestMariaDBApplicationReceiptsDisposable','TestMariaDBApplicationConcurrencyDisposable']
+          for target in targets:
+              assert any(e.get('Test')==target and e.get('Action')=='pass' for e in events), f'required receipt test did not pass/run: {target}'
           assert not any(e.get('Action')=='skip' for e in events), 'required receipt test was skipped'
           print('PASS: durable receipt write gate ran with zero skips')
           PY

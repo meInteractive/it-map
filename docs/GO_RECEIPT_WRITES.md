@@ -23,3 +23,11 @@
 
 
 Подтверждение кода `ab38269`, [PR #15](https://github.com/meInteractive/it-map/pull/15): [Go/web/security](https://github.com/meInteractive/it-map/actions/runs/40196634843) и [durable receipt write/API/14 browser/native publication smoke](https://github.com/meInteractive/it-map/actions/runs/40196634823) прошли. JSON gate подтвердил фактический pass без skips; cleanup восстановил readonly-фикстуры. Последующее присоединение общей DB-конфигурации GO-059 меняет только документацию/registry/manifest, не проверенный тест или API.
+
+## GO-060: конкурирующие обычные create
+
+Следующая узкая часть GO-031: TestMariaDBApplicationConcurrencyDisposable с теми же build tags/guards и отдельным обязательным pass/no-skip gate рядом с GO-058. Четыре сценария: одинаковый key/intent → один fresh и один replay того же ID; одинаковый key/разные intent → один fresh и ErrIntentConflict; разные key/одна vacancy → один fresh и ErrDuplicateVacancy; девять исходных записей/два новых intent → ровно десять записей и ErrApplicationLimit проигравшему. Повтор успешного intent сохраняет ID, поля и единственную начальную историю; orphan/incomplete receipts отсутствуют.
+
+Две отдельные writer pools с MaxOpenConns=1 заранее подтверждают разные CONNECTION_ID(). Третья транзакция удерживает generation row; чтение information_schema.PROCESSLIST от того же CI-пользователя должно увидеть **оба** writer ID на точном FOR UPDATE до снятия барьера. Привилегия PROCESS не выдаётся: пользователь видит собственные сессии. Это подтверждает overlap внутри сервера, а не только старт goroutines/ожидание Go pool. Ожидание ограничено context; ранний выход отменяет writers, откатывает holder и дожидается goroutines.
+
+Общий test-only fixture требует пустого Demo, очищает только его company/key namespace 9000, проверяет отсутствие любых остатков Demo и полную неизменность Eugene/history/generation. Исходный GO-058 с namespace 8000 и все прежние empty-schema/read/API/14 browser/native gates сохраняются. API, SQL-схема, зависимости и legacy не меняются. Смешанные create/update/delete races, one-click shortcut, mid-write error/crash/restart и CAS не покрыты этим результатом и не закрывают GO-031.
