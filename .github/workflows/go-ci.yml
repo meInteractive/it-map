@@ -16,6 +16,8 @@ jobs:
           fetch-depth: 0
       - name: Check public files for prohibited data and token formats
         run: python3 scripts/check-public-repo.py
+      - name: Test isolated release receiver state, archives and rollback
+        run: python3 -m unittest discover -s deploy/tests -v
       - name: Audit full reachable Git history without exposing values
         run: |
           python3 scripts/test_git_history.py

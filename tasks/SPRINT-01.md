@@ -1,6 +1,6 @@
 # Спринт 1.1 — функциональная миграция Go
 
-**Текущий активный спринт.** Релиз и переключение ещё не выполнены. `GO-001…GO-028` сохраняют исходную нумерацию работ `1.1.01…1.1.28`. `GO-029…GO-055` — выделенные узкие задачи, не подменяющие критерии крупных пунктов. Ни один коммит сам по себе не доказывает полную приёмку на MariaDB.
+**Текущий активный спринт.** Релиз и переключение ещё не выполнены. `GO-001…GO-028` сохраняют исходную нумерацию работ `1.1.01…1.1.28`. `GO-029…GO-057` — выделенные узкие задачи, не подменяющие критерии крупных пунктов. Ни один коммит сам по себе не доказывает полную приёмку на MariaDB.
 
 **Актуальный статус на 25.10.2026:** `[x]` — завершён именно указанный результат с доказательствами; `[ ]` — остаются критерии. Для больших GO-001…028 дополнительно отмечены проверенные части, чтобы не путать «код существует», «прошёл synthetic CI» и «принят внешний staging/релиз». Исторические v12–v21 ниже не являются текущим статусом: впоследствии прошли Go vet/race/tagged build, web, MariaDB schema/rollback/locking, авторизованный API и 14 browser-сценариев. [Актуальная контрольная точка](STACK.md), [инструкция запуска](../docs/deployment/README.md).
 
@@ -879,3 +879,22 @@
 - **Критерии:** пустые/границы/Unicode/контакты/sources/vacancy проходят одинаковую нормализацию/отказ; hashes совпадают; старый JS не переписывается под Go; расхождения исправляются с сохранением API. Квитанции/SQL concurrency — следующая отдельная часть GO-031.
 - **Проверки:** исходные JS-функции → goldens, Go tests/vet/race/tagged build, обязательный CI; только публичные synthetic cases.
 - **Результат:** codex/GO-055-creation-contract, код `a9d735c`, [PR #12](https://github.com/meInteractive/it-map/pull/12) от PR #11. 43 synthetic JS-oracle примера сначала выявили 12 расхождений Go: ECMAScript trim/whitespace, email и Number-safe ID. Исправление прошло [Go/web/security/JS oracle](https://github.com/meInteractive/it-map/actions/runs/40185165580) и [MariaDB/API/14 browser](https://github.com/meInteractive/it-map/actions/runs/40185165597). Новые зависимости, SQL/вёрстка/старый JS не менялись. Границы: [GO_CREATION_CONTRACT.md](../docs/GO_CREATION_CONTRACT.md). Узкая задача закрыта; GO-002/013/031 остаются открыты для остальных контрактов и live write.
+
+
+### [ ] GO-056. Native приёмник релизов и восстановление (часть GO-007)
+
+- **Приоритет:** Критический; пользователь поставил автоматику публикации перед следующей бизнес-логикой.
+- **Зависимости:** GO-053, проверенный текущий стек; внешний сервер для реализации/изолированных тестов не нужен.
+- **Компоненты:** deploy/receive_release.py, deploy/tests, инструкция SSH/sudo/systemd.
+- **Критерии:** контур привязан forced command; durable ref/SHA/sequence, поздний/rerun/deleted запрос не оживляет старый кандидат; tar/digest/manifest/platform validation; detached worker; lock/symlink/restart/health/rollback; restart recovery; без SQL и изменений соседнего контура.
+- **Проверки:** реальные временные каталоги/межпроцессная блокировка, synthetic HTTP health, negative tar, откат/его отказ/прерывание; source/history/actionlint и mandatory CI. Реальный server/systemd/SSH ещё требует настройки.
+- **Результат:** codex/GO-056-release-receiver от проверенного GO-055 с присоединением актуального main 59dd75b; PR после проверок.
+
+### [ ] GO-057. Автоматическая публикация main/dev из Actions (часть GO-007)
+
+- **Приоритет:** Критический; следующий после GO-056 этап текущего поручения.
+- **Зависимости:** GO-056 и существующие обязательные Go/web/MariaDB/API/browser CI.
+- **Компоненты:** publication workflow, reusable CI, packer/client, настройки GitHub Environments/SSH/receiver.
+- **Критерии:** register до тестов, publish после обоих успешных CI, один immutable SHA/artifact, отдельные main/dev Environments, выбор по порядку push workflow без commit timestamps, rerun/deletion/ошибки fail closed; по умолчанию публикация отключена до настройки оператора.
+- **Проверки:** packer/protocol/selection negatives, workflow actionlint и контроль структуры/gates, реальный synthetic CI. При наличии отдельно настроенного сервера — live SSH/systemd/TLS smoke, иначе явно указать блокировку подключения.
+- **Результат:** следующая ветка от GO-056; production/SQL/GPT Sites/D1 не меняются.
