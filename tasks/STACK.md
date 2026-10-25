@@ -60,3 +60,6 @@ GO-054 обновляет статусы по доказательствам и 
 
 
 Уточнение конфигурации пользователя: две базы на одном MariaDB-сервере, общий DB_USER/DB_PASSWORD; два server env с разными DB_NAME. Выбор закреплён ADR-019 и в GO-057 документации. Это не меняет код workflow/Go и не включает реальный deploy. SESSION_SECRET/SSH/runtime учётные записи контуров раздельны.
+
+
+GO-058 продолжает критический SQL-план после готовности публикации: codex/GO-058-receipt-roundtrip основана на GO-057, doc-уточнение ADR-019 присоединено без потери ветки. Добавляется guarded committed business gate (не empty schema), собственные Demo rows чистятся до HTTP/browser/native smoke. Четыре локальные negative проверки guard прошли с нулём skips; положительный SQL требует CI. Код приложения/API/схема не меняются.
