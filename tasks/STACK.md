@@ -21,8 +21,8 @@ GO-050 и GO-051 проверены: PR #7/#8 объединены пользо�
 
 | Новая порция | Ветка | База | PR | Состояние |
 | --- | --- | --- | --- | --- |
-| GO-052: перенос закрытого стека | codex/GO-052-stack-checkpoint | main | [#9](https://github.com/meInteractive/it-map/pull/9) | 8dc1b0d: обязательные CI прошли; merge агентом не выполнялся |
-| GO-053: запуск/свой сервер | codex/GO-053-launch-deploy-docs | codex/GO-052-stack-checkpoint | [#10](https://github.com/meInteractive/it-map/pull/10) | 6527b69: все CI прошли; Docker/env/Nginx/systemd проверены без подключения сервера |
+| GO-052: перенос закрытого стека | codex/GO-052-stack-checkpoint | main | [#9](https://github.com/meInteractive/it-map/pull/9) | CI прошли; пользователь объединил в main как 0974a97 (25.10.2026) |
+| GO-053: запуск/свой сервер | codex/GO-053-launch-deploy-docs | main после merge PR #9 | [#10](https://github.com/meInteractive/it-map/pull/10) | 6527b69: все CI прошли; Docker/env/Nginx/systemd проверены без подключения сервера |
 
 ## Блокировки и границы
 
@@ -41,4 +41,7 @@ GO-054 обновляет статусы по доказательствам и 
 | Продолжение | Ветка | База | PR | Проверки |
 | --- | --- | --- | --- | --- |
 | GO-054: статусы и 3 приоритета | codex/GO-054-sprint-priorities | codex/GO-053-launch-deploy-docs | [#11](https://github.com/meInteractive/it-map/pull/11) | edbc353: все обязательные CI успешны |
-| GO-055: create contract | codex/GO-055-creation-contract | codex/GO-054-sprint-priorities | После создания | 43 JS→Go примера, 12 воспроизведённых расхождений; исправление whitespace/email/safe integer |
+| GO-055: create contract | codex/GO-055-creation-contract | codex/GO-054-sprint-priorities | [#12](https://github.com/meInteractive/it-map/pull/12) | a9d735c: 43 JS→Go примера; оба обязательных CI и 14 browser успешны |
+
+
+После пользовательского merge PR #9 база открытого PR #10 перенаправлена на main через GitHub API; PR #11 остаётся в ветку #10, #12 — в ветку #11. Код из вчерашних GO-050/051 теперь действительно достижим из main 0974a97. Автоматического merge агент не выполнял. Следующий критический результат — live receipt write/retry/conflict/rollback части GO-031, только в disposable CI с проверкой target и поколения; это ещё не выполненная задача.
