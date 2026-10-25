@@ -1,7 +1,7 @@
 name: MariaDB isolated staging gate
 on:
   pull_request:
-    branches: [main]
+    branches: [main, 'codex/**']
   workflow_dispatch:
 permissions:
   contents: read
@@ -138,6 +138,8 @@ jobs:
           AUTH_ENABLED: 'true'
           SESSION_SECRET: 'CI_SYNTHETIC_SESSION_SECRET_NOT_FOR_PRODUCTION_2026'
           SITE_PASSWORD: 'CI_SYNTHETIC_ACCOUNT_PASSWORD_NOT_FOR_PRODUCTION'
+          NASTYA_PASSWORD: 'CI_SYNTHETIC_ACCOUNT_PASSWORD_NOT_FOR_PRODUCTION'
+          DEMO_PASSWORD: 'CI_SYNTHETIC_ACCOUNT_PASSWORD_NOT_FOR_PRODUCTION'
           ITMAP_SMOKE_AUTH: '1'
           ITMAP_SMOKE_LOGIN: 'eugene'
           ITMAP_SMOKE_PASSWORD: 'CI_SYNTHETIC_ACCOUNT_PASSWORD_NOT_FOR_PRODUCTION'

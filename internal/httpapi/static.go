@@ -39,21 +39,7 @@ func StaticHandler(directory string) http.Handler {
 			}
 		}
 		if name == "index.html" {
-			f, err := dir.Open("index.html")
-			if err != nil {
-				http.Error(w, "web build unavailable", http.StatusServiceUnavailable)
-				return
-			}
-			defer f.Close()
-			// Native POST forms can send Origin: null under no-referrer. Keep
-			// same-origin referrers for the SPA login form without disclosing
-			// them to external sites or relaxing the /auth Origin check.
-			w.Header().Set("Referrer-Policy", "same-origin")
-			w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
-			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			if r.Method == http.MethodGet {
-				_, _ = io.Copy(w, f)
-			}
+			serveIndexHTML(w, r, dir, http.StatusOK)
 			return
 		}
 		if strings.HasPrefix(name, "assets/") {
@@ -68,4 +54,27 @@ func StaticHandler(directory string) http.Handler {
 		}
 		files.ServeHTTP(w, request)
 	})
+}
+
+// serveIndexHTML also renders a failed native login POST with its original
+// 401 status. Never reflect form values or initialize application data here.
+func serveIndexHTML(w http.ResponseWriter, r *http.Request, dir fs.FS, status int) {
+	f, err := dir.Open("index.html")
+	if err != nil {
+		http.Error(w, "web build unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	defer f.Close()
+	// Permit a same-origin form retry without sending referrers externally.
+	w.Header().Set("Referrer-Policy", "same-origin")
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if status == http.StatusUnauthorized {
+		w.Header().Set("Cache-Control", "private, no-store")
+	} else {
+		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+	}
+	w.WriteHeader(status)
+	if r.Method != http.MethodHead {
+		_, _ = io.Copy(w, f)
+	}
 }

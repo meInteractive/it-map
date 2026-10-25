@@ -1,31 +1,28 @@
-import { test as base, expect, type Locator } from '@playwright/test';
+import { test, expect } from './fixtures.js';
 
-// These are real browser requests to the Go/MariaDB service, never mocked APIs.
-// Restrict all traffic to this loopback origin; providers and map tiles are not
-// part of this smoke. Do not persist cookies, passwords, traces or screenshots.
-const test = base.extend<{ browserErrors: string[]; activate: (target: Locator) => Promise<void> }>({
-  activate: async ({ isMobile }, use) => {
-    // click() sends mouse/hover events even in a mobile browser context.
-    // Touch navigation must exercise the component's real pointerType branch.
-    await use(async target => {
-      if (isMobile) await target.tap();
-      else await target.click();
-    });
-  },
-  browserErrors: [async ({ page, context, baseURL }, use) => {
-    const errors: string[] = [];
-    page.on('pageerror', () => errors.push('Uncaught browser exception'));
-    await context.route('**/*', route => {
-      const url = new URL(route.request().url());
-      if (url.origin !== new URL(baseURL!).origin) {
-        errors.push('Unexpected external request');
-        return route.abort();
-      }
-      return route.continue();
-    });
-    await use(errors);
-    expect(errors).toEqual([]);
-  }, { auto: true }],
+test('неверный пароль: ошибка в форме и успешная повторная попытка', async ({ page, context, activate }) => {
+  const password = process.env.ITMAP_SMOKE_PASSWORD;
+  if (!password) throw new Error('Explicit synthetic CI password is required.');
+  await page.goto('/');
+  await page.getByLabel('Логин', { exact: true }).fill('eugene');
+  await page.getByLabel('Пароль', { exact: true }).fill('CI_INVALID_PASSWORD');
+  const failed = page.waitForResponse(response => new URL(response.url()).pathname === '/auth');
+  await activate(page.getByRole('button', { name: 'Открыть карту', exact: true }));
+  const response = await failed;
+  expect(response.status()).toBe(401);
+  expect(response.headers()['x-app-login-error']).toBe('1');
+  expect(response.headers()['content-type']).toContain('text/html');
+  await expect(page.getByRole('alert')).toHaveText('Логин или пароль не подошли.');
+  await expect(page.getByLabel('Пароль', { exact: true })).toHaveValue('');
+  expect((await context.cookies()).some(cookie => cookie.name === 'it_map_session')).toBe(false);
+  await page.getByLabel('Логин', { exact: true }).fill('eugene');
+  await page.getByLabel('Пароль', { exact: true }).fill(password);
+  const succeeded = page.waitForResponse(result => new URL(result.url()).pathname === '/auth');
+  await activate(page.getByRole('button', { name: 'Открыть карту', exact: true }));
+  expect((await succeeded).status()).toBe(303);
+  await expect(page.getByRole('navigation', { name: 'Основные разделы' })).toBeVisible();
+  expect((await page.request.get('/api/session')).status()).toBe(200);
+  await page.goto('/logout');
 });
 
 test('страница входа: React, SPA fallback, стили и manifest', async ({ page }) => {

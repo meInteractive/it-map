@@ -3,6 +3,7 @@ package httpapi
 import (
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -44,6 +45,10 @@ func SessionHandler(m *auth.Manager) http.HandlerFunc {
 }
 
 func LoginHandler(m *auth.Manager) http.HandlerFunc {
+	return loginHandler(m, "")
+}
+
+func loginHandler(m *auth.Manager, webDir string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Never trust proxy-supplied X-Forwarded-* values for same-origin checks.
 		if origin := r.Header.Get("Origin"); origin != "" {
@@ -70,6 +75,10 @@ func LoginHandler(m *auth.Manager) http.HandlerFunc {
 		if !ok {
 			w.Header().Set("X-App-Login-Error", "1")
 			w.Header().Set("Cache-Control", "private, no-store")
+			if webDir != "" {
+				serveIndexHTML(w, r, os.DirFS(webDir), http.StatusUnauthorized)
+				return
+			}
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
