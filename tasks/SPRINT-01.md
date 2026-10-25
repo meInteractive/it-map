@@ -1,6 +1,6 @@
 # Спринт 1.1 — функциональная миграция Go
 
-**Текущий активный спринт.** Релиз и переключение ещё не выполнены. `GO-001…GO-028` сохраняют исходную нумерацию работ `1.1.01…1.1.28`. `GO-029…GO-058` — выделенные узкие задачи, не подменяющие критерии крупных пунктов. Ни один коммит сам по себе не доказывает полную приёмку на MariaDB.
+**Текущий активный спринт.** Релиз и переключение ещё не выполнены. `GO-001…GO-028` сохраняют исходную нумерацию работ `1.1.01…1.1.28`. `GO-029…GO-059` — выделенные узкие задачи, не подменяющие критерии крупных пунктов. Ни один коммит сам по себе не доказывает полную приёмку на MariaDB.
 
 **Актуальный статус на 25.10.2026:** `[x]` — завершён именно указанный результат с доказательствами; `[ ]` — остаются критерии. Для больших GO-001…028 дополнительно отмечены проверенные части, чтобы не путать «код существует», «прошёл synthetic CI» и «принят внешний staging/релиз». Исторические v12–v21 ниже не являются текущим статусом: впоследствии прошли Go vet/race/tagged build, web, MariaDB schema/rollback/locking, авторизованный API и 14 browser-сценариев. [Актуальная контрольная точка](STACK.md), [инструкция запуска](../docs/deployment/README.md).
 
@@ -900,11 +900,21 @@
 - **Результат:** codex/GO-057-actions-publish, код `1c2e0b7`, [PR #14](https://github.com/meInteractive/it-map/pull/14) от PR #13. [Go/web/security/25 protocol tests/actionlint](https://github.com/meInteractive/it-map/actions/runs/40193567154) и [MariaDB/API/14 browser/native publish+rollback](https://github.com/meInteractive/it-map/actions/runs/40193567153) прошли. Код native автоматики завершён; реальный server/SSH/systemd/TLS не подключён, publication workflow намеренно выключен флагом до настройки. Полная GO-007 остаётся открытой. Инструкция: [ACTIONS.md](../docs/deployment/ACTIONS.md). Production/SQL/GPT Sites/D1 не менялись.
 
 
-### [ ] GO-058. Durable create/replay/delete receipts в MariaDB (часть GO-031/GO-013)
+### [x] GO-058. Durable create/replay/delete receipts в MariaDB (часть GO-031/GO-013)
 
 - **Приоритет:** Критический; первый бизнес-этап после готовности кода native-публикации GO-056/057.
 - **Зависимости:** существующий create/receipt код, synthetic schema/fixture CI, общие DSN/target/generation guards; внешний сервер и согласованный снимок не нужны для этого узкого CI-контракта.
 - **Компоненты:** internal/storage/application_receipts_integration_test.go, отдельный receiptwrites gate после readonly business tests и до API/browser/native smoke; docs/GO_RECEIPT_WRITES.md.
 - **Критерии:** настоящий commit→retry same ID; intent/duplicate/incomplete/old-generation ошибки без новых записей; user isolation; delete не удаляет sticky receipt и retry не оживляет отклик; 10-limit; cleanup не меняет Eugene/generation и восстанавливает Demo=0.
 - **Проверки:** tagged vet/build, четыре negative guards fail до соединения с нулём skips; обязательный -race real MariaDB тест с JSON pass/no-skip gate, затем прежние API/14 browser/native smoke. Локальная DB не создаётся, SQL/production вне CI не трогается.
-- **Результат:** codex/GO-058-receipt-roundtrip от финального GO-057, включая уточнение двух DB_NAME/общей SQL-учётной записи ADR-019. PR/положительный live SQL результат после запуска CI. Конкурентность/mid-write crash/CAS — оставшиеся отдельные критерии GO-031.
+- **Результат:** codex/GO-058-receipt-roundtrip, код `ab38269`, [PR #15](https://github.com/meInteractive/it-map/pull/15), актуальная база GO-059 / PR #16 после пользовательского merge #14. [Go/web/security](https://github.com/meInteractive/it-map/actions/runs/40196634843) и [реальный durable MariaDB receipt/API/browser/native smoke](https://github.com/meInteractive/it-map/actions/runs/40196634823) прошли, write gate с нулём skips; Demo после cleanup снова пуст. Четыре negative guard проверки завершились failure до соединения. Конфликты обновления registry/manifest при присоединении doc-ветки разрешены без изменения теста/API. Конкурентность/mid-write crash/CAS — оставшиеся отдельные критерии GO-031.
+
+
+### [ ] GO-059. Два server env с общей SQL-учётной записью (часть GO-004/GO-007)
+
+- **Приоритет:** Критический (корректная настройка выбранной публикации).
+- **Цель:** закрепить явный выбор пользователя: один MariaDB host/user/password, разные DB_NAME для main/dev.
+- **Компоненты:** .env.example, docs/deployment/*, ADR-019; Go/workflow используют прежние runtime-переменные одного процесса.
+- **Критерии:** два server env main.env/dev.env, одинаковые DB_HOST/PORT/USER/PASSWORD, разные DB_NAME; SessionSecret/SSH/runtime пользователи раздельны; SQL GRANT на обе базы для одного пользователя, без утверждения изоляции SQL-привилегий. Секреты пустые/вне Git, реальные настройки не применяются.
+- **Проверки:** env completeness, source/history/links/manifest, обязательный CI на точном SHA; без SQL/server действий.
+- **Результат:** codex/GO-059-shared-db-config содержит doc-уточнение после пользовательского merge PR #14 в открытый родительский PR #13. Отдельный PR в ветку #13; GO-058 будет направлен поверх этой конфигурации. Номера/CI после создания.
