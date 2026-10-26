@@ -1182,7 +1182,7 @@
 - **Приоритет:** Критический.
 - **Критерии:** GET revision → PUT, missing/stale 428/409, два writer с одной revision; flags/personal/shared letter/roles/provenance, owner move bootstrap и company links applications/tasks, late rollback и admin HTTP. Только собственные synthetic IDs; без GO-032.
 - **Зависимости:** GO-088 fixtures и проверенное создание, GO-086 flags.
-- **Результат:** добавлены SQL/HTTP gates, CAS race и rollback state/roles/letters/source/relevance/application/task links. Новый known owner без company_crm проверяется отдельным сценарием; positive CI ожидается, отсутствие bootstrap пока гипотеза.
+- **Результат:** добавлены SQL/HTTP gates, CAS race и rollback state/roles/letters/source/relevance/application/task links. Первый CI40372641813 подтвердил CAS/HTTP/letters/восемь late faults и воспроизвёл FK-ошибку свежего known owner без company_crm. Добавлен transactional no-op UPSERT parent до UPDATE vacancy/links; повторная полная SQL-приёмка ожидается.
 
 ### [ ] GO-090. Vacancy archive/delete: FK и сохранение CRM (часть GO-012)
 

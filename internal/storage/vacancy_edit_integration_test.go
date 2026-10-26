@@ -40,7 +40,7 @@ func (f *vacancyCreateFixture) edit(id int64, in vacancies.UpdateRequest) vacanc
 func (f *vacancyCreateFixture) linked(id int64) {
 	f.t.Helper()
 	for _, user := range []string{"Demo", "Nastya"} {
-		app := f.insert(`INSERT INTO company_applications(user_name,company_name,vacancy_id,status,comment_md) VALUES(?,?,?,'Откликнулся','CI linked comment')`, user, crudCompany, id)
+		app := f.insert(`INSERT INTO company_applications(user_name,company_name,vacancy_id,status,comment_md,application_sources) VALUES(?,?,?,'Откликнулся','CI linked comment','["site"]')`, user, crudCompany, id)
 		f.insert(`INSERT INTO company_application_status_history(application_id,from_status,to_status) VALUES(?,'','Откликнулся')`, app)
 		f.insert(`INSERT INTO company_tasks(user_name,company_name,vacancy_id,type,note,due_at) VALUES(?,?,?,'call','CI linked task','2026-10-26T12:00:00Z')`, user, crudCompany, id)
 	}
