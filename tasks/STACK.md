@@ -245,3 +245,20 @@ GO-086 / [PR #40](https://github.com/meInteractive/it-map/pull/40), coded2f9e44/
 
 
 GO-088 начата от GO-087/#41 checkpoint9093c48: отдельная codex/GO-088-vacancy-create-gate направляется в codex/GO-087-deliver-merged-stack. Критерии create/edit/delete разделены GO-088/089/090 до реализации. Добавлены creation fixture и SQL/HTTP gates; положительная SQL-приёмка ожидает CI.
+
+
+GO-087/#41 на9093c48 прошёл public40369680449/MariaDB40369680396, пользователь merged в maind2bfef8. Ancestry2ff18e7 и пустой diff9093c48→main подтвердили доставку #39/#40. Открытый GO-088/#42 сразу перенаправлен в main.
+
+GO-088 / #42, codeb34918d/treef8086c3ced9776c4eeb83eabbe07134ffa6eba37: public40371043954 и MariaDB40371043986 pass, два required create targets без skips и все старые SQL/browser/API smoke pass. Пять late faults, два duplicate races, named-lock release/max1 pool и admin API приняты; missing channel owner404 исправлен после первого SQL/HTTP run.
+
+GO-089 начата от проверенного b34918d, codex/GO-089-vacancy-edit-gate → codex/GO-088-vacancy-create-gate; SQL/HTTP edit/CAS/owner move gates ожидают положительный CI.
+
+
+GO-089 / #43, codef06076b/tree09539438b1f95fc830b24de185ccfcb45f5f7683: public40373140791 и MariaDB40373143125 pass, оба required edit/CAS SQL/HTTP targets без skips и все прежние SQL/browser/API smoke pass. Первый run40372641813 воспроизвёл missing FK parent fresh owner; transactional UPSERT и late rollback подтверждены повторно.
+
+GO-090 начата от проверенного f06076b, codex/GO-090-vacancy-delete-gate → codex/GO-089-vacancy-edit-gate. Только synthetic archive/delete/FK/CRM retention; общий fixture/shared helpers повторно проверяются create/edit gates.
+
+
+GO-090 / #44, code0b4b3aa/tree692116d1adb1c8e9e15ff603d15a6354712aa6de: public40374264948 и MariaDB40374264558 pass, оба delete SQL/HTTP targets без skips и весь прежний SQL/browser/API suite успешен. Четыре late faults восстанавливают архив, refs и FK children после actual DELETE; fresh pool retry сохраняет applications/tasks/history.
+
+Пользователь merged #42 в mainc8e79b9, затем #43 в прежнюю GO-088/77c8ee6. Открытый #44 сразу перенаправлен в main, содержит GO-089/090; diffb34918d→mainc8e79b9 пуст, поэтому проверенное runtime дерево остаётся прежним. Финальный checkpoint меняет только task status/plan/evidence/manifest. Требуется пользовательский merge #44 для доставки edit/delete в main; автоматический merge не выполняется.

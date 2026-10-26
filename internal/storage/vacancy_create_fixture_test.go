@@ -1,4 +1,4 @@
-//go:build mariadb && vacancycreates
+//go:build mariadb && (vacancycreates || vacancyedits || vacancydeletes)
 
 package storage
 
@@ -16,15 +16,16 @@ import (
 )
 
 const crudCompany = "CI Synthetic CRUD Employer"
+const crudMoveCompany = "CI Synthetic CRUD Move Target"
 const crudURLPrefix = "https://example.invalid/go088/"
 const crudChannelUsername = "ci_go088_channel"
 
 type vacancyCreateFixture struct {
-	t                   *testing.T
-	ctx                 context.Context
-	db                  *sql.DB
-	repo                vacancies.Repository
-	root, leaf, channel int64
+	t                              *testing.T
+	ctx                            context.Context
+	db                             *sql.DB
+	repo                           vacancies.Repository
+	root, leaf, otherLeaf, channel int64
 }
 
 func openVacancyCreateFixture(t *testing.T) *vacancyCreateFixture {
@@ -37,7 +38,7 @@ func openVacancyCreateFixture(t *testing.T) *vacancyCreateFixture {
 	}
 	ctx, db := openDisposableMariaDB(t)
 	f := &vacancyCreateFixture{t: t, ctx: ctx, db: db, repo: vacancies.Repository{DB: db}}
-	if f.count(`SELECT COUNT(*) FROM company_crm WHERE company_name=?`, crudCompany) != 0 || f.count(`SELECT COUNT(*) FROM company_vacancies WHERE url LIKE ?`, crudURLPrefix+"%") != 0 || f.count(`SELECT COUNT(*) FROM vacancy_roles WHERE stable_key LIKE 'ci-go088-%'`) != 0 || f.count(`SELECT COUNT(*) FROM telegram_channels WHERE normalized_username=?`, crudChannelUsername) != 0 {
+	if f.count(`SELECT COUNT(*) FROM company_crm WHERE company_name IN (?,?)`, crudCompany, crudMoveCompany) != 0 || f.count(`SELECT COUNT(*) FROM company_vacancies WHERE url LIKE ?`, crudURLPrefix+"%") != 0 || f.count(`SELECT COUNT(*) FROM vacancy_roles WHERE stable_key LIKE 'ci-go088-%'`) != 0 || f.count(`SELECT COUNT(*) FROM telegram_channels WHERE normalized_username=?`, crudChannelUsername) != 0 {
 		t.Fatal("vacancy creation fixture requires unused synthetic namespace")
 	}
 	original, err := f.repo.DetailByID(ctx, "Eugene", 1)
@@ -58,9 +59,10 @@ func openVacancyCreateFixture(t *testing.T) *vacancyCreateFixture {
 			args []any
 		}{
 			{`DELETE FROM company_vacancies WHERE url LIKE ?`, []any{crudURLPrefix + "%"}},
-			{`DELETE FROM company_crm WHERE company_name=?`, []any{crudCompany}},
+			{`DELETE FROM company_crm WHERE company_name IN (?,?)`, []any{crudCompany, crudMoveCompany}},
 			{`DELETE FROM company_crm WHERE company_name=CONCAT('__telegram_channel__:',?)`, []any{f.channel}},
 			{`DELETE FROM telegram_channels WHERE id=? AND normalized_username=?`, []any{f.channel, crudChannelUsername}},
+			{`DELETE FROM vacancy_roles WHERE id=? AND stable_key='ci-go088-other-leaf'`, []any{f.otherLeaf}},
 			{`DELETE FROM vacancy_roles WHERE id=? AND stable_key='ci-go088-leaf'`, []any{f.leaf}},
 			{`DELETE FROM vacancy_roles WHERE id=? AND stable_key='ci-go088-root'`, []any{f.root}},
 			{`UPDATE app_catalog SET data_json=?,updated_at=? WHERE id=1`, []any{catalog, updated}},
@@ -96,11 +98,15 @@ func openVacancyCreateFixture(t *testing.T) *vacancyCreateFixture {
 	}
 	extra, _ := json.Marshal(map[string]any{"name": crudCompany, "sector": "CI test", "offices": []any{}, "jobs": []any{}, "vacancySources": map[string]any{}})
 	companies = append(companies, extra)
+	move, _ := json.Marshal(map[string]any{"name": crudMoveCompany, "sector": "CI test", "offices": []any{}, "jobs": []any{}, "vacancySources": map[string]any{}})
+	companies = append(companies, move)
 	data["companies"], _ = json.Marshal(companies)
 	encoded, _ := json.Marshal(data)
 	f.exec(`UPDATE app_catalog SET data_json=? WHERE id=1`, string(encoded))
 	f.root = f.insert(`INSERT INTO vacancy_roles(stable_key,name) VALUES('ci-go088-root','CI GO088 Root')`)
 	f.leaf = f.insert(`INSERT INTO vacancy_roles(stable_key,name,parent_id) VALUES('ci-go088-leaf','CI GO088 Leaf',?)`, f.root)
+	f.otherLeaf = f.insert(`INSERT INTO vacancy_roles(stable_key,name,parent_id,sort_order) VALUES('ci-go088-other-leaf','CI GO088 Other Leaf',?,1)`, f.root)
+
 	f.channel = f.insert(`INSERT INTO telegram_channels(name,url,normalized_username,username) VALUES('CI GO088 Channel','https://t.me/ci_go088_channel',?,'@ci_go088_channel')`, crudChannelUsername)
 	return f
 }
@@ -150,4 +156,61 @@ func (f *vacancyCreateFixture) assertAbsent() {
 	if f.count(`SELECT COUNT(*) FROM company_vacancies WHERE url LIKE ?`, crudURLPrefix+"%") != 0 || f.count(`SELECT COUNT(*) FROM company_crm WHERE company_name=?`, crudCompany) != 0 || f.count(`SELECT COUNT(*) FROM vacancy_role_assignments WHERE role_id IN (?,?)`, f.root, f.leaf) != 0 || f.count(`SELECT COUNT(*) FROM vacancy_telegram_sources WHERE channel_id=?`, f.channel) != 0 {
 		f.t.Fatal("failed creation left partial parent/vacancy/role/provenance rows")
 	}
+}
+func (f *vacancyCreateFixture) assertLockFree() {
+	f.t.Helper()
+	_, db := openDisposableMariaDB(f.t)
+	conn, err := db.Conn(f.ctx)
+	if err != nil {
+		f.t.Fatal("cannot acquire independent named-lock probe")
+	}
+	defer conn.Close()
+	var acquired int
+	if err = conn.QueryRowContext(f.ctx, `SELECT GET_LOCK('itmap:manual-vacancy:create',0)`).Scan(&acquired); err != nil || acquired != 1 {
+		f.t.Fatal("vacancy creator leaked its connection-scoped named lock")
+	}
+	cleanup, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	if _, err = conn.ExecContext(cleanup, `DO RELEASE_LOCK('itmap:manual-vacancy:create')`); err != nil {
+		f.t.Fatal("cannot release named-lock probe")
+	}
+}
+func (f *vacancyCreateFixture) created(repo vacancies.Repository, input vacancies.Input) vacancies.CompanyVacancy {
+	f.t.Helper()
+	list, err := repo.CreateManual(f.ctx, "Demo", input)
+	if err != nil {
+		f.t.Fatalf("manual vacancy create failed: %T", err)
+	}
+	for _, v := range list {
+		if v.URL == input.URL {
+			return v
+		}
+	}
+	f.t.Fatal("create response missed the inserted vacancy")
+	return vacancies.CompanyVacancy{}
+}
+func (f *vacancyCreateFixture) detail(user string, id int64) vacancies.Detail {
+	f.t.Helper()
+	v, err := f.repo.DetailByID(f.ctx, user, id)
+	if err != nil {
+		f.t.Fatalf("owned vacancy detail failed: %T", err)
+	}
+	return v.Vacancy
+}
+func (f *vacancyCreateFixture) linked(id int64) {
+	f.t.Helper()
+	for _, user := range []string{"Demo", "Nastya"} {
+		app := f.insert(`INSERT INTO company_applications(user_name,company_name,vacancy_id,status,comment_md,application_sources) VALUES(?,?,?,'Откликнулся','CI linked comment','["site"]')`, user, crudCompany, id)
+		f.insert(`INSERT INTO company_application_status_history(application_id,from_status,to_status) VALUES(?,'','Откликнулся')`, app)
+		f.insert(`INSERT INTO company_tasks(user_name,company_name,vacancy_id,type,note,due_at) VALUES(?,?,?,'call','CI linked task','2026-10-26T12:00:00Z')`, user, crudCompany, id)
+	}
+}
+func (f *vacancyCreateFixture) links(id int64) string {
+	f.t.Helper()
+	var result string
+	f.scan(`SELECT JSON_ARRAY(
+ (SELECT JSON_ARRAYAGG(JSON_ARRAY(id,user_name,company_name,vacancy_id,status,comment_md,updated_at) ORDER BY id) FROM company_applications WHERE vacancy_id=?),
+ (SELECT JSON_ARRAYAGG(JSON_ARRAY(id,user_name,company_name,vacancy_id,type,note,due_at,completed,created_at,completed_at) ORDER BY id) FROM company_tasks WHERE vacancy_id=?),
+ (SELECT JSON_ARRAYAGG(JSON_ARRAY(h.id,h.application_id,h.from_status,h.to_status,h.changed_at) ORDER BY h.id) FROM company_application_status_history h JOIN company_applications a ON a.id=h.application_id WHERE a.vacancy_id=?))`, []any{id, id, id}, &result)
+	return result
 }

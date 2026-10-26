@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -74,6 +75,23 @@ func TestManualVacancyDeleteRoute(t *testing.T) {
 	if w.Code != 200 || probe.calls != 1 || probe.id != 10 || !strings.Contains(w.Body.String(), `"archived":true`) {
 		t.Fatalf("%d %s %+v", w.Code, w.Body.String(), probe)
 	}
+	var archive map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &archive); err != nil {
+		t.Fatal(err)
+	}
+	if len(archive) != 3 {
+		t.Fatal("legacy archive reply must omit preservedApplication/preservedTask")
+	}
+	probe.result.Archived = false
+	w = request("/api/vacancies/10", a, "", "")
+	var deleted map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &deleted); err != nil {
+		t.Fatal(err)
+	}
+	if len(deleted) != 5 || deleted["preservedApplication"] != false || deleted["preservedTask"] != false {
+		t.Fatal("hard delete must include both preservation flags even when false")
+	}
+
 	for _, tc := range []struct {
 		err  error
 		code int
