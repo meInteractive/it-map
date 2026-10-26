@@ -1,0 +1,521 @@
+{
+  "oracle": "Unchanged Sites POST /api/tasks validation block; synthetic typed input, fixed catalog name lookup, no SQL/network",
+  "vectors": [
+    {
+      "name": "base",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "type": "call",
+        "note": "",
+        "dueAt": "2026-10-26T14:45:00+03:00"
+      },
+      "valid": true,
+      "normalized": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "type": "call",
+        "note": "",
+        "dueAt": "2026-10-26T11:45:00.000Z"
+      }
+    },
+    {
+      "name": "spaces",
+      "input": {
+        "companyName": " CI Synthetic Employer ",
+        "vacancyId": null,
+        "type": "call",
+        "note": "  CI synthetic task  ",
+        "dueAt": "2026-10-26T14:45:00+03:00"
+      },
+      "valid": true,
+      "normalized": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "type": "call",
+        "note": "CI synthetic task",
+        "dueAt": "2026-10-26T11:45:00.000Z"
+      }
+    },
+    {
+      "name": "bom-company",
+      "input": {
+        "companyName": "﻿CI Synthetic Employer﻿",
+        "vacancyId": null,
+        "type": "call",
+        "note": "",
+        "dueAt": "2026-10-26T14:45:00+03:00"
+      },
+      "valid": true,
+      "normalized": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "type": "call",
+        "note": "",
+        "dueAt": "2026-10-26T11:45:00.000Z"
+      }
+    },
+    {
+      "name": "nel-company",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "type": "call",
+        "note": "",
+        "dueAt": "2026-10-26T14:45:00+03:00"
+      },
+      "valid": true,
+      "normalized": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "type": "call",
+        "note": "",
+        "dueAt": "2026-10-26T11:45:00.000Z"
+      }
+    },
+    {
+      "name": "bom-note",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "type": "call",
+        "note": "﻿CI synthetic task﻿",
+        "dueAt": "2026-10-26T14:45:00+03:00"
+      },
+      "valid": true,
+      "normalized": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "type": "call",
+        "note": "CI synthetic task",
+        "dueAt": "2026-10-26T11:45:00.000Z"
+      }
+    },
+    {
+      "name": "nel-note",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "type": "call",
+        "note": "CI synthetic task",
+        "dueAt": "2026-10-26T14:45:00+03:00"
+      },
+      "valid": true,
+      "normalized": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "type": "call",
+        "note": "CI synthetic task",
+        "dueAt": "2026-10-26T11:45:00.000Z"
+      }
+    },
+    {
+      "name": "all-js-whitespace",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "type": "call",
+        "note": "\t\u000b\f\r                  　﻿CI synthetic task\n",
+        "dueAt": "2026-10-26T14:45:00+03:00"
+      },
+      "valid": true,
+      "normalized": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "type": "call",
+        "note": "CI synthetic task",
+        "dueAt": "2026-10-26T11:45:00.000Z"
+      }
+    },
+    {
+      "name": "empty-note",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "type": "call",
+        "note": "",
+        "dueAt": "2026-10-26T14:45:00+03:00"
+      },
+      "valid": true,
+      "normalized": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "type": "call",
+        "note": "",
+        "dueAt": "2026-10-26T11:45:00.000Z"
+      }
+    },
+    {
+      "name": "only-bom-note",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "type": "call",
+        "note": "﻿",
+        "dueAt": "2026-10-26T14:45:00+03:00"
+      },
+      "valid": true,
+      "normalized": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "type": "call",
+        "note": "",
+        "dueAt": "2026-10-26T11:45:00.000Z"
+      }
+    },
+    {
+      "name": "unicode-note",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "type": "call",
+        "note": "CI синтетическая задача 😀 <&>  ",
+        "dueAt": "2026-10-26T14:45:00+03:00"
+      },
+      "valid": true,
+      "normalized": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "type": "call",
+        "note": "CI синтетическая задача 😀 <&>",
+        "dueAt": "2026-10-26T11:45:00.000Z"
+      }
+    },
+    {
+      "name": "ascii-limit",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "type": "call",
+        "note": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "dueAt": "2026-10-26T14:45:00+03:00"
+      },
+      "valid": true,
+      "normalized": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "type": "call",
+        "note": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "dueAt": "2026-10-26T11:45:00.000Z"
+      }
+    },
+    {
+      "name": "ascii-over-limit",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "type": "call",
+        "note": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "dueAt": "2026-10-26T14:45:00+03:00"
+      },
+      "valid": false,
+      "status": 400
+    },
+    {
+      "name": "emoji-limit",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "type": "call",
+        "note": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+        "dueAt": "2026-10-26T14:45:00+03:00"
+      },
+      "valid": true,
+      "normalized": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "type": "call",
+        "note": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+        "dueAt": "2026-10-26T11:45:00.000Z"
+      }
+    },
+    {
+      "name": "emoji-over-limit",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "type": "call",
+        "note": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀x",
+        "dueAt": "2026-10-26T14:45:00+03:00"
+      },
+      "valid": false,
+      "status": 400
+    },
+    {
+      "name": "emoji-601",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "type": "call",
+        "note": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+        "dueAt": "2026-10-26T14:45:00+03:00"
+      },
+      "valid": false,
+      "status": 400
+    },
+    {
+      "name": "trim-before-limit",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "type": "call",
+        "note": "﻿😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀﻿",
+        "dueAt": "2026-10-26T14:45:00+03:00"
+      },
+      "valid": true,
+      "normalized": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "type": "call",
+        "note": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+        "dueAt": "2026-10-26T11:45:00.000Z"
+      }
+    },
+    {
+      "name": "linked-vacancy",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": 1,
+        "type": "call",
+        "note": "",
+        "dueAt": "2026-10-26T14:45:00+03:00"
+      },
+      "valid": true,
+      "normalized": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": 1,
+        "type": "call",
+        "note": "",
+        "dueAt": "2026-10-26T11:45:00.000Z"
+      }
+    },
+    {
+      "name": "largest-safe-vacancy",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": 9007199254740991,
+        "type": "call",
+        "note": "",
+        "dueAt": "2026-10-26T14:45:00+03:00"
+      },
+      "valid": true,
+      "normalized": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": 9007199254740991,
+        "type": "call",
+        "note": "",
+        "dueAt": "2026-10-26T11:45:00.000Z"
+      }
+    },
+    {
+      "name": "unsafe-vacancy",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": 9007199254740992,
+        "type": "call",
+        "note": "",
+        "dueAt": "2026-10-26T14:45:00+03:00"
+      },
+      "valid": false,
+      "status": 400
+    },
+    {
+      "name": "utc-date",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "type": "call",
+        "note": "",
+        "dueAt": "2026-10-26T11:45:00Z"
+      },
+      "valid": true,
+      "normalized": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "type": "call",
+        "note": "",
+        "dueAt": "2026-10-26T11:45:00.000Z"
+      }
+    },
+    {
+      "name": "millisecond-date",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "type": "call",
+        "note": "",
+        "dueAt": "2026-10-26T11:45:00.123Z"
+      },
+      "valid": true,
+      "normalized": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "type": "call",
+        "note": "",
+        "dueAt": "2026-10-26T11:45:00.123Z"
+      }
+    },
+    {
+      "name": "msk-midnight",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "type": "call",
+        "note": "",
+        "dueAt": "2026-10-26T00:15:00+03:00"
+      },
+      "valid": true,
+      "normalized": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "type": "call",
+        "note": "",
+        "dueAt": "2026-10-25T21:15:00.000Z"
+      }
+    },
+    {
+      "name": "negative-offset",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "type": "call",
+        "note": "",
+        "dueAt": "2026-10-26T23:15:00-03:30"
+      },
+      "valid": true,
+      "normalized": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "type": "call",
+        "note": "",
+        "dueAt": "2026-10-27T02:45:00.000Z"
+      }
+    },
+    {
+      "name": "leap-day",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "type": "call",
+        "note": "",
+        "dueAt": "2028-02-29T12:00:00Z"
+      },
+      "valid": true,
+      "normalized": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "type": "call",
+        "note": "",
+        "dueAt": "2028-02-29T12:00:00.000Z"
+      }
+    },
+    {
+      "name": "invalid-date",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "type": "call",
+        "note": "",
+        "dueAt": "CI invalid date"
+      },
+      "valid": false,
+      "status": 400
+    },
+    {
+      "name": "unknown-type",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "type": "CI unknown type",
+        "note": "",
+        "dueAt": "2026-10-26T14:45:00+03:00"
+      },
+      "valid": false,
+      "status": 400
+    },
+    {
+      "name": "empty-company",
+      "input": {
+        "companyName": "",
+        "vacancyId": null,
+        "type": "call",
+        "note": "",
+        "dueAt": "2026-10-26T14:45:00+03:00"
+      },
+      "valid": false,
+      "status": 404
+    },
+    {
+      "name": "type-call",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "type": "call",
+        "note": "",
+        "dueAt": "2026-10-26T14:45:00+03:00"
+      },
+      "valid": true,
+      "normalized": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "type": "call",
+        "note": "",
+        "dueAt": "2026-10-26T11:45:00.000Z"
+      }
+    },
+    {
+      "name": "type-email",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "type": "email",
+        "note": "",
+        "dueAt": "2026-10-26T14:45:00+03:00"
+      },
+      "valid": true,
+      "normalized": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "type": "email",
+        "note": "",
+        "dueAt": "2026-10-26T11:45:00.000Z"
+      }
+    },
+    {
+      "name": "type-messenger",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "type": "messenger",
+        "note": "",
+        "dueAt": "2026-10-26T14:45:00+03:00"
+      },
+      "valid": true,
+      "normalized": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "type": "messenger",
+        "note": "",
+        "dueAt": "2026-10-26T11:45:00.000Z"
+      }
+    },
+    {
+      "name": "type-meeting",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "type": "meeting",
+        "note": "",
+        "dueAt": "2026-10-26T14:45:00+03:00"
+      },
+      "valid": true,
+      "normalized": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "type": "meeting",
+        "note": "",
+        "dueAt": "2026-10-26T11:45:00.000Z"
+      }
+    }
+  ]
+}
