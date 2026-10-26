@@ -1,6 +1,6 @@
 # Спринт 1.1 — функциональная миграция Go
 
-**Текущий активный спринт.** Релиз и переключение ещё не выполнены. `GO-001…GO-028` сохраняют исходную нумерацию работ `1.1.01…1.1.28`. `GO-029…GO-082` — выделенные узкие задачи, не подменяющие критерии крупных пунктов. Ни один коммит сам по себе не доказывает полную приёмку на MariaDB.
+**Текущий активный спринт.** Релиз и переключение ещё не выполнены. `GO-001…GO-028` сохраняют исходную нумерацию работ `1.1.01…1.1.28`. `GO-029…GO-085` — выделенные узкие задачи, не подменяющие критерии крупных пунктов. Ни один коммит сам по себе не доказывает полную приёмку на MariaDB.
 
 **Актуальный статус на 26.10.2026:** `[x]` — завершён именно указанный результат с доказательствами; `[ ]` — остаются критерии. Для больших GO-001…028 дополнительно отмечены проверенные части, чтобы не путать «код существует», «прошёл synthetic CI» и «принят внешний staging/релиз». Исторические v12–v21 ниже не являются текущим статусом: впоследствии прошли Go vet/race/tagged build, web, MariaDB schema/rollback/locking, авторизованный API и 14 browser-сценариев. [Актуальная контрольная точка](STACK.md), [инструкция запуска](../docs/deployment/README.md).
 
@@ -196,7 +196,7 @@
 ### [ ] GO-010. CRM компаний и пользовательские списки
 
 - **Приоритет:** Критический.
-- **Критическая часть:** [ ] Проверить mutation favorite/hidden/comment/status/history и user isolation на MariaDB; CAS/конфликты/rollback. Код уже есть, чтение покрыто частично; write gate пока не доказан.
+- **Критическая часть:** [x] Favorite/hidden SQL+HTTP, user isolation, UNIQUE/FK, concurrent merge и rollback проверены GO-084 / #38. [ ] Comment/status/history save и concurrency/rollback — GO-085. У legacy company CRM нет revision/CAS-поля; не изобретать новый контракт.
 - **Средняя часть:** [ ] Минимальный UI round-trip действий после SQL/API gates.
 - **Низкая часть:** [ ] Визуальная доводка CRM-панелей/списков.
 
@@ -1128,3 +1128,25 @@
 - **Границы:** новый корневой README из приложенного текста, без редактирования авторских формулировок; важные сведения прежнего README в подходящие docs, с актуализацией по коду. Runtime/workflow код не меняется.
 - **Критерии:** все 9 локальных ссылок README существуют и ведут по назначению; developer/source map, команды сборки/проверок, readiness503 и границы публичного снимка сохранены в docs. Исторические API/backup/V12 ссылки остаются доступны. LF нормализован, текст README совпадает с предоставленным. Source/history/manifest и локальные ссылки изменённых docs проверены; публикация отдельным PR.
 - **Результат:** [PR #37](https://github.com/meInteractive/it-map/pull/37), опубликованный текст `fd5ca50`, ветка codex/GO-082-project-readme. README побайтно совпал с вложением после CRLF→LF, 9 ссылок README и всего 67 локальных ссылок проверенных документов корректны. Важные сведения сохранены в GO_BACKEND_STRUCTURE/ARCHITECTURE/deployment LOCAL/MIGRATION_PUBLIC_REPOSITORY; source/history/manifest/diff checks успешны. Runtime/test/workflow code diff относительно 93babc6 пуст. GitHub CI документационного SHA контролируется отдельно, его ожидание не объявлено успешной SQL-проверкой.
+
+
+### [ ] GO-083. Резерв исправления доставки README (отменён)
+
+- **Статус:** отменён до создания PR: пользователь объединил #36, после чего main=9059c75 получил принятый в #37 README. Blob a31b71bcd3ed456f6a90f2221ed25b1f37eea627 совпал с принятым текстом.
+- **Результат:** дополнительный PR не создавался; временная codex/GO-083-readme-main / 6753cff не используется для дальнейшего стека и не должна сливаться. ID зарезервирован и не переиспользуется.
+
+### [x] GO-084. CRM favorite/hidden: SQL и HTTP write gate (часть GO-010)
+
+- **Приоритет:** Критический.
+- **Зависимости:** auth/catalog/существующий SetCompanyFlag, текущая synthetic MariaDB schema и disposable guard. База — проверенный main9059c75 после #36/#37.
+- **Критерии:** создание/повтор/выключение favorite/hidden и списки для владельца; изоляция Demo/Nastya/Eugene; status/comment/history не меняются. Реальный UNIQUE и FK проверяются без DDL. Два SQL connections сохраняют независимые flags без lost update; ошибка после реального INSERT/UPDATE полностью откатывается с retry новым pool. Реальные auth/router/repository HTTP дают правильные guards/errors/private no-store, generic503 без утечки деталей. Cleanup восстанавливает catalog/CRM/state/history/generation до старого smoke.
+- **Границы:** только guarded disposable GitHub CI, локально SQL skip/negative guards; без схемных изменений. Legacy company flag API не имеет revision/CAS. Статус/comment/history save — GO-085; полная GO-010 открыта.
+- **Результат:** [PR #38](https://github.com/meInteractive/it-map/pull/38), code9986429. Первый CI воспроизвёл конкурентный дефект INSERT IGNORE → FOR UPDATE; no-op UPSERT с exclusive parent lock устранил его. Исправлен GET CRM для Unicode names. На точном code SHA public40335262404 и MariaDB40335262393 успешны: два CRM targets без skips, UNIQUE/FK, два SQL writers, late rollback/bootstrap/retry, signed HTTP/isolation/generic errors; прежние receipt/task/scheduler/browser/API smoke также pass. Локально race/unit/vet/build/web/actionlint/source/history/manifest и четыре guard отказа до подключения успешны.
+
+### [ ] GO-085. CRM comment/status/history: перенос и атомарная приёмка (часть GO-010)
+
+- **Приоритет:** Критический.
+- **Зависимости:** GO-084 locks/user isolation, legacy saveCompanyCrm и GET projections.
+- **Критерии:** PUT /api/crm сохраняет контракт status/comment/история/vacancies, типы/UTF-16 лимит/права; SQL transaction не теряет flags, history добавляется только при смене статуса. Concurrent writes дают последовательную историю, rollback после state/history write не оставляет частичных данных; HTTP и owner isolation на disposable MariaDB.
+- **Границы:** у legacy company CRM нет revision token, не добавлять новый CAS API; версии других модулей сохранять. Не объявлять полный GO-010 завершённым по одной флаговой проверке.
+- **Результат:** не реализовано.

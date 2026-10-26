@@ -13,9 +13,9 @@ var ErrInvalidFlag = errors.New("unsupported company flag")
 
 // SetCompanyFlag changes only the signed-in user's favorite/hidden company flag.
 // company_crm provides a stable, unique per-company serialization lock even
-// though company_user_state lost its unique(user_name,company_name) constraint
-// during D1 -> MariaDB conversion. Existing duplicate state is NOT silently
-// merged or overwritten: resolve duplicates on staging before enabling them.
+// when checking older converted databases with missing user/company uniqueness.
+// The reviewed CI schema enforces UNIQUE(user_name,company_name); pre-existing
+// ambiguous state in an older database is never silently merged or overwritten.
 func (r Repository) SetCompanyFlag(ctx context.Context, user, company, flag string, value bool) (CompanyState, error) {
 	if r.DB == nil || strings.TrimSpace(user) == "" || company == "" || utf8.RuneCountInString(company) > 255 {
 		return CompanyState{}, ErrCompanyNotFound
@@ -39,8 +39,10 @@ func (r Repository) SetCompanyFlag(ctx context.Context, user, company, flag stri
 	if !known {
 		return CompanyState{}, ErrCompanyNotFound
 	}
-	// Stable existing lock row, created once, is safe under the company_crm PK.
-	if _, err = tx.ExecContext(ctx, `INSERT IGNORE INTO company_crm(company_name) VALUES(?)`, company); err != nil {
+	// Acquire an exclusive parent lock immediately, including on duplicate keys.
+	// INSERT IGNORE can take shared duplicate-key locks in concurrent transactions;
+	// upgrading both to FOR UPDATE then deadlocks. Preserve all global CRM fields.
+	if _, err = tx.ExecContext(ctx, `INSERT INTO company_crm(company_name) VALUES(?) ON DUPLICATE KEY UPDATE company_name=VALUES(company_name)`, company); err != nil {
 		return CompanyState{}, err
 	}
 	var locked string
