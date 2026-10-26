@@ -22,10 +22,10 @@ var errReceiptInterruption = errors.New("synthetic receipt interruption")
 // transactions and rollbacks execute through the real pinned MariaDB driver.
 // It is compiled exclusively into guarded receiptwrites integration tests.
 type receiptFault struct {
-	mu                    sync.Mutex
-	stage                 string
-	fired, committed      bool
-	applications, history int
+	mu                             sync.Mutex
+	stage                          string
+	fired, committed               bool
+	applications, history, updates int
 }
 
 func (f *receiptFault) interrupt(query string) bool {
@@ -45,6 +45,9 @@ func (f *receiptFault) interrupt(query string) bool {
 func (f *receiptFault) executed(query string) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if strings.HasPrefix(query, "UPDATE company_applications a SET") {
+		f.updates++
+	}
 	if strings.HasPrefix(query, "INSERT INTO company_applications(") {
 		f.applications++
 	}
