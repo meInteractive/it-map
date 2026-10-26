@@ -87,3 +87,14 @@ TestMariaDBApplicationShortcutDisposable добавляет седьмой requi
 Concurrent scenario использует два подтверждённых server connections на удерживаемой generation row: ordinary create и ApplyToVacancy начинают конкурирующие транзакции. Допустимы два исхода: ordinary создал, shortcut только claimed его с отдельным receipt; либо shortcut создал, ordinary получил ErrDuplicateVacancy без своего receipt. В обоих случаях один application и одна начальная история, поля winner сохранены, успешные intents replay того же ID. Это реальная SQL concurrency поверх существующих production repositories, без DDL/добавочных grants.
 
 Все записи ограничены synthetic Demo/company/key namespace; cleanup сохраняет Eugene/history/generation и readonly API/14 browser/native smoke. Только company-owned vacancy=1: channel-owned/неизвестный каталогам owner, mixed delete/update/смена vacancy не покрыты этим результатом. Полный GO-031 открыт. GO-032 по уточнению пользователя средний; работа остаётся в спринте 1.1.
+
+
+Подтверждение GO-066: [PR #24](https://github.com/meInteractive/it-map/pull/24), код 65a890a; [Go/web/security](https://github.com/meInteractive/it-map/actions/runs/40280586960) и [MariaDB/shortcut/API/14 browser/native](https://github.com/meInteractive/it-map/actions/runs/40280586955) успешны, семь required targets без skips.
+
+## GO-067: channel-owned shortcut и delete races
+
+TestMariaDBApplicationMixedDisposable добавляет восьмой required target. После прежнего CI/target/generation guard создаётся отдельный предварительно пустой synthetic owner/keyspace (company_crm + channel-owned vacancy=900001) вне app_catalog. Setup — два INSERT в одной реальной транзакции, без DDL; отдельный bounded cleanup зарегистрирован до первой записи, удаляет только собственный owner/vacancy и проверяет отсутствие остатков. Ordinary HTTP create возвращает 404 для неизвестного каталогу owner, но shortcut использует реального владельца вакансии и сохраняет/replay тот же ID. Delete выполняется через Repository, поскольку company response неизвестного каталогу owner — отдельный HTTP-контракт; sticky shortcut replay затем даёт 410.
+
+Update/delete конкурируют на одной application row; допустим update до delete либо ErrNotFound после него. Existing receipt replay/delete удерживаются locking join по generation и application до наблюдения обоих разных writer IDs в PROCESSLIST; допустим replay прежнего ID до delete либо ErrApplicationDeleted. Никаких произвольных SQL failures вместо ожидаемого доменного исхода. В обоих сценариях после завершения writers ноль applications/history, один sticky receipt и отказ последующего retry без resurrection.
+
+Прежний cleanup сохраняет Eugene/history/generation и readonly API/14 browser/native smoke. Смена vacancy/owner, concurrent import/restore и авария MariaDB/хоста этим результатом не подтверждаются; полный GO-031 остаётся открытым. Работа только в спринте 1.1, GO-032 средний.
