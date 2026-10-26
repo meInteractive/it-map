@@ -1,6 +1,6 @@
 # Спринт 1.1 — функциональная миграция Go
 
-**Текущий активный спринт.** Релиз и переключение ещё не выполнены. `GO-001…GO-028` сохраняют исходную нумерацию работ `1.1.01…1.1.28`. `GO-029…GO-064` — выделенные узкие задачи, не подменяющие критерии крупных пунктов. Ни один коммит сам по себе не доказывает полную приёмку на MariaDB.
+**Текущий активный спринт.** Релиз и переключение ещё не выполнены. `GO-001…GO-028` сохраняют исходную нумерацию работ `1.1.01…1.1.28`. `GO-029…GO-065` — выделенные узкие задачи, не подменяющие критерии крупных пунктов. Ни один коммит сам по себе не доказывает полную приёмку на MariaDB.
 
 **Актуальный статус на 26.10.2026:** `[x]` — завершён именно указанный результат с доказательствами; `[ ]` — остаются критерии. Для больших GO-001…028 дополнительно отмечены проверенные части, чтобы не путать «код существует», «прошёл synthetic CI» и «принят внешний staging/релиз». Исторические v12–v21 ниже не являются текущим статусом: впоследствии прошли Go vet/race/tagged build, web, MariaDB schema/rollback/locking, авторизованный API и 14 browser-сценариев. [Актуальная контрольная точка](STACK.md), [инструкция запуска](../docs/deployment/README.md).
 
@@ -962,11 +962,21 @@
 - **Результат:** реализация в codex/GO-063-application-cas от проверенного GO-062 / PR #20. Локально прошли обычный/tagged vet, tagged race suite (live SQL без DSN явно пропущен), обе сборки, Go 1.23.12 storage, source/history/schema/fixture/actionlint и четыре negative guards до соединения без skips. [PR #21](https://github.com/meInteractive/it-map/pull/21), код `36b0133`: [Go/web/security](https://github.com/meInteractive/it-map/actions/runs/40237800951) и [MariaDB CAS/receipts/concurrency/faults/kill-restart/API/14 browser/native](https://github.com/meInteractive/it-map/actions/runs/40237800814) успешны; пять именованных targets реально выполнились без skips. Узкий GO-063 завершён, полная GO-031 открыта.
 
 
-### [ ] GO-064. Сохранить закрытый стек и уточнить приоритет GO-032
+### [x] GO-064. Сохранить закрытый стек и уточнить приоритет GO-032
 
 - **Приоритет:** Критический (сохранность проверенного результата в основном стеке).
 - **Цель:** вернуть в review для main проверенные GO-062/063, объединённые в закрытую ветку #19, и закрепить явное уточнение пользователя: GO-032 — средний приоритет.
 - **Зависимости:** #19 объединён как main 48fb03a; #21 вошёл в #20, #20 — в закрытую ветку #19 как 7142c2c. Проверенный business/test код совпадает с 07e1ec0.
 - **Критерии:** отдельная ветка от 7142c2c с обычным merge main, PR в main, сохранены все code/doc изменения GO-060…063, SHA256SUMS пересчитан; приоритет GO-032 согласован в SPRINT/PLANS/README. Автоматического merge PR нет.
 - **Проверки:** diff production/test/workflow кода относительно проверенного 07e1ec0 пуст; source/history/schema/fixture/manifest gates и обязательный CI точного SHA. Следующая критическая бизнес-порция — HTTP create/replay/error/delete GO-031, затем shortcut/смешанные операции, GO-033/034; GO-032 не блокирует эту очередь.
-- **Результат:** подготовлено в codex/GO-064-stack-and-priorities; до обязательного CI и PR остаётся открытой.
+- **Результат:** [PR #22](https://github.com/meInteractive/it-map/pull/22), код `b21a051`: [Go/web/security](https://github.com/meInteractive/it-map/actions/runs/40279232693) и [MariaDB/все пять receipt targets/API/14 browser/native](https://github.com/meInteractive/it-map/actions/runs/40279232671) прошли. Production/test/workflow код GO-062/063 не менялся; GO-032 закреплён как средний.
+
+
+### [ ] GO-065. Авторизованный HTTP round-trip отклика на MariaDB (часть GO-031/GO-013)
+
+- **Приоритет:** Критический; текущий спринт 1.1, GO-032 остаётся средним.
+- **Зависимости:** проверенный GO-064 b21a051 / PR #22, существующие HTTP/auth/Repository и guards/fixture/fault helper GO-058…063.
+- **Границы:** настоящее HTTPS httptest соединение, реальные login/cookie/router/repository/mysql; только guarded disposable CI. Не полный cmd/server deployment, не browser write smoke, shortcut или смешанные конкурентные операции.
+- **Критерии:** 303 login с Secure/HttpOnly/Strict cookie; 401/403/400/428/409/404 до лишних записей; opaque user-scoped create-context; 201 create и 200 replay через оба URL с полным company response/общим ID; userName тела не подменяет cookie owner. GET/PUT revision/history, stale 409 и replay после edit сохраняют новые поля. DELETE возвращает полный company response и сохраняет sticky receipt; повтор create даёт 410 без resurrection. Другой пользователь не читает/удаляет запись. Реальный commit с искусственным post-commit read error даёт HTTP 503 без утечки SQL, retry возвращает тот же durable ID. Все API ответы JSON/private/no-store, cleanup сохраняет readonly fixtures.
+- **Проверки:** обычный/tagged vet/race/обе сборки/Go 1.23, source/history/schema/fixtures/actionlint/manifest и четыре fail-closed guards. Шестой обязательный receiptwrites target с pass/no-skip после readonly business и до прежних API/14 browser/native smoke. Локальной БД нет.
+- **Результат:** реализация в codex/GO-065-application-http от проверенного b21a051; локально прошли обычный/tagged vet/race, обе сборки, Go 1.23 storage compile/tests (live SQL явно пропущен без DSN), source/history/schema/fixture/actionlint и четыре negative guards до соединения без skips. До live CI остаётся открытой.

@@ -67,3 +67,12 @@ TestMariaDBApplicationCASDisposable расширяет бизнес-gate пят�
 
 
 Подтверждение GO-063: [PR #21](https://github.com/meInteractive/it-map/pull/21), код `36b0133`, [Go/web/security](https://github.com/meInteractive/it-map/actions/runs/40237800951) и [MariaDB CAS/все receipt targets/API/14 browser/native](https://github.com/meInteractive/it-map/actions/runs/40237800814) успешны. Все пять именованных SQL targets реально прошли без skips. Код приложения/API/схема не потребовали изменения. GO-031 остаётся открытой для controlled HTTP write/replay, shortcut и смешанных операций/смены vacancy.
+
+
+## GO-065: настоящий HTTP → Repository → MariaDB
+
+TestMariaDBApplicationHTTPDisposable добавляет шестой обязательный pass/no-skip target. После прежних CI/parsed target/current-generation guards запускается loopback HTTPS httptest сервер с production auth.Manager, router и реальными applications.Repository. Вход выполняется через POST /auth, отдельные cookie jars сохраняют выданные Secure/HttpOnly/Strict cookies; клиент доверяет сертификату только этого test server. Репозиторий и HMAC используют один synthetic session secret. Локально без DSN сервер/записи не запускаются.
+
+Проверяются opaque user-bound context, 401/403/400/428/409/404 и отсутствие лишних SQL-записей; 201 create/200 replay обоих aliases с полным company response и одним durable ID; игнорирование userName тела в пользу cookie; user isolation detail/delete/company list. PUT изменяет revision/history, stale PUT даёт 409; replay исходного create не перезаписывает позднее редактирование. DELETE удаляет application/history, сохраняет receipt; повтор create даёт 410 без resurrection. JSON/private/no-store проверяется для каждого API ответа.
+
+Отдельный реальный INSERT/COMMIT через test-only fault wrapper GO-061 завершается искусственной ошибкой response read: HTTP должен вернуть generic 503 без внутренней ошибки. SQL подтверждает уже committed комплект; повтор по alias возвращает 200/replayed с тем же ID и единственной историей. Это HTTP обработка ошибки после commit, не имитация неопределённого сетевого COMMIT. Cleanup возвращает Demo=0, полностью сохраняет Eugene/history/generation и все прежние readonly API/14 browser/native gates. Shortcut, mixed concurrent mutations и полный browser write/deployment остаются вне этой порции.
