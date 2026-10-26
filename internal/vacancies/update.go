@@ -230,6 +230,14 @@ func (r Repository) UpdateManual(ctx context.Context, user string, id int64, req
 		in.CoverLetterSubject = oldSharedSubject
 		in.CoverLetterMD = oldSharedMD
 	}
+	if in.CompanyName != v.CompanyName {
+		// A catalog entry may have no CRM row until its first mutation. Create
+		// the reviewed FK parent in this transaction before moving the vacancy
+		// and its application/task links. Preserve existing global CRM fields.
+		if _, err = tx.ExecContext(ctx, `INSERT INTO company_crm(company_name) VALUES(?) ON DUPLICATE KEY UPDATE company_name=VALUES(company_name)`, in.CompanyName); err != nil {
+			return nil, err
+		}
+	}
 	result, err := tx.ExecContext(ctx, `UPDATE company_vacancies SET company_name=?,entity_type=?,real_company_name=?,url=?,salary_from=?,salary_to=?,title=?,role=?,level=?,published_at=?,loaded_at=?,description_md=?,cover_letter_subject=?,cover_letter_md=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`,
 		in.CompanyName, in.EntityType, nullText(in.RealCompanyName), in.URL, in.SalaryFrom, in.SalaryTo, in.Title, roleLabel, in.Level, nullText(in.PublishedAt), nullText(in.LoadedAt), in.DescriptionMD, in.CoverLetterSubject, in.CoverLetterMD, id)
 	if err != nil {

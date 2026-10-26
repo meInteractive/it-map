@@ -14,38 +14,6 @@ import (
 	"itmap/internal/vacancies"
 )
 
-func (f *vacancyCreateFixture) assertLockFree() {
-	f.t.Helper()
-	_, db := openDisposableMariaDB(f.t)
-	conn, err := db.Conn(f.ctx)
-	if err != nil {
-		f.t.Fatal("cannot acquire independent named-lock probe")
-	}
-	defer conn.Close()
-	var acquired int
-	if err = conn.QueryRowContext(f.ctx, `SELECT GET_LOCK('itmap:manual-vacancy:create',0)`).Scan(&acquired); err != nil || acquired != 1 {
-		f.t.Fatal("vacancy creator leaked its connection-scoped named lock")
-	}
-	cleanup, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancel()
-	if _, err = conn.ExecContext(cleanup, `DO RELEASE_LOCK('itmap:manual-vacancy:create')`); err != nil {
-		f.t.Fatal("cannot release named-lock probe")
-	}
-}
-func (f *vacancyCreateFixture) created(repo vacancies.Repository, input vacancies.Input) vacancies.CompanyVacancy {
-	f.t.Helper()
-	list, err := repo.CreateManual(f.ctx, "Demo", input)
-	if err != nil {
-		f.t.Fatalf("manual vacancy create failed: %T", err)
-	}
-	for _, v := range list {
-		if v.URL == input.URL {
-			return v
-		}
-	}
-	f.t.Fatal("create response missed the inserted vacancy")
-	return vacancies.CompanyVacancy{}
-}
 func TestMariaDBVacancyCreateDisposable(t *testing.T) {
 	t.Run("complete company creation max-one pool projections and FK", func(t *testing.T) {
 		f := openVacancyCreateFixture(t)
