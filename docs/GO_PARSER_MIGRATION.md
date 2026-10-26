@@ -32,3 +32,16 @@ ValidateSettingsUpdate разбирает только известные JSON f
 Возвращаются normalized next settings и отдельная expectedRevision для будущего SQL CAS. Отрицательная input revision остаётся safe integer по legacy input-контракту; future SQL CAS обязан вернуть conflict, она не превращается в разрешение записи. Owner берётся из caller context, поля ownerName/cloudOwnerId в JSON отвергаются; наружу pure model содержит только cloudConnected. Дополнительный JSON boundary отвергает duplicate keys/trailing/oversized/nonfinite JSON; это явное строгое ограничение ещё не подключённой Go-функции, без изменения HTTP API.
 
 Отдельно открыты: admin/session/Origin API, SQL CAS/rollback/readback настроек, проверки реального source scope/ролей, dry-run, durable jobs/leases и запрет двойного parser. Наличие pure input validation не закрывает GO-021/GO-045.
+
+
+GO-078: [PR #33](https://github.com/meInteractive/it-map/pull/33), `14b26cd`; [public/62 settings vectors](https://github.com/meInteractive/it-map/actions/runs/40308221146), [MariaDB/16 browser/API/native](https://github.com/meInteractive/it-map/actions/runs/40308221140) успешны.
+
+## GO-079: historical upper costs и МСК
+
+UpperCostJSON выполняет арифметику на JSON request metadata и не запускает work. Сохраняются free===true, Apify cap 0.26, historical OpenAI tariff allowlist/alias (unknown snapshot не угадывается), обязательная positive safe max_output_tokens, UTF-8 JSON payload bytes +4096 +256×input length и общий context bound JEV/pricing/fixed fee/число questions+1. JSON размер учитывает UTF-16 string input length, Unicode/HTML/U+2028/U+2029 в ключах и значениях без неправильной замены literal backslash-u. Поддерживаются обычные числовые provider prices/string context; весь произвольный JS Number coercion не обещается.
+
+77 cost vectors и 10 day/month period vectors выполняют неизменные schedulerUpperCost/schedulerPeriod. Go periods используют фиксированный MSK UTC+3, как JS, включая переход UTC-полуночи/месяца/года/високосного дня. Исторические тарифы из openai-pricing.js сверяются по всем моделям/alias, но не объявляются актуальными тарифами для новых paid calls. Перепроверка тарифа/доступности нужна до подключения реального клиента.
+
+Выявлены два допуска Go ParseFloat: числовые строки 1_0/0.0_1 принимались, JS Number их отвергает. Новые oracle cases воспроизвели ошибку до исправления, теперь отказывают. Отдельный source case показывает arithmetic overflow Infinity даже при finite operands; Go дополнительно fail-closed, не передаёт nonfinite upper bound в будущий SQL/provider. Negative/nonfinite synthetic metadata тоже отказывает.
+
+Это не денежный ledger, не durable reservation и не гарантия exactly-once оплаты: full GO-017/021/023 и scheduler/idempotency/crash recovery остаются открытыми. free flag — доверенная metadata будущего внутреннего caller, а не публичное право пользователя обойти бюджет. Не подключены API/settings, SQL reservation, model client или scheduler.

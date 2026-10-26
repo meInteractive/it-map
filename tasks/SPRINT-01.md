@@ -691,7 +691,7 @@
 - **Критерии готовности:** Реальные секреты не попадают в тесты, совместимость подтверждена фикстурами.
 - **Как проверить:** Синтетические crypto vectors.
 - **Известные ограничения:** Без старого SESSION_SECRET нужна повторная настройка.
-- **Результат:** не завершено; коммита или PR нет.
+- **Результат:** pure synthetic compatibility часть GO-077 / #32 `75ba9d7` прошла required JS↔Go и оба CI. Полная GO-040 открыта: ADR-016/стратегия реальных настроек/staging не утверждены.
 
 ### [ ] GO-041. Backup v39: export и валидация
 
@@ -1089,14 +1089,14 @@
 - **Границы:** pure compatibility library, не чтение БД/env/реальных ключей и не provider/API wiring. ADR-016 и полная GO-040 остаются открыты до стратегии staging/секретов.
 - **Результат:** код в codex/GO-077-parser-crypto; 15 deterministic JS vectors / 15 real Go-random encrypt→legacy JS decrypt, malformed/corruption/wrong domain/secret/fresh nonce checks локально прошли. [PR #32](https://github.com/meInteractive/it-map/pull/32), code `75ba9d7`: [public/required JS↔Go](https://github.com/meInteractive/it-map/actions/runs/40307364593) и [MariaDB/16 browser/API/native](https://github.com/meInteractive/it-map/actions/runs/40307364181) успешны. Узкая GO-077 завершена; полная GO-040/ADR-016 остаётся открыта.
 
-### [ ] GO-078. Контракт валидации настроек парсера (часть GO-021)
+### [x] GO-078. Контракт валидации настроек парсера (часть GO-021)
 
 - **Приоритет:** Критический, спринт 1.1.
 - **Критерии:** legacy enabled/revision/day-month budgets/sourceIds/intervalDays/priorities/область организаций; unknown fields и неверные типы отказывают, source options/defaults подтверждены неизменным JS. Проверяемая pure-порция до административного API/SQL. Автоматический парсер не запускается.
-- **Результат:** реализация codex/GO-078-parser-settings от 75ba9d7: 62 source-backed validation/normalization vectors и дополнительные duplicate/nonfinite/trailing JSON guards локально проходят. Возвращается expectedRevision, input не может переопределить owner/cloud owner. До PR/mandatory CI открыта; API/admin permission/SQL CAS/dry-run/runtime запуск не принимаются этой pure-порцией.
+- **Результат:** реализация codex/GO-078-parser-settings от 75ba9d7: 62 source-backed validation/normalization vectors и дополнительные duplicate/nonfinite/trailing JSON guards локально проходят. Возвращается expectedRevision, input не может переопределить owner/cloud owner. [PR #33](https://github.com/meInteractive/it-map/pull/33), code `14b26cd`: [public/62 settings vectors](https://github.com/meInteractive/it-map/actions/runs/40308221146) и [MariaDB/16 browser/API/native](https://github.com/meInteractive/it-map/actions/runs/40308221140) успешны. Узкая GO-078 принята; API/admin permission/SQL CAS/dry-run/runtime запуск не принимаются этой pure-порцией.
 
 ### [ ] GO-079. Консервативные бюджеты и московские периоды парсера (часть GO-017/021/023)
 
 - **Приоритет:** Критический, спринт 1.1.
 - **Критерии:** source-backed pure upper-cost calculation, unknown tariff/negative/nonfinite/missing bound отказывает до work, бесплатные операции и лимит Apify сохранены, day/month границы МСК. Это не durable reservation/оплата/idempotency: SQL/lease/crash gate обязателен отдельно до provider calls.
-- **Результат:** не реализовано.
+- **Результат:** реализация codex/GO-079-parser-budget: 77 cost + 10 MSK period source vectors, исторические тарифы всех legacy models/alias, UTF-8 JSON bytes/UTF-16 input length. Два numeric-string mismatch с underscore воспроизведены до fix; finite operands overflow в JS дополнительно отказывает в Go до work. Локальный oracle/race проходит; до PR/mandatory CI открыта. SQL reservation и реальная цена провайдера не приняты.

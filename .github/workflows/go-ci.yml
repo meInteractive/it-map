@@ -95,4 +95,5 @@ jobs:
           node scripts/check-channel-input-contract.mjs
           node scripts/check-legacy-crypto.mjs
           node scripts/check-parser-settings-contract.mjs
+          node scripts/check-parser-budget-contract.mjs
       - run: npm run build:web
