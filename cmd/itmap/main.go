@@ -18,6 +18,7 @@ import (
 	"itmap/internal/config"
 	"itmap/internal/crm"
 	"itmap/internal/httpapi"
+	"itmap/internal/profiles"
 	"itmap/internal/roles"
 	"itmap/internal/storage"
 	"itmap/internal/tasks"
@@ -28,6 +29,8 @@ func httpHandler(logger *slog.Logger, db *sql.DB, manager *auth.Manager) http.Ha
 	opts := httpapi.Options{Auth: manager, WebDir: os.Getenv("WEB_DIST_DIR")}
 	if db != nil {
 		opts.DB = db
+		opts.Resumes = profiles.Repository{DB: db}
+		opts.ProfileSettings = profiles.Repository{DB: db}
 		repo := catalog.Repository{DB: db}
 		opts.Catalog = repo
 		opts.Compact = repo

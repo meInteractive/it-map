@@ -265,3 +265,21 @@ GO-090 / #44, code0b4b3aa/tree692116d1adb1c8e9e15ff603d15a6354712aa6de: public40
 
 
 После merge #44 maine75b7df содержит checkpoint7060858 и весь принятый GO-089/090 runtime; ancestry и пустой tree diff подтверждены. GO-091 начинается от актуального origin/main=e75b7df, codex/GO-091-profile-contracts → main. Порция содержит source-backed контракты и schema/default metadata; нового SQL/HTTP wiring нет.
+
+
+GO-091 / #45, code35f6f74/tree0dae62b48a2c6b892d004598b34e0fdc05c00eef: public40385568261 и MariaDB40385568172 pass, включая source oracle/Go contracts и все прежние SQL/browser/API smoke. GO-092 начинается от проверенного 35f6f74: codex/GO-092-resume-writes → codex/GO-091-profile-contracts; новый resume SQL/HTTP gate ожидает positive CI.
+
+GO-092 принят: [#46](https://github.com/meInteractive/it-map/pull/46), code51d48ee/tree77adc705d67c937d47b0ed2f3f1ae2b215074c77; public40389209915 и MariaDB40389209981 успешны. Required resume SQL/HTTP gates zero skips: defaults/no GET writes, Unicode CAS, два first writers/editors, late rollback/retry и signed-owner isolation. GO-093 строится от этой проверенной вершины; без нового shared-settings SQL/HTTP proof prerequisite GO-016 не считать принятым.
+
+GO-093 начата от проверенного 51d48ee: codex/GO-093-shared-profile-settings → codex/GO-092-resume-writes. 24 legacy SQL transitions исполняются на SQLite :memory:, defaults/bootstrap/revisions сравниваются в required MariaDB gate. Shared SQL/HTTP/admin/catalog-mock proof ожидает CI; внешних providers нет.
+
+GO-093 / #47, code5b9e891/tree150e79df198495a849ad657179caf19261f68ff9: public40392117857 и MariaDB40392117847 pass, shared SQL/HTTP zero skips и все прежние SQL/browser/API smoke успешны. Critical schema/data prerequisite GO-016 принят узко, без UI/provider catalog wiring. GO-094 starts codex/GO-094-v39-format-contracts → codex/GO-093-shared-profile-settings от проверенного 5b9e891; pure v39 contracts перед SQL export GO-095.
+
+GO-094 / #48, codeac0fd60/tree65d138f020379a5d4de7bcaa4ad7ab7ad56868dd: public40394902190 и MariaDB40394901964 pass; required 67-case JS↔Go v39 oracle/race и весь прежний SQL/API/browser suite успешны. GO-094 принят как pure contract, GO-041/095 export и GO-042 restore открыты. Следующий checkpoint меняет только docs/status/manifest, runtime source остаётся ac0fd60. Стек открытых #45→46→47→48; автоматического merge нет, после merge родителя перенаправить открытого потомка в main и проверить доставку всей ancestry.
+
+
+## Проверка пользовательского merge #45–48 и GO-096
+
+PR #45–48 имеют MERGED, но их базы различались: #45→main, #46→GO-091, #47→GO-092, #48→GO-093. Фактический origin/main=1b137ea4e6797475ade21054c3dbc78d71503774/tree0dae62b48a2c6b892d004598b34e0fdc05c00eef содержит только GO-091; tree diff с 35f6f74 пуст. Проверка merge-base подтверждает отсутствие 51d48ee/5b9e891/f8c0edc в ancestry main. Исходный полный checkpoint f8c0edc прошёл public40395542183 и MariaDB40395542226, включая required v39 interop и все SQL/API/browser gates.
+
+GO-096: codex/GO-096-stack-checkpoint → main. Commit b03434ee34cce4feb9b8e1621da1263d8f7b0787 имеет родителей f8c0edc и main1b137ea, tree679373460f7f21e73d93bcbd50757ffe3c58e3ae точно совпадает с f8c0edc. Runtime source не изменён; добавляются только task/plan/checkpoint/manifest. Этот PR должен доставить GO-092/093/094 в main; MERGED старых дочерних PR этого не сделал. Автоматическое слияние и запись в main не выполняются.

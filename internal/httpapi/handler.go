@@ -59,6 +59,9 @@ type Options struct {
 	TaskCreates          TaskCreator
 	TaskCompletion       TaskCompletionWriter
 	TaskReschedule       TaskRescheduler
+	Resumes              ResumeStore
+	ProfileSettings      ProfileSettingsStore
+	ProfileModelCatalog  ProfileModelValidator
 }
 
 // NewHandlerWithOptions constructs only explicitly implemented routes.
@@ -91,6 +94,12 @@ func NewHandlerWithOptions(logger *slog.Logger, opts Options) http.Handler {
 		mux.HandleFunc("POST /auth", loginHandler(opts.Auth, opts.WebDir))
 		mux.HandleFunc("GET /logout", LogoutHandler())
 		mux.HandleFunc("GET /api/session", SessionHandler(opts.Auth))
+		for _, entry := range []struct{ path, surface string }{{"/api/profile/prompts", "prompts"}, {"/api/profile/prompt-models", "models"}} {
+			handler := ProfileSettingsHandler(opts.Auth, opts.ProfileSettings, opts.ProfileModelCatalog, entry.surface)
+			mux.HandleFunc(entry.path, handler)
+			mux.HandleFunc(entry.path+"/", handler)
+		}
+		mux.HandleFunc("/api/profile/resume", ProfileResumeHandler(opts.Auth, opts.Resumes))
 		if opts.Catalog != nil {
 			mux.HandleFunc("GET /api/companies/search", RequireSession(opts.Auth, CompanySearchHandler(opts.Catalog)))
 			// v316 agencies/search is an alias to the company name search.
