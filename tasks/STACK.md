@@ -239,3 +239,6 @@ GO-086 начата от GO-085 checkpointa24700a с проверенным runt
 
 
 GO-086 / [PR #40](https://github.com/meInteractive/it-map/pull/40), coded2f9e44/tree878fa419f66c5203f5c44092adb6b52b11e27caa: public40338099465 и MariaDB40338099284 успешны. VacancyFlagsDisposable/VacancyFlagHTTPDisposable ran/pass без skips; прежние SQL/14 browser/API smoke также pass. Финальный checkpoint меняет только статусы/план/доказательства и manifest. GO-012 create/edit/delete остаются открыты.
+
+
+Проверка после пользовательского merge #38/#39/#40: mainc9d6c57 содержит только #38; #39 merged848914e в прежнюю GO-084, #40 merged6b7d47f в прежнюю GO-085. GO-087 / [PR #41](https://github.com/meInteractive/it-map/pull/41) направлен непосредственно в main, mergebfe1280 сохраняет родителей mainc9d6c57 и #40/2ff18e7. Treee8686f8c5352b904d5aed93230972da140b422f9 совпадает с проверенным #40, runtime не меняется.

@@ -1,6 +1,6 @@
 # Спринт 1.1 — функциональная миграция Go
 
-**Текущий активный спринт.** Релиз и переключение ещё не выполнены. `GO-001…GO-028` сохраняют исходную нумерацию работ `1.1.01…1.1.28`. `GO-029…GO-086` — выделенные узкие задачи, не подменяющие критерии крупных пунктов. Ни один коммит сам по себе не доказывает полную приёмку на MariaDB.
+**Текущий активный спринт.** Релиз и переключение ещё не выполнены. `GO-001…GO-028` сохраняют исходную нумерацию работ `1.1.01…1.1.28`. `GO-029…GO-087` — выделенные узкие задачи, не подменяющие критерии крупных пунктов. Ни один коммит сам по себе не доказывает полную приёмку на MariaDB.
 
 **Актуальный статус на 26.10.2026:** `[x]` — завершён именно указанный результат с доказательствами; `[ ]` — остаются критерии. Для больших GO-001…028 дополнительно отмечены проверенные части, чтобы не путать «код существует», «прошёл synthetic CI» и «принят внешний staging/релиз». Исторические v12–v21 ниже не являются текущим статусом: впоследствии прошли Go vet/race/tagged build, web, MariaDB schema/rollback/locking, авторизованный API и 14 browser-сценариев. [Актуальная контрольная точка](STACK.md), [инструкция запуска](../docs/deployment/README.md).
 
@@ -1158,3 +1158,11 @@
 - **Критерии:** insert/update/повтор/выключение favorite/hidden для своего пользователя, независимый flag и relevance не теряются; private list/detail/company readback, чужой owner из query/body не принимается. Общий vacancy и другой пользователь не меняются; flags не изменяют revision редактирования. UNIQUE/FK без DDL. Два SQL connections пишут flags без lost update; ошибка после реального INSERT/UPDATE откатывается, новый pool повторяет операцию. Required CI targets SQL/HTTP без skips; cleanup до старого smoke.
 - **Границы:** только disposable GitHub CI; flags API не принимает revision. Create/edit CAS/delete/FK связей проверяются отдельно; GO-032 остаётся средней.
 - **Результат:** [PR #40](https://github.com/meInteractive/it-map/pull/40), coded2f9e44/tree878fa419f66c5203f5c44092adb6b52b11e27caa. Public40338099465 и MariaDB40338099284 успешны: оба required vacancy SQL/HTTP targets без skips, реальные UNIQUE/FK, два writer, late INSERT/UPDATE rollback и fresh pool retry. Detail/list/company projections, owner isolation, relevance и revision сохранены. Все прежние CRM/receipt/task/scheduler/browser/API smoke pass; generic fault driver повторно проверен CRM gate. Локальные race/tagged/vet/build/web/actionlint/source/history/manifest и четыре negative guards до подключения успешны. Runtime mutation не менялся.
+
+
+### [ ] GO-087. Доставить принятые CRM/vacancy gates в main
+
+- **Приоритет:** Критический.
+- **Причина:** #38 объединён в mainc9d6c57 раньше, чем #39/#40 были объединены в прежние родительские feature branches. MERGED у этих PR не доставил их код в default branch.
+- **Критерии:** отдельный PR в актуальный main сохраняет принятые #39/#40 и историю; runtime/test/workflow tree совпадает с проверенным #40; no-op merge и повторный synthetic CI. Не сливать автоматически.
+- **Результат:** [PR #41](https://github.com/meInteractive/it-map/pull/41), mergebfe1280/treee8686f8c5352b904d5aed93230972da140b422f9 полностью совпал с #40/2ff18e7. Нового runtime нет, Actions ожидаются.
