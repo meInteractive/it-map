@@ -215,3 +215,6 @@ GO-080 / #35 `d48e4d7` / tree c9c9577ba0984539940098f3568673412304f531 прош�
 
 
 Для GO-081 учтён merge #35 пользователем: main=7d426a0. Ветка codex/GO-081-apify-transport основана на проверенном d48e4d7 и присоединяет main без code diff; tree c9c9577ba0984539940098f3568673412304f531 до adapter changes совпал с d48e4d7. PR направляется в main и содержит только новую adapter-порцию плюс её docs/statuses, без восстановления старых закрытых parent branches.
+
+
+GO-081 / #36 `93babc6` / tree7f91908e3dbd9eb04e2dcc20c6a3504f6ccac99a прошёл public40320431546 и MariaDB40320431536. GO-082 (codex/GO-082-project-readme) основан на этой проверенной вершине и меняет только README/docs/registry/checkpoint/manifest: авторский README, developer/source guide, команды локальных проверок, architecture status и public snapshot boundary. Общие приоритеты остаются в PLANS.md.

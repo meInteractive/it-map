@@ -61,6 +61,32 @@ export WEB_DIST_DIR="$PWD/dist/web"
 
 В шаблоне отдельно перечислены `OPENAI_API_KEY`, `OPENROUTER_API_KEY`, `APIFY_API_TOKEN`, `FIRECRAWL_API_KEY`, `GOOGLE_CALENDAR_CLIENT_ID/SECRET`: это **исторические имена JS-интеграций**, текущий Go их не использует и они не нужны для запуска. Их заполнение не включает отсутствующие Go-функции. `ITMAP_TEST_*`, `ITMAP_SMOKE_*`, `ITMAP_BROWSER_*` — параметры проверок, не обязательные runtime-секреты; disposable SQL-тесты запускаются только в соответствующем синтетическом CI.
 
+## Локальные проверки исходников
+
+Базовые проверки Go и публичного состава репозитория не требуют рабочих данных:
+
+```bash
+go test ./...
+go vet ./...
+go build -o /tmp/itmap ./cmd/itmap
+python3 scripts/check-public-repo.py
+python3 scripts/check-git-history.py
+```
+
+Для race/tagged-проверок и React-сборки нужны установленные зависимости. `npm ci` использует отслеживаемый lockfile:
+
+```bash
+go test -race ./...
+go test -tags mariadb ./...
+go build -tags mariadb -o /tmp/itmap-mariadb ./cmd/itmap
+npm ci
+npm run build:web
+```
+
+В ограниченном sandbox HTTP mock-тестам может понадобиться разрешение на loopback sockets; это не разрешение обращаться к реальным провайдерам. Положительные write/rollback/crash SQL-проверки выполняются только в guarded disposable GitHub CI. Локальные unit-тесты и пропущенные без DSN интеграционные тесты не означают успешный MariaDB gate.
+
+Успех каждого шага подтверждается отдельно. `/health/ready` остаётся 503 даже при доступной MariaDB (`business_api_not_migrated`) до полной приёмки; `/health/live` проверяет только процесс. Требования к публичным данным: [граница снимка](../MIGRATION_PUBLIC_REPOSITORY.md). После `build:web` учтите ограничение source gate на `dist/`, описанное ниже.
+
 ## С MariaDB и проверки
 
 Для DB-режима нужны заранее созданная изолированная MariaDB 10.11 со схемой baseline и настроенные DB/Auth. Подробности — [сервер](SERVER.md) и [MARIADB.md](../MARIADB.md). До этого запуск с `DB_ENABLED=true` завершится ошибкой, а не создаст недостающие таблицы. Локальную реальную БД и дампы эта инструкция автоматически не разворачивает.

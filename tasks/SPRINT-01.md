@@ -1,6 +1,6 @@
 # Спринт 1.1 — функциональная миграция Go
 
-**Текущий активный спринт.** Релиз и переключение ещё не выполнены. `GO-001…GO-028` сохраняют исходную нумерацию работ `1.1.01…1.1.28`. `GO-029…GO-081` — выделенные узкие задачи, не подменяющие критерии крупных пунктов. Ни один коммит сам по себе не доказывает полную приёмку на MariaDB.
+**Текущий активный спринт.** Релиз и переключение ещё не выполнены. `GO-001…GO-028` сохраняют исходную нумерацию работ `1.1.01…1.1.28`. `GO-029…GO-082` — выделенные узкие задачи, не подменяющие критерии крупных пунктов. Ни один коммит сам по себе не доказывает полную приёмку на MariaDB.
 
 **Актуальный статус на 26.10.2026:** `[x]` — завершён именно указанный результат с доказательствами; `[ ]` — остаются критерии. Для больших GO-001…028 дополнительно отмечены проверенные части, чтобы не путать «код существует», «прошёл synthetic CI» и «принят внешний staging/релиз». Исторические v12–v21 ниже не являются текущим статусом: впоследствии прошли Go vet/race/tagged build, web, MariaDB schema/rollback/locking, авторизованный API и 14 browser-сценариев. [Актуальная контрольная точка](STACK.md), [инструкция запуска](../docs/deployment/README.md).
 
@@ -676,8 +676,8 @@
 - **Компоненты:** `server/integrations/apify.js`.
 - **Критерии готовности:** Безопасный retry и provider-state.
 - **Как проверить:** Recorded mock, concurrency.
-- **Известные ограничения:** Пока отсутствует.
-- **Результат:** не завершено; коммита или PR нет.
+- **Известные ограничения:** Изолированный HTTP/HH/run/dataset adapter проверен GO-081; credential/settings/ledger/pipeline wiring и live staging отсутствуют.
+- **Результат:** GO-081 / #36 93babc6 прошёл source-backed intercepted HTTP/loopback contracts и оба CI. Никаких live Actor calls; full reservation/стоимость/recovery/runtime integration остаются открытыми.
 
 ### [ ] GO-040. Совместимость секретов старого Sites
 
@@ -1112,11 +1112,19 @@
 - **Результат:** код codex/GO-080-scheduler-run-lease, исходная схема не меняется. [PR #35](https://github.com/meInteractive/it-map/pull/35), code `d48e4d7`: [public](https://github.com/meInteractive/it-map/actions/runs/40316420266), [MariaDB/required scheduler SQL+rollback+SIGKILL/recovery/16 browser/API/native](https://github.com/meInteractive/it-map/actions/runs/40316420306) успешны. Все шесть SQL subcases и parent прошли без skips; cleanup подтверждён последующими smoke. Ошибка test interceptor prepared statements исправлена, runtime-код не менялся. Узкая GO-080 принята, полная GO-045 открыта.
 
 
-### [ ] GO-081. Apify HTTP transport и HH input на mocks (часть GO-039/023)
+### [x] GO-081. Apify HTTP transport и HH input на mocks (часть GO-039/023)
 
 - **Приоритет:** Средний, спринт 1.1.
 - **Зависимости:** проверенные GO-077 crypto/078 settings/079 budget bounds/080 cycle owner; неизменные apifyRequest/hhInput/checkedRun и dataset contracts.
 - **Границы:** отдельный Go adapter без API/runtime/SQL/key reads. Фиксированный api.apify.com и HH Actor; только synthetic httptest и source JS mock oracle.
 - **Критерии:** HTTP errors/timeouts/cancel/body bounds/no redirects, token не в URL/error/debug; POST не повторяется после неизвестного результата, Start outcome отмечен uncertain. HH source URL/scope и canonical input, existing-run status/dataset GET с фиксированным page cap; user query/title scope сохраняются. Сверить реальные JS helper results на fixtures.
 - **Ограничения:** не durable reservation/paid start ledger, не settings UI/crypto wiring и не полная GO-039/023; никаких live Actor calls.
-- **Результат:** код codex/GO-081-apify-transport. 36 HH/36 HTTP/14 run-state/18 dataset vectors настоящих JS functions на intercepted HTTP; Go httptest cancellation/timeout/no POST retry/concurrent GET/token redaction проходят локально. Строгие typed guards provider IDs фиксируют permissive JS regexp coercion; выявленные vacancy query encoding и text204 mismatches исправлены. До PR/mandatory CI открыта.
+- **Результат:** код codex/GO-081-apify-transport. 36 HH/36 HTTP/14 run-state/18 dataset vectors настоящих JS functions на intercepted HTTP; Go httptest cancellation/timeout/no POST retry/concurrent GET/token redaction проходят локально. Строгие typed guards provider IDs фиксируют permissive JS regexp coercion; выявленные vacancy query encoding и text204 mismatches исправлены. [PR #36](https://github.com/meInteractive/it-map/pull/36), code `93babc6`: [public](https://github.com/meInteractive/it-map/actions/runs/40320431546) и [MariaDB/scheduler/task/16 browser/API/native](https://github.com/meInteractive/it-map/actions/runs/40320431536) успешны. Узкая GO-081 принята; полные GO-039/023 открыты.
+
+
+### [ ] GO-082. Новый публичный README и перенос технических сведений
+
+- **Приоритет:** Средний; отдельное поручение пользователя по документации.
+- **Границы:** новый корневой README из приложенного текста, без редактирования авторских формулировок; важные сведения прежнего README в подходящие docs, с актуализацией по коду. Runtime/workflow код не меняется.
+- **Критерии:** все 9 локальных ссылок README существуют и ведут по назначению; developer/source map, команды сборки/проверок, readiness503 и границы публичного снимка сохранены в docs. Исторические API/backup/V12 ссылки остаются доступны. LF нормализован, текст README совпадает с предоставленным. Source/history/manifest и локальные ссылки изменённых docs проверены; публикация отдельным PR.
+- **Результат:** codex/GO-082-project-readme от проверенного 93babc6; до PR/проверок открыта.
