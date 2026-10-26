@@ -1273,4 +1273,4 @@
 - **Зависимости:** GO-097, prepared trusted schema и isolated disposable CI.
 - **Критерии:** AUTO_INCREMENT только увеличивается до безопасной границы incoming/current/max IDs, в том числе при concurrent allocation/rollback. Исключить race read→ALTER и implicit commit бизнес-транзакции: отдельная preflight/session/table fencing, bounded locks и cleanup после cancel/fault. Не менять business rows/generation, SQL не строить из uploaded metadata. Required live MariaDB gates только в отдельной disposable job; понижать counters ради cleanup нельзя.
 - **Границы:** ещё не transactional restore или HTTP. GO-098/099 зависят от этого proof; реальных DB/DDL не выполнять.
-- **Результат:** не реализовано.
+- **Результат:** OpenV39RestoreSession валидирует v39/полную prepared schema, удерживает отдельное соединение и restore advisory ownership. Counter LOCK→metadata/MAX→ALTER→UNLOCK выполняется до data TX; Close не делает UNLOCK будущей TX. Добавлена отдельная disposable CI job и actual lock/DDL/concurrent writer/late fault/cancel/ownership/high-water gates, включая exact max-safe ID. Business/generation unchanged и no-lowering проверяются; positive CI ожидается.
