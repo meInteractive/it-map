@@ -224,3 +224,6 @@ GO-082 завершён как документальная порция: [PR #3
 
 
 После merge #36 пользователем main=9059c75 включает #37 и новый README; Git blob a31b71bcd3ed456f6a90f2221ed25b1f37eea627 совпал с принятым. Дублирующий GO-083 отменён без PR; 6753cff не является базой нового кода. Новая GO-084 начинается от актуального origin/main=9059c75, только CRM flag write gate. Source tree main совпадает с ранее проверенным e36c609; общий порядок продолжения фиксируется в PLANS.md.
+
+
+GO-084 / [PR #38](https://github.com/meInteractive/it-map/pull/38), code9986429/tree65470cdeed6d77d535bc079429befb5ae5da7cf4: public40335262404 и MariaDB40335262393 успешны, CRM SQL/HTTP targets без skips и прежние browser/API smoke pass. Первый run40334908089 выявил конкурентную SQL-ошибку flags; no-op UPSERT заменил INSERT IGNORE и повторный gate подтвердил оба независимых flags. Checkpoint меняет только доказательства/статус и manifest; GO-010 целиком открыт.
