@@ -24,7 +24,7 @@ test('Задача: создание, перенос срока, заверше�
   await login('demo');
   let company = await companyTasks();
   const form = company.locator('.company-task-form');
-  await form.getByLabel('Тип задачи', { exact: true }).selectOption('meeting');
+  await form.getByRole('combobox', { name: /^Тип задачи/ }).selectOption('meeting');
   await form.getByLabel('Дата, МСК', { exact: true }).fill('2026-10-28');
   await form.getByLabel('Время, МСК', { exact: true }).fill('00:15');
   await form.getByLabel('Заметка', { exact: true }).fill(note);
