@@ -96,4 +96,5 @@ jobs:
           node scripts/check-legacy-crypto.mjs
           node scripts/check-parser-settings-contract.mjs
           node scripts/check-parser-budget-contract.mjs
+          node scripts/check-scheduler-run-contract.mjs
       - run: npm run build:web

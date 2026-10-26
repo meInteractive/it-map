@@ -1,6 +1,6 @@
 # Спринт 1.1 — функциональная миграция Go
 
-**Текущий активный спринт.** Релиз и переключение ещё не выполнены. `GO-001…GO-028` сохраняют исходную нумерацию работ `1.1.01…1.1.28`. `GO-029…GO-079` — выделенные узкие задачи, не подменяющие критерии крупных пунктов. Ни один коммит сам по себе не доказывает полную приёмку на MariaDB.
+**Текущий активный спринт.** Релиз и переключение ещё не выполнены. `GO-001…GO-028` сохраняют исходную нумерацию работ `1.1.01…1.1.28`. `GO-029…GO-080` — выделенные узкие задачи, не подменяющие критерии крупных пунктов. Ни один коммит сам по себе не доказывает полную приёмку на MariaDB.
 
 **Актуальный статус на 26.10.2026:** `[x]` — завершён именно указанный результат с доказательствами; `[ ]` — остаются критерии. Для больших GO-001…028 дополнительно отмечены проверенные части, чтобы не путать «код существует», «прошёл synthetic CI» и «принят внешний staging/релиз». Исторические v12–v21 ниже не являются текущим статусом: впоследствии прошли Go vet/race/tagged build, web, MariaDB schema/rollback/locking, авторизованный API и 14 browser-сценариев. [Актуальная контрольная точка](STACK.md), [инструкция запуска](../docs/deployment/README.md).
 
@@ -1095,8 +1095,18 @@
 - **Критерии:** legacy enabled/revision/day-month budgets/sourceIds/intervalDays/priorities/область организаций; unknown fields и неверные типы отказывают, source options/defaults подтверждены неизменным JS. Проверяемая pure-порция до административного API/SQL. Автоматический парсер не запускается.
 - **Результат:** реализация codex/GO-078-parser-settings от 75ba9d7: 62 source-backed validation/normalization vectors и дополнительные duplicate/nonfinite/trailing JSON guards локально проходят. Возвращается expectedRevision, input не может переопределить owner/cloud owner. [PR #33](https://github.com/meInteractive/it-map/pull/33), code `14b26cd`: [public/62 settings vectors](https://github.com/meInteractive/it-map/actions/runs/40308221146) и [MariaDB/16 browser/API/native](https://github.com/meInteractive/it-map/actions/runs/40308221140) успешны. Узкая GO-078 принята; API/admin permission/SQL CAS/dry-run/runtime запуск не принимаются этой pure-порцией.
 
-### [ ] GO-079. Консервативные бюджеты и московские периоды парсера (часть GO-017/021/023)
+### [x] GO-079. Консервативные бюджеты и московские периоды парсера (часть GO-017/021/023)
 
 - **Приоритет:** Критический, спринт 1.1.
 - **Критерии:** source-backed pure upper-cost calculation, unknown tariff/negative/nonfinite/missing bound отказывает до work, бесплатные операции и лимит Apify сохранены, day/month границы МСК. Это не durable reservation/оплата/idempotency: SQL/lease/crash gate обязателен отдельно до provider calls.
-- **Результат:** реализация codex/GO-079-parser-budget: 77 cost + 10 MSK period source vectors, исторические тарифы всех legacy models/alias, UTF-8 JSON bytes/UTF-16 input length. Два numeric-string mismatch с underscore воспроизведены до fix; finite operands overflow в JS дополнительно отказывает в Go до work. Локальный oracle/race проходит; до PR/mandatory CI открыта. SQL reservation и реальная цена провайдера не приняты.
+- **Результат:** реализация codex/GO-079-parser-budget: 77 cost + 10 MSK period source vectors, исторические тарифы всех legacy models/alias, UTF-8 JSON bytes/UTF-16 input length. Два numeric-string mismatch с underscore воспроизведены до fix; finite operands overflow в JS дополнительно отказывает в Go до work. [PR #34](https://github.com/meInteractive/it-map/pull/34), code `ebc7a1d`: [public](https://github.com/meInteractive/it-map/actions/runs/40309279822) и [MariaDB/16 browser/API/native](https://github.com/meInteractive/it-map/actions/runs/40309279795) успешны. Pure GO-079 завершён; SQL reservation и реальная цена провайдера не приняты.
+
+
+### [ ] GO-080. Durable владение циклом scheduler и recovery (часть GO-045/027)
+
+- **Приоритет:** Критический, спринт 1.1.
+- **Зависимости:** GO-078 settings model, GO-079 pure budget bounds, existing scheduler_runs/jobs/attempts и app_runtime_generation. Не запускать parser/провайдеры.
+- **Границы:** Begin/replay/disabled-diagnostic/global run lease/current generation/terminal release и expired recovery; существующие SQL таблицы, без DDL. Это не claimScheduledJob, не денежный ledger и не полная GO-045.
+- **Критерии:** два реальных SQL connections не приобретают два активных run, старый expired owner и прежняя generation не завершают новый цикл; повтор requestId не выполняет work/revive. Recovery сохраняет reserved_usd/cost/provider result, unexpired job locks, requeues current-generation expired jobs по max_attempts. Fault после настоящего INSERT полностью откатывается; process crash оставляет durable lease/reservation и новый pool восстанавливает после expiry.
+- **Проверки:** отдельный schedulerwrites target только GitHub/disposable parsed DSN/loopback/user/schema/current-generation; required named pass/no-skip до старого API/browser/native. Локальная MariaDB запрещена, только negative guards/compile.
+- **Результат:** код codex/GO-080-scheduler-run-lease, исходная схема не меняется. Локально run identity/compile/vet и четыре negative guards до соединения проверяются; положительный SQL/rollback/crash/concurrency gate требует GitHub CI. До его успешного PR/CI задача открыта.

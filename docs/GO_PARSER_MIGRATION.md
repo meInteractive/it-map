@@ -1,6 +1,6 @@
 # Перенос парсера: текущий порядок спринта 1.1
 
-Поручение пользователя 26.10.2026: сначала доступные high/critical части парсера, затем medium, с сохранением prerequisites. GO-073…075 отложены без закрытия. После блока парсера приоритетны critical write gates GO-010/GO-012, далее GO-041→042 после необходимой схемы GO-016 и CRM-ядра. GO-032 средний.
+Общий порядок и приоритеты работы ведутся в [PLANS.md](../PLANS.md). Ниже — контракты, ограничения и доказательства конкретных порций парсера.
 
 GO-076 / #31 сохраняет 29458b2 с прежними task/channel результатами и main=b3d4820 без code diff. Checkpoint 534e8a9 прошёл public 40306369291 и MariaDB/16 browser/API/native 40306369523. Новый стек направлен в main; закрытые parent branches не считаются автоматически частью main.
 
@@ -45,3 +45,18 @@ UpperCostJSON выполняет арифметику на JSON request metadata
 Выявлены два допуска Go ParseFloat: числовые строки 1_0/0.0_1 принимались, JS Number их отвергает. Новые oracle cases воспроизвели ошибку до исправления, теперь отказывают. Отдельный source case показывает arithmetic overflow Infinity даже при finite operands; Go дополнительно fail-closed, не передаёт nonfinite upper bound в будущий SQL/provider. Negative/nonfinite synthetic metadata тоже отказывает.
 
 Это не денежный ledger, не durable reservation и не гарантия exactly-once оплаты: full GO-017/021/023 и scheduler/idempotency/crash recovery остаются открытыми. free flag — доверенная metadata будущего внутреннего caller, а не публичное право пользователя обойти бюджет. Не подключены API/settings, SQL reservation, model client или scheduler.
+
+
+GO-079 / [#34](https://github.com/meInteractive/it-map/pull/34), `ebc7a1d`: [public](https://github.com/meInteractive/it-map/actions/runs/40309279822) и [MariaDB/16 browser/API/native](https://github.com/meInteractive/it-map/actions/runs/40309279795) успешны.
+
+## GO-080: durable scheduler cycle lease
+
+RunRepository.Begin сериализует Go cycle ownership на app_runtime_generation(id=1) FOR UPDATE и читает current generation/clock/settings в одной транзакции. Время для lease берётся из MariaDB, не доверяется клиенту. SHA256 generation:requestId совпадает с legacy candidateHash; повтор существующего requestId всегда Reused=true/Acquired=false, не продлевает lease и не запускает work. Disabled settings дают paused; explicit diagnostic допускается как в beginSchedulerRun. Поддерживаемые Go triggers manual/automatic/probe, обязательный requestId≤500 UTF-16, duration до5мин/default110сек+30сек slack — границы ещё не подключённой API-функции.
+
+Активные running циклы проверяются через все generation; смена generation сама по себе не разрешает второй owner до expiry. AssertActive — snapshot-проверка, она не заменяет atomic fence будущих job/provider mutations. Finish сверяет generation/status/lease в транзакции, stale/expired owner не меняет terminal receipt или новый цикл. Generic SQL errors не отражают DSN/query/input.
+
+Recovery переводит expired cycles/attempts в interrupted, не меняя reserved_usd/cost_usd/provider/result_json. Только expired jobs текущей generation возвращаются pending либо failed по max_attempts, unexpired/другие generation не затрагиваются. Recovery и новый INSERT выполняются атомарно. В SQL MAX переведён в GREATEST для MariaDB; таблицы/DDL не меняются.
+
+Именованный TestMariaDBSchedulerRunsDisposable под schedulerwrites tag проверяет реальные blocked SQL connections, replay/disabled/diagnostic, generation restore fencing, recovery job states/reserved result, fault после реально выполненного INSERT и UPDATE recovery, а также SIGKILL отдельного Go worker после commit lease/reservation и восстановление новым SQL pool. Cleanup владеет четырьмя заранее пустыми таблицами scheduler_runs/jobs/attempts/firecrawl_settings, возвращает их пустыми и проверяет исходную generation. Только GitHub CI+parsed loopback DSN/current-run marker; четыре required отрицательных guards отказывают до соединения без skips. Локально positive SQL не выполняется.
+
+Это один Go/MariaDB контур, не блокировка отдельной D1/Sites среды. Background worker не запускается. GO-045 остаётся открыт: отсутствуют job claim/owned mutation facade, durable monetary reservation/provider idempotency, полная crash/double-charge/staging приёмка. До активации parser отдельно требуется исключить одновременно работающий Sites scheduler.
