@@ -18,8 +18,9 @@ type UserFlags struct {
 var ErrInvalidFlag = errors.New("unsupported vacancy flag")
 
 // SetUserFlag holds a row lock on the canonical vacancy before looking up or
-// creating its user-scoped state. This serializes first-time writes even while
-// the original D1 -> MariaDB dump lacks the (user_name,vacancy_id) unique key.
+// creating its user-scoped state. This serializes first-time writes, including
+// older converted databases missing the (user_name,vacancy_id) unique key.
+// The reviewed CI schema enforces that unique key.
 // The update changes ALL pre-existing duplicate state rows to the same flags
 // while preserving each row's relevance. No schema rewrite is required in 1.1.
 func (r Repository) SetUserFlag(ctx context.Context, user string, id int64, key string, value bool) (UserFlags, error) {

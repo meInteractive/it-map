@@ -1,6 +1,6 @@
 # Спринт 1.1 — функциональная миграция Go
 
-**Текущий активный спринт.** Релиз и переключение ещё не выполнены. `GO-001…GO-028` сохраняют исходную нумерацию работ `1.1.01…1.1.28`. `GO-029…GO-085` — выделенные узкие задачи, не подменяющие критерии крупных пунктов. Ни один коммит сам по себе не доказывает полную приёмку на MariaDB.
+**Текущий активный спринт.** Релиз и переключение ещё не выполнены. `GO-001…GO-028` сохраняют исходную нумерацию работ `1.1.01…1.1.28`. `GO-029…GO-086` — выделенные узкие задачи, не подменяющие критерии крупных пунктов. Ни один коммит сам по себе не доказывает полную приёмку на MariaDB.
 
 **Актуальный статус на 26.10.2026:** `[x]` — завершён именно указанный результат с доказательствами; `[ ]` — остаются критерии. Для больших GO-001…028 дополнительно отмечены проверенные части, чтобы не путать «код существует», «прошёл synthetic CI» и «принят внешний staging/релиз». Исторические v12–v21 ниже не являются текущим статусом: впоследствии прошли Go vet/race/tagged build, web, MariaDB schema/rollback/locking, авторизованный API и 14 browser-сценариев. [Актуальная контрольная точка](STACK.md), [инструкция запуска](../docs/deployment/README.md).
 
@@ -1150,3 +1150,11 @@
 - **Критерии:** PUT /api/crm сохраняет контракт status/comment/история/vacancies, типы/UTF-16 лимит/права; SQL transaction не теряет flags, history добавляется только при смене статуса. Concurrent writes дают последовательную историю, rollback после state/history write не оставляет частичных данных; HTTP и owner isolation на disposable MariaDB.
 - **Границы:** у legacy company CRM нет revision token, не добавлять новый CAS API; версии других модулей сохранять. Не объявлять полный GO-010 завершённым по одной флаговой проверке.
 - **Результат:** [PR #39](https://github.com/meInteractive/it-map/pull/39), code8d9d16b. На точном code SHA public40336444772 и MariaDB40336444745 успешны: 22 source-backed вектора из неизменённого legacy route; два новых required targets без skips, last-30 history, owner isolation/full vacancies response, три одновременно работающих SQL writers, late state/history faults с rollback/bootstrap/retry новым pool. Предыдущие CRM flags/receipts/tasks/scheduler/browser/API smoke pass. Локальные race/unit/vet/build/tagged/web/actionlint/source/history/manifest и четыре guard отказа до подключения прошли. Сохранён typed UI-контракт: строки без trim, null/omitted очищают форму; расширенные JS coercions не добавлены. Критическое CRM-ядро подтверждено, полная GO-010 ещё требует среднего UI round-trip.
+
+### [ ] GO-086. Vacancy favorite/hidden: SQL и HTTP write gate (часть GO-012)
+
+- **Приоритет:** Критический.
+- **Зависимости:** auth/catalog/существующие SetUserFlag, Detail и company projection; synthetic schema и disposable guard.
+- **Критерии:** insert/update/повтор/выключение favorite/hidden для своего пользователя, независимый flag и relevance не теряются; private list/detail/company readback, чужой owner из query/body не принимается. Общий vacancy и другой пользователь не меняются; flags не изменяют revision редактирования. UNIQUE/FK без DDL. Два SQL connections пишут flags без lost update; ошибка после реального INSERT/UPDATE откатывается, новый pool повторяет операцию. Required CI targets SQL/HTTP без skips; cleanup до старого smoke.
+- **Границы:** только disposable GitHub CI; flags API не принимает revision. Create/edit CAS/delete/FK связей проверяются отдельно; GO-032 остаётся средней.
+- **Результат:** добавлены guarded SQL/HTTP targets и required no-skip gate; runtime mutation не меняется. Fault driver вынесен в общий test-only helper, reused CRM gates проверяются повторно. Положительная MariaDB-приёмка ожидает CI.
