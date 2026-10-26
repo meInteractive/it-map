@@ -39,7 +39,7 @@ func openReceiptHTTP(f *receiptFixture, creator httpapi.ApplicationCreator) *rec
 	}
 	handler := httpapi.NewHandlerWithOptions(slog.New(slog.NewTextHandler(io.Discard, nil)), httpapi.Options{
 		DB: f.db, Auth: manager, Applications: f.repo, ApplicationCompanies: f.repo,
-		ApplicationCreates: creator, ApplicationWrites: f.repo})
+		ApplicationCreates: creator, ApplicationWrites: f.repo, VacancyApplies: f.repo})
 	server := httptest.NewTLSServer(handler)
 	f.t.Cleanup(server.Close)
 	h := &receiptHTTP{f: f, server: server}

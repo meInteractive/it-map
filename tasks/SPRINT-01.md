@@ -1,6 +1,6 @@
 # Спринт 1.1 — функциональная миграция Go
 
-**Текущий активный спринт.** Релиз и переключение ещё не выполнены. `GO-001…GO-028` сохраняют исходную нумерацию работ `1.1.01…1.1.28`. `GO-029…GO-065` — выделенные узкие задачи, не подменяющие критерии крупных пунктов. Ни один коммит сам по себе не доказывает полную приёмку на MariaDB.
+**Текущий активный спринт.** Релиз и переключение ещё не выполнены. `GO-001…GO-028` сохраняют исходную нумерацию работ `1.1.01…1.1.28`. `GO-029…GO-066` — выделенные узкие задачи, не подменяющие критерии крупных пунктов. Ни один коммит сам по себе не доказывает полную приёмку на MariaDB.
 
 **Актуальный статус на 26.10.2026:** `[x]` — завершён именно указанный результат с доказательствами; `[ ]` — остаются критерии. Для больших GO-001…028 дополнительно отмечены проверенные части, чтобы не путать «код существует», «прошёл synthetic CI» и «принят внешний staging/релиз». Исторические v12–v21 ниже не являются текущим статусом: впоследствии прошли Go vet/race/tagged build, web, MariaDB schema/rollback/locking, авторизованный API и 14 browser-сценариев. [Актуальная контрольная точка](STACK.md), [инструкция запуска](../docs/deployment/README.md).
 
@@ -248,7 +248,7 @@
 ### [ ] GO-013. Отклики, idempotency и история
 
 - **Приоритет:** Критический.
-- **Критическая часть:** [x] Синтетическое чтение/join/history/user isolation проверены. [x] JS→Go нормализация/хеш (GO-055, PR #12). [x] Sequential receipts/10-limit (GO-058), concurrent create (GO-060), mid-write rollback/fresh connection (GO-061), writer kill/restart (GO-062), single-record revision/CAS/history (GO-063). [ ] Controlled HTTP write/replay, shortcut и смешанные create/update/delete/vacancy SQL-сценарии (GO-031).
+- **Критическая часть:** [x] Синтетическое чтение/join/history/user isolation проверены. [x] JS→Go нормализация/хеш (GO-055, PR #12). [x] Sequential receipts/10-limit (GO-058), concurrent create (GO-060), mid-write rollback/fresh connection (GO-061), writer kill/restart (GO-062), single-record revision/CAS/history (GO-063). [x] Авторизованный HTTP write/replay/update/error/delete (GO-065). [ ] Shortcut и смешанные create/update/delete/vacancy SQL-сценарии (GO-031).
 - **Средняя часть:** [ ] Функциональный UI create/edit/delete/shortcut после SQL gates.
 - **Низкая часть:** [ ] Косметика форм/истории/анимаций отклика.
 
@@ -972,11 +972,21 @@
 - **Результат:** [PR #22](https://github.com/meInteractive/it-map/pull/22), код `b21a051`: [Go/web/security](https://github.com/meInteractive/it-map/actions/runs/40279232693) и [MariaDB/все пять receipt targets/API/14 browser/native](https://github.com/meInteractive/it-map/actions/runs/40279232671) прошли. Production/test/workflow код GO-062/063 не менялся; GO-032 закреплён как средний.
 
 
-### [ ] GO-065. Авторизованный HTTP round-trip отклика на MariaDB (часть GO-031/GO-013)
+### [x] GO-065. Авторизованный HTTP round-trip отклика на MariaDB (часть GO-031/GO-013)
 
 - **Приоритет:** Критический; текущий спринт 1.1, GO-032 остаётся средним.
 - **Зависимости:** проверенный GO-064 b21a051 / PR #22, существующие HTTP/auth/Repository и guards/fixture/fault helper GO-058…063.
 - **Границы:** настоящее HTTPS httptest соединение, реальные login/cookie/router/repository/mysql; только guarded disposable CI. Не полный cmd/server deployment, не browser write smoke, shortcut или смешанные конкурентные операции.
 - **Критерии:** 303 login с Secure/HttpOnly/Strict cookie; 401/403/400/428/409/404 до лишних записей; opaque user-scoped create-context; 201 create и 200 replay через оба URL с полным company response/общим ID; userName тела не подменяет cookie owner. GET/PUT revision/history, stale 409 и replay после edit сохраняют новые поля. DELETE возвращает полный company response и сохраняет sticky receipt; повтор create даёт 410 без resurrection. Другой пользователь не читает/удаляет запись. Реальный commit с искусственным post-commit read error даёт HTTP 503 без утечки SQL, retry возвращает тот же durable ID. Все API ответы JSON/private/no-store, cleanup сохраняет readonly fixtures.
 - **Проверки:** обычный/tagged vet/race/обе сборки/Go 1.23, source/history/schema/fixtures/actionlint/manifest и четыре fail-closed guards. Шестой обязательный receiptwrites target с pass/no-skip после readonly business и до прежних API/14 browser/native smoke. Локальной БД нет.
-- **Результат:** реализация в codex/GO-065-application-http от проверенного b21a051; локально прошли обычный/tagged vet/race, обе сборки, Go 1.23 storage compile/tests (live SQL явно пропущен без DSN), source/history/schema/fixture/actionlint и четыре negative guards до соединения без skips. До live CI остаётся открытой.
+- **Результат:** реализация в codex/GO-065-application-http от проверенного b21a051; локально прошли обычный/tagged vet/race, обе сборки, Go 1.23 storage compile/tests (live SQL явно пропущен без DSN), source/history/schema/fixture/actionlint и четыре negative guards до соединения без skips. [PR #23](https://github.com/meInteractive/it-map/pull/23), код `b0c97af`: [Go/web/security](https://github.com/meInteractive/it-map/actions/runs/40279874891) и [MariaDB/шесть targets/HTTP/API/14 browser/native](https://github.com/meInteractive/it-map/actions/runs/40279874919) успешны. Шесть именованных SQL targets прошли без skips. Полная GO-031 остаётся открытой.
+
+
+### [ ] GO-066. Однокнопочный отклик и гонка с обычным create (часть GO-031/GO-013)
+
+- **Приоритет:** Критический, спринт 1.1; GO-032 остаётся средним.
+- **Зависимости:** проверенный b0c97af / GO-065, real HTTP/auth/SQL helpers и generation barrier GO-060/063.
+- **Границы:** existing synthetic company-owned vacancy=1; обычный create против shortcut, HTTP aliases и claim-existing. Channel-owned/неизвестные каталогам владельцы, concurrent delete/update и смена vacancy/owner остаются отдельными критериями.
+- **Критерии:** оба POST apply aliases возвращают 200 с одной durable identity; route ID/фиксированные status/пустые контакты/comment/[hh] не подменяются hints тела. User/context/Origin/ID/missing-vacancy/owner errors не оставляют записи. Новый key привязывает existing application без изменений revision/fields/history, в том числе при 10-limit и после ручного редактирования. Delete сохраняет оба receipts, replay каждого даёт 410 без resurrection. Два отдельных SQL соединения одновременно достигают generation FOR UPDATE: ordinary winner затем claimed shortcut либо shortcut winner и ordinary ErrDuplicateVacancy; один application/history, только корректные receipts и replay, без перезаписи полей winner.
+- **Проверки:** tagged vet/race/обе сборки/Go 1.23, negative guards/source/history/schema/fixture/actionlint/manifest; седьмой required target pass/no-skip в disposable CI и прежние API/14 browser/native smoke.
+- **Результат:** реализация в codex/GO-066-application-shortcut от проверенного GO-065. Локально прошли обычный/tagged vet, tagged race suite, обе сборки, Go 1.23 storage (live SQL явно пропущен без DSN), source/history/schema/fixtures/actionlint и четыре fail-closed guards до соединения без skips. До live CI остаётся открытой.
