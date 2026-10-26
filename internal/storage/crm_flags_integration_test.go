@@ -3,6 +3,7 @@
 package storage
 
 import (
+	"context"
 	"database/sql"
 	"database/sql/driver"
 	"errors"
@@ -80,7 +81,9 @@ func TestMariaDBCRMFlagsDisposable(t *testing.T) {
 	})
 	t.Run("concurrent independent flags serialize on two connections", func(t *testing.T) {
 		f := openCRMFlagFixture(t)
-		tx, e := f.db.BeginTx(f.ctx, nil)
+		ctx, cancel := context.WithTimeout(f.ctx, 8*time.Second)
+		defer cancel()
+		tx, e := f.db.BeginTx(ctx, nil)
 		if e != nil {
 			t.Fatal(e)
 		}
@@ -102,7 +105,7 @@ func TestMariaDBCRMFlagsDisposable(t *testing.T) {
 			}
 			pool := openCRMIndependentPool(t, connector)
 			go func(flag string) {
-				_, e := (crm.Repository{DB: pool}).SetCompanyFlag(f.ctx, "Demo", crmFlagCompany, flag, true)
+				_, e := (crm.Repository{DB: pool}).SetCompanyFlag(ctx, "Demo", crmFlagCompany, flag, true)
 				results <- e
 			}(flag)
 		}
@@ -127,6 +130,10 @@ func TestMariaDBCRMFlagsDisposable(t *testing.T) {
 		}
 		for i := 0; i < 2; i++ {
 			if e = <-results; e != nil {
+				var se *mysql.MySQLError
+				if errors.As(e, &se) {
+					t.Fatalf("concurrent CRM flag transaction failed: SQL number %d", se.Number)
+				}
 				t.Fatalf("concurrent CRM flag transaction failed: %T", e)
 			}
 		}

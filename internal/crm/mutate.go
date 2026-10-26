@@ -39,8 +39,10 @@ func (r Repository) SetCompanyFlag(ctx context.Context, user, company, flag stri
 	if !known {
 		return CompanyState{}, ErrCompanyNotFound
 	}
-	// Stable existing lock row, created once, is safe under the company_crm PK.
-	if _, err = tx.ExecContext(ctx, `INSERT IGNORE INTO company_crm(company_name) VALUES(?)`, company); err != nil {
+	// Acquire an exclusive parent lock immediately, including on duplicate keys.
+	// INSERT IGNORE can take shared duplicate-key locks in concurrent transactions;
+	// upgrading both to FOR UPDATE then deadlocks. Preserve all global CRM fields.
+	if _, err = tx.ExecContext(ctx, `INSERT INTO company_crm(company_name) VALUES(?) ON DUPLICATE KEY UPDATE company_name=VALUES(company_name)`, company); err != nil {
 		return CompanyState{}, err
 	}
 	var locked string
