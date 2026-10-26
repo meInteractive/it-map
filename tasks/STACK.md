@@ -160,3 +160,20 @@ GO-068 / [#26](https://github.com/meInteractive/it-map/pull/26): published d5e82
 
 
 GO-069 / [#27](https://github.com/meInteractive/it-map/pull/27): c9f89ec прошёл [public](https://github.com/meInteractive/it-map/actions/runs/40288051112) и [MariaDB/task writes/API/browser/native](https://github.com/meInteractive/it-map/actions/runs/40288051119), именованный task target без skips. GO-070 / codex/GO-070-task-http начинается от этой проверенной вершины: real HTTP/SQL round-trip/ошибки/Calendar guard и concurrent completion/reschedule. Дополнительно устранены воспроизведённые +24:00/+00:60/comma-fraction расхождения; JS fixture расширен 31→34. Последующая UI write приёмка — отдельная порция GO-033.
+
+
+GO-070 / [#28](https://github.com/meInteractive/it-map/pull/28): a9f7f95 прошёл [public/34 JS cases](https://github.com/meInteractive/it-map/actions/runs/40289210806) и [MariaDB/task HTTP+SQL/concurrency/API/14 browser/native](https://github.com/meInteractive/it-map/actions/runs/40289210834), required targets без skips. GO-071 / codex/GO-071-task-browser начинается от этой проверенной вершины: настоящий writable Go/SPA/MariaDB server под guard, два UI проекта create/reload/reschedule/complete/reopen/isolation. Cleanup до прежнего readonly smoke; write test не добавляется в старую readonly browser матрицу.
+
+
+## Проверенная GO-033 после GO-068…071, спринт 1.1
+
+| Подзадача | PR / code SHA | Обязательные CI |
+| --- | --- | --- |
+| GO-068 JS create normalization | [#26](https://github.com/meInteractive/it-map/pull/26) / d5e820d | [public](https://github.com/meInteractive/it-map/actions/runs/40287308900), [MariaDB/API/browser/native](https://github.com/meInteractive/it-map/actions/runs/40287308885) |
+| GO-069 task SQL/Calendar guard/rollback | [#27](https://github.com/meInteractive/it-map/pull/27) / c9f89ec | [public](https://github.com/meInteractive/it-map/actions/runs/40288051112), [MariaDB/API/browser/native](https://github.com/meInteractive/it-map/actions/runs/40288051119) |
+| GO-070 HTTP/dates/concurrent field edits | [#28](https://github.com/meInteractive/it-map/pull/28) / a9f7f95 | [public](https://github.com/meInteractive/it-map/actions/runs/40289210806), [MariaDB/API/browser/native](https://github.com/meInteractive/it-map/actions/runs/40289210834) |
+| GO-071 desktop/mobile task UI writes | [#29](https://github.com/meInteractive/it-map/pull/29) / 179bce8 | [public](https://github.com/meInteractive/it-map/actions/runs/40291235900), [MariaDB/2 task browser + 14 old readonly/native](https://github.com/meInteractive/it-map/actions/runs/40291236012) |
+
+Все code SHA прошли оба required CI; два task SQL/HTTP targets и browser Go parent фактически pass/no-skip, child PW expected=2/skipped=0/unexpected=0/flaky=0. Старые восемь receipt targets/14 readonly/API/native smoke сохранены и прошли после cleanup. Локально vet/race/build/tagged/Go 1.23/oracles/source/history/schema/fixtures/actionlint/manifest и negative guards успешны; live SQL/UI локально не запускались. Новые browser/config TS файлы отдельно проверены, полный tsc ограничен старым missing hosting import. Реальные env/tokens/SQL/private snapshots не использовались.
+
+GO-033 закрыт только в поддерживаемом task API без Calendar sync. Parent GO-014 остаётся открытым для GO-034; GO-015/035/040 — Calendar/crypto, GO-005/007 — внешний staging/снимок. GO-032 средний. Следующая критическая задача спринта 1.1 — GO-034 (каналы/контакты), по legacy auth/SQL/reference contract. Финальный doc checkpoint только актуализирует эти доказательства и SHA256SUMS; CI точного SHA требуется отдельно. Автоматического merge PR/production/D1/Sites/DNS/deploy/paid calls нет.
