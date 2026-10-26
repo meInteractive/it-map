@@ -29,3 +29,16 @@ TestMariaDBTaskHTTPDisposable выполняет настоящие login/cookie
 34 исходных JS cases (31 GO-068 + три deadline cases) воспроизвели, что Go time.Parse принимал +24:00/+00:60/comma fractions, отвергаемые JS Date.parse. Оба HTTP unit contract тоже воспроизвели неверный success для offset. Private normalizeTaskDeadline общий для create/reschedule; HTTP regexp проверяет диапазон offset до SQL, поддерживаемый корректный RFC3339 набор не расширяется. Невозможный offset даёт 400, а не сохранённую неправильную дату.
 
 Отдельный SQL subcase удерживает task row до наблюдения двух разных CONNECTION_ID в PROCESSLIST. Completion и reschedule оба завершаются; итог содержит новый deadline и completed_at, остальные поля сохранены. Это legacy независимые field mutations, без новых revision/CAS tokens. Browser/TCP write round-trip остаётся следующим отдельным критерием; Calendar sync/реальные токены не подключаются.
+
+
+Подтверждение GO-070: [PR #28](https://github.com/meInteractive/it-map/pull/28), a9f7f95, [public/34 JS cases](https://github.com/meInteractive/it-map/actions/runs/40289210806) и [MariaDB/SQL+HTTP/concurrency/API/14 browser/native](https://github.com/meInteractive/it-map/actions/runs/40289210834) успешны; все required targets выполнились без skips.
+
+## GO-071: functional desktop/mobile task write UI
+
+TestMariaDBTaskBrowserDisposable с tags mariadb,taskwrites,taskbrowser сначала проходит прежний GitHub/parsed DSN/loopback/schema/user/current-generation guard и preflight-empty Demo tasks/calendar. Затем запускает настоящий production router/static SPA с реальными repositories на временном loopback Go HTTP server; только task writes доступны через выданные synthetic sessions. До завершения parent владеет synthetic fixture; cleanup с отдельным deadline сохраняет Eugene/CRM/generation и возвращает Demo=0.
+
+Отдельный playwright.task-writes.config.ts наследует прежние ограничения loopback/single worker/no retries/no traces/screenshots/video и использует отдельный testDir. Настоящие desktop/mobile клики/тапы создают задачу в карточке компании, перезагружают страницу, переносят дату МСК, завершают, включают completed filter и открывают повторно. Проверяются server JSON/UTC/поля, сохранение taskId, другая сессия не видит и не меняет задачу. Родитель требует JSON stats expected=2, skipped=0, unexpected=0, flaky=0; пустой набор или skip не даёт успех. API не подменяются, force-click отсутствует.
+
+UI gate выполняется после установки built SPA/Chromium и SQL/HTTP gates, но ДО прежних 14 readonly/API/native smoke. Поэтому старые проверки получают очищенные fixtures; readonly DB user и прежние сценарии не заменяются writable доступом. Это минимальная функциональная приёмка существующего task API без Calendar sync; внешний staging/real server/SQL snapshot не подключаются.
+
+Локальная полная TypeScript проверка упирается в существующий vite.config.ts import исключённого из публичного снимка .openai/hosting.json. Hosting metadata не добавляется; новые browser/config файлы отдельно прошли tsc, Playwright list подтвердил ровно два проекта. Это не выдаётся за live browser pass — положительный результат требует disposable CI.

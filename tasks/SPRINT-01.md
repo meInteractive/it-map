@@ -1,6 +1,6 @@
 # Спринт 1.1 — функциональная миграция Go
 
-**Текущий активный спринт.** Релиз и переключение ещё не выполнены. `GO-001…GO-028` сохраняют исходную нумерацию работ `1.1.01…1.1.28`. `GO-029…GO-070` — выделенные узкие задачи, не подменяющие критерии крупных пунктов. Ни один коммит сам по себе не доказывает полную приёмку на MariaDB.
+**Текущий активный спринт.** Релиз и переключение ещё не выполнены. `GO-001…GO-028` сохраняют исходную нумерацию работ `1.1.01…1.1.28`. `GO-029…GO-071` — выделенные узкие задачи, не подменяющие критерии крупных пунктов. Ни один коммит сам по себе не доказывает полную приёмку на MariaDB.
 
 **Актуальный статус на 26.10.2026:** `[x]` — завершён именно указанный результат с доказательствами; `[ ]` — остаются критерии. Для больших GO-001…028 дополнительно отмечены проверенные части, чтобы не путать «код существует», «прошёл synthetic CI» и «принят внешний staging/релиз». Исторические v12–v21 ниже не являются текущим статусом: впоследствии прошли Go vet/race/tagged build, web, MariaDB schema/rollback/locking, авторизованный API и 14 browser-сценариев. [Актуальная контрольная точка](STACK.md), [инструкция запуска](../docs/deployment/README.md).
 
@@ -1022,7 +1022,7 @@
 - **Результат:** [PR #27](https://github.com/meInteractive/it-map/pull/27), published `c9f89ec`: [Go/web/security](https://github.com/meInteractive/it-map/actions/runs/40288051112) и [MariaDB/required task writes/API/14 browser/native](https://github.com/meInteractive/it-map/actions/runs/40288051119) успешны. Tree SHA совпал с локальным, именованный SQL target реально прошёл без skips. Полная GO-033 остаётся открытой для HTTP/UI и остальных критериев.
 
 
-### [ ] GO-070. HTTP задачи, корректные timezone offsets и concurrent edits (часть GO-033)
+### [x] GO-070. HTTP задачи, корректные timezone offsets и concurrent edits (часть GO-033)
 
 - **Приоритет:** Критический, спринт 1.1; GO-032 средний.
 - **Зависимости:** проверенный GO-069 c9f89ec / #27; настоящий router/auth/repository и disposable task fixture/fault helper.
@@ -1030,4 +1030,14 @@
 - **Исправление:** воспроизведены три JS→Go deadline mismatches (+24:00, +00:60, comma fraction) и два HTTP contract failures. Общая private normalization + HTTP offset range возвращают 400 для невозможного offset до SQL; fixture расширен до 34 настоящих JS cases.
 - **Границы:** настоящий Go handler/auth/Repository/SQL через httptest recorder; TCP/браузерный write round-trip — следующая часть. Новые task revision/CAS поля не вводятся; legacy API не имеет такого token.
 - **Проверки:** tagged/обычный vet/race/build/Go 1.23, 34 JS oracle cases, source/history/schema/fixtures/actionlint/manifest, taskWrites+taskHTTP required pass/no-skip и четыре negative guards; затем прежние API/14 browser/native smoke.
-- **Результат:** реализация в codex/GO-070-task-http от проверенного c9f89ec. Локально обычный/tagged vet/race/tests, обе сборки, Go 1.23 tasks/API, 34 JS cases, source/history/schema/fixtures/actionlint и четыре negative guards успешны; live SQL явно пропущен без DSN. До mandatory live CI открыта. Полная GO-033 остаётся открытой для UI и остальных критериев.
+- **Результат:** реализация в codex/GO-070-task-http от проверенного c9f89ec. Локально обычный/tagged vet/race/tests, обе сборки, Go 1.23 tasks/API, 34 JS cases, source/history/schema/fixtures/actionlint и четыре negative guards успешны; live SQL явно пропущен без DSN. [PR #28](https://github.com/meInteractive/it-map/pull/28), published `a9f7f95`: [Go/web/security/34 cases](https://github.com/meInteractive/it-map/actions/runs/40289210806) и [MariaDB/task SQL+HTTP/concurrency/API/14 browser/native](https://github.com/meInteractive/it-map/actions/runs/40289210834) успешны, ноль skips. Полная GO-033 остаётся открытой для UI и остальных критериев.
+
+
+### [ ] GO-071. Browser task write round-trip desktop/mobile (часть GO-033/GO-014)
+
+- **Приоритет:** Критический (минимальная функциональность UI), только спринт 1.1; GO-032 средний.
+- **Зависимости:** проверенный GO-070 a9f7f95 / #28, built SPA/Chromium и existing real SQL fixture/production router. Без внешнего staging или реальных данных.
+- **Критерии:** реальный Go HTTP/SPA/Repository/MariaDB server внутри guarded Go test; настоящие desktop/mobile UI create/reload/reschedule/complete/showCompleted/reopen с Moscow→UTC, сохранёнными полями и owner isolation. Два Playwright проекта фактически pass без skips/flaky; parent JSON gate тоже pass/no-skip. Никаких API mocks/force-click/screenshots/traces/cookie artifacts.
+- **Порядок:** после schema/readonly/receipt/task SQL+HTTP gates и build SPA/Chromium, перед прежними 14 readonly browser/API/native smoke. Отдельный taskbrowser tag/config не включает write tests в readonly suite. Bounded parent cleanup возвращает Demo=0, сохраняет Eugene/CRM/generation; следующий readonly smoke проверяет восстановленные fixtures.
+- **Границы:** поддерживаемый legacy task API без Calendar sync, только synthetic CI. Синхронизация Calendar остаётся GO-015/035/040; новые revision/CAS поля не вводятся. Полная внешняя приёмка GO-007 и snapshot GO-005 остаются отдельными.
+- **Результат:** реализация в codex/GO-071-task-browser от проверенного a9f7f95. Локально tagged vet/Go 1.23 compile, список ровно двух PW tests, отдельный TS typecheck новых browser/config файлов, source/history/schema/fixtures/actionlint и четыре browser-parent guards до подключения прошли. Полный tsc заблокирован прежним vite.config.ts import отсутствующего .openai/hosting.json, legacy hosting не менялся. До mandatory live browser CI открыта.

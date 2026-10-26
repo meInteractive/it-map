@@ -160,3 +160,6 @@ GO-068 / [#26](https://github.com/meInteractive/it-map/pull/26): published d5e82
 
 
 GO-069 / [#27](https://github.com/meInteractive/it-map/pull/27): c9f89ec прошёл [public](https://github.com/meInteractive/it-map/actions/runs/40288051112) и [MariaDB/task writes/API/browser/native](https://github.com/meInteractive/it-map/actions/runs/40288051119), именованный task target без skips. GO-070 / codex/GO-070-task-http начинается от этой проверенной вершины: real HTTP/SQL round-trip/ошибки/Calendar guard и concurrent completion/reschedule. Дополнительно устранены воспроизведённые +24:00/+00:60/comma-fraction расхождения; JS fixture расширен 31→34. Последующая UI write приёмка — отдельная порция GO-033.
+
+
+GO-070 / [#28](https://github.com/meInteractive/it-map/pull/28): a9f7f95 прошёл [public/34 JS cases](https://github.com/meInteractive/it-map/actions/runs/40289210806) и [MariaDB/task HTTP+SQL/concurrency/API/14 browser/native](https://github.com/meInteractive/it-map/actions/runs/40289210834), required targets без skips. GO-071 / codex/GO-071-task-browser начинается от этой проверенной вершины: настоящий writable Go/SPA/MariaDB server под guard, два UI проекта create/reload/reschedule/complete/reopen/isolation. Cleanup до прежнего readonly smoke; write test не добавляется в старую readonly browser матрицу.
