@@ -265,3 +265,6 @@ GO-090 / #44, code0b4b3aa/tree692116d1adb1c8e9e15ff603d15a6354712aa6de: public40
 
 
 После merge #44 maine75b7df содержит checkpoint7060858 и весь принятый GO-089/090 runtime; ancestry и пустой tree diff подтверждены. GO-091 начинается от актуального origin/main=e75b7df, codex/GO-091-profile-contracts → main. Порция содержит source-backed контракты и schema/default metadata; нового SQL/HTTP wiring нет.
+
+
+GO-091 / #45, code35f6f74/tree0dae62b48a2c6b892d004598b34e0fdc05c00eef: public40385568261 и MariaDB40385568172 pass, включая source oracle/Go contracts и все прежние SQL/browser/API smoke. GO-092 начинается от проверенного 35f6f74: codex/GO-092-resume-writes → codex/GO-091-profile-contracts; новый resume SQL/HTTP gate ожидает positive CI.
