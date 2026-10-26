@@ -1267,10 +1267,10 @@
 - **Критерии:** source-backed historical validation/transforms/preserve-vs-clear/warnings/role mapping, downgrade поля, scheduler/Apify safe defaults; MariaDB schema preparation отдельно от atomic data replacement без ложного обещания DDL rollback. Только synthetic fixtures/CI, без реальных данных. Не закрывать полную GO-042 по одному v39 round-trip.
 - **Результат:** не реализовано.
 
-### [ ] GO-101. MariaDB counter preflight перед restore TX (часть GO-042/098)
+### [x] GO-101. MariaDB counter preflight перед restore TX (часть GO-042/098)
 
 - **Приоритет:** Критический prerequisite GO-098.
 - **Зависимости:** GO-097, prepared trusted schema и isolated disposable CI.
 - **Критерии:** AUTO_INCREMENT только увеличивается до безопасной границы incoming/current/max IDs, в том числе при concurrent allocation/rollback. Исключить race read→ALTER и implicit commit бизнес-транзакции: отдельная preflight/session/table fencing, bounded locks и cleanup после cancel/fault. Не менять business rows/generation, SQL не строить из uploaded metadata. Required live MariaDB gates только в отдельной disposable job; понижать counters ради cleanup нельзя.
 - **Границы:** ещё не transactional restore или HTTP. GO-098/099 зависят от этого proof; реальных DB/DDL не выполнять.
-- **Результат:** OpenV39RestoreSession валидирует v39/полную prepared schema, удерживает отдельное соединение и restore advisory ownership. Counter LOCK→metadata/MAX→ALTER→UNLOCK выполняется до data TX; Close не делает UNLOCK будущей TX. Добавлена отдельная disposable CI job и actual lock/DDL/concurrent writer/late fault/cancel/ownership/high-water gates, включая exact max-safe ID. Business/generation unchanged и no-lowering проверяются; positive CI ожидается.
+- **Результат:** OpenV39RestoreSession валидирует v39/полную prepared schema, удерживает отдельное соединение и restore advisory ownership. Counter LOCK→metadata/MAX→ALTER→UNLOCK выполняется до data TX; Close не делает UNLOCK будущей TX. Добавлена отдельная disposable CI job и actual lock/DDL/concurrent writer/late fault/cancel/ownership/high-water gates, включая exact max-safe ID. Business/generation unchanged и no-lowering проверяются; Принят на [PR #52](https://github.com/meInteractive/it-map/pull/52), code8a3f334/tree335cbc2bbb2e69de1f290373c6092b07498136cc: Public40415955237 и MariaDB40415955239 pass. Отдельная counter job121898215347 проверила семь live SQL scenarios zero skips, включая nonempty rows; весь прежний SQL/API/browser suite pass. Base PR52=main, ancestry включает #51. Runtime data restore не подключён.
