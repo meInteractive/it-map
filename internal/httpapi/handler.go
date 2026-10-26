@@ -62,6 +62,7 @@ type Options struct {
 	Resumes              ResumeStore
 	ProfileSettings      ProfileSettingsStore
 	ProfileModelCatalog  ProfileModelValidator
+	BackupExports        BackupExporter
 }
 
 // NewHandlerWithOptions constructs only explicitly implemented routes.
@@ -94,6 +95,7 @@ func NewHandlerWithOptions(logger *slog.Logger, opts Options) http.Handler {
 		mux.HandleFunc("POST /auth", loginHandler(opts.Auth, opts.WebDir))
 		mux.HandleFunc("GET /logout", LogoutHandler())
 		mux.HandleFunc("GET /api/session", SessionHandler(opts.Auth))
+		mux.HandleFunc("/api/backup", BackupDownloadHandler(opts.Auth, opts.BackupExports))
 		for _, entry := range []struct{ path, surface string }{{"/api/profile/prompts", "prompts"}, {"/api/profile/prompt-models", "models"}} {
 			handler := ProfileSettingsHandler(opts.Auth, opts.ProfileSettings, opts.ProfileModelCatalog, entry.surface)
 			mux.HandleFunc(entry.path, handler)

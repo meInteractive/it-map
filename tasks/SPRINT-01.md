@@ -352,7 +352,7 @@
 ### [ ] GO-019. Бэкап v39 и восстановление
 
 - **Приоритет:** Критический.
-- **Критическая часть:** [ ] GO-041 export v39/schema validation, затем GO-042 restore/generation/round-trip/crash, только synthetic disposable DB; после критического CRM-ядра и необходимой схемы GO-016.
+- **Критическая часть:** [x] GO-041 export v39/schema validation (GO-094/095). [ ] GO-042 restore/generation/round-trip/crash, только synthetic disposable DB; после критического CRM-ядра и необходимой схемы GO-016.
 - **Средняя часть:** [ ] Функциональный операторский/пользовательский запуск restore после безопасной валидации.
 - **Низкая часть:** [ ] Косметика transfer/backup UI; не блокирует библиотечный round-trip.
 
@@ -693,11 +693,11 @@
 - **Известные ограничения:** Без старого SESSION_SECRET нужна повторная настройка.
 - **Результат:** pure synthetic compatibility часть GO-077 / #32 `75ba9d7` прошла required JS↔Go и оба CI. Полная GO-040 открыта: ADR-016/стратегия реальных настроек/staging не утверждены.
 
-### [ ] GO-041. Backup v39: export и валидация
+### [x] GO-041. Backup v39: export и валидация
 
 - **Приоритет:** Критический.
 
-- **Статус:** [ ] — не принят целиком.
+- **Статус:** [x] — принят в рамках v39 export/schema validation.
 - **Цель:** Перенести формат бэкапа.
 - **Что реализовать:** Схема JSON v39, генерация и контроль состава.
 - **Зависимости:** Контракт v39 GO-019, поддерживаемая schema и нужные данные GO-016, synthetic DB часть GO-005; не ждать полного restore GO-019.
@@ -705,7 +705,7 @@
 - **Критерии готовности:** Файл совпадает по контракту с старым генератором.
 - **Как проверить:** Synthetic golden backup tests.
 - **Известные ограничения:** Без restore это ещё не полная GO-019.
-- **Результат:** не завершено; коммита или PR нет.
+- **Результат:** GO-094 / #48 и GO-095 / [PR #50](https://github.com/meInteractive/it-map/pull/50), code8b2fe06/tree45babe9b1875b5105fffda88f8edabe09dfcf8ea. Public40407984745 и MariaDB40407985424 pass: required 67-case JS↔Go layout/integrity/formatting и actual SQL/HTTP export zero skips, независимое сравнение всех application scalars, source validator через stdin, read-only privileges, defaults/migrations, concurrent snapshot/schema, counters и failure/retry. Полный SQL/API/browser regression pass. Restore/POST/generation/old-version import не приняты и остаются GO-042.
 
 ### [ ] GO-042. Backup v39: restore и generation
 
@@ -1224,16 +1224,16 @@
 - **Границы:** legacy v14–38 import и restore остаются GO-042; SQL export/snapshot/API — GO-095. Не закрывать GO-041 только по pure контракту.
 - **Результат:** pure Go v39 schema/layout/manifest/FK/sequence validation, ordered JSON.stringify-compatible SHA-256 и форматирование с итоговым byte cap реализованы. Required unchanged JS oracle проверяет 67 synthetic cases (включая 200000 rows, overflow, malformed UTF8, lone UTF16 surrogates и exact 25MiB boundary), schema copy сверяется с source. Принят на [PR #48](https://github.com/meInteractive/it-map/pull/48), codeac0fd60/tree65d138f020379a5d4de7bcaa4ad7ab7ad56868dd. Public40394902190 и MariaDB40394901964 pass, required 67-case interop/race и весь прежний SQL/API/browser suite успешны. Local race/tagged/vet/build/actionlint/source/history/manifest pass. SQL/HTTP отсутствуют и остаются GO-095; GO-041 целиком открыт.
 
-### [ ] GO-095. Согласованный MariaDB export v39 и HTTP (часть GO-041)
+### [x] GO-095. Согласованный MariaDB export v39 и HTTP (часть GO-041)
 
 - **Приоритет:** Критический.
 - **Зависимости:** GO-094, schema/data часть GO-016.
 - **Критерии:** read-only согласованный snapshot всех прикладных tables/rows/columns/counters и trusted metadata без lazy DDL/нормализации данных; schema inventory before/after, неизвестная таблица/колонка — отказ. Admin download совместим с v39, source default catalog, full formatted byte cap; required synthetic SQL/HTTP + unchanged legacy validator принимает экспорт. Операционные данные исключены, immutable source и concurrent snapshot доказаны, секреты не попадают в Git/logs.
-- **Результат:** не реализовано.
+- **Результат:** реализован read-only RR snapshot, source defaults/schema metadata, conservative AUTO_INCREMENT high-water, bounded full v39 formatting и signed admin download. Добавлены required SQL/HTTP targets, independent scalar comparison всех application tables, source validator через stdin без файлов, query faults, concurrent snapshot/schema и счетчики после rollback. Принят на [PR #50](https://github.com/meInteractive/it-map/pull/50), code8b2fe06/tree45babe9b1875b5105fffda88f8edabe09dfcf8ea: Public40407984745 и MariaDB40407985424 pass, оба export SQL/HTTP targets zero skips и весь прежний SQL/API/browser suite pass. Local race/interop/tagged/vet/build/web/actionlint/source/history/manifest и четыре pre-connect guards pass. GO-041 export принят; restore остаётся GO-042.
 
-### [ ] GO-096. Доставка принятого стека профилей/v39 в main
+### [x] GO-096. Доставка принятого стека профилей/v39 в main
 
 - **Приоритет:** Критический, исправление доставки GO-092/093/094.
 - **Причина:** После пользовательского merge #45–48 только #45 попал в main1b137ea; #46–48 объединились в прежние родительские feature-ветки. Main tree точно равен GO-091/35f6f74: resume/settings/v39 код в default branch отсутствует.
 - **Критерии:** сохранить проверенную вершину f8c0edc и ancestry GO-091/092/093/094; присоединить актуальный main без изменения runtime source; отдельный PR непосредственно в main. CI и manifest проходят; задача доставки закрывается после фактической проверки ancestry/tree main, а не по MERGED старых PR.
-- **Результат:** codex/GO-096-stack-checkpoint → main, merge b03434e сохраняет tree679373460f7f21e73d93bcbd50757ffe3c58e3ae от проверенного f8c0edc. Public40395542183 и MariaDB40395542226 для исходной вершины pass; финальная порция меняет только task/plan/checkpoint/manifest. Доставка в main и новый CI ожидаются; автоматического merge нет.
+- **Результат:** codex/GO-096-stack-checkpoint → main, merge b03434e сохраняет tree679373460f7f21e73d93bcbd50757ffe3c58e3ae от проверенного f8c0edc. Public40395542183 и MariaDB40395542226 для исходной вершины pass; финальная порция меняет только task/plan/checkpoint/manifest. Принят на [PR #49](https://github.com/meInteractive/it-map/pull/49), checkpoint7628adf: Public40397110316 и MariaDB40397110258 pass. После merge origin/main293f9b7 содержит 7628adf и весь стек; ancestry и точное равенство tree подтверждены.

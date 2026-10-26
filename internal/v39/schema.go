@@ -10,6 +10,12 @@ import (
 //go:embed schema.json
 var document []byte
 
+//go:embed default_catalog.json
+var defaultCatalog []byte
+
+// DefaultCatalog matches normalizeCatalog(DATA) when no stored catalog exists.
+func DefaultCatalog() json.RawMessage { return append(json.RawMessage(nil), defaultCatalog...) }
+
 type Column struct {
 	Name         string  `json:"name"`
 	Type         string  `json:"type"`

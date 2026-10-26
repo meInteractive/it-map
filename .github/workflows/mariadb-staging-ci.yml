@@ -319,6 +319,25 @@ jobs:
         with:
           node-version: '24'
           cache: npm
+      - name: Verify v39 export snapshot and admin download ONLY in disposable CI
+        env:
+          ITMAP_REQUIRE_MARIADB_INTEGRATION: '1'
+          ITMAP_TEST_MARIADB_DSN: 'itmap_readonly_ci:ci_only_disposable_reader@tcp(127.0.0.1:3306)/itmap_ci?parseTime=true&collation=utf8mb4_bin'
+          ITMAP_TEST_MARIADB_WRITE_DSN: 'itmap_ci:ci_only_disposable_writer@tcp(127.0.0.1:3306)/itmap_ci?parseTime=true&clientFoundRows=true&collation=utf8mb4_bin'
+        run: |
+          set -euo pipefail
+          result_file="$(mktemp)"
+          trap 'rm -f "$result_file"' EXIT
+          go test -race -tags mariadb,profilewrites,v39exports ./internal/storage -run '^TestMariaDBV39Export(HTTP)?Disposable$' -count=1 -json | tee "$result_file"
+          python3 - "$result_file" <<'PYCODE'
+          import json,sys
+          events=[json.loads(line) for line in open(sys.argv[1],encoding='utf8')]
+          targets=['TestMariaDBV39ExportDisposable','TestMariaDBV39ExportHTTPDisposable']
+          for target in targets:
+              assert any(e.get('Test')==target and e.get('Action')=='pass' for e in events), f'required v39 export test did not pass/run: {target}'
+          assert not any(e.get('Action')=='skip' for e in events), 'required v39 export test skipped'
+          print('PASS: v39 export snapshot/admin/source-validator/counter/schema SQL/HTTP gates ran with zero skips')
+          PYCODE
       - name: Build SPA and install pinned Chromium for browser smoke
         run: |
           npm ci --no-audit --no-fund
