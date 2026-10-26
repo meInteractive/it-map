@@ -98,3 +98,8 @@ TestMariaDBApplicationMixedDisposable добавляет восьмой required
 Update/delete конкурируют на одной application row; допустим update до delete либо ErrNotFound после него. Existing receipt replay/delete удерживаются locking join по generation и application до наблюдения обоих разных writer IDs в PROCESSLIST; допустим replay прежнего ID до delete либо ErrApplicationDeleted. Никаких произвольных SQL failures вместо ожидаемого доменного исхода. В обоих сценариях после завершения writers ноль applications/history, один sticky receipt и отказ последующего retry без resurrection.
 
 Прежний cleanup сохраняет Eugene/history/generation и readonly API/14 browser/native smoke. Смена vacancy/owner, concurrent import/restore и авария MariaDB/хоста этим результатом не подтверждаются; полный GO-031 остаётся открытым. Работа только в спринте 1.1, GO-032 средний.
+
+
+Подтверждение GO-067: [PR #25](https://github.com/meInteractive/it-map/pull/25), код 1ba76cb; [Go/web/security](https://github.com/meInteractive/it-map/actions/runs/40281030793) и [MariaDB/все восемь targets/channel/delete races/API/14 browser/native](https://github.com/meInteractive/it-map/actions/runs/40281030609) успешны, ноль skips. Проверка locking join увидела оба server-side writer; cleanup нового channel keyspace сохранил прежние fixtures. Production API/Repository/схема не потребовали изменений.
+
+Оставшиеся границы GO-031: межмодульная смена vacancy/owner и concurrent restore/import не подтверждаются успешными application-only сценариями. Полные GO-012/013/031 остаются открыты, независимые критические GO-033/034 могут продолжаться по зависимостям; GO-032 — средний по явному уточнению пользователя. Настоящий server/SSH/systemd/TLS/согласованный снимок по-прежнему не подключались.
