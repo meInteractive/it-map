@@ -26,6 +26,7 @@ const cases=[
  ['utc-date',{dueAt:'2026-10-26T11:45:00Z'}],['millisecond-date',{dueAt:'2026-10-26T11:45:00.123Z'}],
  ['msk-midnight',{dueAt:'2026-10-26T00:15:00+03:00'}],['negative-offset',{dueAt:'2026-10-26T23:15:00-03:30'}],
  ['leap-day',{dueAt:'2028-02-29T12:00:00Z'}],['invalid-date',{dueAt:'CI invalid date'}],
+ ['offset-hour-24',{dueAt:'2026-10-26T12:00:00+24:00'}],['offset-minute-60',{dueAt:'2026-10-26T12:00:00+00:60'}],['comma-fraction',{dueAt:'2026-10-26T12:00:00,123Z'}],
  ['unknown-type',{type:'CI unknown type'}],['empty-company',{companyName:''}],
 ];
 for(const type of TASK_TYPES)cases.push(['type-'+type,{type}]);

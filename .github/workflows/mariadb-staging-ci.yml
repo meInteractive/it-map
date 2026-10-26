@@ -144,12 +144,13 @@ jobs:
           set -euo pipefail
           result_file="$(mktemp)"
           trap 'rm -f "$result_file"' EXIT
-          go test -race -tags mariadb,taskwrites ./internal/storage -run '^TestMariaDBTaskWritesDisposable$' -count=1 -json | tee "$result_file"
+          go test -race -tags mariadb,taskwrites ./internal/storage -run '^TestMariaDBTask(Writes|HTTP)Disposable$' -count=1 -json | tee "$result_file"
           python3 - "$result_file" <<'PYCODE'
           import json,sys
           events=[json.loads(line) for line in open(sys.argv[1],encoding='utf8')]
-          target='TestMariaDBTaskWritesDisposable'
-          assert any(e.get('Test')==target and e.get('Action')=='pass' for e in events), 'required task write test did not pass/run'
+          targets=['TestMariaDBTaskWritesDisposable','TestMariaDBTaskHTTPDisposable']
+          for target in targets:
+              assert any(e.get('Test')==target and e.get('Action')=='pass' for e in events), f'required task test did not pass/run: {target}'
           assert not any(e.get('Action')=='skip' for e in events), 'required task write test skipped'
           print('PASS: task write gate ran with zero skips')
           PYCODE

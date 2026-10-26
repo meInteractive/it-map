@@ -61,6 +61,8 @@ func TestTaskCreateHTTPContract(t *testing.T) {
 	}{
 		{good, "https://attacker.test", "application/json", 403},
 		{good, "", "text/plain", 400},
+		{`{"companyName":"Example","type":"call","dueAt":"2026-10-24T12:00:00+24:00"}`, "", "application/json", 400},
+		{`{"companyName":"Example","type":"call","dueAt":"2026-10-24T12:00:00+00:60"}`, "", "application/json", 400},
 		{`{"companyName":"Example","companyName":"Evil","type":"call","dueAt":"2026-10-24T12:00:00Z"}`, "", "application/json", 400},
 		{`{"companyName":"Example","type":"call","dueAt":"2026-10-24T12:00:00Z","isAdmin":true}`, "", "application/json", 400},
 		{`{"companyName":"Example","type":"call","dueAt":"bad"}`, "", "application/json", 400},

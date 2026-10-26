@@ -20,11 +20,11 @@ func (r Repository) Reschedule(ctx context.Context, user string, id int64, dueAt
 	if r.DB == nil || strings.TrimSpace(user) == "" || id <= 0 {
 		return "", errors.New("task DB, user or id unavailable")
 	}
-	due, err := time.Parse(time.RFC3339Nano, dueAt)
+	normalized, err := normalizeTaskDeadline(dueAt)
 	if err != nil {
-		return "", errors.New("invalid task deadline")
+		return "", err
 	}
-	normalized := due.UTC().Format("2006-01-02T15:04:05.000Z")
+
 	tx, err := r.DB.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
 	if err != nil {
 		return "", err
@@ -60,4 +60,23 @@ func (r Repository) Reschedule(ctx context.Context, user string, id int64, dueAt
 		return "", err
 	}
 	return normalized, nil
+}
+
+// Go time.Parse accepts +24:00/+00:60 and comma fractions; JS Date.parse
+// rejects those forms. Keep one UTC-millisecond normalizer for task writes.
+func normalizeTaskDeadline(raw string) (string, error) {
+	if strings.Contains(raw, ",") {
+		return "", ErrInvalidTask
+	}
+	due, err := time.Parse(time.RFC3339Nano, raw)
+	if err != nil {
+		return "", ErrInvalidTask
+	}
+	if len(raw) >= 6 {
+		zone := raw[len(raw)-6:]
+		if (zone[0] == '+' || zone[0] == '-') && (zone[1:3] > "23" || zone[4:] > "59") {
+			return "", ErrInvalidTask
+		}
+	}
+	return due.UTC().Format("2006-01-02T15:04:05.000Z"), nil
 }

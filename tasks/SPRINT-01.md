@@ -1,6 +1,6 @@
 # Спринт 1.1 — функциональная миграция Go
 
-**Текущий активный спринт.** Релиз и переключение ещё не выполнены. `GO-001…GO-028` сохраняют исходную нумерацию работ `1.1.01…1.1.28`. `GO-029…GO-069` — выделенные узкие задачи, не подменяющие критерии крупных пунктов. Ни один коммит сам по себе не доказывает полную приёмку на MariaDB.
+**Текущий активный спринт.** Релиз и переключение ещё не выполнены. `GO-001…GO-028` сохраняют исходную нумерацию работ `1.1.01…1.1.28`. `GO-029…GO-070` — выделенные узкие задачи, не подменяющие критерии крупных пунктов. Ни один коммит сам по себе не доказывает полную приёмку на MariaDB.
 
 **Актуальный статус на 26.10.2026:** `[x]` — завершён именно указанный результат с доказательствами; `[ ]` — остаются критерии. Для больших GO-001…028 дополнительно отмечены проверенные части, чтобы не путать «код существует», «прошёл synthetic CI» и «принят внешний staging/релиз». Исторические v12–v21 ниже не являются текущим статусом: впоследствии прошли Go vet/race/tagged build, web, MariaDB schema/rollback/locking, авторизованный API и 14 browser-сценариев. [Актуальная контрольная точка](STACK.md), [инструкция запуска](../docs/deployment/README.md).
 
@@ -1012,11 +1012,22 @@
 - **Результат:** [PR #26](https://github.com/meInteractive/it-map/pull/26), опубликованный код `d5e820d`: [Go/web/security/JS oracles](https://github.com/meInteractive/it-map/actions/runs/40287308900) и [MariaDB/API/14 browser/native](https://github.com/meInteractive/it-map/actions/runs/40287308885) прошли. Tree SHA точно совпал с локально проверенным draft; публикация через GitHub-коннектор после CLI 401, history не переписывается.
 
 
-### [ ] GO-069. SQL write/rollback задач без Calendar (часть GO-033/GO-014)
+### [x] GO-069. SQL write/rollback задач без Calendar (часть GO-033/GO-014)
 
 - **Приоритет:** Критический, спринт 1.1; GO-032 средний.
 - **Зависимости:** GO-068 d5e820d / #26, existing tasks repositories, disposable CI guards/schema/fixture. Пустой Demo task/calendar namespace, Eugene неизменен.
 - **Границы:** Repository create/list/reschedule/completion, реальные mysql statements/transactions; fake client error только после успешного реального INSERT/UPDATE. Без HTTP/browser/Google provider calls, новых API/revision и DDL.
 - **Критерии:** нормализация UTC milliseconds/переход через полночь, vacancy join/filters/includeCompleted/entities, user isolation, idempotent completed_at при изменившемся session clock, reopen clear timestamp. Connected Calendar/linkage guards сохраняют задачу, local-only completion не меняет Google metadata. Ошибка после реального write откатывает INSERT/due_at/completed/completed_at; новый pool/retry не теряет данные. Cleanup возвращает Demo=0, calendar marker удалён, Eugene/CRM/generation unchanged.
 - **Проверки:** отдельный taskwrites tag/gate после receiptwrites и до прежних readonly API/14 browser/native smoke; фактический named pass/no skips. Tagged vet/race/build/Go 1.23/source/schema/fixtures/actionlint/manifest и четыре negative guards до подключения. Локальной MariaDB нет.
-- **Результат:** реализация в codex/GO-069-task-sql-writes от проверенного d5e820d; до обязательного live CI открыта. Полная GO-033 остаётся открытой для HTTP/UI и остальных критериев.
+- **Результат:** [PR #27](https://github.com/meInteractive/it-map/pull/27), published `c9f89ec`: [Go/web/security](https://github.com/meInteractive/it-map/actions/runs/40288051112) и [MariaDB/required task writes/API/14 browser/native](https://github.com/meInteractive/it-map/actions/runs/40288051119) успешны. Tree SHA совпал с локальным, именованный SQL target реально прошёл без skips. Полная GO-033 остаётся открытой для HTTP/UI и остальных критериев.
+
+
+### [ ] GO-070. HTTP задачи, корректные timezone offsets и concurrent edits (часть GO-033)
+
+- **Приоритет:** Критический, спринт 1.1; GO-032 средний.
+- **Зависимости:** проверенный GO-069 c9f89ec / #27; настоящий router/auth/repository и disposable task fixture/fault helper.
+- **Критерии:** real login/cookie + HTTP create/list/reschedule/completion, owner/Origin/JSON/mixed fields/date errors/Calendar 409, UTC milliseconds/filters/includeCompleted/entities и generic 503 без SQL leakage/partial writes. Повтор после подтверждённого rollback успешен; durable idempotency создания задач не обещается. Два физических SQL writers на task FOR UPDATE сохраняют одновременно due_at и completed/timestamp без потери остальных полей.
+- **Исправление:** воспроизведены три JS→Go deadline mismatches (+24:00, +00:60, comma fraction) и два HTTP contract failures. Общая private normalization + HTTP offset range возвращают 400 для невозможного offset до SQL; fixture расширен до 34 настоящих JS cases.
+- **Границы:** настоящий Go handler/auth/Repository/SQL через httptest recorder; TCP/браузерный write round-trip — следующая часть. Новые task revision/CAS поля не вводятся; legacy API не имеет такого token.
+- **Проверки:** tagged/обычный vet/race/build/Go 1.23, 34 JS oracle cases, source/history/schema/fixtures/actionlint/manifest, taskWrites+taskHTTP required pass/no-skip и четыре negative guards; затем прежние API/14 browser/native smoke.
+- **Результат:** реализация в codex/GO-070-task-http от проверенного c9f89ec. Локально обычный/tagged vet/race/tests, обе сборки, Go 1.23 tasks/API, 34 JS cases, source/history/schema/fixtures/actionlint и четыре negative guards успешны; live SQL явно пропущен без DSN. До mandatory live CI открыта. Полная GO-033 остаётся открытой для UI и остальных критериев.
