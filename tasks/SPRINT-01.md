@@ -1122,9 +1122,9 @@
 - **Результат:** код codex/GO-081-apify-transport. 36 HH/36 HTTP/14 run-state/18 dataset vectors настоящих JS functions на intercepted HTTP; Go httptest cancellation/timeout/no POST retry/concurrent GET/token redaction проходят локально. Строгие typed guards provider IDs фиксируют permissive JS regexp coercion; выявленные vacancy query encoding и text204 mismatches исправлены. [PR #36](https://github.com/meInteractive/it-map/pull/36), code `93babc6`: [public](https://github.com/meInteractive/it-map/actions/runs/40320431546) и [MariaDB/scheduler/task/16 browser/API/native](https://github.com/meInteractive/it-map/actions/runs/40320431536) успешны. Узкая GO-081 принята; полные GO-039/023 открыты.
 
 
-### [ ] GO-082. Новый публичный README и перенос технических сведений
+### [x] GO-082. Новый публичный README и перенос технических сведений
 
 - **Приоритет:** Средний; отдельное поручение пользователя по документации.
 - **Границы:** новый корневой README из приложенного текста, без редактирования авторских формулировок; важные сведения прежнего README в подходящие docs, с актуализацией по коду. Runtime/workflow код не меняется.
 - **Критерии:** все 9 локальных ссылок README существуют и ведут по назначению; developer/source map, команды сборки/проверок, readiness503 и границы публичного снимка сохранены в docs. Исторические API/backup/V12 ссылки остаются доступны. LF нормализован, текст README совпадает с предоставленным. Source/history/manifest и локальные ссылки изменённых docs проверены; публикация отдельным PR.
-- **Результат:** codex/GO-082-project-readme от проверенного 93babc6; до PR/проверок открыта.
+- **Результат:** [PR #37](https://github.com/meInteractive/it-map/pull/37), опубликованный текст `fd5ca50`, ветка codex/GO-082-project-readme. README побайтно совпал с вложением после CRLF→LF, 9 ссылок README и всего 67 локальных ссылок проверенных документов корректны. Важные сведения сохранены в GO_BACKEND_STRUCTURE/ARCHITECTURE/deployment LOCAL/MIGRATION_PUBLIC_REPOSITORY; source/history/manifest/diff checks успешны. Runtime/test/workflow code diff относительно 93babc6 пуст. GitHub CI документационного SHA контролируется отдельно, его ожидание не объявлено успешной SQL-проверкой.

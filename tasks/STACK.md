@@ -218,3 +218,6 @@ GO-080 / #35 `d48e4d7` / tree c9c9577ba0984539940098f3568673412304f531 прош�
 
 
 GO-081 / #36 `93babc6` / tree7f91908e3dbd9eb04e2dcc20c6a3504f6ccac99a прошёл public40320431546 и MariaDB40320431536. GO-082 (codex/GO-082-project-readme) основан на этой проверенной вершине и меняет только README/docs/registry/checkpoint/manifest: авторский README, developer/source guide, команды локальных проверок, architecture status и public snapshot boundary. Общие приоритеты остаются в PLANS.md.
+
+
+GO-082 завершён как документальная порция: [PR #37](https://github.com/meInteractive/it-map/pull/37), README code `fd5ca50` / tree57e6de64a928513194bdfdbd0620acdae7ba4818. 9 локальных ссылок README и 67 ссылок проверенных документов существуют и соответствуют назначению; UTF-8 bytes совпали с вложением после CRLF→LF. Полезная техническая информация перенесена в существующие разделы docs, readiness503 сохранён по коду. Source/history/manifest/diff validation успешны, runtime/test/workflow код не изменён. Финальный checkpoint меняет только отметку/доказательства задачи и SHA256SUMS; статусы автоматических CI доступны в PR, ожидание не считается pass.
