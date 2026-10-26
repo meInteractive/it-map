@@ -1229,11 +1229,11 @@
 - **Приоритет:** Критический.
 - **Зависимости:** GO-094, schema/data часть GO-016.
 - **Критерии:** read-only согласованный snapshot всех прикладных tables/rows/columns/counters и trusted metadata без lazy DDL/нормализации данных; schema inventory before/after, неизвестная таблица/колонка — отказ. Admin download совместим с v39, source default catalog, full formatted byte cap; required synthetic SQL/HTTP + unchanged legacy validator принимает экспорт. Операционные данные исключены, immutable source и concurrent snapshot доказаны, секреты не попадают в Git/logs.
-- **Результат:** не реализовано.
+- **Результат:** реализован read-only RR snapshot, source defaults/schema metadata, conservative AUTO_INCREMENT high-water, bounded full v39 formatting и signed admin download. Добавлены required SQL/HTTP targets, independent scalar comparison всех application tables, source validator через stdin без файлов, query faults, concurrent snapshot/schema и счетчики после rollback. Positive disposable CI ожидается.
 
-### [ ] GO-096. Доставка принятого стека профилей/v39 в main
+### [x] GO-096. Доставка принятого стека профилей/v39 в main
 
 - **Приоритет:** Критический, исправление доставки GO-092/093/094.
 - **Причина:** После пользовательского merge #45–48 только #45 попал в main1b137ea; #46–48 объединились в прежние родительские feature-ветки. Main tree точно равен GO-091/35f6f74: resume/settings/v39 код в default branch отсутствует.
 - **Критерии:** сохранить проверенную вершину f8c0edc и ancestry GO-091/092/093/094; присоединить актуальный main без изменения runtime source; отдельный PR непосредственно в main. CI и manifest проходят; задача доставки закрывается после фактической проверки ancestry/tree main, а не по MERGED старых PR.
-- **Результат:** codex/GO-096-stack-checkpoint → main, merge b03434e сохраняет tree679373460f7f21e73d93bcbd50757ffe3c58e3ae от проверенного f8c0edc. Public40395542183 и MariaDB40395542226 для исходной вершины pass; финальная порция меняет только task/plan/checkpoint/manifest. Доставка в main и новый CI ожидаются; автоматического merge нет.
+- **Результат:** codex/GO-096-stack-checkpoint → main, merge b03434e сохраняет tree679373460f7f21e73d93bcbd50757ffe3c58e3ae от проверенного f8c0edc. Public40395542183 и MariaDB40395542226 для исходной вершины pass; финальная порция меняет только task/plan/checkpoint/manifest. Принят на [PR #49](https://github.com/meInteractive/it-map/pull/49), checkpoint7628adf: Public40397110316 и MariaDB40397110258 pass. После merge origin/main293f9b7 содержит 7628adf и весь стек; ancestry и точное равенство tree подтверждены.
