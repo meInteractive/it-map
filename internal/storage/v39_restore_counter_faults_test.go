@@ -96,6 +96,7 @@ func counterFaultPool(f *profileSettingsFixture, hook *counterFault) *sql.DB {
 }
 func testCounterLateFault(t *testing.T, prefix string) {
 	f := openProfileSettingsFixture(t)
+	seedCounterRecords(f)
 	before := counterSnapshot(f)
 	target := counterNext(f) + 7
 	body := counterFile(f, target)

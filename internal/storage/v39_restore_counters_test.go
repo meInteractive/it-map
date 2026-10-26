@@ -48,6 +48,24 @@ func counterSnapshot(f *profileSettingsFixture) []backup.Table {
 	}
 	return exportPayload(f.t, file).Storage.Tables
 }
+
+func seedCounterRecords(f *profileSettingsFixture) {
+	f.t.Helper()
+	f.save("Demo", "  CI counter preserved resume 😀  ", 0)
+	result, e := f.db.ExecContext(f.ctx, `INSERT INTO agency_identity(agency_name) VALUES('  CI counter preserved agency 😀  ')`)
+	if e != nil {
+		f.t.Fatal("cannot seed nonempty counter fixture")
+	}
+	id, e := result.LastInsertId()
+	if e != nil {
+		f.t.Fatal(e)
+	}
+	f.t.Cleanup(func() {
+		if _, e := f.db.ExecContext(context.Background(), `DELETE FROM agency_identity WHERE id=? AND agency_name='  CI counter preserved agency 😀  '`, id); e != nil {
+			f.t.Error("cannot clean nonempty counter fixture")
+		}
+	})
+}
 func TestMariaDBV39RestoreCountersDisposable(t *testing.T) {
 	t.Run("real ALTER retains write fence until explicit unlock", testCounterDDLRetainsFence)
 	t.Run("error after actual table lock releases session and table", func(t *testing.T) { testCounterLateFault(t, "LOCK TABLES `agency_identity`") })
@@ -55,6 +73,7 @@ func TestMariaDBV39RestoreCountersDisposable(t *testing.T) {
 	t.Run("cancel waiting for real SQL table lock releases ownership", testCounterCancelWait)
 	t.Run("raise only preserves rows and generation with exclusive session ownership", func(t *testing.T) {
 		f := openProfileSettingsFixture(t)
+		seedCounterRecords(f)
 		before := counterSnapshot(f)
 		target := counterNext(f) + 10
 		repo := backup.Repository{DB: f.db}
