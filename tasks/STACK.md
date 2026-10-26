@@ -154,3 +154,6 @@ GitHub проверен 26.10.2026: #22 объединён в main c00282a, #23 
 
 
 #24 перенаправлен в main через GitHub REST/CLI (коннектор отклоняет параметр base). b0023ab прошёл [Go/web/security](https://github.com/meInteractive/it-map/actions/runs/40285624819) и [MariaDB/API/14 browser/native](https://github.com/meInteractive/it-map/actions/runs/40285624924), #24 CLEAN. GO-068 / codex/GO-068-task-create-contract начинается от этой проверенной вершины: 31 JS-oracle case task create, исправление 10 воспроизведённых расхождений UTF-16/trim/Number.safeInteger. Следом — guarded SQL и HTTP части GO-033, без Calendar/live данных.
+
+
+GO-068 / [#26](https://github.com/meInteractive/it-map/pull/26): published d5e820d/tree bc334320 совпадает с локально проверенным draft, [public](https://github.com/meInteractive/it-map/actions/runs/40287308900) и [MariaDB/API/browser/native](https://github.com/meInteractive/it-map/actions/runs/40287308885) прошли. Git/gh write начал возвращать 401, рабочий GitHub-коннектор использован для blob/tree/commit/branch; локальный draft сохранён отдельной local-only веткой, опубликованная история не переписывается. GO-069 / codex/GO-069-task-sql-writes начинается от этого проверенного SHA: guarded SQL round-trip/Calendar guards/реальный rollback task writes, отдельный tag/required gate.
