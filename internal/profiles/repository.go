@@ -12,11 +12,11 @@ var ErrUnavailable = errors.New("profile/settings storage or signed user unavail
 
 type Repository struct{ DB *sql.DB }
 
-type resumeQueryer interface {
+type profileRowQueryer interface {
 	QueryRowContext(context.Context, string, ...any) *sql.Row
 }
 
-func readResumeRow(ctx context.Context, q resumeQueryer, user string) (Resume, error) {
+func readResumeRow(ctx context.Context, q profileRowQueryer, user string) (Resume, error) {
 	result := DefaultResume()
 	var updated sql.NullString
 	err := q.QueryRowContext(ctx, `SELECT resume_md,revision,updated_at FROM user_profiles WHERE user_name=?`, user).Scan(&result.ResumeMD, &result.Revision, &updated)

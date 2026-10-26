@@ -1201,12 +1201,12 @@
 - **Результат:** [PR #45](https://github.com/meInteractive/it-map/pull/45), code35f6f74/tree0dae62b48a2c6b892d004598b34e0fdc05c00eef. Public40385568261 и MariaDB40385568172 pass: 278 input vectors, 135 route cases, 4 SQL-derived kind bindings, defaults фактических readers и пять tables v39; весь прежний SQL/browser/API smoke успешен. Локальные race/tagged/vet/build/web/actionlint/source/history/manifest pass. Pure-контракт не принимает SQL/API или live provider catalog, они остаются GO-092/093.
 
 
-### [ ] GO-092. Личное резюме: SQL/HTTP CAS и user isolation (часть GO-016)
+### [x] GO-092. Личное резюме: SQL/HTTP CAS и user isolation (часть GO-016)
 
 - **Приоритет:** Критический prerequisite backup.
 - **Зависимости:** GO-091, existing user_profiles schema/auth/disposable guards.
 - **Критерии:** GET defaults без lazy DDL/write; PUT текущего signed user, code-point/NUL/256KiB limits, expected revision→increment/409, create/update/clear. Два SQL writer на одной revision, late rollback/fresh pool retry; actual auth/router/repository HTTP, никакого выбора чужого userName, schema/data сохранны для v39. Только required disposable CI без skips, cleanup сохраняет baseline.
-- **Результат:** реализован signed-user GET/PUT, source code-point/NUL/body limits и PK-serialized CAS; добавлены required SQL/HTTP targets для defaults/no lazy writes, schema constraints, двух concurrent first writers/editors, late faults и owner isolation. Local compile/guards проходят; positive CI ожидается.
+- **Результат:** реализован signed-user GET/PUT, source code-point/NUL/body limits и PK-serialized CAS; добавлены required SQL/HTTP targets для defaults/no lazy writes, schema constraints, двух concurrent first writers/editors, late faults и owner isolation. Принят на [PR #46](https://github.com/meInteractive/it-map/pull/46), code51d48ee/tree77adc705d67c937d47b0ed2f3f1ae2b215074c77. Public40389209915 и MariaDB40389209981 pass, required SQL/HTTP zero skips; все прежние SQL/browser/API smoke успешны. Local race/tagged/vet/build/web/actionlint/source/history/manifest и четыре pre-connect guards pass.
 
 ### [ ] GO-093. Общие промты и модели: schema/data, SQL CAS и admin API (часть GO-016)
 
@@ -1214,4 +1214,4 @@
 - **Зависимости:** GO-091/092, пять existing tables без DDL.
 - **Критерии:** четыре prompt kind и model projections сохраняют source defaults и физический mapping; prompt/model revisions независимы в singleton settings. Shared text/admin read/write/CAS/clear, preserved model fields; model syntax/storage validation/JEV restrictions и provider validation gate на mocks, без обхода каталогов OpenAI/JEV. Реальные SQL/HTTP owner/admin/limit/409/rollback/race на disposable DB, rows и schema совместимы с v39. Provider-backed runtime choices остаются guarded до готового каталога; реальных keys/calls нет.
 - **Границы:** оставшиеся settings UI/provider clients/API documentation — полный GO-016 остаётся открыт. Готовность prerequisite для GO-041 фиксировать по точным SQL/HTTP proofs.
-- **Результат:** не реализовано.
+- **Результат:** реализованы read-only snapshots и admin PUT четырёх prompt/model kind, независимый CAS, code-point/stream limits, provider catalog port без runtime bypass. Oracle исполняет 24 перехода unchanged legacy SQL на SQLite :memory:; его проекции сравниваются с MariaDB. Required SQL/HTTP проверяют schema/CHECK, bootstrap/model defaults, clear, faults/rollback/fresh pool retry, CAS и независимые concurrent updates, auth/admin/limits/409, catalog mocks. Positive disposable CI ожидается.

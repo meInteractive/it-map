@@ -268,3 +268,7 @@ GO-090 / #44, code0b4b3aa/tree692116d1adb1c8e9e15ff603d15a6354712aa6de: public40
 
 
 GO-091 / #45, code35f6f74/tree0dae62b48a2c6b892d004598b34e0fdc05c00eef: public40385568261 и MariaDB40385568172 pass, включая source oracle/Go contracts и все прежние SQL/browser/API smoke. GO-092 начинается от проверенного 35f6f74: codex/GO-092-resume-writes → codex/GO-091-profile-contracts; новый resume SQL/HTTP gate ожидает positive CI.
+
+GO-092 принят: [#46](https://github.com/meInteractive/it-map/pull/46), code51d48ee/tree77adc705d67c937d47b0ed2f3f1ae2b215074c77; public40389209915 и MariaDB40389209981 успешны. Required resume SQL/HTTP gates zero skips: defaults/no GET writes, Unicode CAS, два first writers/editors, late rollback/retry и signed-owner isolation. GO-093 строится от этой проверенной вершины; без нового shared-settings SQL/HTTP proof prerequisite GO-016 не считать принятым.
+
+GO-093 начата от проверенного 51d48ee: codex/GO-093-shared-profile-settings → codex/GO-092-resume-writes. 24 legacy SQL transitions исполняются на SQLite :memory:, defaults/bootstrap/revisions сравниваются в required MariaDB gate. Shared SQL/HTTP/admin/catalog-mock proof ожидает CI; внешних providers нет.

@@ -30,6 +30,7 @@ func httpHandler(logger *slog.Logger, db *sql.DB, manager *auth.Manager) http.Ha
 	if db != nil {
 		opts.DB = db
 		opts.Resumes = profiles.Repository{DB: db}
+		opts.ProfileSettings = profiles.Repository{DB: db}
 		repo := catalog.Repository{DB: db}
 		opts.Catalog = repo
 		opts.Compact = repo
