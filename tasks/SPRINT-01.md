@@ -231,7 +231,7 @@
 ### [ ] GO-012. CRUD и пользовательское состояние вакансии
 
 - **Приоритет:** Критический.
-- **Критическая часть:** [x] Favorite/hidden SQL+HTTP, user isolation/relevance/revision, UNIQUE/FK, concurrency и rollback — GO-086 / #40. [x] Create и его FK/rollback/concurrency/admin API — GO-088 / #42. [x] Edit revision/CAS/owner move/rollback и связанные FK — GO-089 / #43. [ ] Archive/delete и сохранение связанных CRM записей — GO-090. Не считать существующий код принятым CRUD. Пересчёт агентств GO-032 имеет средний приоритет и выполняется отдельной частью.
+- **Критическая часть:** [x] Favorite/hidden SQL+HTTP, user isolation/relevance/revision, UNIQUE/FK, concurrency и rollback — GO-086 / #40. [x] Create и его FK/rollback/concurrency/admin API — GO-088 / #42. [x] Edit revision/CAS/owner move/rollback и связанные FK — GO-089 / #43. [x] Archive/delete и сохранение связанных CRM записей — GO-090 / #44. Synthetic company/channel SQL/API-ядро подтверждено; UI и средняя agency projection остаются отдельными. Не считать существующий код принятым CRUD. Пересчёт агентств GO-032 имеет средний приоритет и выполняется отдельной частью.
 - **Средняя часть:** [ ] Рабочие формы и конфликт/повтор в UI после API-gate.
 - **Низкая часть:** [ ] Полировка форм/адаптивности редактора.
 
@@ -242,8 +242,8 @@
 - **Компоненты:** `internal/vacancies/{create,update,delete,flags}.go`.
 - **Критерии готовности:** Полный CRUD включая агентства, транзакции и сохранение связей на MariaDB.
 - **Как проверить:** SQL integration/rollback/concurrency, UI forms.
-- **Известные ограничения:** Код большей части есть, удаление/редактирование агентств ограничено; staging нет.
-- **Результат:** Исходные коммиты e41c2ff, 9a69945, d602e08, 7b1792b сами по себе не подтверждают CRUD. Favorite/hidden приняты GO-086 / PR #40; create/edit/delete и их связи требуют отдельных SQL/API gates.
+- **Известные ограничения:** Synthetic SQL/API core подтверждён; agency salary projection GO-032 и средний UI round-trip ещё открыты. Согласованный реальный снимок/staging не использовался.
+- **Результат:** Исходные коммиты e41c2ff, 9a69945, d602e08, 7b1792b сами по себе не подтверждают CRUD. Favorite/hidden приняты GO-086 / PR #40; company/channel create/edit/delete и связи приняты GO-088/089/090 / PR #42/#43/#44. Родитель открыт для функциональной UI-приёмки и отдельных операций агентств GO-032.
 
 ### [ ] GO-013. Отклики, idempotency и история
 
@@ -1185,9 +1185,9 @@
 - **Результат:** [PR #43](https://github.com/meInteractive/it-map/pull/43), codef06076b. Public40373140791 и MariaDB40373143125 pass: оба edit SQL/HTTP targets без skips, CAS race/428/409, flags/letters/roles/source presence, восемь late faults/retry и owner move с application/task/history двух users. Первый run40372641813 подтвердил прочие сценарии и воспроизвёл fresh owner FK error; transactional parent UPSERT устранил её и сам откатывается при late task fault. Все прежние create/CRM/receipt/task/scheduler/browser/API smoke pass.
 
 
-### [ ] GO-090. Vacancy archive/delete: FK и сохранение CRM (часть GO-012)
+### [x] GO-090. Vacancy archive/delete: FK и сохранение CRM (часть GO-012)
 
 - **Приоритет:** Критический.
 - **Критерии:** archive→delete с приложениями/задачами; detach вместо удаления application/task/history; каскады личных states/letters/roles/source, поздний SQL rollback после detachment/delete и admin HTTP. Только disposable собственные synthetic IDs, без GO-032.
 - **Зависимости:** GO-088 creation и нужная GO-089 связность.
-- **Результат:** добавлены guarded SQL/HTTP delete targets; локальная HTTP regression воспроизвела лишние preserved-поля в archive reply и проверяет точный legacy JSON. Archive projection исправлена, полный delete сохраняет два boolean flags даже false. Positive MariaDB CI ожидается.
+- **Результат:** [PR #44](https://github.com/meInteractive/it-map/pull/44), code0b4b3aa/tree692116d1adb1c8e9e15ff603d15a6354712aa6de. Public40374264948 и MariaDB40374264558 pass: два required delete SQL/HTTP targets без skips, immediate/channel delete и archive→delete, сохранение applications/tasks/history двух users, четыре late faults включая реальный DELETE с FK cascades и fresh-pool retry. Прежние create/edit/CAS/CRM/receipt/task/scheduler/browser/API smoke pass; общий fixture/shared helpers и новый channel edit guard также прошли. Legacy archive JSON исправлен после локальной падающей regression; hard delete включает оба preservation flags даже false. После пользовательского merge #42/#43 PR #44 перенаправлен в main: он также доставляет GO-089, который #43 объединил в прежнюю feature branch. Локальные race/unit/tagged/vet/build/web/actionlint/source/history/manifest/negative guards успешны.
