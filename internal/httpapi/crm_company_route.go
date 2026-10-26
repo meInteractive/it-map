@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"itmap/internal/auth"
 	"itmap/internal/crm"
@@ -23,7 +24,7 @@ func CompanyCRMHandler(m *auth.Manager, repo CompanyCRMReader) http.HandlerFunc 
 			return
 		}
 		name := strings.TrimSpace(r.URL.Query().Get("company"))
-		if name == "" || len(name) > 255 {
+		if name == "" || utf8.RuneCountInString(name) > 255 {
 			jsonReply(w, http.StatusBadRequest, map[string]string{"error": "Некорректная компания."})
 			return
 		}

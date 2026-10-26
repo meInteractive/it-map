@@ -221,3 +221,6 @@ GO-081 / #36 `93babc6` / tree7f91908e3dbd9eb04e2dcc20c6a3504f6ccac99a прошё
 
 
 GO-082 завершён как документальная порция: [PR #37](https://github.com/meInteractive/it-map/pull/37), README code `fd5ca50` / tree57e6de64a928513194bdfdbd0620acdae7ba4818. 9 локальных ссылок README и 67 ссылок проверенных документов существуют и соответствуют назначению; UTF-8 bytes совпали с вложением после CRLF→LF. Полезная техническая информация перенесена в существующие разделы docs, readiness503 сохранён по коду. Source/history/manifest/diff validation успешны, runtime/test/workflow код не изменён. Финальный checkpoint меняет только отметку/доказательства задачи и SHA256SUMS; статусы автоматических CI доступны в PR, ожидание не считается pass.
+
+
+После merge #36 пользователем main=9059c75 включает #37 и новый README; Git blob a31b71bcd3ed456f6a90f2221ed25b1f37eea627 совпал с принятым. Дублирующий GO-083 отменён без PR; 6753cff не является базой нового кода. Новая GO-084 начинается от актуального origin/main=9059c75, только CRM flag write gate. Source tree main совпадает с ранее проверенным e36c609; общий порядок продолжения фиксируется в PLANS.md.

@@ -13,9 +13,9 @@ var ErrInvalidFlag = errors.New("unsupported company flag")
 
 // SetCompanyFlag changes only the signed-in user's favorite/hidden company flag.
 // company_crm provides a stable, unique per-company serialization lock even
-// though company_user_state lost its unique(user_name,company_name) constraint
-// during D1 -> MariaDB conversion. Existing duplicate state is NOT silently
-// merged or overwritten: resolve duplicates on staging before enabling them.
+// when checking older converted databases with missing user/company uniqueness.
+// The reviewed CI schema enforces UNIQUE(user_name,company_name); pre-existing
+// ambiguous state in an older database is never silently merged or overwritten.
 func (r Repository) SetCompanyFlag(ctx context.Context, user, company, flag string, value bool) (CompanyState, error) {
 	if r.DB == nil || strings.TrimSpace(user) == "" || company == "" || utf8.RuneCountInString(company) > 255 {
 		return CompanyState{}, ErrCompanyNotFound
