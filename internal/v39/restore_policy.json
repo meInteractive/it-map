@@ -1,0 +1,33 @@
+{
+  "schedulerDefaults": {
+    "enabled": false,
+    "agenciesEnabled": false,
+    "ownerName": "Eugene",
+    "dayBudgetUsd": 0,
+    "monthBudgetUsd": 0,
+    "revision": 0,
+    "cloudOwnerId": "",
+    "sourceIds": [],
+    "intervalDays": 7,
+    "priorities": {
+      "import_vacancy": 100,
+      "assign_roles": 90,
+      "score_relevance": 85,
+      "extract_vacancy": 80,
+      "fetch_full_text": 70,
+      "classify_title": 60,
+      "scan_source": 20,
+      "diagnostic": 0
+    }
+  },
+  "supportedSources": [
+    "companySite",
+    "hh",
+    "habr",
+    "getmatch",
+    "rabota"
+  ],
+  "warnings": [
+    "Планировщик и Apify после восстановления выключены. Временная очередь и блокировки не переносятся; для возобновления обработки включите планировщик и заново подключите облачный триггер. Исходники сайта, пароли, переменные среды и сами облачные расписания восстанавливаются отдельно; для зашифрованных подключений нужен прежний SESSION_SECRET либо повторное подключение."
+  ]
+}
