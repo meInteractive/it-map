@@ -422,6 +422,42 @@
       "status": 400
     },
     {
+      "name": "offset-hour-24",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "type": "call",
+        "note": "",
+        "dueAt": "2026-10-26T12:00:00+24:00"
+      },
+      "valid": false,
+      "status": 400
+    },
+    {
+      "name": "offset-minute-60",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "type": "call",
+        "note": "",
+        "dueAt": "2026-10-26T12:00:00+00:60"
+      },
+      "valid": false,
+      "status": 400
+    },
+    {
+      "name": "comma-fraction",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "type": "call",
+        "note": "",
+        "dueAt": "2026-10-26T12:00:00,123Z"
+      },
+      "valid": false,
+      "status": 400
+    },
+    {
       "name": "unknown-type",
       "input": {
         "companyName": "CI Synthetic Employer",

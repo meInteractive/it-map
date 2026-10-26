@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"strings"
-	"time"
 	"unicode/utf16"
 	"unicode/utf8"
 )
@@ -102,11 +101,11 @@ func (input CreateInput) normalize() (CreateInput, error) {
 	if input.VacancyID != nil && (*input.VacancyID <= 0 || *input.VacancyID > 1<<53-1) {
 		return input, ErrInvalidTask
 	}
-	due, err := time.Parse(time.RFC3339Nano, input.DueAt)
+	normalized, err := normalizeTaskDeadline(input.DueAt)
 	if err != nil {
 		return input, ErrInvalidTask
 	}
-	input.DueAt = due.UTC().Format("2006-01-02T15:04:05.000Z")
+	input.DueAt = normalized
 
 	return input, nil
 }
