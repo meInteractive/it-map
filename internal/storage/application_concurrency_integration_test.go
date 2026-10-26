@@ -23,6 +23,17 @@ type receiptOutcome struct {
 // This proves overlapping SQL operations, not merely simultaneous goroutines
 // or contention for a single database/sql pool connection.
 func (f *receiptFixture) concurrentCreates(inputs [2]applications.CreateInput) [2]receiptOutcome {
+	return f.concurrentWrites("SELECT generation FROM app_runtime_generation WHERE id=1 FOR UPDATE", nil,
+		"SELECT generation FROM app_runtime_generation WHERE id=1 FOR UPDATE",
+		func(ctx context.Context, repo applications.Repository, i int) receiptOutcome {
+			result, err := repo.CreateWithReceipt(ctx, receiptUser, inputs[i])
+			return receiptOutcome{result: result, err: err}
+		})
+}
+
+// concurrentWrites also supports the application-row lock used by revision CAS.
+func (f *receiptFixture) concurrentWrites(lockQuery string, lockArgs []any, writerQueryPattern string,
+	write func(context.Context, applications.Repository, int) receiptOutcome) [2]receiptOutcome {
 	f.t.Helper()
 	var repos [2]applications.Repository
 	var ids [2]int64
@@ -44,11 +55,10 @@ func (f *receiptFixture) concurrentCreates(inputs [2]applications.CreateInput) [
 	if err != nil {
 		f.t.Fatal("cannot start concurrency barrier transaction")
 	}
-	const lockQuery = "SELECT generation FROM app_runtime_generation WHERE id=1 FOR UPDATE"
-	var generation string
-	if err := holder.QueryRowContext(ctx, lockQuery).Scan(&generation); err != nil {
+	var lockedValue any
+	if err := holder.QueryRowContext(ctx, lockQuery, lockArgs...).Scan(&lockedValue); err != nil {
 		holder.Rollback()
-		f.t.Fatal("cannot hold generation barrier")
+		f.t.Fatal("cannot hold SQL row barrier")
 	}
 	var outcomes [2]receiptOutcome
 	var wg sync.WaitGroup
@@ -57,7 +67,7 @@ func (f *receiptFixture) concurrentCreates(inputs [2]applications.CreateInput) [
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			outcomes[i].result, outcomes[i].err = repos[i].CreateWithReceipt(ctx, receiptUser, inputs[i])
+			outcomes[i] = write(ctx, repos[i], i)
 		}(i)
 	}
 	ticker := time.NewTicker(10 * time.Millisecond)
@@ -65,16 +75,16 @@ func (f *receiptFixture) concurrentCreates(inputs [2]applications.CreateInput) [
 	for {
 		var waiting int
 		err := f.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM information_schema.PROCESSLIST
-			WHERE ID IN (?,?) AND COMMAND='Query' AND INFO=?`, ids[0], ids[1], lockQuery).Scan(&waiting)
+			WHERE ID IN (?,?) AND COMMAND IN ('Query','Execute') AND INFO LIKE ?`, ids[0], ids[1], writerQueryPattern).Scan(&waiting)
 		if err != nil {
-			f.t.Fatal("cannot observe both SQL writers at the generation barrier")
+			f.t.Fatal("cannot observe both SQL writers at the SQL row barrier")
 		}
 		if waiting == 2 {
 			break
 		}
 		select {
 		case <-ctx.Done():
-			f.t.Fatal("both SQL writers did not reach the generation barrier")
+			f.t.Fatal("both SQL writers did not reach the SQL row barrier")
 		case <-ticker.C:
 		}
 	}

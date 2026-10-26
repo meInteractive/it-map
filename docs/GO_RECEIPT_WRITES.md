@@ -42,3 +42,28 @@ TestMariaDBApplicationFaultsDisposable использует test-only Connector/
 Счётчики успешно выполненных реальных INSERT и commit подтверждают точку сбоя; тест требует именно вооружённую sentinel-ошибку. Независимое соединение проверяет ноль application/history/receipt после mid-write rollback либо ровно один комплект после потерянного ответа. Весь interrupted pool закрывается; новый repository/pool повторяет исходный key/context/body. После rollback это fresh create, после commit — replay исходного durable ID. Следующие replay/changed-intent, поля и единственная история сохраняются; общий cleanup полностью восстанавливает readonly-фикстуры.
 
 Это проверка отката реальной транзакции при клиентской ошибке и восстановления по durable receipt на новом соединении. Она **не** доказывает аварийное завершение процесса/сервера, сетевой COMMIT с неизвестным исходом, полный restore или update/CAS. Полная GO-031 остаётся открытой. CI требует фактический pass третьего target без skips вместе с GO-058/060 перед прежними API/14 browser/native smoke.
+
+
+Подтверждение GO-061: [PR #19](https://github.com/meInteractive/it-map/pull/19), код `62b8b46`, [Go/web/security](https://github.com/meInteractive/it-map/actions/runs/40237125022) и [MariaDB faults/concurrency/receipts/API/browser/native](https://github.com/meInteractive/it-map/actions/runs/40237125124) успешны. Три точки ошибки выполнены на настоящей disposable MariaDB, прежние gates сохранены.
+
+## GO-062: принудительное завершение Go writer и новый процесс
+
+TestMariaDBApplicationCrashDisposable запускает отдельный экземпляр того же Go test executable с настоящим applications.Repository/mysql driver. Test-only Tx wrapper останавливается на контролируемом барьере после всех успешных INSERT: перед вызовом реального COMMIT либо после его успешного возврата, до чтения ответа. Parent получает фиксированный marker из stdout и вызывает Process.Kill; нормальный exit/ошибка/истечение deadline не считаются успешным crash-сценарием. При ошибке parent обязательно завершает и дожидается child. DSN/context/записи не печатаются.
+
+После kill SQL проверяет 0/0/0 до commit либо 1/1/1 после commit. Ещё один новый Go-процесс получает исходный неизменный synthetic key/context/body и повторяет create: fresh после rollback или replay исходного ID после commit. Parent проверяет повтор того же ID, поля и единственную историю, затем общий fixture восстанавливает Demo=0 и сохраняет Eugene/history/generation. Child тоже проходит GITHUB_ACTIONS/parsed target/current-generation guards; права/схема/сервер не меняются.
+
+Это восстановление отдельного процесса-писателя, а не авария MariaDB/хоста и не моделирование неизвестного исхода сетевого COMMIT. HTTP-server kill/replay, CAS и смешанные create/update/delete операции ещё не проверены. Четвёртый target обязателен с pass/no-skip после прежних SQL phases и до всех прежних API/14 browser/native smoke.
+
+
+Подтверждение GO-062: [PR #20](https://github.com/meInteractive/it-map/pull/20), код `96f13a0`, [Go/web/security](https://github.com/meInteractive/it-map/actions/runs/40237455813) и [MariaDB kill/restart/API/browser/native](https://github.com/meInteractive/it-map/actions/runs/40237455777) прошли. Два crash/recovery сценария действительно выполнялись внутри disposable CI; локальные SQL skips не выдаются за этот результат.
+
+## GO-063: revision/CAS и история при обновлении
+
+TestMariaDBApplicationCASDisposable расширяет бизнес-gate пятым обязательным target. Общий concurrency helper удерживает нужную canonical row, проверяет разные CONNECTION_ID и оба SQL writer в PROCESSLIST; обычный create по-прежнему использует generation lock, CAS — application row lock. Для prepared statements допускаются команды Query/Execute, INFO фильтруется внутри SQL и не выводится.
+
+Два Update с одной revision/разными статусами и комментариями дают ровно один commit и ErrConflict проигравшему. Сохраняются поля winner и ровно один переход истории; stale retries не меняют полный Record. Отдельная сессия SET timestamp (без global clock/grants) фиксирует время: content меняет SHA-256 revision даже при одинаковом updated_at; полностью неизменный UPDATE успешен благодаря clientFoundRows и не меняет snapshot/history; comment-only edit тоже не создаёт status history. Проверена изоляция другого пользователя.
+
+Третий сценарий использует обёртку GO-061: одно искусственное клиентское исключение перед history после подтверждённого реального UPDATE. MariaDB должна откатить все поля/revision/history; после закрытия interrupted pool исходная revision остаётся пригодной для успешного сохранения. Receipts/другие пользователи/generation/readonly fixtures сохраняются. Mixed create/update/delete и смена vacancy, полный HTTP replay и server/host crash не закрыты; API/production-код/схема/legacy остаются прежними.
+
+
+Подтверждение GO-063: [PR #21](https://github.com/meInteractive/it-map/pull/21), код `36b0133`, [Go/web/security](https://github.com/meInteractive/it-map/actions/runs/40237800951) и [MariaDB CAS/все receipt targets/API/14 browser/native](https://github.com/meInteractive/it-map/actions/runs/40237800814) успешны. Все пять именованных SQL targets реально прошли без skips. Код приложения/API/схема не потребовали изменения. GO-031 остаётся открытой для controlled HTTP write/replay, shortcut и смешанных операций/смены vacancy.
