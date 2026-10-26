@@ -1216,13 +1216,13 @@
 - **Границы:** оставшиеся settings UI/provider clients/API documentation — полный GO-016 остаётся открыт. Готовность prerequisite для GO-041 фиксировать по точным SQL/HTTP proofs.
 - **Результат:** реализованы read-only snapshots и admin PUT четырёх prompt/model kind, независимый CAS, code-point/stream limits, provider catalog port без runtime bypass. Oracle исполняет 24 перехода unchanged legacy SQL на SQLite :memory:; его проекции сравниваются с MariaDB. Required SQL/HTTP проверяют schema/CHECK, bootstrap/model defaults, clear, faults/rollback/fresh pool retry, CAS и независимые concurrent updates, auth/admin/limits/409, catalog mocks. Принят на [PR #47](https://github.com/meInteractive/it-map/pull/47), code5b9e891/tree150e79df198495a849ad657179caf19261f68ff9: Public40392117857 и MariaDB40392117847 pass, shared SQL/HTTP zero skips и весь прежний SQL/browser/API smoke pass. Необходимые schema/data prerequisite GO-016 для backup доказаны; полный GO-016 остаётся открыт.
 
-### [ ] GO-094. Source-backed формат и валидация v39 (часть GO-041)
+### [x] GO-094. Source-backed формат и валидация v39 (часть GO-041)
 
 - **Приоритет:** Критический.
 - **Зависимости:** GO-091/092/093, unchanged legacy backup/schema.
 - **Критерии:** pure Go v39 состав 52 application/19 excluded operational tables, точные rows/columns, manifest, SHA-256 с JSON.stringify semantics (property order, numbers, Unicode), catalog/raw consistency, FK и sequences, 25MiB/200000 limits. Synthetic differential oracle выполняет unchanged legacy digest/validation на памяти; ни реальных backups, ни SQL, HTTP или restore.
 - **Границы:** legacy v14–38 import и restore остаются GO-042; SQL export/snapshot/API — GO-095. Не закрывать GO-041 только по pure контракту.
-- **Результат:** pure Go v39 schema/layout/manifest/FK/sequence validation, ordered JSON.stringify-compatible SHA-256 и форматирование с итоговым byte cap реализованы. Required unchanged JS oracle проверяет 67 synthetic cases (включая 200000 rows, overflow, malformed UTF8, lone UTF16 surrogates и exact 25MiB boundary), schema copy сверяется с source. SQL/HTTP отсутствуют; positive CI ожидается.
+- **Результат:** pure Go v39 schema/layout/manifest/FK/sequence validation, ordered JSON.stringify-compatible SHA-256 и форматирование с итоговым byte cap реализованы. Required unchanged JS oracle проверяет 67 synthetic cases (включая 200000 rows, overflow, malformed UTF8, lone UTF16 surrogates и exact 25MiB boundary), schema copy сверяется с source. Принят на [PR #48](https://github.com/meInteractive/it-map/pull/48), codeac0fd60/tree65d138f020379a5d4de7bcaa4ad7ab7ad56868dd. Public40394902190 и MariaDB40394901964 pass, required 67-case interop/race и весь прежний SQL/API/browser suite успешны. Local race/tagged/vet/build/actionlint/source/history/manifest pass. SQL/HTTP отсутствуют и остаются GO-095; GO-041 целиком открыт.
 
 ### [ ] GO-095. Согласованный MariaDB export v39 и HTTP (часть GO-041)
 
