@@ -200,3 +200,6 @@ GO-077 реализует только canonical legacy crypto compatibility. П
 
 
 GO-077 / #32 `75ba9d7` подтверждён public40307364593 и MariaDB/16 browser/API/native40307364181. GO-078 в отдельной ветке codex/GO-078-parser-settings переносит pure validation/normalization из настоящего saveSchedulerSettings до SQL: 62 vectors/defaults/options и strict boundary checks, без runtime/API/jobs. GO-021/045 открыты. Следующая critical порция GO-079 upper-cost/time, затем отдельные durable SQL gates до любого paid клиента.
+
+
+GO-078 / #33 `14b26cd` прошёл public40308221146 и MariaDB/16 browser/API/native40308221140; pure settings portion принята. GO-079 (codex/GO-079-parser-budget) переносит historical upper-cost/MSK periods и не выполняет work/reservation. 77 cost/10 period vectors, все historical tariffs; два numeric-string mismatch воспроизведены до fix, overflow дополнительно отказывает. Полные GO-017/021/023/045 и parser не закрываются. Следующая high часть требует durable SQL leases/recovery до включения клиентов; затем medium по prerequisites и critical CRM→vacancy→backup по последнему поручению.
