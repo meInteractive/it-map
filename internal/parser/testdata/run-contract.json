@@ -1,0 +1,22 @@
+{
+  "oracle": "Unchanged legacy candidateHash and beginSchedulerRun identity/default lease; no SQL/network",
+  "defaultDurationMs": 110000,
+  "leaseSlackMs": 30000,
+  "vectors": [
+    {
+      "generation": "11111111-2222-4333-8444-555555555555",
+      "requestId": "CI synthetic run",
+      "id": "7abbfb06e2fcde768ca00afb30fbfc1659cdb29d1f64468de01838ff9ef8fe6a"
+    },
+    {
+      "generation": "11111111-2222-4333-8444-555555555555",
+      "requestId": "CI синтетика 😀",
+      "id": "9a2df3c38f0aa419b32b6be8a1d82cf1766623e8a4ff57ceafc27e092e094dd7"
+    },
+    {
+      "generation": "11111111-2222-4333-8444-555555555555",
+      "requestId": "hour:CI_SYNTHETIC",
+      "id": "a5ad6bee9087a79658fd8f0813d6046523722f71f191abf2c6f925ec7f7fbb1c"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+import {readFile,writeFile} from 'node:fs/promises';
+globalThis.fetch=()=>{throw new Error('Run contract oracle forbids network');};
+const {candidateHash}=await import('../server/repositories/vacancy-candidates.js');
+const source=await readFile(new URL('../server/repositories/scheduler.js',import.meta.url),'utf8');
+if(!source.includes("candidateHash(generation+':'+requestId)")||!source.includes('durationMs=110000')||!source.includes('now+durationMs+30000'))throw new Error('Legacy run identity/default lease contract changed; review');
+const generation='11111111-2222-4333-8444-555555555555';
+const requests=['CI synthetic run','CI синтетика 😀','hour:CI_SYNTHETIC'];
+const vectors=[];for(const requestId of requests)vectors.push({generation,requestId,id:await candidateHash(generation+':'+requestId)});
+const result=JSON.stringify({oracle:'Unchanged legacy candidateHash and beginSchedulerRun identity/default lease; no SQL/network',defaultDurationMs:110000,leaseSlackMs:30000,vectors},null,2)+'\n';
+const target=new URL('../internal/parser/testdata/run-contract.json',import.meta.url);
+if(process.argv.length===3&&process.argv[2]==='--write')await writeFile(target,result);else if(process.argv.length!==2)throw new Error('Use --write only for reviewed fixture regeneration');else if(await readFile(target,'utf8')!==result)throw new Error('Legacy scheduler run contract differs');
+console.log('PASS: 3 synthetic scheduler run identities/default lease from unchanged JS');

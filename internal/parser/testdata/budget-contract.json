@@ -1,0 +1,1661 @@
+{
+  "oracle": "Unchanged schedulerUpperCost/schedulerPeriod; historical tariff snapshot only, no pricing recommendation or provider calls",
+  "prices": {
+    "gpt-6-luna": {
+      "input": 0.1,
+      "output": 0.5
+    },
+    "gpt-6.1-sol": {
+      "input": 2,
+      "output": 10
+    },
+    "gpt-6-sol": {
+      "input": 2,
+      "output": 10
+    },
+    "gpt-6-astra": {
+      "input": 10,
+      "output": 50
+    },
+    "gpt-5.6-terra": {
+      "input": 2,
+      "output": 12
+    },
+    "gpt-5.6-luna": {
+      "input": 0.2,
+      "output": 1.2
+    },
+    "gpt-5.6-sol": {
+      "input": 4,
+      "output": 20
+    },
+    "gpt-5.6-cyber": {
+      "input": 12.5,
+      "output": 75
+    },
+    "gpt-5.4": {
+      "input": 2.5,
+      "output": 15
+    },
+    "gpt-5.4-mini": {
+      "input": 0.75,
+      "output": 4.5
+    },
+    "gpt-5.4-nano": {
+      "input": 0.2,
+      "output": 1.25
+    },
+    "gpt-5.4-pro": {
+      "input": 30,
+      "output": 180
+    },
+    "gpt-5.3-codex": {
+      "input": 1.75,
+      "output": 14
+    },
+    "gpt-5.2": {
+      "input": 1.75,
+      "output": 14
+    },
+    "gpt-5.2-pro": {
+      "input": 21,
+      "output": 168
+    },
+    "gpt-5.1": {
+      "input": 1.25,
+      "output": 10
+    },
+    "gpt-5": {
+      "input": 1.25,
+      "output": 10
+    },
+    "gpt-5-mini": {
+      "input": 0.25,
+      "output": 2
+    },
+    "gpt-5-nano": {
+      "input": 0.05,
+      "output": 0.4
+    },
+    "gpt-4.1": {
+      "input": 2,
+      "output": 8
+    },
+    "gpt-4.1-mini": {
+      "input": 0.4,
+      "output": 1.6
+    },
+    "gpt-4.1-nano": {
+      "input": 0.1,
+      "output": 0.4
+    },
+    "gpt-4o": {
+      "input": 2.5,
+      "output": 10
+    },
+    "gpt-4o-mini": {
+      "input": 0.15,
+      "output": 0.6
+    },
+    "o3": {
+      "input": 2,
+      "output": 8
+    },
+    "o3-mini": {
+      "input": 1.1,
+      "output": 4.4
+    },
+    "o3-pro": {
+      "input": 20,
+      "output": 80
+    },
+    "o4-mini": {
+      "input": 1.1,
+      "output": 4.4
+    },
+    "o1": {
+      "input": 15,
+      "output": 60
+    },
+    "o1-mini": {
+      "input": 1.1,
+      "output": 4.4
+    },
+    "o1-pro": {
+      "input": 150,
+      "output": 600
+    },
+    "gpt-5.6": {
+      "input": 4,
+      "output": 20
+    }
+  },
+  "vectors": [
+    {
+      "name": "openai",
+      "input": {
+        "provider": "openai",
+        "model": "gpt-4.1",
+        "payload": {
+          "input": [
+            {
+              "role": "user",
+              "content": "CI synthetic input"
+            }
+          ],
+          "max_output_tokens": 1024
+        }
+      },
+      "legacyAccepted": true,
+      "legacyFinite": true,
+      "valid": true,
+      "upper": 0.017062
+    },
+    {
+      "name": "free",
+      "input": {
+        "free": true
+      },
+      "legacyAccepted": true,
+      "legacyFinite": true,
+      "valid": true,
+      "upper": 0
+    },
+    {
+      "name": "not-free-string",
+      "input": {
+        "free": "true"
+      },
+      "legacyAccepted": false,
+      "valid": false,
+      "code": "budget_unknown"
+    },
+    {
+      "name": "not-free-number",
+      "input": {
+        "free": 1
+      },
+      "legacyAccepted": false,
+      "valid": false,
+      "code": "budget_unknown"
+    },
+    {
+      "name": "apify-cap",
+      "input": {
+        "provider": "apify",
+        "capUsd": 0.26
+      },
+      "legacyAccepted": true,
+      "legacyFinite": true,
+      "valid": true,
+      "upper": 0.26
+    },
+    {
+      "name": "apify-wrong-cap",
+      "input": {
+        "provider": "apify",
+        "capUsd": 0.27
+      },
+      "legacyAccepted": false,
+      "valid": false,
+      "code": "budget_unknown"
+    },
+    {
+      "name": "apify-string-cap",
+      "input": {
+        "provider": "apify",
+        "capUsd": "0.26"
+      },
+      "legacyAccepted": false,
+      "valid": false,
+      "code": "budget_unknown"
+    },
+    {
+      "name": "unknown-model",
+      "input": {
+        "provider": "openai",
+        "model": "CI unknown model",
+        "payload": {
+          "input": [
+            {
+              "role": "user",
+              "content": "CI synthetic input"
+            }
+          ],
+          "max_output_tokens": 1024
+        }
+      },
+      "legacyAccepted": false,
+      "valid": false,
+      "code": "budget_unknown"
+    },
+    {
+      "name": "snapshot-not-inferred",
+      "input": {
+        "provider": "openai",
+        "model": "gpt-4.1-CI-snapshot",
+        "payload": {
+          "input": [
+            {
+              "role": "user",
+              "content": "CI synthetic input"
+            }
+          ],
+          "max_output_tokens": 1024
+        }
+      },
+      "legacyAccepted": false,
+      "valid": false,
+      "code": "budget_unknown"
+    },
+    {
+      "name": "missing-output",
+      "input": {
+        "provider": "openai",
+        "model": "gpt-4.1",
+        "payload": {
+          "input": []
+        }
+      },
+      "legacyAccepted": false,
+      "valid": false,
+      "code": "budget_unknown"
+    },
+    {
+      "name": "string-output",
+      "input": {
+        "provider": "openai",
+        "model": "gpt-4.1",
+        "payload": {
+          "input": [],
+          "max_output_tokens": "5"
+        }
+      },
+      "legacyAccepted": false,
+      "valid": false,
+      "code": "budget_unknown"
+    },
+    {
+      "name": "zero-output",
+      "input": {
+        "provider": "openai",
+        "model": "gpt-4.1",
+        "payload": {
+          "input": [],
+          "max_output_tokens": 0
+        }
+      },
+      "legacyAccepted": false,
+      "valid": false,
+      "code": "budget_unknown"
+    },
+    {
+      "name": "fraction-output",
+      "input": {
+        "provider": "openai",
+        "model": "gpt-4.1",
+        "payload": {
+          "input": [],
+          "max_output_tokens": 1.5
+        }
+      },
+      "legacyAccepted": false,
+      "valid": false,
+      "code": "budget_unknown"
+    },
+    {
+      "name": "unsafe-output",
+      "input": {
+        "provider": "openai",
+        "model": "gpt-4.1",
+        "payload": {
+          "input": [],
+          "max_output_tokens": 9007199254740992
+        }
+      },
+      "legacyAccepted": false,
+      "valid": false,
+      "code": "budget_unknown"
+    },
+    {
+      "name": "minimal-output",
+      "input": {
+        "provider": "openai",
+        "model": "gpt-4.1",
+        "payload": {
+          "input": [],
+          "max_output_tokens": 1
+        }
+      },
+      "legacyAccepted": true,
+      "legacyFinite": true,
+      "valid": true,
+      "upper": 0.008268
+    },
+    {
+      "name": "string-input",
+      "input": {
+        "provider": "openai",
+        "model": "gpt-4.1",
+        "payload": {
+          "input": "CI 😀 input",
+          "max_output_tokens": 10
+        }
+      },
+      "legacyAccepted": true,
+      "legacyFinite": true,
+      "valid": true,
+      "upper": 0.014
+    },
+    {
+      "name": "unicode-html-line-separator",
+      "input": {
+        "provider": "openai",
+        "model": "gpt-4.1",
+        "payload": {
+          "input": [
+            {
+              "content": "CI <&> 😀  \n\u0000",
+              "extra": "CI синтетика"
+            }
+          ],
+          "max_output_tokens": 10
+        }
+      },
+      "legacyAccepted": true,
+      "legacyFinite": true,
+      "valid": true,
+      "upper": 0.008996
+    },
+    {
+      "name": "questions-key-unicode",
+      "input": {
+        "provider": "openai",
+        "model": "gpt-4.1",
+        "payload": {
+          "input": [],
+          "questions": {
+            "CI ": "<&>"
+          },
+          "max_output_tokens": 10
+        }
+      },
+      "legacyAccepted": true,
+      "legacyFinite": true,
+      "valid": true,
+      "upper": 0.008398
+    },
+    {
+      "name": "jev",
+      "input": {
+        "provider": "jev",
+        "model": "CI synthetic model",
+        "contextLength": 32768,
+        "pricing": {
+          "prompt": "0.000001",
+          "completion": "0.000002",
+          "request": "0.001"
+        },
+        "payload": {
+          "questions": {
+            "title": "CI synthetic"
+          },
+          "input": []
+        }
+      },
+      "legacyAccepted": true,
+      "legacyFinite": true,
+      "valid": true,
+      "upper": 0.395216
+    },
+    {
+      "name": "jev-no-fixed",
+      "input": {
+        "provider": "jev",
+        "model": "CI synthetic model",
+        "contextLength": 32768,
+        "pricing": {
+          "prompt": 0.000001,
+          "completion": 0.000002
+        },
+        "payload": {
+          "questions": {
+            "title": "CI synthetic"
+          },
+          "input": []
+        }
+      },
+      "legacyAccepted": true,
+      "legacyFinite": true,
+      "valid": true,
+      "upper": 0.393216
+    },
+    {
+      "name": "jev-free-prices",
+      "input": {
+        "provider": "jev",
+        "model": "CI synthetic model",
+        "contextLength": 32768,
+        "pricing": {
+          "prompt": 0,
+          "completion": 0
+        },
+        "payload": {
+          "questions": {
+            "title": "CI synthetic"
+          },
+          "input": []
+        }
+      },
+      "legacyAccepted": true,
+      "legacyFinite": true,
+      "valid": true,
+      "upper": 0
+    },
+    {
+      "name": "jev-null-prompt",
+      "input": {
+        "provider": "jev",
+        "model": "CI synthetic model",
+        "contextLength": 32768,
+        "pricing": {
+          "prompt": null,
+          "completion": 0.000002
+        },
+        "payload": {
+          "questions": {
+            "title": "CI synthetic"
+          },
+          "input": []
+        }
+      },
+      "legacyAccepted": true,
+      "legacyFinite": true,
+      "valid": true,
+      "upper": 0.262144
+    },
+    {
+      "name": "jev-boolean-prices",
+      "input": {
+        "provider": "jev",
+        "model": "CI synthetic model",
+        "contextLength": 32768,
+        "pricing": {
+          "prompt": false,
+          "completion": false
+        },
+        "payload": {
+          "questions": {
+            "title": "CI synthetic"
+          },
+          "input": []
+        }
+      },
+      "legacyAccepted": true,
+      "legacyFinite": true,
+      "valid": true,
+      "upper": 0
+    },
+    {
+      "name": "jev-three-questions",
+      "input": {
+        "provider": "jev",
+        "model": "CI synthetic model",
+        "contextLength": 32768,
+        "pricing": {
+          "prompt": "0.000001",
+          "completion": "0.000002",
+          "request": "0.001"
+        },
+        "payload": {
+          "questions": {
+            "a": "CI",
+            "b": "CI",
+            "c": "CI"
+          }
+        }
+      },
+      "legacyAccepted": true,
+      "legacyFinite": true,
+      "valid": true,
+      "upper": 0.790432
+    },
+    {
+      "name": "jev-empty-questions",
+      "input": {
+        "provider": "jev",
+        "model": "CI synthetic model",
+        "contextLength": 32768,
+        "pricing": {
+          "prompt": "0.000001",
+          "completion": "0.000002",
+          "request": "0.001"
+        },
+        "payload": {
+          "questions": {}
+        }
+      },
+      "legacyAccepted": true,
+      "legacyFinite": true,
+      "valid": true,
+      "upper": 0.197608
+    },
+    {
+      "name": "jev-missing-payload",
+      "input": {
+        "provider": "jev",
+        "model": "CI synthetic model",
+        "contextLength": 32768,
+        "pricing": {
+          "prompt": "0.000001",
+          "completion": "0.000002",
+          "request": "0.001"
+        }
+      },
+      "legacyAccepted": false,
+      "valid": false,
+      "code": "invalid_input"
+    },
+    {
+      "name": "jev-no-context",
+      "input": {
+        "provider": "jev",
+        "model": "CI synthetic model",
+        "pricing": {
+          "prompt": "0.000001",
+          "completion": "0.000002",
+          "request": "0.001"
+        },
+        "payload": {
+          "questions": {
+            "title": "CI synthetic"
+          },
+          "input": []
+        }
+      },
+      "legacyAccepted": false,
+      "valid": false,
+      "code": "budget_unknown"
+    },
+    {
+      "name": "jev-zero-context",
+      "input": {
+        "provider": "jev",
+        "model": "CI synthetic model",
+        "contextLength": 0,
+        "pricing": {
+          "prompt": "0.000001",
+          "completion": "0.000002",
+          "request": "0.001"
+        },
+        "payload": {
+          "questions": {
+            "title": "CI synthetic"
+          },
+          "input": []
+        }
+      },
+      "legacyAccepted": false,
+      "valid": false,
+      "code": "budget_unknown"
+    },
+    {
+      "name": "jev-context-limit",
+      "input": {
+        "provider": "jev",
+        "model": "CI synthetic model",
+        "contextLength": 10000000,
+        "pricing": {
+          "prompt": "0.000001",
+          "completion": "0.000002",
+          "request": "0.001"
+        },
+        "payload": {
+          "questions": {
+            "title": "CI synthetic"
+          },
+          "input": []
+        }
+      },
+      "legacyAccepted": true,
+      "legacyFinite": true,
+      "valid": true,
+      "upper": 120.002
+    },
+    {
+      "name": "jev-over-context",
+      "input": {
+        "provider": "jev",
+        "model": "CI synthetic model",
+        "contextLength": 10000001,
+        "pricing": {
+          "prompt": "0.000001",
+          "completion": "0.000002",
+          "request": "0.001"
+        },
+        "payload": {
+          "questions": {
+            "title": "CI synthetic"
+          },
+          "input": []
+        }
+      },
+      "legacyAccepted": false,
+      "valid": false,
+      "code": "budget_unknown"
+    },
+    {
+      "name": "jev-string-context",
+      "input": {
+        "provider": "jev",
+        "model": "CI synthetic model",
+        "contextLength": "32768",
+        "pricing": {
+          "prompt": "0.000001",
+          "completion": "0.000002",
+          "request": "0.001"
+        },
+        "payload": {
+          "questions": {
+            "title": "CI synthetic"
+          },
+          "input": []
+        }
+      },
+      "legacyAccepted": true,
+      "legacyFinite": true,
+      "valid": true,
+      "upper": 0.395216
+    },
+    {
+      "name": "jev-hex-context",
+      "input": {
+        "provider": "jev",
+        "model": "CI synthetic model",
+        "contextLength": "0x10",
+        "pricing": {
+          "prompt": "0.000001",
+          "completion": "0.000002",
+          "request": "0.001"
+        },
+        "payload": {
+          "questions": {
+            "title": "CI synthetic"
+          },
+          "input": []
+        }
+      },
+      "legacyAccepted": true,
+      "legacyFinite": true,
+      "valid": true,
+      "upper": 0.002192
+    },
+    {
+      "name": "jev-bom-context",
+      "input": {
+        "provider": "jev",
+        "model": "CI synthetic model",
+        "contextLength": "﻿128﻿",
+        "pricing": {
+          "prompt": "0.000001",
+          "completion": "0.000002",
+          "request": "0.001"
+        },
+        "payload": {
+          "questions": {
+            "title": "CI synthetic"
+          },
+          "input": []
+        }
+      },
+      "legacyAccepted": true,
+      "legacyFinite": true,
+      "valid": true,
+      "upper": 0.003536
+    },
+    {
+      "name": "jev-nel-context",
+      "input": {
+        "provider": "jev",
+        "model": "CI synthetic model",
+        "contextLength": "128",
+        "pricing": {
+          "prompt": "0.000001",
+          "completion": "0.000002",
+          "request": "0.001"
+        },
+        "payload": {
+          "questions": {
+            "title": "CI synthetic"
+          },
+          "input": []
+        }
+      },
+      "legacyAccepted": false,
+      "valid": false,
+      "code": "budget_unknown"
+    },
+    {
+      "name": "jev-context-number-separator",
+      "input": {
+        "provider": "jev",
+        "model": "CI synthetic model",
+        "contextLength": "1_0",
+        "pricing": {
+          "prompt": "0.000001",
+          "completion": "0.000002",
+          "request": "0.001"
+        },
+        "payload": {
+          "questions": {
+            "title": "CI synthetic"
+          },
+          "input": []
+        }
+      },
+      "legacyAccepted": false,
+      "valid": false,
+      "code": "budget_unknown"
+    },
+    {
+      "name": "jev-price-number-separator",
+      "input": {
+        "provider": "jev",
+        "model": "CI synthetic model",
+        "contextLength": 32768,
+        "pricing": {
+          "prompt": "0.0_1",
+          "completion": 0
+        },
+        "payload": {
+          "questions": {
+            "title": "CI synthetic"
+          },
+          "input": []
+        }
+      },
+      "legacyAccepted": false,
+      "valid": false,
+      "code": "budget_unknown"
+    },
+    {
+      "name": "jev-null-context",
+      "input": {
+        "provider": "jev",
+        "model": "CI synthetic model",
+        "contextLength": null,
+        "pricing": {
+          "prompt": "0.000001",
+          "completion": "0.000002",
+          "request": "0.001"
+        },
+        "payload": {
+          "questions": {
+            "title": "CI synthetic"
+          },
+          "input": []
+        }
+      },
+      "legacyAccepted": false,
+      "valid": false,
+      "code": "budget_unknown"
+    },
+    {
+      "name": "jev-infinite-context",
+      "input": {
+        "provider": "jev",
+        "model": "CI synthetic model",
+        "contextLength": "Infinity",
+        "pricing": {
+          "prompt": "0.000001",
+          "completion": "0.000002",
+          "request": "0.001"
+        },
+        "payload": {
+          "questions": {
+            "title": "CI synthetic"
+          },
+          "input": []
+        }
+      },
+      "legacyAccepted": false,
+      "valid": false,
+      "code": "budget_unknown"
+    },
+    {
+      "name": "jev-missing-pricing",
+      "input": {
+        "provider": "jev",
+        "model": "CI synthetic model",
+        "contextLength": 32768,
+        "payload": {
+          "questions": {
+            "title": "CI synthetic"
+          },
+          "input": []
+        }
+      },
+      "legacyAccepted": false,
+      "valid": false,
+      "code": "budget_unknown"
+    },
+    {
+      "name": "jev-no-prompt",
+      "input": {
+        "provider": "jev",
+        "model": "CI synthetic model",
+        "contextLength": 32768,
+        "pricing": {
+          "completion": 0
+        },
+        "payload": {
+          "questions": {
+            "title": "CI synthetic"
+          },
+          "input": []
+        }
+      },
+      "legacyAccepted": false,
+      "valid": false,
+      "code": "budget_unknown"
+    },
+    {
+      "name": "jev-no-completion",
+      "input": {
+        "provider": "jev",
+        "model": "CI synthetic model",
+        "contextLength": 32768,
+        "pricing": {
+          "prompt": 0
+        },
+        "payload": {
+          "questions": {
+            "title": "CI synthetic"
+          },
+          "input": []
+        }
+      },
+      "legacyAccepted": false,
+      "valid": false,
+      "code": "budget_unknown"
+    },
+    {
+      "name": "jev-negative-price",
+      "input": {
+        "provider": "jev",
+        "model": "CI synthetic model",
+        "contextLength": 32768,
+        "pricing": {
+          "prompt": -0.1,
+          "completion": 0
+        },
+        "payload": {
+          "questions": {
+            "title": "CI synthetic"
+          },
+          "input": []
+        }
+      },
+      "legacyAccepted": false,
+      "valid": false,
+      "code": "budget_unknown"
+    },
+    {
+      "name": "jev-invalid-price",
+      "input": {
+        "provider": "jev",
+        "model": "CI synthetic model",
+        "contextLength": 32768,
+        "pricing": {
+          "prompt": "CI unknown",
+          "completion": 0
+        },
+        "payload": {
+          "questions": {
+            "title": "CI synthetic"
+          },
+          "input": []
+        }
+      },
+      "legacyAccepted": false,
+      "valid": false,
+      "code": "budget_unknown"
+    },
+    {
+      "name": "jev-negative-fixed",
+      "input": {
+        "provider": "jev",
+        "model": "CI synthetic model",
+        "contextLength": 32768,
+        "pricing": {
+          "prompt": 0,
+          "completion": 0,
+          "request": -1
+        },
+        "payload": {
+          "questions": {
+            "title": "CI synthetic"
+          },
+          "input": []
+        }
+      },
+      "legacyAccepted": false,
+      "valid": false,
+      "code": "budget_unknown"
+    },
+    {
+      "name": "jev-overflow",
+      "input": {
+        "provider": "jev",
+        "model": "CI synthetic model",
+        "contextLength": 32768,
+        "pricing": {
+          "prompt": 1e+308,
+          "completion": 1e+308
+        },
+        "payload": {
+          "questions": {
+            "title": "CI synthetic"
+          },
+          "input": []
+        }
+      },
+      "legacyAccepted": true,
+      "legacyFinite": false,
+      "valid": false,
+      "reason": "Legacy arithmetic overflow; Go must fail closed before SQL/provider work"
+    },
+    {
+      "name": "historical-model-gpt-6-luna",
+      "input": {
+        "provider": "openai",
+        "model": "gpt-6-luna",
+        "payload": {
+          "input": [
+            {
+              "role": "user",
+              "content": "CI synthetic input"
+            }
+          ],
+          "max_output_tokens": 1024
+        }
+      },
+      "legacyAccepted": true,
+      "legacyFinite": true,
+      "valid": true,
+      "upper": 0.0009555
+    },
+    {
+      "name": "historical-model-gpt-6.1-sol",
+      "input": {
+        "provider": "openai",
+        "model": "gpt-6.1-sol",
+        "payload": {
+          "input": [
+            {
+              "role": "user",
+              "content": "CI synthetic input"
+            }
+          ],
+          "max_output_tokens": 1024
+        }
+      },
+      "legacyAccepted": true,
+      "legacyFinite": true,
+      "valid": true,
+      "upper": 0.01911
+    },
+    {
+      "name": "historical-model-gpt-6-sol",
+      "input": {
+        "provider": "openai",
+        "model": "gpt-6-sol",
+        "payload": {
+          "input": [
+            {
+              "role": "user",
+              "content": "CI synthetic input"
+            }
+          ],
+          "max_output_tokens": 1024
+        }
+      },
+      "legacyAccepted": true,
+      "legacyFinite": true,
+      "valid": true,
+      "upper": 0.01911
+    },
+    {
+      "name": "historical-model-gpt-6-astra",
+      "input": {
+        "provider": "openai",
+        "model": "gpt-6-astra",
+        "payload": {
+          "input": [
+            {
+              "role": "user",
+              "content": "CI synthetic input"
+            }
+          ],
+          "max_output_tokens": 1024
+        }
+      },
+      "legacyAccepted": true,
+      "legacyFinite": true,
+      "valid": true,
+      "upper": 0.09555
+    },
+    {
+      "name": "historical-model-gpt-5.6-terra",
+      "input": {
+        "provider": "openai",
+        "model": "gpt-5.6-terra",
+        "payload": {
+          "input": [
+            {
+              "role": "user",
+              "content": "CI synthetic input"
+            }
+          ],
+          "max_output_tokens": 1024
+        }
+      },
+      "legacyAccepted": true,
+      "legacyFinite": true,
+      "valid": true,
+      "upper": 0.021158
+    },
+    {
+      "name": "historical-model-gpt-5.6-luna",
+      "input": {
+        "provider": "openai",
+        "model": "gpt-5.6-luna",
+        "payload": {
+          "input": [
+            {
+              "role": "user",
+              "content": "CI synthetic input"
+            }
+          ],
+          "max_output_tokens": 1024
+        }
+      },
+      "legacyAccepted": true,
+      "legacyFinite": true,
+      "valid": true,
+      "upper": 0.0021158
+    },
+    {
+      "name": "historical-model-gpt-5.6-sol",
+      "input": {
+        "provider": "openai",
+        "model": "gpt-5.6-sol",
+        "payload": {
+          "input": [
+            {
+              "role": "user",
+              "content": "CI synthetic input"
+            }
+          ],
+          "max_output_tokens": 1024
+        }
+      },
+      "legacyAccepted": true,
+      "legacyFinite": true,
+      "valid": true,
+      "upper": 0.03822
+    },
+    {
+      "name": "historical-model-gpt-5.6-cyber",
+      "input": {
+        "provider": "openai",
+        "model": "gpt-5.6-cyber",
+        "payload": {
+          "input": [
+            {
+              "role": "user",
+              "content": "CI synthetic input"
+            }
+          ],
+          "max_output_tokens": 1024
+        }
+      },
+      "legacyAccepted": true,
+      "legacyFinite": true,
+      "valid": true,
+      "upper": 0.1322375
+    },
+    {
+      "name": "historical-model-gpt-5.4",
+      "input": {
+        "provider": "openai",
+        "model": "gpt-5.4",
+        "payload": {
+          "input": [
+            {
+              "role": "user",
+              "content": "CI synthetic input"
+            }
+          ],
+          "max_output_tokens": 1024
+        }
+      },
+      "legacyAccepted": true,
+      "legacyFinite": true,
+      "valid": true,
+      "upper": 0.0264475
+    },
+    {
+      "name": "historical-model-gpt-5.4-mini",
+      "input": {
+        "provider": "openai",
+        "model": "gpt-5.4-mini",
+        "payload": {
+          "input": [
+            {
+              "role": "user",
+              "content": "CI synthetic input"
+            }
+          ],
+          "max_output_tokens": 1024
+        }
+      },
+      "legacyAccepted": true,
+      "legacyFinite": true,
+      "valid": true,
+      "upper": 0.00793425
+    },
+    {
+      "name": "historical-model-gpt-5.4-nano",
+      "input": {
+        "provider": "openai",
+        "model": "gpt-5.4-nano",
+        "payload": {
+          "input": [
+            {
+              "role": "user",
+              "content": "CI synthetic input"
+            }
+          ],
+          "max_output_tokens": 1024
+        }
+      },
+      "legacyAccepted": true,
+      "legacyFinite": true,
+      "valid": true,
+      "upper": 0.002167
+    },
+    {
+      "name": "historical-model-gpt-5.4-pro",
+      "input": {
+        "provider": "openai",
+        "model": "gpt-5.4-pro",
+        "payload": {
+          "input": [
+            {
+              "role": "user",
+              "content": "CI synthetic input"
+            }
+          ],
+          "max_output_tokens": 1024
+        }
+      },
+      "legacyAccepted": true,
+      "legacyFinite": true,
+      "valid": true,
+      "upper": 0.31737
+    },
+    {
+      "name": "historical-model-gpt-5.3-codex",
+      "input": {
+        "provider": "openai",
+        "model": "gpt-5.3-codex",
+        "payload": {
+          "input": [
+            {
+              "role": "user",
+              "content": "CI synthetic input"
+            }
+          ],
+          "max_output_tokens": 1024
+        }
+      },
+      "legacyAccepted": true,
+      "legacyFinite": true,
+      "valid": true,
+      "upper": 0.02209725
+    },
+    {
+      "name": "historical-model-gpt-5.2",
+      "input": {
+        "provider": "openai",
+        "model": "gpt-5.2",
+        "payload": {
+          "input": [
+            {
+              "role": "user",
+              "content": "CI synthetic input"
+            }
+          ],
+          "max_output_tokens": 1024
+        }
+      },
+      "legacyAccepted": true,
+      "legacyFinite": true,
+      "valid": true,
+      "upper": 0.02209725
+    },
+    {
+      "name": "historical-model-gpt-5.2-pro",
+      "input": {
+        "provider": "openai",
+        "model": "gpt-5.2-pro",
+        "payload": {
+          "input": [
+            {
+              "role": "user",
+              "content": "CI synthetic input"
+            }
+          ],
+          "max_output_tokens": 1024
+        }
+      },
+      "legacyAccepted": true,
+      "legacyFinite": true,
+      "valid": true,
+      "upper": 0.265167
+    },
+    {
+      "name": "historical-model-gpt-5.1",
+      "input": {
+        "provider": "openai",
+        "model": "gpt-5.1",
+        "payload": {
+          "input": [
+            {
+              "role": "user",
+              "content": "CI synthetic input"
+            }
+          ],
+          "max_output_tokens": 1024
+        }
+      },
+      "legacyAccepted": true,
+      "legacyFinite": true,
+      "valid": true,
+      "upper": 0.01578375
+    },
+    {
+      "name": "historical-model-gpt-5",
+      "input": {
+        "provider": "openai",
+        "model": "gpt-5",
+        "payload": {
+          "input": [
+            {
+              "role": "user",
+              "content": "CI synthetic input"
+            }
+          ],
+          "max_output_tokens": 1024
+        }
+      },
+      "legacyAccepted": true,
+      "legacyFinite": true,
+      "valid": true,
+      "upper": 0.01578375
+    },
+    {
+      "name": "historical-model-gpt-5-mini",
+      "input": {
+        "provider": "openai",
+        "model": "gpt-5-mini",
+        "payload": {
+          "input": [
+            {
+              "role": "user",
+              "content": "CI synthetic input"
+            }
+          ],
+          "max_output_tokens": 1024
+        }
+      },
+      "legacyAccepted": true,
+      "legacyFinite": true,
+      "valid": true,
+      "upper": 0.00315675
+    },
+    {
+      "name": "historical-model-gpt-5-nano",
+      "input": {
+        "provider": "openai",
+        "model": "gpt-5-nano",
+        "payload": {
+          "input": [
+            {
+              "role": "user",
+              "content": "CI synthetic input"
+            }
+          ],
+          "max_output_tokens": 1024
+        }
+      },
+      "legacyAccepted": true,
+      "legacyFinite": true,
+      "valid": true,
+      "upper": 0.00063135
+    },
+    {
+      "name": "historical-model-gpt-4.1",
+      "input": {
+        "provider": "openai",
+        "model": "gpt-4.1",
+        "payload": {
+          "input": [
+            {
+              "role": "user",
+              "content": "CI synthetic input"
+            }
+          ],
+          "max_output_tokens": 1024
+        }
+      },
+      "legacyAccepted": true,
+      "legacyFinite": true,
+      "valid": true,
+      "upper": 0.017062
+    },
+    {
+      "name": "historical-model-gpt-4.1-mini",
+      "input": {
+        "provider": "openai",
+        "model": "gpt-4.1-mini",
+        "payload": {
+          "input": [
+            {
+              "role": "user",
+              "content": "CI synthetic input"
+            }
+          ],
+          "max_output_tokens": 1024
+        }
+      },
+      "legacyAccepted": true,
+      "legacyFinite": true,
+      "valid": true,
+      "upper": 0.0034124
+    },
+    {
+      "name": "historical-model-gpt-4.1-nano",
+      "input": {
+        "provider": "openai",
+        "model": "gpt-4.1-nano",
+        "payload": {
+          "input": [
+            {
+              "role": "user",
+              "content": "CI synthetic input"
+            }
+          ],
+          "max_output_tokens": 1024
+        }
+      },
+      "legacyAccepted": true,
+      "legacyFinite": true,
+      "valid": true,
+      "upper": 0.0008531
+    },
+    {
+      "name": "historical-model-gpt-4o",
+      "input": {
+        "provider": "openai",
+        "model": "gpt-4o",
+        "payload": {
+          "input": [
+            {
+              "role": "user",
+              "content": "CI synthetic input"
+            }
+          ],
+          "max_output_tokens": 1024
+        }
+      },
+      "legacyAccepted": true,
+      "legacyFinite": true,
+      "valid": true,
+      "upper": 0.0213275
+    },
+    {
+      "name": "historical-model-gpt-4o-mini",
+      "input": {
+        "provider": "openai",
+        "model": "gpt-4o-mini",
+        "payload": {
+          "input": [
+            {
+              "role": "user",
+              "content": "CI synthetic input"
+            }
+          ],
+          "max_output_tokens": 1024
+        }
+      },
+      "legacyAccepted": true,
+      "legacyFinite": true,
+      "valid": true,
+      "upper": 0.00127965
+    },
+    {
+      "name": "historical-model-o3",
+      "input": {
+        "provider": "openai",
+        "model": "o3",
+        "payload": {
+          "input": [
+            {
+              "role": "user",
+              "content": "CI synthetic input"
+            }
+          ],
+          "max_output_tokens": 1024
+        }
+      },
+      "legacyAccepted": true,
+      "legacyFinite": true,
+      "valid": true,
+      "upper": 0.017062
+    },
+    {
+      "name": "historical-model-o3-mini",
+      "input": {
+        "provider": "openai",
+        "model": "o3-mini",
+        "payload": {
+          "input": [
+            {
+              "role": "user",
+              "content": "CI synthetic input"
+            }
+          ],
+          "max_output_tokens": 1024
+        }
+      },
+      "legacyAccepted": true,
+      "legacyFinite": true,
+      "valid": true,
+      "upper": 0.009384100000000001
+    },
+    {
+      "name": "historical-model-o3-pro",
+      "input": {
+        "provider": "openai",
+        "model": "o3-pro",
+        "payload": {
+          "input": [
+            {
+              "role": "user",
+              "content": "CI synthetic input"
+            }
+          ],
+          "max_output_tokens": 1024
+        }
+      },
+      "legacyAccepted": true,
+      "legacyFinite": true,
+      "valid": true,
+      "upper": 0.17062
+    },
+    {
+      "name": "historical-model-o4-mini",
+      "input": {
+        "provider": "openai",
+        "model": "o4-mini",
+        "payload": {
+          "input": [
+            {
+              "role": "user",
+              "content": "CI synthetic input"
+            }
+          ],
+          "max_output_tokens": 1024
+        }
+      },
+      "legacyAccepted": true,
+      "legacyFinite": true,
+      "valid": true,
+      "upper": 0.009384100000000001
+    },
+    {
+      "name": "historical-model-o1",
+      "input": {
+        "provider": "openai",
+        "model": "o1",
+        "payload": {
+          "input": [
+            {
+              "role": "user",
+              "content": "CI synthetic input"
+            }
+          ],
+          "max_output_tokens": 1024
+        }
+      },
+      "legacyAccepted": true,
+      "legacyFinite": true,
+      "valid": true,
+      "upper": 0.127965
+    },
+    {
+      "name": "historical-model-o1-mini",
+      "input": {
+        "provider": "openai",
+        "model": "o1-mini",
+        "payload": {
+          "input": [
+            {
+              "role": "user",
+              "content": "CI synthetic input"
+            }
+          ],
+          "max_output_tokens": 1024
+        }
+      },
+      "legacyAccepted": true,
+      "legacyFinite": true,
+      "valid": true,
+      "upper": 0.009384100000000001
+    },
+    {
+      "name": "historical-model-o1-pro",
+      "input": {
+        "provider": "openai",
+        "model": "o1-pro",
+        "payload": {
+          "input": [
+            {
+              "role": "user",
+              "content": "CI synthetic input"
+            }
+          ],
+          "max_output_tokens": 1024
+        }
+      },
+      "legacyAccepted": true,
+      "legacyFinite": true,
+      "valid": true,
+      "upper": 1.27965
+    },
+    {
+      "name": "historical-model-gpt-5.6",
+      "input": {
+        "provider": "openai",
+        "model": "gpt-5.6",
+        "payload": {
+          "input": [
+            {
+              "role": "user",
+              "content": "CI synthetic input"
+            }
+          ],
+          "max_output_tokens": 1024
+        }
+      },
+      "legacyAccepted": true,
+      "legacyFinite": true,
+      "valid": true,
+      "upper": 0.03822
+    }
+  ],
+  "periods": [
+    {
+      "now": -1,
+      "day": -10800000,
+      "month": -10800000
+    },
+    {
+      "now": 0,
+      "day": -10800000,
+      "month": -10800000
+    },
+    {
+      "now": 1793048399999,
+      "day": 1792962000000,
+      "month": 1790802000000
+    },
+    {
+      "now": 1793048400000,
+      "day": 1793048400000,
+      "month": 1790802000000
+    },
+    {
+      "now": 1798750800000,
+      "day": 1798750800000,
+      "month": 1798750800000
+    },
+    {
+      "now": 1774990799999,
+      "day": 1774904400000,
+      "month": 1772312400000
+    },
+    {
+      "now": 1774990800000,
+      "day": 1774990800000,
+      "month": 1774990800000
+    },
+    {
+      "now": 1709154000000,
+      "day": 1709154000000,
+      "month": 1706734800000
+    },
+    {
+      "now": 1709240400000,
+      "day": 1709240400000,
+      "month": 1709240400000
+    },
+    {
+      "now": 1792886400000,
+      "day": 1792875600000,
+      "month": 1790802000000
+    }
+  ]
+}

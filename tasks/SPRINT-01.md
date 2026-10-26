@@ -1,6 +1,6 @@
 # Спринт 1.1 — функциональная миграция Go
 
-**Текущий активный спринт.** Релиз и переключение ещё не выполнены. `GO-001…GO-028` сохраняют исходную нумерацию работ `1.1.01…1.1.28`. `GO-029…GO-079` — выделенные узкие задачи, не подменяющие критерии крупных пунктов. Ни один коммит сам по себе не доказывает полную приёмку на MariaDB.
+**Текущий активный спринт.** Релиз и переключение ещё не выполнены. `GO-001…GO-028` сохраняют исходную нумерацию работ `1.1.01…1.1.28`. `GO-029…GO-080` — выделенные узкие задачи, не подменяющие критерии крупных пунктов. Ни один коммит сам по себе не доказывает полную приёмку на MariaDB.
 
 **Актуальный статус на 26.10.2026:** `[x]` — завершён именно указанный результат с доказательствами; `[ ]` — остаются критерии. Для больших GO-001…028 дополнительно отмечены проверенные части, чтобы не путать «код существует», «прошёл synthetic CI» и «принят внешний staging/релиз». Исторические v12–v21 ниже не являются текущим статусом: впоследствии прошли Go vet/race/tagged build, web, MariaDB schema/rollback/locking, авторизованный API и 14 browser-сценариев. [Актуальная контрольная точка](STACK.md), [инструкция запуска](../docs/deployment/README.md).
 
@@ -691,7 +691,7 @@
 - **Критерии готовности:** Реальные секреты не попадают в тесты, совместимость подтверждена фикстурами.
 - **Как проверить:** Синтетические crypto vectors.
 - **Известные ограничения:** Без старого SESSION_SECRET нужна повторная настройка.
-- **Результат:** не завершено; коммита или PR нет.
+- **Результат:** pure synthetic compatibility часть GO-077 / #32 `75ba9d7` прошла required JS↔Go и оба CI. Полная GO-040 открыта: ADR-016/стратегия реальных настроек/staging не утверждены.
 
 ### [ ] GO-041. Backup v39: export и валидация
 
@@ -1074,29 +1074,39 @@
 - **Результат:** не реализовано.
 
 
-### [ ] GO-076. Сохранить проверенный стек перед работой над парсером
+### [x] GO-076. Сохранить проверенный стек перед работой над парсером
 
 - **Приоритет:** Критический prerequisite нового поручения пользователя от 26.10.2026.
 - **Границы:** PR #26…30 объединены пользователем в родительские ветки, main=b3d4820 содержит только прежний #24. Сохранить 29458b2 с GO-068…072 и присоединить main без изменения runtime/test/workflow кода. Новый PR в main; никаких автоматических merge PR.
 - **Доказательство базы:** 29458b2: public 40292857092 и MariaDB/SQL/HTTP/16 browser/native 40292857030 успешны. Tree после merge main точно совпал с 29458b2.
-- **Результат:** рабочая codex/GO-076-parser-start, только checkpoint/порядок задач и manifest; до PR/CI открыт.
+- **Результат:** [PR #31](https://github.com/meInteractive/it-map/pull/31), published `534e8a9`: [public](https://github.com/meInteractive/it-map/actions/runs/40306369291) и [MariaDB/16 browser/API/native](https://github.com/meInteractive/it-map/actions/runs/40306369523) успешны. Code diff относительно 29458b2 пуст; только checkpoint/порядок задач и manifest.
 
-### [ ] GO-077. Синтетическая AES-GCM совместимость ключей парсера (часть GO-040/017)
+### [x] GO-077. Синтетическая AES-GCM совместимость ключей парсера (часть GO-040/017)
 
 - **Приоритет:** Критический, спринт 1.1.
 - **Зависимости:** неизменные encryptGoogleToken/decryptGoogleToken и namespace derivation из legacy sources; только явно synthetic vectors.
 - **Критерии:** SHA256 google-calendar:secret+provider suffix, AES-256-GCM/12-byte nonce/16-byte tag, raw URL-safe Base64 iv.ciphertext-tag. JS→Go и Go→JS; corruption/другой secret/provider/формат не раскрывают plaintext или ключ в ошибках. Новые encrypt используют crypto/rand, deterministic nonce только в tests/oracle.
 - **Границы:** pure compatibility library, не чтение БД/env/реальных ключей и не provider/API wiring. ADR-016 и полная GO-040 остаются открыты до стратегии staging/секретов.
-- **Результат:** не реализовано.
+- **Результат:** код в codex/GO-077-parser-crypto; 15 deterministic JS vectors / 15 real Go-random encrypt→legacy JS decrypt, malformed/corruption/wrong domain/secret/fresh nonce checks локально прошли. [PR #32](https://github.com/meInteractive/it-map/pull/32), code `75ba9d7`: [public/required JS↔Go](https://github.com/meInteractive/it-map/actions/runs/40307364593) и [MariaDB/16 browser/API/native](https://github.com/meInteractive/it-map/actions/runs/40307364181) успешны. Узкая GO-077 завершена; полная GO-040/ADR-016 остаётся открыта.
 
-### [ ] GO-078. Контракт валидации настроек парсера (часть GO-021)
+### [x] GO-078. Контракт валидации настроек парсера (часть GO-021)
 
 - **Приоритет:** Критический, спринт 1.1.
 - **Критерии:** legacy enabled/revision/day-month budgets/sourceIds/intervalDays/priorities/область организаций; unknown fields и неверные типы отказывают, source options/defaults подтверждены неизменным JS. Проверяемая pure-порция до административного API/SQL. Автоматический парсер не запускается.
-- **Результат:** не реализовано.
+- **Результат:** реализация codex/GO-078-parser-settings от 75ba9d7: 62 source-backed validation/normalization vectors и дополнительные duplicate/nonfinite/trailing JSON guards локально проходят. Возвращается expectedRevision, input не может переопределить owner/cloud owner. [PR #33](https://github.com/meInteractive/it-map/pull/33), code `14b26cd`: [public/62 settings vectors](https://github.com/meInteractive/it-map/actions/runs/40308221146) и [MariaDB/16 browser/API/native](https://github.com/meInteractive/it-map/actions/runs/40308221140) успешны. Узкая GO-078 принята; API/admin permission/SQL CAS/dry-run/runtime запуск не принимаются этой pure-порцией.
 
-### [ ] GO-079. Консервативные бюджеты и московские периоды парсера (часть GO-017/021/023)
+### [x] GO-079. Консервативные бюджеты и московские периоды парсера (часть GO-017/021/023)
 
 - **Приоритет:** Критический, спринт 1.1.
 - **Критерии:** source-backed pure upper-cost calculation, unknown tariff/negative/nonfinite/missing bound отказывает до work, бесплатные операции и лимит Apify сохранены, day/month границы МСК. Это не durable reservation/оплата/idempotency: SQL/lease/crash gate обязателен отдельно до provider calls.
-- **Результат:** не реализовано.
+- **Результат:** реализация codex/GO-079-parser-budget: 77 cost + 10 MSK period source vectors, исторические тарифы всех legacy models/alias, UTF-8 JSON bytes/UTF-16 input length. Два numeric-string mismatch с underscore воспроизведены до fix; finite operands overflow в JS дополнительно отказывает в Go до work. [PR #34](https://github.com/meInteractive/it-map/pull/34), code `ebc7a1d`: [public](https://github.com/meInteractive/it-map/actions/runs/40309279822) и [MariaDB/16 browser/API/native](https://github.com/meInteractive/it-map/actions/runs/40309279795) успешны. Pure GO-079 завершён; SQL reservation и реальная цена провайдера не приняты.
+
+
+### [ ] GO-080. Durable владение циклом scheduler и recovery (часть GO-045/027)
+
+- **Приоритет:** Критический, спринт 1.1.
+- **Зависимости:** GO-078 settings model, GO-079 pure budget bounds, existing scheduler_runs/jobs/attempts и app_runtime_generation. Не запускать parser/провайдеры.
+- **Границы:** Begin/replay/disabled-diagnostic/global run lease/current generation/terminal release и expired recovery; существующие SQL таблицы, без DDL. Это не claimScheduledJob, не денежный ledger и не полная GO-045.
+- **Критерии:** два реальных SQL connections не приобретают два активных run, старый expired owner и прежняя generation не завершают новый цикл; повтор requestId не выполняет work/revive. Recovery сохраняет reserved_usd/cost/provider result, unexpired job locks, requeues current-generation expired jobs по max_attempts. Fault после настоящего INSERT полностью откатывается; process crash оставляет durable lease/reservation и новый pool восстанавливает после expiry.
+- **Проверки:** отдельный schedulerwrites target только GitHub/disposable parsed DSN/loopback/user/schema/current-generation; required named pass/no-skip до старого API/browser/native. Локальная MariaDB запрещена, только negative guards/compile.
+- **Результат:** код codex/GO-080-scheduler-run-lease, исходная схема не меняется. Локально run identity/compile/vet и четыре negative guards до соединения проверяются; положительный SQL/rollback/crash/concurrency gate требует GitHub CI. До его успешного PR/CI задача открыта.

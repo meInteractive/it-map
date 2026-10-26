@@ -154,6 +154,23 @@ jobs:
           assert not any(e.get('Action')=='skip' for e in events), 'required task write test skipped'
           print('PASS: task write gate ran with zero skips')
           PYCODE
+      - name: Verify scheduler cycle ownership ONLY in disposable CI
+        env:
+          ITMAP_REQUIRE_MARIADB_INTEGRATION: '1'
+          ITMAP_TEST_MARIADB_WRITE_DSN: 'itmap_ci:ci_only_disposable_writer@tcp(127.0.0.1:3306)/itmap_ci?parseTime=true&clientFoundRows=true&collation=utf8mb4_bin'
+        run: |
+          set -euo pipefail
+          result_file="$(mktemp)"
+          trap 'rm -f "$result_file"' EXIT
+          go test -tags mariadb,schedulerwrites ./internal/storage -run '^TestMariaDBSchedulerRunsDisposable$' -count=1 -json | tee "$result_file"
+          python3 - "$result_file" <<'PYCODE'
+          import json,sys
+          events=[json.loads(line) for line in open(sys.argv[1],encoding='utf8')]
+          target='TestMariaDBSchedulerRunsDisposable'
+          assert any(e.get('Test')==target and e.get('Action')=='pass' for e in events), 'required scheduler ownership test did not pass/run'
+          assert not any(e.get('Action')=='skip' for e in events), 'required scheduler ownership test skipped'
+          print('PASS: scheduler ownership/rollback/crash target ran with zero skips')
+          PYCODE
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
