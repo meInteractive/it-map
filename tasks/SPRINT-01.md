@@ -1,6 +1,6 @@
 # Спринт 1.1 — функциональная миграция Go
 
-**Текущий активный спринт.** Релиз и переключение ещё не выполнены. `GO-001…GO-028` сохраняют исходную нумерацию работ `1.1.01…1.1.28`. `GO-029…GO-071` — выделенные узкие задачи, не подменяющие критерии крупных пунктов. Ни один коммит сам по себе не доказывает полную приёмку на MariaDB.
+**Текущий активный спринт.** Релиз и переключение ещё не выполнены. `GO-001…GO-028` сохраняют исходную нумерацию работ `1.1.01…1.1.28`. `GO-029…GO-075` — выделенные узкие задачи, не подменяющие критерии крупных пунктов. Ни один коммит сам по себе не доказывает полную приёмку на MariaDB.
 
 **Актуальный статус на 26.10.2026:** `[x]` — завершён именно указанный результат с доказательствами; `[ ]` — остаются критерии. Для больших GO-001…028 дополнительно отмечены проверенные части, чтобы не путать «код существует», «прошёл synthetic CI» и «принят внешний staging/релиз». Исторические v12–v21 ниже не являются текущим статусом: впоследствии прошли Go vet/race/tagged build, web, MariaDB schema/rollback/locking, авторизованный API и 14 browser-сценариев. [Актуальная контрольная точка](STACK.md), [инструкция запуска](../docs/deployment/README.md).
 
@@ -606,8 +606,8 @@
 - **Компоненты:** `internal/channels`, `internal/crm`.
 - **Критерии готовности:** Без потери ссылок/контактов.
 - **Как проверить:** API + DB integration.
-- **Известные ограничения:** В Go только список каналов.
-- **Результат:** коммиты b07aa9b; PR не подтверждён.
+- **Известные ограничения:** В Go список каналов и pure normalization GO-072; административный SQL/HTTP CRUD ещё не включён. План: GO-072 contract → GO-073 channel SQL/HTTP → GO-074 contacts → GO-075 disposable integration.
+- **Результат:** исходный read-код b07aa9b; нормализация GO-072 добавляется отдельной проверяемой порцией. Полная GO-034 открыта до CRUD/ссылок/контактов/DB integration.
 
 ### [ ] GO-035. Календарь: OAuth-соединение
 
@@ -1041,3 +1041,34 @@
 - **Порядок:** после schema/readonly/receipt/task SQL+HTTP gates и build SPA/Chromium, перед прежними 14 readonly browser/API/native smoke. Отдельный taskbrowser tag/config не включает write tests в readonly suite. Bounded parent cleanup возвращает Demo=0, сохраняет Eugene/CRM/generation; следующий readonly smoke проверяет восстановленные fixtures.
 - **Границы:** поддерживаемый legacy task API без Calendar sync, только synthetic CI. Синхронизация Calendar остаётся GO-015/035/040; новые revision/CAS поля не вводятся. Полная внешняя приёмка GO-007 и snapshot GO-005 остаются отдельными.
 - **Результат:** реализация в codex/GO-071-task-browser от проверенного a9f7f95. Локально tagged vet/Go 1.23 compile, список ровно двух PW tests, отдельный TS typecheck новых browser/config файлов, source/history/schema/fixtures/actionlint и четыре browser-parent guards до подключения прошли. Полный tsc заблокирован прежним vite.config.ts import отсутствующего .openai/hosting.json, legacy hosting не менялся. [PR #29](https://github.com/meInteractive/it-map/pull/29), published `179bce8`: [Go/web/security](https://github.com/meInteractive/it-map/actions/runs/40291235900) и [MariaDB/task SQL+HTTP/two task browser projects/14 readonly/browser/native](https://github.com/meInteractive/it-map/actions/runs/40291236012) успешны. Parent и оба browser проекта фактически прошли без skips/flaky.
+
+
+### [ ] GO-072. Legacy input-контракт независимых Telegram-каналов (часть GO-034)
+
+- **Приоритет:** Критический, только спринт 1.1; GO-032 средний.
+- **Зависимости:** GO-071 / #29 `1fa08ba` — [public](https://github.com/meInteractive/it-map/actions/runs/40291660817), [MariaDB/2 task + 14 readonly/API/native](https://github.com/meInteractive/it-map/actions/runs/40291660811) успешны. Legacy server/repositories/channels.js не меняется.
+- **Границы:** pure Go input, typed UI payload/поддерживаемые RFC3339 dates; 55 input и 24 username vectors выполняются настоящими legacy JS functions без SQL/network/providers. Ни один channel write route не включается. Arbitrary JS coercions/полный WHATWG/Date.parse остаются вне этой узкой приёмки.
+- **Критерии:** canonical t.me URL/username, 5…64 символа с допустимой первой цифрой, формы @name/t.me/telegram.me/s, alias precedence, omitted/null PUT fallback/explicit empty, JS trim, UTF-16 name≤160/comment≤512, comment без trim, UTC milliseconds и fixed legacy validation messages. Existing vacancy message validator не переиспользуется: у него другой контракт.
+- **Проверки:** Go vet/race/build/tagged/minimum Go 1.23, 43 application/34 task/55 channel oracle vectors, web build/source/history/schema/fixtures/actionlint/manifest и required CI точного SHA. SQL/HTTP/ссылки — GO-073…075, GO-034 открыта.
+- **Результат:** реализация в codex/GO-072-channel-input от проверенной вершины #29. Локально vet/race/обе сборки/tagged/Go 1.23 channels, все три JS oracle, web build/source/history/schema/actionlint успешны. До обязательного CI открыта.
+
+### [ ] GO-073. Channel CRUD с защитой vacancy sources (часть GO-034)
+
+- **Приоритет:** Критический, спринт 1.1; GO-032 средний.
+- **Зависимости:** GO-072 input contract, auth/admin, existing channel/catalog/schema/read repositories.
+- **Критерии:** admin POST/PUT/DELETE и same-origin/JSON/errors по legacy, независимость от company/agency sources и duplicate username/name, FK-safe delete/409 для единственного источника channel vacancy. Транзакции/блокировки/rollback и сохранённые связи; полный GO-034 не закрывать до GO-075.
+- **Результат:** не реализовано.
+
+### [ ] GO-074. Hiring contacts CRUD с лимитом позиций (часть GO-034)
+
+- **Приоритет:** Критический, спринт 1.1; GO-032 средний.
+- **Зависимости:** auth/admin/catalog/company_crm, existing hiring_contacts schema и legacy contacts.js contract.
+- **Критерии:** GET для сессии, admin POST/PUT/DELETE, три уникальные позиции организации, валидация полей/ссылок, isolation/transaction/ошибки, существующие контакты не теряются. Полная приёмка SQL/API — GO-075.
+- **Результат:** не реализовано.
+
+### [ ] GO-075. Disposable MariaDB/API приёмка каналов и контактов (часть GO-034)
+
+- **Приоритет:** Критический, спринт 1.1; GO-032 средний.
+- **Зависимости:** GO-073/074, только guarded GitHub disposable fixture.
+- **Критерии:** реальные SQL и авторизованный HTTP CRUD, duplicates/лимиты/linked sole-source delete/rollback/concurrent edits; cleanup восстанавливает все исходные fixtures и generation. Именованные pass/no-skip targets перед прежними API/browser/native gates. Локальные MariaDB/production/real data запрещены; до успеха полная GO-034 открыта.
+- **Результат:** не реализовано.
