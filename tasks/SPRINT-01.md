@@ -1174,7 +1174,7 @@
 - **Зависимости:** GO-086 user-state gate и existing CreateManual/role directory/Telegram provenance; GO-087 доставляет стек в main.
 - **Критерии:** полное создание company/channel с bootstrap FK, leaf roles, source, shared letter и личным relevance; invalid owner/role/channel и повтор URL/message без частичных строк. Два независимых writer дают ровно одно создание при совпадении URL/message; named lock освобождается и pool max1 не зависает при readback. Реальные поздние SQL ошибки после parent/vacancy/role/source/private state откатываются целиком, новый pool повторяет операцию. Signed admin HTTP 201/guards/errors и owner isolation; SQL targets обязательны без skips. Cleanup сохраняет seed vacancy1 и исходный каталог/roles/generation.
 - **Границы:** только disposable GitHub CI, без DDL/provider calls; agency salary projection GO-032 средний, edit CAS и delete остаются отдельными.
-- **Результат:** в работе.
+- **Результат:** [PR #42](https://github.com/meInteractive/it-map/pull/42), первые SQL/HTTP gates опубликованы b2c6dd5; локальная HTTP regression воспроизвела 400 вместо legacy 404 для отсутствующего channel owner. Введена отдельная wrapped ErrChannelNotFound и точная HTTP mapping, некорректная source URL остаётся 400. Положительная SQL-приёмка ожидает Actions.
 
 ### [ ] GO-089. Vacancy edit: revision/CAS и связанные записи (часть GO-012)
 

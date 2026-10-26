@@ -17,6 +17,7 @@ var (
 	ErrInvalidOwner     = errors.New("vacancy owner not in catalog")
 	ErrInvalidRole      = errors.New("vacancy role is not a leaf or is missing")
 	ErrInvalidChannel   = errors.New("vacancy Telegram channel is invalid")
+	ErrChannelNotFound  = fmt.Errorf("%w: channel not found", ErrInvalidChannel)
 	ErrDuplicateMessage = errors.New("Telegram message already belongs to a vacancy")
 	ErrWriteBusy        = errors.New("vacancy write lock unavailable")
 )
@@ -104,7 +105,7 @@ func (r Repository) CreateManual(ctx context.Context, user string, raw Input) ([
 		var username string
 		err = tx.QueryRowContext(ctx, `SELECT normalized_username FROM telegram_channels WHERE id=? FOR UPDATE`, *in.TelegramChannelID).Scan(&username)
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrInvalidChannel
+			return nil, ErrChannelNotFound
 		}
 		if err != nil {
 			return nil, err
