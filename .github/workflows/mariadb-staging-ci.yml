@@ -126,11 +126,11 @@ jobs:
           # synthetic Demo rows and removes them before HTTP/browser smoke.
           result_file="$(mktemp)"
           trap 'rm -f "$result_file"' EXIT
-          go test -race -tags mariadb,receiptwrites ./internal/storage -run '^TestMariaDBApplication(Receipts|Concurrency|Faults|Crash|CAS)Disposable$' -count=1 -json | tee "$result_file"
+          go test -race -tags mariadb,receiptwrites ./internal/storage -run '^TestMariaDBApplication(Receipts|Concurrency|Faults|Crash|CAS|HTTP|Shortcut|Mixed)Disposable$' -count=1 -json | tee "$result_file"
           python3 - "$result_file" <<'PY'
           import json,sys
           events=[json.loads(line) for line in open(sys.argv[1],encoding='utf8')]
-          targets=['TestMariaDBApplicationReceiptsDisposable','TestMariaDBApplicationConcurrencyDisposable','TestMariaDBApplicationFaultsDisposable','TestMariaDBApplicationCrashDisposable','TestMariaDBApplicationCASDisposable']
+          targets=['TestMariaDBApplicationReceiptsDisposable','TestMariaDBApplicationConcurrencyDisposable','TestMariaDBApplicationFaultsDisposable','TestMariaDBApplicationCrashDisposable','TestMariaDBApplicationCASDisposable','TestMariaDBApplicationHTTPDisposable','TestMariaDBApplicationShortcutDisposable','TestMariaDBApplicationMixedDisposable']
           for target in targets:
               assert any(e.get('Test')==target and e.get('Action')=='pass' for e in events), f'required receipt test did not pass/run: {target}'
           assert not any(e.get('Action')=='skip' for e in events), 'required receipt test was skipped'

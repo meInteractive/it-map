@@ -67,3 +67,39 @@ TestMariaDBApplicationCASDisposable расширяет бизнес-gate пят�
 
 
 Подтверждение GO-063: [PR #21](https://github.com/meInteractive/it-map/pull/21), код `36b0133`, [Go/web/security](https://github.com/meInteractive/it-map/actions/runs/40237800951) и [MariaDB CAS/все receipt targets/API/14 browser/native](https://github.com/meInteractive/it-map/actions/runs/40237800814) успешны. Все пять именованных SQL targets реально прошли без skips. Код приложения/API/схема не потребовали изменения. GO-031 остаётся открытой для controlled HTTP write/replay, shortcut и смешанных операций/смены vacancy.
+
+
+## GO-065: настоящий HTTP → Repository → MariaDB
+
+TestMariaDBApplicationHTTPDisposable добавляет шестой обязательный pass/no-skip target. После прежних CI/parsed target/current-generation guards запускается loopback HTTPS httptest сервер с production auth.Manager, router и реальными applications.Repository. Вход выполняется через POST /auth, отдельные cookie jars сохраняют выданные Secure/HttpOnly/Strict cookies; клиент доверяет сертификату только этого test server. Репозиторий и HMAC используют один synthetic session secret. Локально без DSN сервер/записи не запускаются.
+
+Проверяются opaque user-bound context, 401/403/400/428/409/404 и отсутствие лишних SQL-записей; 201 create/200 replay обоих aliases с полным company response и одним durable ID; игнорирование userName тела в пользу cookie; user isolation detail/delete/company list. PUT изменяет revision/history, stale PUT даёт 409; replay исходного create не перезаписывает позднее редактирование. DELETE удаляет application/history, сохраняет receipt; повтор create даёт 410 без resurrection. JSON/private/no-store проверяется для каждого API ответа.
+
+Отдельный реальный INSERT/COMMIT через test-only fault wrapper GO-061 завершается искусственной ошибкой response read: HTTP должен вернуть generic 503 без внутренней ошибки. SQL подтверждает уже committed комплект; повтор по alias возвращает 200/replayed с тем же ID и единственной историей. Это HTTP обработка ошибки после commit, не имитация неопределённого сетевого COMMIT. Cleanup возвращает Demo=0, полностью сохраняет Eugene/history/generation и все прежние readonly API/14 browser/native gates. Shortcut, mixed concurrent mutations и полный browser write/deployment остаются вне этой порции.
+
+
+Подтверждение GO-065: [PR #23](https://github.com/meInteractive/it-map/pull/23), код b0c97af; [Go/web/security](https://github.com/meInteractive/it-map/actions/runs/40279874891) и [MariaDB/HTTP/API/14 browser/native](https://github.com/meInteractive/it-map/actions/runs/40279874919) успешны. Шесть именованных targets фактически выполнились без skips. Новый HTTP round-trip не потребовал менять production API/Repository.
+
+## GO-066: shortcut для company vacancy и concurrent ordinary create
+
+TestMariaDBApplicationShortcutDisposable добавляет седьмой required target и подключает production VacancyApplyHandler в уже существующий test-only HTTPS router. Оба aliases, fixed intent (route vacancy, Откликнулся/пустые контакты/comment/[hh]), user/context/Origin/owner/missing-vacancy errors проверяются через настоящий HTTP/SQL. Привязка существующего отклика новым key сохраняет полный Record, даже после ручного изменения статуса/контактов и при лимите 10; обычный одиннадцатый create по-прежнему отклоняется. После delete оба sticky receipts дают 410.
+
+Concurrent scenario использует два подтверждённых server connections на удерживаемой generation row: ordinary create и ApplyToVacancy начинают конкурирующие транзакции. Допустимы два исхода: ordinary создал, shortcut только claimed его с отдельным receipt; либо shortcut создал, ordinary получил ErrDuplicateVacancy без своего receipt. В обоих случаях один application и одна начальная история, поля winner сохранены, успешные intents replay того же ID. Это реальная SQL concurrency поверх существующих production repositories, без DDL/добавочных grants.
+
+Все записи ограничены synthetic Demo/company/key namespace; cleanup сохраняет Eugene/history/generation и readonly API/14 browser/native smoke. Только company-owned vacancy=1: channel-owned/неизвестный каталогам owner, mixed delete/update/смена vacancy не покрыты этим результатом. Полный GO-031 открыт. GO-032 по уточнению пользователя средний; работа остаётся в спринте 1.1.
+
+
+Подтверждение GO-066: [PR #24](https://github.com/meInteractive/it-map/pull/24), код 65a890a; [Go/web/security](https://github.com/meInteractive/it-map/actions/runs/40280586960) и [MariaDB/shortcut/API/14 browser/native](https://github.com/meInteractive/it-map/actions/runs/40280586955) успешны, семь required targets без skips.
+
+## GO-067: channel-owned shortcut и delete races
+
+TestMariaDBApplicationMixedDisposable добавляет восьмой required target. После прежнего CI/target/generation guard создаётся отдельный предварительно пустой synthetic owner/keyspace (company_crm + channel-owned vacancy=900001) вне app_catalog. Setup — два INSERT в одной реальной транзакции, без DDL; отдельный bounded cleanup зарегистрирован до первой записи, удаляет только собственный owner/vacancy и проверяет отсутствие остатков. Ordinary HTTP create возвращает 404 для неизвестного каталогу owner, но shortcut использует реального владельца вакансии и сохраняет/replay тот же ID. Delete выполняется через Repository, поскольку company response неизвестного каталогу owner — отдельный HTTP-контракт; sticky shortcut replay затем даёт 410.
+
+Update/delete конкурируют на одной application row; допустим update до delete либо ErrNotFound после него. Existing receipt replay/delete удерживаются locking join по generation и application до наблюдения обоих разных writer IDs в PROCESSLIST; допустим replay прежнего ID до delete либо ErrApplicationDeleted. Никаких произвольных SQL failures вместо ожидаемого доменного исхода. В обоих сценариях после завершения writers ноль applications/history, один sticky receipt и отказ последующего retry без resurrection.
+
+Прежний cleanup сохраняет Eugene/history/generation и readonly API/14 browser/native smoke. Смена vacancy/owner, concurrent import/restore и авария MariaDB/хоста этим результатом не подтверждаются; полный GO-031 остаётся открытым. Работа только в спринте 1.1, GO-032 средний.
+
+
+Подтверждение GO-067: [PR #25](https://github.com/meInteractive/it-map/pull/25), код 1ba76cb; [Go/web/security](https://github.com/meInteractive/it-map/actions/runs/40281030793) и [MariaDB/все восемь targets/channel/delete races/API/14 browser/native](https://github.com/meInteractive/it-map/actions/runs/40281030609) успешны, ноль skips. Проверка locking join увидела оба server-side writer; cleanup нового channel keyspace сохранил прежние fixtures. Production API/Repository/схема не потребовали изменений.
+
+Оставшиеся границы GO-031: межмодульная смена vacancy/owner и concurrent restore/import не подтверждаются успешными application-only сценариями. Полные GO-012/013/031 остаются открыты, независимые критические GO-033/034 могут продолжаться по зависимостям; GO-032 — средний по явному уточнению пользователя. Настоящий server/SSH/systemd/TLS/согласованный снимок по-прежнему не подключались.

@@ -121,3 +121,33 @@ GO-062 / [PR #20](https://github.com/meInteractive/it-map/pull/20) поверх 
 GitHub повторно проверен 26.10.2026: #19 объединён в main 48fb03a, затем #21 — в #20 (b39e1a2), а #20 — в уже закрытую ветку #19 (7142c2c). Открытых PR нет; main пока не содержит GO-062/063. GO-064 / codex/GO-064-stack-and-priorities начинается от 7142c2c, присоединяет main обычным merge и возвращает весь результат отдельным PR в main. Diff internal/.github/go.mod/go.sum относительно проверенного 07e1ec0 пуст; история не переписывается.
 
 По явному уточнению пользователя GO-032 имеет средний приоритет. Текущий спринт только 1.1; следующая критическая порция — GO-031 HTTP create/replay/error/delete, затем shortcut/смешанные операции, GO-033/034. Более ранние упоминания GO-032 в критической очереди заменены этим уточнением. Никакого автоматического merge, real server/DB/production/GPT Sites/D1 действий.
+
+
+GO-064 / [PR #22](https://github.com/meInteractive/it-map/pull/22) в main: b21a051 прошёл [Go/web/security](https://github.com/meInteractive/it-map/actions/runs/40279232693) и [MariaDB/API/14 browser/native](https://github.com/meInteractive/it-map/actions/runs/40279232671). Проверенный стек GO-062/063 сохранён без code changes; GO-032 средний. GO-065 / codex/GO-065-application-http начинается от этой проверенной вершины: настоящий HTTPS login/router/Repository/SQL create/replay/update/error/delete и post-commit HTTP 503/retry. Полный GO-031 остаётся открытым для shortcut/смешанных конкурентных операций.
+
+
+GO-065 / [PR #23](https://github.com/meInteractive/it-map/pull/23) поверх GO-064: b0c97af прошёл [Go/web/security](https://github.com/meInteractive/it-map/actions/runs/40279874891) и [MariaDB/HTTP/14 browser/native](https://github.com/meInteractive/it-map/actions/runs/40279874919). Шесть write targets прошли без skips. GO-066 / codex/GO-066-application-shortcut начинается от этого проверенного SHA: HTTP aliases/фиксированные поля/sticky receipts, claim edited application при 10-limit и concurrent ordinary create/shortcut. Channel-owned vacancies, mixed delete/update/owner changes не выдаются за выполненные критерии; GO-031 открыт. GO-032 имеет средний приоритет, следующая критическая очередь включает GO-033/034.
+
+
+GO-066 / [PR #24](https://github.com/meInteractive/it-map/pull/24) поверх #23: 65a890a прошёл [Go/web/security](https://github.com/meInteractive/it-map/actions/runs/40280586960) и [MariaDB/shortcut/API/14 browser/native](https://github.com/meInteractive/it-map/actions/runs/40280586955); семь required targets без skips. GO-067 / codex/GO-067-application-mixed начинается от этой проверенной вершины: channel-owned shortcut вне каталога, update/delete и replay/delete на двух реальных SQL connections. Остаток GO-031 по смене vacancy/owner и отдельным restore сценариям не закрывается по этим тестам; GO-032 остаётся средним, GO-033/034 — следующие доступные критические бизнес-блоки спринта 1.1.
+
+
+## Проверенный стек GO-064…067, только спринт 1.1
+
+| Задача | Ветка / PR | Проверенный code SHA | Обязательные CI |
+| --- | --- | --- | --- |
+| GO-064 сохранение закрытого стека/средний GO-032 | codex/GO-064-stack-and-priorities / [#22](https://github.com/meInteractive/it-map/pull/22) в main | b21a051 | [public](https://github.com/meInteractive/it-map/actions/runs/40279232693), [MariaDB/API/browser/native](https://github.com/meInteractive/it-map/actions/runs/40279232671) |
+| GO-065 HTTPS create/replay/update/error/delete | codex/GO-065-application-http / [#23](https://github.com/meInteractive/it-map/pull/23) в #22 | b0c97af | [public](https://github.com/meInteractive/it-map/actions/runs/40279874891), [MariaDB/HTTP/API/browser/native](https://github.com/meInteractive/it-map/actions/runs/40279874919) |
+| GO-066 shortcut/claim at limit/ordinary race | codex/GO-066-application-shortcut / [#24](https://github.com/meInteractive/it-map/pull/24) в #23 | 65a890a | [public](https://github.com/meInteractive/it-map/actions/runs/40280586960), [MariaDB/shortcut/API/browser/native](https://github.com/meInteractive/it-map/actions/runs/40280586955) |
+| GO-067 channel shortcut/update-delete/replay-delete | codex/GO-067-application-mixed / [#25](https://github.com/meInteractive/it-map/pull/25) в #24 | 1ba76cb | [public](https://github.com/meInteractive/it-map/actions/runs/40281030793), [MariaDB/mixed/API/browser/native](https://github.com/meInteractive/it-map/actions/runs/40281030609) |
+
+Все code SHA прошли оба обязательных CI, восемь required SQL targets реально выполняются без skips; затем прежние 14 browser/native smoke. Локальные live SQL skips без DSN явно отделены от CI; четыре negative guards отказали до подключения. Tagged/обычный vet/race/обе сборки/Go 1.23/source/history/schema/fixtures/actionlint/manifest проверены. Текущий финальный doc checkpoint только обновляет результаты/остатки и SHA256SUMS; повтор CI точной вершины требуется отдельно.
+
+GO-032 — средний, остаётся открытым. Полный GO-031 открыт для межмодульной смены vacancy/owner и остальных операций GO-012/013; следующие независимые критические бизнес-блоки — GO-033, затем GO-034 в спринте 1.1. Полные GO-005/007/030 по-прежнему требуют отдельно разрешённых staging/снимка. Продуктивные данные/сервисы, локальная DB, paid providers, production/GPT Sites/D1/DNS, включение publication и автоматический merge не затрагивались.
+
+
+## Продолжение после пользовательского merge всех PR, кроме #24
+
+GitHub проверен 26.10.2026: #22 объединён в main c00282a, #23 — в закрытую ветку #22 (08bf742), #25 — в открытую ветку #24 (a37a78c). Main пока не содержит GO-065…067. Открытый #24 перенаправляется из закрытого parent #23 в main; его актуальная вершина a37a78c содержит проверенный 3cfe83d. Main присоединён обычным merge, без rebase/force-push и без автоматического merge PR. Diff internal/.github/go.mod/go.sum относительно 3cfe83d пуст; обновляются только checkpoint/manifest. Новый CI требуется на точном SHA обновлённого #24.
+
+Следующая независимая критическая работа спринта 1.1 — GO-033: SQL/API create/reschedule/completion задач без Calendar, права/даты/ошибки/rollback и сохранение исходных readonly fixtures. GO-032 остаётся средним. Новая ветка начинается от проверенной актуальной вершины #24; если пользователь объединит #24 — база актуализируется по фактическому main.
