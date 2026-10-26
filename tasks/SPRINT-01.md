@@ -1,6 +1,6 @@
 # Спринт 1.1 — функциональная миграция Go
 
-**Текущий активный спринт.** Релиз и переключение ещё не выполнены. `GO-001…GO-028` сохраняют исходную нумерацию работ `1.1.01…1.1.28`. `GO-029…GO-093` — выделенные узкие задачи, не подменяющие критерии крупных пунктов. Ни один коммит сам по себе не доказывает полную приёмку на MariaDB.
+**Текущий активный спринт.** Релиз и переключение ещё не выполнены. `GO-001…GO-028` сохраняют исходную нумерацию работ `1.1.01…1.1.28`. `GO-029…GO-095` — выделенные узкие задачи, не подменяющие критерии крупных пунктов. Ни один коммит сам по себе не доказывает полную приёмку на MariaDB.
 
 **Актуальный статус на 26.10.2026:** `[x]` — завершён именно указанный результат с доказательствами; `[ ]` — остаются критерии. Для больших GO-001…028 дополнительно отмечены проверенные части, чтобы не путать «код существует», «прошёл synthetic CI» и «принят внешний staging/релиз». Исторические v12–v21 ниже не являются текущим статусом: впоследствии прошли Go vet/race/tagged build, web, MariaDB schema/rollback/locking, авторизованный API и 14 browser-сценариев. [Актуальная контрольная точка](STACK.md), [инструкция запуска](../docs/deployment/README.md).
 
@@ -301,7 +301,7 @@
 ### [ ] GO-016. Профили, промты, модели и документация API
 
 - **Приоритет:** Средний.
-- **Критическая часть:** [ ] Вынести необходимую схему/данные профилей для backup, права/валидацию/лимиты; затем CRUD профилей/промтов/моделей с golden-контрактами.
+- **Критическая часть:** [x] GO-091/092/093: необходимая схема/данные профилей для backup, права/валидация/лимиты, SQL/HTTP CRUD резюме/промтов/моделей с source-backed golden/CAS/rollback. Provider-backed выбор проверен на mocks, runtime guarded до каталога; полный provider/UI/API documentation сюда не включён.
 - **Средняя часть:** [ ] Функциональная настройка через UI после API.
 - **Низкая часть:** [ ] Идеальная вёрстка большого редактора настроек.
 
@@ -312,8 +312,8 @@
 - **Компоненты:** `server/repositories/{resume,prompts,...}`, новый Go API.
 - **Критерии готовности:** CRUD/права/лимиты совпадают с Sites.
 - **Как проверить:** Контрактные тесты, JSON, UI, staging.
-- **Известные ограничения:** В Go модули не найдены.
-- **Результат:** не завершено; коммита или PR нет.
+- **Известные ограничения:** settings UI/provider clients/каталоги и полная API documentation ещё не приняты.
+- **Результат:** critical prerequisite принят по GO-091/092/093 и [PR #45–47](https://github.com/meInteractive/it-map/pull/47); полная задача остаётся открытой.
 
 ### [ ] GO-017. AI-интеграции и безопасные ключи
 
@@ -1208,10 +1208,25 @@
 - **Критерии:** GET defaults без lazy DDL/write; PUT текущего signed user, code-point/NUL/256KiB limits, expected revision→increment/409, create/update/clear. Два SQL writer на одной revision, late rollback/fresh pool retry; actual auth/router/repository HTTP, никакого выбора чужого userName, schema/data сохранны для v39. Только required disposable CI без skips, cleanup сохраняет baseline.
 - **Результат:** реализован signed-user GET/PUT, source code-point/NUL/body limits и PK-serialized CAS; добавлены required SQL/HTTP targets для defaults/no lazy writes, schema constraints, двух concurrent first writers/editors, late faults и owner isolation. Принят на [PR #46](https://github.com/meInteractive/it-map/pull/46), code51d48ee/tree77adc705d67c937d47b0ed2f3f1ae2b215074c77. Public40389209915 и MariaDB40389209981 pass, required SQL/HTTP zero skips; все прежние SQL/browser/API smoke успешны. Local race/tagged/vet/build/web/actionlint/source/history/manifest и четыре pre-connect guards pass.
 
-### [ ] GO-093. Общие промты и модели: schema/data, SQL CAS и admin API (часть GO-016)
+### [x] GO-093. Общие промты и модели: schema/data, SQL CAS и admin API (часть GO-016)
 
 - **Приоритет:** Критический prerequisite backup.
 - **Зависимости:** GO-091/092, пять existing tables без DDL.
 - **Критерии:** четыре prompt kind и model projections сохраняют source defaults и физический mapping; prompt/model revisions независимы в singleton settings. Shared text/admin read/write/CAS/clear, preserved model fields; model syntax/storage validation/JEV restrictions и provider validation gate на mocks, без обхода каталогов OpenAI/JEV. Реальные SQL/HTTP owner/admin/limit/409/rollback/race на disposable DB, rows и schema совместимы с v39. Provider-backed runtime choices остаются guarded до готового каталога; реальных keys/calls нет.
 - **Границы:** оставшиеся settings UI/provider clients/API documentation — полный GO-016 остаётся открыт. Готовность prerequisite для GO-041 фиксировать по точным SQL/HTTP proofs.
-- **Результат:** реализованы read-only snapshots и admin PUT четырёх prompt/model kind, независимый CAS, code-point/stream limits, provider catalog port без runtime bypass. Oracle исполняет 24 перехода unchanged legacy SQL на SQLite :memory:; его проекции сравниваются с MariaDB. Required SQL/HTTP проверяют schema/CHECK, bootstrap/model defaults, clear, faults/rollback/fresh pool retry, CAS и независимые concurrent updates, auth/admin/limits/409, catalog mocks. Positive disposable CI ожидается.
+- **Результат:** реализованы read-only snapshots и admin PUT четырёх prompt/model kind, независимый CAS, code-point/stream limits, provider catalog port без runtime bypass. Oracle исполняет 24 перехода unchanged legacy SQL на SQLite :memory:; его проекции сравниваются с MariaDB. Required SQL/HTTP проверяют schema/CHECK, bootstrap/model defaults, clear, faults/rollback/fresh pool retry, CAS и независимые concurrent updates, auth/admin/limits/409, catalog mocks. Принят на [PR #47](https://github.com/meInteractive/it-map/pull/47), code5b9e891/tree150e79df198495a849ad657179caf19261f68ff9: Public40392117857 и MariaDB40392117847 pass, shared SQL/HTTP zero skips и весь прежний SQL/browser/API smoke pass. Необходимые schema/data prerequisite GO-016 для backup доказаны; полный GO-016 остаётся открыт.
+
+### [ ] GO-094. Source-backed формат и валидация v39 (часть GO-041)
+
+- **Приоритет:** Критический.
+- **Зависимости:** GO-091/092/093, unchanged legacy backup/schema.
+- **Критерии:** pure Go v39 состав 52 application/19 excluded operational tables, точные rows/columns, manifest, SHA-256 с JSON.stringify semantics (property order, numbers, Unicode), catalog/raw consistency, FK и sequences, 25MiB/200000 limits. Synthetic differential oracle выполняет unchanged legacy digest/validation на памяти; ни реальных backups, ни SQL, HTTP или restore.
+- **Границы:** legacy v14–38 import и restore остаются GO-042; SQL export/snapshot/API — GO-095. Не закрывать GO-041 только по pure контракту.
+- **Результат:** pure Go v39 schema/layout/manifest/FK/sequence validation, ordered JSON.stringify-compatible SHA-256 и форматирование с итоговым byte cap реализованы. Required unchanged JS oracle проверяет 67 synthetic cases (включая 200000 rows, overflow, malformed UTF8, lone UTF16 surrogates и exact 25MiB boundary), schema copy сверяется с source. SQL/HTTP отсутствуют; positive CI ожидается.
+
+### [ ] GO-095. Согласованный MariaDB export v39 и HTTP (часть GO-041)
+
+- **Приоритет:** Критический.
+- **Зависимости:** GO-094, schema/data часть GO-016.
+- **Критерии:** read-only согласованный snapshot всех прикладных tables/rows/columns/counters и trusted metadata без lazy DDL/нормализации данных; schema inventory before/after, неизвестная таблица/колонка — отказ. Admin download совместим с v39, source default catalog, full formatted byte cap; required synthetic SQL/HTTP + unchanged legacy validator принимает экспорт. Операционные данные исключены, immutable source и concurrent snapshot доказаны, секреты не попадают в Git/logs.
+- **Результат:** не реализовано.

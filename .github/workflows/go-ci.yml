@@ -27,7 +27,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if git ls-files | grep -Ei '(^|/)(.*(dump|backup|secret|credential|\.env)|\.openai/|dist/)' | grep -vE '(^|/)\.env\.example$|(^|/)\.dev\.vars\.example$|server/generated/backup-schema\.json|docs/BACKUP_FORMAT\.md|server/backup/index\.js|scripts/test-backup-|server/import-export/database-dump\.js|^scripts/(backup-schema|test-database-dump)\.mjs$'; then
+          if git ls-files | grep -Ei '(^|/)(.*(dump|backup|secret|credential|\.env)|\.openai/|dist/)' | grep -vE '(^|/)\.env\.example$|(^|/)\.dev\.vars\.example$|server/generated/backup-schema\.json|docs/BACKUP_FORMAT\.md|server/backup/index\.js|scripts/test-backup-|server/import-export/database-dump\.js|^scripts/(backup-schema|test-database-dump)\.mjs$|^internal/backup/[a-z_]+\.go$'; then
             echo 'Unexpected sensitive-looking tracked path requires manual review'
             exit 1
           fi
@@ -53,6 +53,8 @@ jobs:
           node-version: '24'
       - name: Verify Go encryption with unchanged legacy JS decryption
         run: go test -race -tags legacyinterop ./internal/legacycrypto -count=1
+      - name: Verify Go v39 layout integrity and formatting against unchanged legacy JS
+        run: go test -race -tags legacyinterop ./internal/backup -run '^TestLegacyV39Contract$' -count=1
       - name: Test read-only staging smoke contract
         run: python3 scripts/test-staging-smoke.py
       - name: Build offline-compatible migration shell
