@@ -1,6 +1,6 @@
 # Спринт 1.1 — функциональная миграция Go
 
-**Текущий активный спринт.** Релиз и переключение ещё не выполнены. `GO-001…GO-028` сохраняют исходную нумерацию работ `1.1.01…1.1.28`. `GO-029…GO-080` — выделенные узкие задачи, не подменяющие критерии крупных пунктов. Ни один коммит сам по себе не доказывает полную приёмку на MariaDB.
+**Текущий активный спринт.** Релиз и переключение ещё не выполнены. `GO-001…GO-028` сохраняют исходную нумерацию работ `1.1.01…1.1.28`. `GO-029…GO-081` — выделенные узкие задачи, не подменяющие критерии крупных пунктов. Ни один коммит сам по себе не доказывает полную приёмку на MariaDB.
 
 **Актуальный статус на 26.10.2026:** `[x]` — завершён именно указанный результат с доказательствами; `[ ]` — остаются критерии. Для больших GO-001…028 дополнительно отмечены проверенные части, чтобы не путать «код существует», «прошёл synthetic CI» и «принят внешний staging/релиз». Исторические v12–v21 ниже не являются текущим статусом: впоследствии прошли Go vet/race/tagged build, web, MariaDB schema/rollback/locking, авторизованный API и 14 browser-сценариев. [Актуальная контрольная точка](STACK.md), [инструкция запуска](../docs/deployment/README.md).
 
@@ -397,8 +397,8 @@
 - **Компоненты:** `server/repositories/*settings`, новый Go parser API.
 - **Критерии готовности:** Настройки/права/команды соответствуют old; безопасный dry-run.
 - **Как проверить:** API+DB tests, staging без платных вызовов.
-- **Известные ограничения:** Go реализация отсутствует.
-- **Результат:** не завершено; коммита или PR нет.
+- **Известные ограничения:** Pure settings/budget contracts есть (GO-078/079); API/SQL/автоматический parser ещё отсутствуют.
+- **Результат:** GO-078 / #33 14b26cd подтвердил pure validation/defaults/options; GO-079 / #34 ebc7a1d — pure cost bounds/periods. Административный API/SQL CAS/dry-run/source scope и runtime не подключены.
 
 ### [ ] GO-022. Firecrawl и адаптеры листингов
 
@@ -499,8 +499,8 @@
 - **Компоненты:** `server/services/scheduler-*`, новый Go scheduler.
 - **Критерии готовности:** Конвейер живёт после рестарта, не работает параллельно Sites, метрики честны.
 - **Как проверить:** Crash/recovery/budget/diagnostics/staging tests.
-- **Известные ограничения:** Крупный эпик: отдельные GO-045/GO-046; Go отсутствует.
-- **Результат:** не завершено; коммита или PR нет.
+- **Известные ограничения:** Есть изолированный cycle lease/recovery GO-080; полный dispatcher отсутствует, RabbitMQ только в 1.3.
+- **Результат:** GO-080 / #35 d48e4d7 подтвердил SQL cycle ownership/recovery. Полный dispatcher/ready stages/billing/funnel и внешний staging не подключены.
 
 ### [ ] GO-028. Сквозная регрессия и контролируемый cutover
 
@@ -760,8 +760,8 @@
 - **Компоненты:** новый Go scheduler.
 - **Критерии готовности:** Никакой потерянной/удвоенной задачи.
 - **Как проверить:** Crash/DB race tests.
-- **Известные ограничения:** Часть большого GO-027; RabbitMQ только в 1.3.
-- **Результат:** не завершено; коммита или PR нет.
+- **Известные ограничения:** Cycle lease/recovery проверен GO-080 на disposable MariaDB; job claim/monetary ledger/full pipeline ещё отсутствуют.
+- **Результат:** GO-080 / #35 d48e4d7 подтвердил global cycle owner/replay/expiry/generation fencing, SQL rollback и SIGKILL recovery с сохранением reserve/result. Job claim/owned mutation facade/durable monetary ledger/provider idempotency и полная GO-045 остаются открытыми.
 
 ### [ ] GO-046. Планировщик: этапы, тик, диагностика
 
@@ -1102,11 +1102,21 @@
 - **Результат:** реализация codex/GO-079-parser-budget: 77 cost + 10 MSK period source vectors, исторические тарифы всех legacy models/alias, UTF-8 JSON bytes/UTF-16 input length. Два numeric-string mismatch с underscore воспроизведены до fix; finite operands overflow в JS дополнительно отказывает в Go до work. [PR #34](https://github.com/meInteractive/it-map/pull/34), code `ebc7a1d`: [public](https://github.com/meInteractive/it-map/actions/runs/40309279822) и [MariaDB/16 browser/API/native](https://github.com/meInteractive/it-map/actions/runs/40309279795) успешны. Pure GO-079 завершён; SQL reservation и реальная цена провайдера не приняты.
 
 
-### [ ] GO-080. Durable владение циклом scheduler и recovery (часть GO-045/027)
+### [x] GO-080. Durable владение циклом scheduler и recovery (часть GO-045/027)
 
 - **Приоритет:** Критический, спринт 1.1.
 - **Зависимости:** GO-078 settings model, GO-079 pure budget bounds, existing scheduler_runs/jobs/attempts и app_runtime_generation. Не запускать parser/провайдеры.
 - **Границы:** Begin/replay/disabled-diagnostic/global run lease/current generation/terminal release и expired recovery; существующие SQL таблицы, без DDL. Это не claimScheduledJob, не денежный ledger и не полная GO-045.
 - **Критерии:** два реальных SQL connections не приобретают два активных run, старый expired owner и прежняя generation не завершают новый цикл; повтор requestId не выполняет work/revive. Recovery сохраняет reserved_usd/cost/provider result, unexpired job locks, requeues current-generation expired jobs по max_attempts. Fault после настоящего INSERT полностью откатывается; process crash оставляет durable lease/reservation и новый pool восстанавливает после expiry.
 - **Проверки:** отдельный schedulerwrites target только GitHub/disposable parsed DSN/loopback/user/schema/current-generation; required named pass/no-skip до старого API/browser/native. Локальная MariaDB запрещена, только negative guards/compile.
-- **Результат:** код codex/GO-080-scheduler-run-lease, исходная схема не меняется. Локально run identity/compile/vet и четыре negative guards до соединения проверяются; положительный SQL/rollback/crash/concurrency gate требует GitHub CI. До его успешного PR/CI задача открыта.
+- **Результат:** код codex/GO-080-scheduler-run-lease, исходная схема не меняется. [PR #35](https://github.com/meInteractive/it-map/pull/35), code `d48e4d7`: [public](https://github.com/meInteractive/it-map/actions/runs/40316420266), [MariaDB/required scheduler SQL+rollback+SIGKILL/recovery/16 browser/API/native](https://github.com/meInteractive/it-map/actions/runs/40316420306) успешны. Все шесть SQL subcases и parent прошли без skips; cleanup подтверждён последующими smoke. Ошибка test interceptor prepared statements исправлена, runtime-код не менялся. Узкая GO-080 принята, полная GO-045 открыта.
+
+
+### [ ] GO-081. Apify HTTP transport и HH input на mocks (часть GO-039/023)
+
+- **Приоритет:** Средний, спринт 1.1.
+- **Зависимости:** проверенные GO-077 crypto/078 settings/079 budget bounds/080 cycle owner; неизменные apifyRequest/hhInput/checkedRun и dataset contracts.
+- **Границы:** отдельный Go adapter без API/runtime/SQL/key reads. Фиксированный api.apify.com и HH Actor; только synthetic httptest и source JS mock oracle.
+- **Критерии:** HTTP errors/timeouts/cancel/body bounds/no redirects, token не в URL/error/debug; POST не повторяется после неизвестного результата, Start outcome отмечен uncertain. HH source URL/scope и canonical input, existing-run status/dataset GET с фиксированным page cap; user query/title scope сохраняются. Сверить реальные JS helper results на fixtures.
+- **Ограничения:** не durable reservation/paid start ledger, не settings UI/crypto wiring и не полная GO-039/023; никаких live Actor calls.
+- **Результат:** код codex/GO-081-apify-transport. 36 HH/36 HTTP/14 run-state/18 dataset vectors настоящих JS functions на intercepted HTTP; Go httptest cancellation/timeout/no POST retry/concurrent GET/token redaction проходят локально. Строгие typed guards provider IDs фиксируют permissive JS regexp coercion; выявленные vacancy query encoding и text204 mismatches исправлены. До PR/mandatory CI открыта.

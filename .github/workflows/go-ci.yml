@@ -97,4 +97,5 @@ jobs:
           node scripts/check-parser-settings-contract.mjs
           node scripts/check-parser-budget-contract.mjs
           node scripts/check-scheduler-run-contract.mjs
+          node scripts/check-apify-transport-contract.mjs
       - run: npm run build:web

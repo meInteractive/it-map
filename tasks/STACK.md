@@ -209,3 +209,9 @@ GO-079 / #34 `ebc7a1d` прошёл public40309279822 и MariaDB/16browser/API/n
 
 
 Перед PR GO-080 обнаружен очередной merge родителей пользователем: main=4b0bbb9 содержит #31, а #32…34 объединены в уже закрытые ветки. База GO-080 сохраняет весь проверенный ebc7a1d и новый main обычным merge; code tree 38cbe04d14eaf529fb400f0332139b659599c6bf до GO-080 изменений идентичен ebc7a1d. Новый PR GO-080 направляется прямо в main и включает ранее проверенные GO-077…079 как inherited prerequisites; closed parent branch не используется целью PR.
+
+
+GO-080 / #35 `d48e4d7` / tree c9c9577ba0984539940098f3568673412304f531 прошёл public40316420266 и MariaDB40316420306: scheduler target6 subcases/no-skip, затем прежние task writes/UI/readonly/API/native. GO-081 начинается от этой проверенной вершины; отдельный Apify adapter проверяется только intercepted JS/loopback httptest, core runtime не включается.
+
+
+Для GO-081 учтён merge #35 пользователем: main=7d426a0. Ветка codex/GO-081-apify-transport основана на проверенном d48e4d7 и присоединяет main без code diff; tree c9c9577ba0984539940098f3568673412304f531 до adapter changes совпал с d48e4d7. PR направляется в main и содержит только новую adapter-порцию плюс её docs/statuses, без восстановления старых закрытых parent branches.
