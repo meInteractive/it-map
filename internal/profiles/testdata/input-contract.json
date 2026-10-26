@@ -1,0 +1,5151 @@
+{
+  "oracle": "Unchanged legacy streamed input readers, JEV route guard, read/save projections and authenticated route blocks. Synthetic requests and DB spies only; no SQL/providers.",
+  "vectors": [
+    {
+      "type": "resume",
+      "name": "base",
+      "input": {
+        "resumeMd": "CI synthetic resume 😀",
+        "revision": 0
+      },
+      "normalized": {
+        "textHash": "a656d501d3d7bbc7c233af810635e0a6ab2aa90c7b4e97c9c72706b982783785",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "resume",
+      "name": "clear",
+      "input": {
+        "resumeMd": "",
+        "revision": 0
+      },
+      "normalized": {
+        "textHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "resume",
+      "name": "no-trim",
+      "input": {
+        "resumeMd": " ﻿ CI синтетический <&> 😀\n ",
+        "revision": 0
+      },
+      "normalized": {
+        "textHash": "45174863415fa0338e2c4ee399ea22718bb5ecc15cc5136b8286cfc40943e6fc",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "resume",
+      "name": "ascii-at-limit",
+      "input": {
+        "resumeMd": "CI synthetic resume 😀",
+        "revision": 0
+      },
+      "textSpec": {
+        "field": "resumeMd",
+        "unit": "x",
+        "count": 20000
+      },
+      "normalized": {
+        "textHash": "42e8bc96b8eec8c4e5d503483ba0cb843ce95243c8ca8575ffc69cd25d12c61c",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "resume",
+      "name": "ascii-over-limit",
+      "input": {
+        "resumeMd": "CI synthetic resume 😀",
+        "revision": 0
+      },
+      "textSpec": {
+        "field": "resumeMd",
+        "unit": "x",
+        "count": 20001
+      },
+      "status": 400
+    },
+    {
+      "type": "resume",
+      "name": "emoji-at-limit",
+      "input": {
+        "resumeMd": "CI synthetic resume 😀",
+        "revision": 0
+      },
+      "textSpec": {
+        "field": "resumeMd",
+        "unit": "😀",
+        "count": 20000
+      },
+      "normalized": {
+        "textHash": "05d172b0647e80ebde625c5558dfefdc5d7dfba78f2b73ebde9bce880da49ddc",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "resume",
+      "name": "emoji-over-limit",
+      "input": {
+        "resumeMd": "CI synthetic resume 😀",
+        "revision": 0
+      },
+      "textSpec": {
+        "field": "resumeMd",
+        "unit": "😀",
+        "count": 20001
+      },
+      "status": 400
+    },
+    {
+      "type": "resume",
+      "name": "nul",
+      "input": {
+        "resumeMd": "CI\u0000text",
+        "revision": 0
+      },
+      "status": 400
+    },
+    {
+      "type": "resume",
+      "name": "null-text",
+      "input": {
+        "resumeMd": null,
+        "revision": 0
+      },
+      "status": 400
+    },
+    {
+      "type": "resume",
+      "name": "number-text",
+      "input": {
+        "resumeMd": 7,
+        "revision": 0
+      },
+      "status": 400
+    },
+    {
+      "type": "resume",
+      "name": "owner-field",
+      "input": {
+        "resumeMd": "CI synthetic resume 😀",
+        "revision": 0,
+        "userName": "Nastya"
+      },
+      "status": 400
+    },
+    {
+      "type": "resume",
+      "name": "uppercase-field",
+      "input": {
+        "resumeMd": "CI synthetic resume 😀",
+        "revision": 0
+      },
+      "raw": "{\"ResumeMd\":\"CI\",\"revision\":0}",
+      "status": 400
+    },
+    {
+      "type": "resume",
+      "name": "bad-revision-null",
+      "input": {
+        "resumeMd": "CI synthetic resume 😀",
+        "revision": null
+      },
+      "status": 400
+    },
+    {
+      "type": "resume",
+      "name": "bad-revision--1",
+      "input": {
+        "resumeMd": "CI synthetic resume 😀",
+        "revision": -1
+      },
+      "status": 400
+    },
+    {
+      "type": "resume",
+      "name": "bad-revision-1.5",
+      "input": {
+        "resumeMd": "CI synthetic resume 😀",
+        "revision": 1.5
+      },
+      "status": 400
+    },
+    {
+      "type": "resume",
+      "name": "bad-revision-0",
+      "input": {
+        "resumeMd": "CI synthetic resume 😀",
+        "revision": "0"
+      },
+      "status": 400
+    },
+    {
+      "type": "resume",
+      "name": "bad-revision-true",
+      "input": {
+        "resumeMd": "CI synthetic resume 😀",
+        "revision": true
+      },
+      "status": 400
+    },
+    {
+      "type": "resume",
+      "name": "bad-revision-9007199254740992",
+      "input": {
+        "resumeMd": "CI synthetic resume 😀",
+        "revision": 9007199254740992
+      },
+      "status": 400
+    },
+    {
+      "type": "resume",
+      "name": "missing-revision",
+      "input": {
+        "resumeMd": "CI synthetic resume 😀",
+        "revision": 0
+      },
+      "raw": "{\"resumeMd\":\"CI\"}",
+      "status": 400
+    },
+    {
+      "type": "resume",
+      "name": "max-safe-revision",
+      "input": {
+        "resumeMd": "CI synthetic resume 😀",
+        "revision": 9007199254740991
+      },
+      "normalized": {
+        "textHash": "a656d501d3d7bbc7c233af810635e0a6ab2aa90c7b4e97c9c72706b982783785",
+        "revision": 9007199254740991
+      },
+      "status": 200
+    },
+    {
+      "type": "resume",
+      "name": "decimal-integral-revision",
+      "input": {
+        "resumeMd": "CI synthetic resume 😀",
+        "revision": 0
+      },
+      "raw": "{\"resumeMd\":\"CI\",\"revision\":1.0}",
+      "normalized": {
+        "textHash": "fe8ee15bb86d27a77f2a62bd71bc65936156c99fe5b58537b347cbad1761fd95",
+        "revision": 1
+      },
+      "status": 200
+    },
+    {
+      "type": "resume",
+      "name": "negative-zero-revision",
+      "input": {
+        "resumeMd": "CI synthetic resume 😀",
+        "revision": 0
+      },
+      "raw": "{\"resumeMd\":\"CI\",\"revision\":-0}",
+      "normalized": {
+        "textHash": "fe8ee15bb86d27a77f2a62bd71bc65936156c99fe5b58537b347cbad1761fd95",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "resume",
+      "name": "last-duplicate-wins",
+      "input": {
+        "resumeMd": "CI synthetic resume 😀",
+        "revision": 0
+      },
+      "raw": "{\"resumeMd\":\"first\",\"revision\":1,\"resumeMd\":\"second\",\"revision\":2}",
+      "normalized": {
+        "textHash": "16367aacb67a4a017c8da8ab95682ccb390863780f7114dda0a0e0c55644c7c4",
+        "revision": 2
+      },
+      "status": 200
+    },
+    {
+      "type": "resume",
+      "name": "document-bom",
+      "input": {
+        "resumeMd": "CI synthetic resume 😀",
+        "revision": 0
+      },
+      "prefixBOM": true,
+      "normalized": {
+        "textHash": "a656d501d3d7bbc7c233af810635e0a6ab2aa90c7b4e97c9c72706b982783785",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "resume",
+      "name": "array",
+      "input": {
+        "resumeMd": "CI synthetic resume 😀",
+        "revision": 0
+      },
+      "raw": "[]",
+      "status": 400
+    },
+    {
+      "type": "resume",
+      "name": "null",
+      "input": {
+        "resumeMd": "CI synthetic resume 😀",
+        "revision": 0
+      },
+      "raw": "null",
+      "status": 400
+    },
+    {
+      "type": "resume",
+      "name": "trailing",
+      "input": {
+        "resumeMd": "CI synthetic resume 😀",
+        "revision": 0
+      },
+      "raw": "{} {}",
+      "status": 400
+    },
+    {
+      "type": "resume",
+      "name": "no-body",
+      "input": {
+        "resumeMd": "CI synthetic resume 😀",
+        "revision": 0
+      },
+      "noBody": true,
+      "status": 400
+    },
+    {
+      "type": "resume",
+      "name": "declared-too-large",
+      "input": {
+        "resumeMd": "CI synthetic resume 😀",
+        "revision": 0
+      },
+      "declaredLength": 262145,
+      "status": 413
+    },
+    {
+      "type": "resume",
+      "name": "stream-too-large",
+      "input": {
+        "resumeMd": "CI synthetic resume 😀",
+        "revision": 0
+      },
+      "bodyRepeat": 262145,
+      "status": 413
+    },
+    {
+      "type": "prompt",
+      "kind": "cover_letter",
+      "name": "base",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "normalized": {
+        "textHash": "a699bc1eaf641f184786a08305dec551c5c4d358b150c3d60090882403086e64",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "prompt",
+      "kind": "cover_letter",
+      "name": "clear",
+      "input": {
+        "markdown": "",
+        "revision": 0
+      },
+      "normalized": {
+        "textHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "prompt",
+      "kind": "cover_letter",
+      "name": "no-trim",
+      "input": {
+        "markdown": " ﻿ CI синтетический <&> 😀\n ",
+        "revision": 0
+      },
+      "normalized": {
+        "textHash": "45174863415fa0338e2c4ee399ea22718bb5ecc15cc5136b8286cfc40943e6fc",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "prompt",
+      "kind": "cover_letter",
+      "name": "ascii-at-limit",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "textSpec": {
+        "field": "markdown",
+        "unit": "x",
+        "count": 15000
+      },
+      "normalized": {
+        "textHash": "0c9031e3c702cf76c69154400e2410498bca54e6de378e9335abf76704b15ea7",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "prompt",
+      "kind": "cover_letter",
+      "name": "ascii-over-limit",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "textSpec": {
+        "field": "markdown",
+        "unit": "x",
+        "count": 15001
+      },
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "cover_letter",
+      "name": "emoji-at-limit",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "textSpec": {
+        "field": "markdown",
+        "unit": "😀",
+        "count": 15000
+      },
+      "normalized": {
+        "textHash": "2ed54b753c9f2c19d8971aaceba4e2701be82850e15b4f452b98b81b421ea334",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "prompt",
+      "kind": "cover_letter",
+      "name": "emoji-over-limit",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "textSpec": {
+        "field": "markdown",
+        "unit": "😀",
+        "count": 15001
+      },
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "cover_letter",
+      "name": "nul",
+      "input": {
+        "markdown": "CI\u0000text",
+        "revision": 0
+      },
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "cover_letter",
+      "name": "null-text",
+      "input": {
+        "markdown": null,
+        "revision": 0
+      },
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "cover_letter",
+      "name": "number-text",
+      "input": {
+        "markdown": 7,
+        "revision": 0
+      },
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "cover_letter",
+      "name": "owner-field",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0,
+        "userName": "Nastya"
+      },
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "cover_letter",
+      "name": "uppercase-field",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "raw": "{\"Markdown\":\"CI\",\"revision\":0}",
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "cover_letter",
+      "name": "bad-revision-null",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": null
+      },
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "cover_letter",
+      "name": "bad-revision--1",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": -1
+      },
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "cover_letter",
+      "name": "bad-revision-1.5",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 1.5
+      },
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "cover_letter",
+      "name": "bad-revision-0",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": "0"
+      },
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "cover_letter",
+      "name": "bad-revision-true",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": true
+      },
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "cover_letter",
+      "name": "bad-revision-9007199254740992",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 9007199254740992
+      },
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "cover_letter",
+      "name": "missing-revision",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "raw": "{\"markdown\":\"CI\"}",
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "cover_letter",
+      "name": "max-safe-revision",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 9007199254740991
+      },
+      "normalized": {
+        "textHash": "a699bc1eaf641f184786a08305dec551c5c4d358b150c3d60090882403086e64",
+        "revision": 9007199254740991
+      },
+      "status": 200
+    },
+    {
+      "type": "prompt",
+      "kind": "cover_letter",
+      "name": "decimal-integral-revision",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "raw": "{\"markdown\":\"CI\",\"revision\":1.0}",
+      "normalized": {
+        "textHash": "fe8ee15bb86d27a77f2a62bd71bc65936156c99fe5b58537b347cbad1761fd95",
+        "revision": 1
+      },
+      "status": 200
+    },
+    {
+      "type": "prompt",
+      "kind": "cover_letter",
+      "name": "negative-zero-revision",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "raw": "{\"markdown\":\"CI\",\"revision\":-0}",
+      "normalized": {
+        "textHash": "fe8ee15bb86d27a77f2a62bd71bc65936156c99fe5b58537b347cbad1761fd95",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "prompt",
+      "kind": "cover_letter",
+      "name": "last-duplicate-wins",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "raw": "{\"markdown\":\"first\",\"revision\":1,\"markdown\":\"second\",\"revision\":2}",
+      "normalized": {
+        "textHash": "16367aacb67a4a017c8da8ab95682ccb390863780f7114dda0a0e0c55644c7c4",
+        "revision": 2
+      },
+      "status": 200
+    },
+    {
+      "type": "prompt",
+      "kind": "cover_letter",
+      "name": "document-bom",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "prefixBOM": true,
+      "normalized": {
+        "textHash": "a699bc1eaf641f184786a08305dec551c5c4d358b150c3d60090882403086e64",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "prompt",
+      "kind": "cover_letter",
+      "name": "array",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "raw": "[]",
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "cover_letter",
+      "name": "null",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "raw": "null",
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "cover_letter",
+      "name": "trailing",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "raw": "{} {}",
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "cover_letter",
+      "name": "no-body",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "noBody": true,
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "cover_letter",
+      "name": "declared-too-large",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "declaredLength": 131073,
+      "status": 413
+    },
+    {
+      "type": "prompt",
+      "kind": "cover_letter",
+      "name": "stream-too-large",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "bodyRepeat": 131073,
+      "status": 413
+    },
+    {
+      "type": "prompt",
+      "kind": "relevance",
+      "name": "base",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "normalized": {
+        "textHash": "a699bc1eaf641f184786a08305dec551c5c4d358b150c3d60090882403086e64",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "prompt",
+      "kind": "relevance",
+      "name": "clear",
+      "input": {
+        "markdown": "",
+        "revision": 0
+      },
+      "normalized": {
+        "textHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "prompt",
+      "kind": "relevance",
+      "name": "no-trim",
+      "input": {
+        "markdown": " ﻿ CI синтетический <&> 😀\n ",
+        "revision": 0
+      },
+      "normalized": {
+        "textHash": "45174863415fa0338e2c4ee399ea22718bb5ecc15cc5136b8286cfc40943e6fc",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "prompt",
+      "kind": "relevance",
+      "name": "ascii-at-limit",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "textSpec": {
+        "field": "markdown",
+        "unit": "x",
+        "count": 5000
+      },
+      "normalized": {
+        "textHash": "c59d3c0480cc2d71d8f646e735e92da65450311eec46e81a5db8c7e6e8a92054",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "prompt",
+      "kind": "relevance",
+      "name": "ascii-over-limit",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "textSpec": {
+        "field": "markdown",
+        "unit": "x",
+        "count": 5001
+      },
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "relevance",
+      "name": "emoji-at-limit",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "textSpec": {
+        "field": "markdown",
+        "unit": "😀",
+        "count": 5000
+      },
+      "normalized": {
+        "textHash": "c54ae9b09b4f239968e7f09d773cd339415c945253e21adba733aa2aa40919a9",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "prompt",
+      "kind": "relevance",
+      "name": "emoji-over-limit",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "textSpec": {
+        "field": "markdown",
+        "unit": "😀",
+        "count": 5001
+      },
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "relevance",
+      "name": "nul",
+      "input": {
+        "markdown": "CI\u0000text",
+        "revision": 0
+      },
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "relevance",
+      "name": "null-text",
+      "input": {
+        "markdown": null,
+        "revision": 0
+      },
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "relevance",
+      "name": "number-text",
+      "input": {
+        "markdown": 7,
+        "revision": 0
+      },
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "relevance",
+      "name": "owner-field",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0,
+        "userName": "Nastya"
+      },
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "relevance",
+      "name": "uppercase-field",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "raw": "{\"Markdown\":\"CI\",\"revision\":0}",
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "relevance",
+      "name": "bad-revision-null",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": null
+      },
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "relevance",
+      "name": "bad-revision--1",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": -1
+      },
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "relevance",
+      "name": "bad-revision-1.5",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 1.5
+      },
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "relevance",
+      "name": "bad-revision-0",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": "0"
+      },
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "relevance",
+      "name": "bad-revision-true",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": true
+      },
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "relevance",
+      "name": "bad-revision-9007199254740992",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 9007199254740992
+      },
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "relevance",
+      "name": "missing-revision",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "raw": "{\"markdown\":\"CI\"}",
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "relevance",
+      "name": "max-safe-revision",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 9007199254740991
+      },
+      "normalized": {
+        "textHash": "a699bc1eaf641f184786a08305dec551c5c4d358b150c3d60090882403086e64",
+        "revision": 9007199254740991
+      },
+      "status": 200
+    },
+    {
+      "type": "prompt",
+      "kind": "relevance",
+      "name": "decimal-integral-revision",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "raw": "{\"markdown\":\"CI\",\"revision\":1.0}",
+      "normalized": {
+        "textHash": "fe8ee15bb86d27a77f2a62bd71bc65936156c99fe5b58537b347cbad1761fd95",
+        "revision": 1
+      },
+      "status": 200
+    },
+    {
+      "type": "prompt",
+      "kind": "relevance",
+      "name": "negative-zero-revision",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "raw": "{\"markdown\":\"CI\",\"revision\":-0}",
+      "normalized": {
+        "textHash": "fe8ee15bb86d27a77f2a62bd71bc65936156c99fe5b58537b347cbad1761fd95",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "prompt",
+      "kind": "relevance",
+      "name": "last-duplicate-wins",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "raw": "{\"markdown\":\"first\",\"revision\":1,\"markdown\":\"second\",\"revision\":2}",
+      "normalized": {
+        "textHash": "16367aacb67a4a017c8da8ab95682ccb390863780f7114dda0a0e0c55644c7c4",
+        "revision": 2
+      },
+      "status": 200
+    },
+    {
+      "type": "prompt",
+      "kind": "relevance",
+      "name": "document-bom",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "prefixBOM": true,
+      "normalized": {
+        "textHash": "a699bc1eaf641f184786a08305dec551c5c4d358b150c3d60090882403086e64",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "prompt",
+      "kind": "relevance",
+      "name": "array",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "raw": "[]",
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "relevance",
+      "name": "null",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "raw": "null",
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "relevance",
+      "name": "trailing",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "raw": "{} {}",
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "relevance",
+      "name": "no-body",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "noBody": true,
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "relevance",
+      "name": "declared-too-large",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "declaredLength": 32769,
+      "status": 413
+    },
+    {
+      "type": "prompt",
+      "kind": "relevance",
+      "name": "stream-too-large",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "bodyRepeat": 32769,
+      "status": 413
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_extraction",
+      "name": "base",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "normalized": {
+        "textHash": "a699bc1eaf641f184786a08305dec551c5c4d358b150c3d60090882403086e64",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_extraction",
+      "name": "clear",
+      "input": {
+        "markdown": "",
+        "revision": 0
+      },
+      "normalized": {
+        "textHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_extraction",
+      "name": "no-trim",
+      "input": {
+        "markdown": " ﻿ CI синтетический <&> 😀\n ",
+        "revision": 0
+      },
+      "normalized": {
+        "textHash": "45174863415fa0338e2c4ee399ea22718bb5ecc15cc5136b8286cfc40943e6fc",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_extraction",
+      "name": "ascii-at-limit",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "textSpec": {
+        "field": "markdown",
+        "unit": "x",
+        "count": 10000
+      },
+      "normalized": {
+        "textHash": "e4ee97ec252749d2096447e849628d0d7734f51700416eefbb33574bf0b3ee75",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_extraction",
+      "name": "ascii-over-limit",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "textSpec": {
+        "field": "markdown",
+        "unit": "x",
+        "count": 10001
+      },
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_extraction",
+      "name": "emoji-at-limit",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "textSpec": {
+        "field": "markdown",
+        "unit": "😀",
+        "count": 10000
+      },
+      "normalized": {
+        "textHash": "78dfb1e3bf380877eabe3f26f19ec8ddc2e441a1dcdfc3b9d515f1ea6900f7ff",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_extraction",
+      "name": "emoji-over-limit",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "textSpec": {
+        "field": "markdown",
+        "unit": "😀",
+        "count": 10001
+      },
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_extraction",
+      "name": "nul",
+      "input": {
+        "markdown": "CI\u0000text",
+        "revision": 0
+      },
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_extraction",
+      "name": "null-text",
+      "input": {
+        "markdown": null,
+        "revision": 0
+      },
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_extraction",
+      "name": "number-text",
+      "input": {
+        "markdown": 7,
+        "revision": 0
+      },
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_extraction",
+      "name": "owner-field",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0,
+        "userName": "Nastya"
+      },
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_extraction",
+      "name": "uppercase-field",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "raw": "{\"Markdown\":\"CI\",\"revision\":0}",
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_extraction",
+      "name": "bad-revision-null",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": null
+      },
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_extraction",
+      "name": "bad-revision--1",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": -1
+      },
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_extraction",
+      "name": "bad-revision-1.5",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 1.5
+      },
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_extraction",
+      "name": "bad-revision-0",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": "0"
+      },
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_extraction",
+      "name": "bad-revision-true",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": true
+      },
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_extraction",
+      "name": "bad-revision-9007199254740992",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 9007199254740992
+      },
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_extraction",
+      "name": "missing-revision",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "raw": "{\"markdown\":\"CI\"}",
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_extraction",
+      "name": "max-safe-revision",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 9007199254740991
+      },
+      "normalized": {
+        "textHash": "a699bc1eaf641f184786a08305dec551c5c4d358b150c3d60090882403086e64",
+        "revision": 9007199254740991
+      },
+      "status": 200
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_extraction",
+      "name": "decimal-integral-revision",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "raw": "{\"markdown\":\"CI\",\"revision\":1.0}",
+      "normalized": {
+        "textHash": "fe8ee15bb86d27a77f2a62bd71bc65936156c99fe5b58537b347cbad1761fd95",
+        "revision": 1
+      },
+      "status": 200
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_extraction",
+      "name": "negative-zero-revision",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "raw": "{\"markdown\":\"CI\",\"revision\":-0}",
+      "normalized": {
+        "textHash": "fe8ee15bb86d27a77f2a62bd71bc65936156c99fe5b58537b347cbad1761fd95",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_extraction",
+      "name": "last-duplicate-wins",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "raw": "{\"markdown\":\"first\",\"revision\":1,\"markdown\":\"second\",\"revision\":2}",
+      "normalized": {
+        "textHash": "16367aacb67a4a017c8da8ab95682ccb390863780f7114dda0a0e0c55644c7c4",
+        "revision": 2
+      },
+      "status": 200
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_extraction",
+      "name": "document-bom",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "prefixBOM": true,
+      "normalized": {
+        "textHash": "a699bc1eaf641f184786a08305dec551c5c4d358b150c3d60090882403086e64",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_extraction",
+      "name": "array",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "raw": "[]",
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_extraction",
+      "name": "null",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "raw": "null",
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_extraction",
+      "name": "trailing",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "raw": "{} {}",
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_extraction",
+      "name": "no-body",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "noBody": true,
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_extraction",
+      "name": "declared-too-large",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "declaredLength": 131073,
+      "status": 413
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_extraction",
+      "name": "stream-too-large",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "bodyRepeat": 131073,
+      "status": 413
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_role",
+      "name": "base",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "normalized": {
+        "textHash": "a699bc1eaf641f184786a08305dec551c5c4d358b150c3d60090882403086e64",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_role",
+      "name": "clear",
+      "input": {
+        "markdown": "",
+        "revision": 0
+      },
+      "normalized": {
+        "textHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_role",
+      "name": "no-trim",
+      "input": {
+        "markdown": " ﻿ CI синтетический <&> 😀\n ",
+        "revision": 0
+      },
+      "normalized": {
+        "textHash": "45174863415fa0338e2c4ee399ea22718bb5ecc15cc5136b8286cfc40943e6fc",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_role",
+      "name": "ascii-at-limit",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "textSpec": {
+        "field": "markdown",
+        "unit": "x",
+        "count": 5000
+      },
+      "normalized": {
+        "textHash": "c59d3c0480cc2d71d8f646e735e92da65450311eec46e81a5db8c7e6e8a92054",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_role",
+      "name": "ascii-over-limit",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "textSpec": {
+        "field": "markdown",
+        "unit": "x",
+        "count": 5001
+      },
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_role",
+      "name": "emoji-at-limit",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "textSpec": {
+        "field": "markdown",
+        "unit": "😀",
+        "count": 5000
+      },
+      "normalized": {
+        "textHash": "c54ae9b09b4f239968e7f09d773cd339415c945253e21adba733aa2aa40919a9",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_role",
+      "name": "emoji-over-limit",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "textSpec": {
+        "field": "markdown",
+        "unit": "😀",
+        "count": 5001
+      },
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_role",
+      "name": "nul",
+      "input": {
+        "markdown": "CI\u0000text",
+        "revision": 0
+      },
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_role",
+      "name": "null-text",
+      "input": {
+        "markdown": null,
+        "revision": 0
+      },
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_role",
+      "name": "number-text",
+      "input": {
+        "markdown": 7,
+        "revision": 0
+      },
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_role",
+      "name": "owner-field",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0,
+        "userName": "Nastya"
+      },
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_role",
+      "name": "uppercase-field",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "raw": "{\"Markdown\":\"CI\",\"revision\":0}",
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_role",
+      "name": "bad-revision-null",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": null
+      },
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_role",
+      "name": "bad-revision--1",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": -1
+      },
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_role",
+      "name": "bad-revision-1.5",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 1.5
+      },
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_role",
+      "name": "bad-revision-0",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": "0"
+      },
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_role",
+      "name": "bad-revision-true",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": true
+      },
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_role",
+      "name": "bad-revision-9007199254740992",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 9007199254740992
+      },
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_role",
+      "name": "missing-revision",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "raw": "{\"markdown\":\"CI\"}",
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_role",
+      "name": "max-safe-revision",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 9007199254740991
+      },
+      "normalized": {
+        "textHash": "a699bc1eaf641f184786a08305dec551c5c4d358b150c3d60090882403086e64",
+        "revision": 9007199254740991
+      },
+      "status": 200
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_role",
+      "name": "decimal-integral-revision",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "raw": "{\"markdown\":\"CI\",\"revision\":1.0}",
+      "normalized": {
+        "textHash": "fe8ee15bb86d27a77f2a62bd71bc65936156c99fe5b58537b347cbad1761fd95",
+        "revision": 1
+      },
+      "status": 200
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_role",
+      "name": "negative-zero-revision",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "raw": "{\"markdown\":\"CI\",\"revision\":-0}",
+      "normalized": {
+        "textHash": "fe8ee15bb86d27a77f2a62bd71bc65936156c99fe5b58537b347cbad1761fd95",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_role",
+      "name": "last-duplicate-wins",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "raw": "{\"markdown\":\"first\",\"revision\":1,\"markdown\":\"second\",\"revision\":2}",
+      "normalized": {
+        "textHash": "16367aacb67a4a017c8da8ab95682ccb390863780f7114dda0a0e0c55644c7c4",
+        "revision": 2
+      },
+      "status": 200
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_role",
+      "name": "document-bom",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "prefixBOM": true,
+      "normalized": {
+        "textHash": "a699bc1eaf641f184786a08305dec551c5c4d358b150c3d60090882403086e64",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_role",
+      "name": "array",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "raw": "[]",
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_role",
+      "name": "null",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "raw": "null",
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_role",
+      "name": "trailing",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "raw": "{} {}",
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_role",
+      "name": "no-body",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "noBody": true,
+      "status": 400
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_role",
+      "name": "declared-too-large",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "declaredLength": 32769,
+      "status": 413
+    },
+    {
+      "type": "prompt",
+      "kind": "vacancy_role",
+      "name": "stream-too-large",
+      "input": {
+        "markdown": "CI synthetic prompt 😀",
+        "revision": 0
+      },
+      "bodyRepeat": 32769,
+      "status": 413
+    },
+    {
+      "type": "model",
+      "kind": "cover_letter",
+      "name": "base",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "cover_letter",
+      "name": "provider-openrouter",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "cover_letter",
+      "name": "provider-openai",
+      "input": {
+        "provider": "openai",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openai",
+        "openaiModel": "",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "cover_letter",
+      "name": "effort-auto",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "auto",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "auto",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "cover_letter",
+      "name": "effort-none",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "none",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "none",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "cover_letter",
+      "name": "effort-minimal",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "minimal",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "minimal",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "cover_letter",
+      "name": "effort-low",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "low",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "low",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "cover_letter",
+      "name": "effort-medium",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "cover_letter",
+      "name": "effort-high",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "high",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "high",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "cover_letter",
+      "name": "effort-xhigh",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "xhigh",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "xhigh",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "cover_letter",
+      "name": "effort-max",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "max",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "max",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "cover_letter",
+      "name": "model-syntax-gpt-6-luna",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "gpt-6-luna",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "gpt-6-luna",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "cover_letter",
+      "name": "model-syntax-CI_model:1.t",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "CI_model:1.test-a",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "CI_model:1.test-a",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "cover_letter",
+      "name": "model-syntax-0model",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "0model",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "0model",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "cover_letter",
+      "name": "model-syntax-xxxxxxxxxxxx",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "cover_letter",
+      "name": "model-syntax-xxxxxxxxxxxx",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 400
+    },
+    {
+      "type": "model",
+      "kind": "cover_letter",
+      "name": "model-syntax- CI model",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": " CI model",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 400
+    },
+    {
+      "type": "model",
+      "kind": "cover_letter",
+      "name": "model-syntax-модель",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "модель",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 400
+    },
+    {
+      "type": "model",
+      "kind": "cover_letter",
+      "name": "patch-provider-CI_unknown",
+      "input": {
+        "provider": "CI_unknown",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 400
+    },
+    {
+      "type": "model",
+      "kind": "cover_letter",
+      "name": "patch-provider-null",
+      "input": {
+        "provider": null,
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 400
+    },
+    {
+      "type": "model",
+      "kind": "cover_letter",
+      "name": "patch-openaiModel-null",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": null,
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 400
+    },
+    {
+      "type": "model",
+      "kind": "cover_letter",
+      "name": "patch-reasoningEffort-CI_unknown",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "CI_unknown",
+        "revision": 0
+      },
+      "status": 400
+    },
+    {
+      "type": "model",
+      "kind": "cover_letter",
+      "name": "patch-revision-null",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": null
+      },
+      "status": 400
+    },
+    {
+      "type": "model",
+      "kind": "cover_letter",
+      "name": "patch-revision-9007199254740992",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": 9007199254740992
+      },
+      "status": 400
+    },
+    {
+      "type": "model",
+      "kind": "cover_letter",
+      "name": "patch-revision--1",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": -1
+      },
+      "status": 400
+    },
+    {
+      "type": "model",
+      "kind": "cover_letter",
+      "name": "patch-userName-Nastya",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": 0,
+        "userName": "Nastya"
+      },
+      "status": 400
+    },
+    {
+      "type": "model",
+      "kind": "cover_letter",
+      "name": "patch-openrouterModel-jev",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": 0,
+        "openrouterModel": "jev"
+      },
+      "status": 400
+    },
+    {
+      "type": "model",
+      "kind": "cover_letter",
+      "name": "patch-openrouterModel-best_free",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": 0,
+        "openrouterModel": "best_free"
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "cover_letter",
+      "name": "patch-openrouterModel-null",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": 0,
+        "openrouterModel": null
+      },
+      "status": 400
+    },
+    {
+      "type": "model",
+      "kind": "cover_letter",
+      "name": "patch-openrouterModel-",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": 0,
+        "openrouterModel": ""
+      },
+      "status": 400
+    },
+    {
+      "type": "model",
+      "kind": "cover_letter",
+      "name": "declared-too-large",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "declaredLength": 4097,
+      "status": 413
+    },
+    {
+      "type": "model",
+      "kind": "cover_letter",
+      "name": "stream-too-large",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "bodyRepeat": 4097,
+      "status": 413
+    },
+    {
+      "type": "model",
+      "kind": "relevance",
+      "name": "base",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "relevance",
+      "name": "provider-openrouter",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "relevance",
+      "name": "provider-openai",
+      "input": {
+        "provider": "openai",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openai",
+        "openaiModel": "",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "relevance",
+      "name": "effort-auto",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "auto",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "auto",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "relevance",
+      "name": "effort-none",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "none",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "none",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "relevance",
+      "name": "effort-minimal",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "minimal",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "minimal",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "relevance",
+      "name": "effort-low",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "low",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "low",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "relevance",
+      "name": "effort-medium",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "relevance",
+      "name": "effort-high",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "high",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "high",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "relevance",
+      "name": "effort-xhigh",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "xhigh",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "xhigh",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "relevance",
+      "name": "effort-max",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "max",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "max",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "relevance",
+      "name": "model-syntax-gpt-6-luna",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "gpt-6-luna",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "gpt-6-luna",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "relevance",
+      "name": "model-syntax-CI_model:1.t",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "CI_model:1.test-a",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "CI_model:1.test-a",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "relevance",
+      "name": "model-syntax-0model",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "0model",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "0model",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "relevance",
+      "name": "model-syntax-xxxxxxxxxxxx",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "relevance",
+      "name": "model-syntax-xxxxxxxxxxxx",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 400
+    },
+    {
+      "type": "model",
+      "kind": "relevance",
+      "name": "model-syntax- CI model",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": " CI model",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 400
+    },
+    {
+      "type": "model",
+      "kind": "relevance",
+      "name": "model-syntax-модель",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "модель",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 400
+    },
+    {
+      "type": "model",
+      "kind": "relevance",
+      "name": "patch-provider-CI_unknown",
+      "input": {
+        "provider": "CI_unknown",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 400
+    },
+    {
+      "type": "model",
+      "kind": "relevance",
+      "name": "patch-provider-null",
+      "input": {
+        "provider": null,
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 400
+    },
+    {
+      "type": "model",
+      "kind": "relevance",
+      "name": "patch-openaiModel-null",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": null,
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 400
+    },
+    {
+      "type": "model",
+      "kind": "relevance",
+      "name": "patch-reasoningEffort-CI_unknown",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "CI_unknown",
+        "revision": 0
+      },
+      "status": 400
+    },
+    {
+      "type": "model",
+      "kind": "relevance",
+      "name": "patch-revision-null",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": null
+      },
+      "status": 400
+    },
+    {
+      "type": "model",
+      "kind": "relevance",
+      "name": "patch-revision-9007199254740992",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": 9007199254740992
+      },
+      "status": 400
+    },
+    {
+      "type": "model",
+      "kind": "relevance",
+      "name": "patch-revision--1",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": -1
+      },
+      "status": 400
+    },
+    {
+      "type": "model",
+      "kind": "relevance",
+      "name": "patch-userName-Nastya",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": 0,
+        "userName": "Nastya"
+      },
+      "status": 400
+    },
+    {
+      "type": "model",
+      "kind": "relevance",
+      "name": "patch-openrouterModel-jev",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": 0,
+        "openrouterModel": "jev"
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "openrouterModel": "jev",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "relevance",
+      "name": "patch-openrouterModel-best_free",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": 0,
+        "openrouterModel": "best_free"
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "relevance",
+      "name": "patch-openrouterModel-null",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": 0,
+        "openrouterModel": null
+      },
+      "status": 400
+    },
+    {
+      "type": "model",
+      "kind": "relevance",
+      "name": "patch-openrouterModel-",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": 0,
+        "openrouterModel": ""
+      },
+      "status": 400
+    },
+    {
+      "type": "model",
+      "kind": "relevance",
+      "name": "declared-too-large",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "declaredLength": 4097,
+      "status": 413
+    },
+    {
+      "type": "model",
+      "kind": "relevance",
+      "name": "stream-too-large",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "bodyRepeat": 4097,
+      "status": 413
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_extraction",
+      "name": "base",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_extraction",
+      "name": "provider-openrouter",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_extraction",
+      "name": "provider-openai",
+      "input": {
+        "provider": "openai",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openai",
+        "openaiModel": "",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_extraction",
+      "name": "effort-auto",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "auto",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "auto",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_extraction",
+      "name": "effort-none",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "none",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "none",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_extraction",
+      "name": "effort-minimal",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "minimal",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "minimal",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_extraction",
+      "name": "effort-low",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "low",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "low",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_extraction",
+      "name": "effort-medium",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_extraction",
+      "name": "effort-high",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "high",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "high",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_extraction",
+      "name": "effort-xhigh",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "xhigh",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "xhigh",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_extraction",
+      "name": "effort-max",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "max",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "max",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_extraction",
+      "name": "model-syntax-gpt-6-luna",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "gpt-6-luna",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "gpt-6-luna",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_extraction",
+      "name": "model-syntax-CI_model:1.t",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "CI_model:1.test-a",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "CI_model:1.test-a",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_extraction",
+      "name": "model-syntax-0model",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "0model",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "0model",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_extraction",
+      "name": "model-syntax-xxxxxxxxxxxx",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_extraction",
+      "name": "model-syntax-xxxxxxxxxxxx",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 400
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_extraction",
+      "name": "model-syntax- CI model",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": " CI model",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 400
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_extraction",
+      "name": "model-syntax-модель",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "модель",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 400
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_extraction",
+      "name": "patch-provider-CI_unknown",
+      "input": {
+        "provider": "CI_unknown",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 400
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_extraction",
+      "name": "patch-provider-null",
+      "input": {
+        "provider": null,
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 400
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_extraction",
+      "name": "patch-openaiModel-null",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": null,
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 400
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_extraction",
+      "name": "patch-reasoningEffort-CI_unknown",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "CI_unknown",
+        "revision": 0
+      },
+      "status": 400
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_extraction",
+      "name": "patch-revision-null",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": null
+      },
+      "status": 400
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_extraction",
+      "name": "patch-revision-9007199254740992",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": 9007199254740992
+      },
+      "status": 400
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_extraction",
+      "name": "patch-revision--1",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": -1
+      },
+      "status": 400
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_extraction",
+      "name": "patch-userName-Nastya",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": 0,
+        "userName": "Nastya"
+      },
+      "status": 400
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_extraction",
+      "name": "patch-openrouterModel-jev",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": 0,
+        "openrouterModel": "jev"
+      },
+      "status": 400
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_extraction",
+      "name": "patch-openrouterModel-best_free",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": 0,
+        "openrouterModel": "best_free"
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_extraction",
+      "name": "patch-openrouterModel-null",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": 0,
+        "openrouterModel": null
+      },
+      "status": 400
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_extraction",
+      "name": "patch-openrouterModel-",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": 0,
+        "openrouterModel": ""
+      },
+      "status": 400
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_extraction",
+      "name": "declared-too-large",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "declaredLength": 4097,
+      "status": 413
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_extraction",
+      "name": "stream-too-large",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "bodyRepeat": 4097,
+      "status": 413
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_role",
+      "name": "base",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_role",
+      "name": "provider-openrouter",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_role",
+      "name": "provider-openai",
+      "input": {
+        "provider": "openai",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openai",
+        "openaiModel": "",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_role",
+      "name": "effort-auto",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "auto",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "auto",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_role",
+      "name": "effort-none",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "none",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "none",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_role",
+      "name": "effort-minimal",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "minimal",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "minimal",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_role",
+      "name": "effort-low",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "low",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "low",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_role",
+      "name": "effort-medium",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_role",
+      "name": "effort-high",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "high",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "high",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_role",
+      "name": "effort-xhigh",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "xhigh",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "xhigh",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_role",
+      "name": "effort-max",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "max",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "max",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_role",
+      "name": "model-syntax-gpt-6-luna",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "gpt-6-luna",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "gpt-6-luna",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_role",
+      "name": "model-syntax-CI_model:1.t",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "CI_model:1.test-a",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "CI_model:1.test-a",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_role",
+      "name": "model-syntax-0model",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "0model",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "0model",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_role",
+      "name": "model-syntax-xxxxxxxxxxxx",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_role",
+      "name": "model-syntax-xxxxxxxxxxxx",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 400
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_role",
+      "name": "model-syntax- CI model",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": " CI model",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 400
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_role",
+      "name": "model-syntax-модель",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "модель",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 400
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_role",
+      "name": "patch-provider-CI_unknown",
+      "input": {
+        "provider": "CI_unknown",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 400
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_role",
+      "name": "patch-provider-null",
+      "input": {
+        "provider": null,
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 400
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_role",
+      "name": "patch-openaiModel-null",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": null,
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 400
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_role",
+      "name": "patch-reasoningEffort-CI_unknown",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "CI_unknown",
+        "revision": 0
+      },
+      "status": 400
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_role",
+      "name": "patch-revision-null",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": null
+      },
+      "status": 400
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_role",
+      "name": "patch-revision-9007199254740992",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": 9007199254740992
+      },
+      "status": 400
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_role",
+      "name": "patch-revision--1",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": -1
+      },
+      "status": 400
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_role",
+      "name": "patch-userName-Nastya",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": 0,
+        "userName": "Nastya"
+      },
+      "status": 400
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_role",
+      "name": "patch-openrouterModel-jev",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": 0,
+        "openrouterModel": "jev"
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "openrouterModel": "jev",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_role",
+      "name": "patch-openrouterModel-best_free",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": 0,
+        "openrouterModel": "best_free"
+      },
+      "normalized": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "openrouterModel": "best_free",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "status": 200
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_role",
+      "name": "patch-openrouterModel-null",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": 0,
+        "openrouterModel": null
+      },
+      "status": 400
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_role",
+      "name": "patch-openrouterModel-",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": 0,
+        "openrouterModel": ""
+      },
+      "status": 400
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_role",
+      "name": "declared-too-large",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "declaredLength": 4097,
+      "status": 413
+    },
+    {
+      "type": "model",
+      "kind": "vacancy_role",
+      "name": "stream-too-large",
+      "input": {
+        "provider": "openrouter",
+        "openaiModel": "",
+        "reasoningEffort": "medium",
+        "revision": 0
+      },
+      "bodyRepeat": 4097,
+      "status": 413
+    }
+  ],
+  "mappings": [
+    {
+      "kind": "cover_letter",
+      "prompt": {
+        "table": "system_prompts",
+        "keyColumn": "kind",
+        "keyValue": "cover_letter",
+        "revisionColumn": "revision"
+      },
+      "model": {
+        "table": "prompt_model_settings",
+        "keyColumn": "kind",
+        "keyValue": "cover_letter",
+        "revisionColumn": "revision"
+      }
+    },
+    {
+      "kind": "relevance",
+      "prompt": {
+        "table": "system_prompts",
+        "keyColumn": "kind",
+        "keyValue": "relevance",
+        "revisionColumn": "revision"
+      },
+      "model": {
+        "table": "prompt_model_settings",
+        "keyColumn": "kind",
+        "keyValue": "relevance",
+        "revisionColumn": "revision"
+      }
+    },
+    {
+      "kind": "vacancy_extraction",
+      "prompt": {
+        "table": "vacancy_detail_settings",
+        "keyColumn": "id",
+        "keyValue": 1,
+        "revisionColumn": "prompt_revision"
+      },
+      "model": {
+        "table": "vacancy_detail_settings",
+        "keyColumn": "id",
+        "keyValue": 1,
+        "revisionColumn": "model_revision"
+      }
+    },
+    {
+      "kind": "vacancy_role",
+      "prompt": {
+        "table": "vacancy_role_settings",
+        "keyColumn": "id",
+        "keyValue": 1,
+        "revisionColumn": "prompt_revision"
+      },
+      "model": {
+        "table": "vacancy_role_settings",
+        "keyColumn": "id",
+        "keyValue": 1,
+        "revisionColumn": "model_revision"
+      }
+    }
+  ],
+  "permissions": [
+    {
+      "surface": "resume",
+      "kind": "",
+      "method": "GET",
+      "user": "Eugene",
+      "admin": true,
+      "storage": true,
+      "status": 200,
+      "owner": "Eugene"
+    },
+    {
+      "surface": "resume",
+      "kind": "",
+      "method": "PUT",
+      "user": "Eugene",
+      "admin": true,
+      "storage": true,
+      "status": 200,
+      "owner": "Eugene"
+    },
+    {
+      "surface": "resume",
+      "kind": "",
+      "method": "POST",
+      "user": "Eugene",
+      "admin": true,
+      "storage": true,
+      "status": 405
+    },
+    {
+      "surface": "resume",
+      "kind": "",
+      "method": "GET",
+      "user": "Demo",
+      "admin": false,
+      "storage": true,
+      "status": 200,
+      "owner": "Demo"
+    },
+    {
+      "surface": "resume",
+      "kind": "",
+      "method": "PUT",
+      "user": "Demo",
+      "admin": false,
+      "storage": true,
+      "status": 200,
+      "owner": "Demo"
+    },
+    {
+      "surface": "resume",
+      "kind": "",
+      "method": "POST",
+      "user": "Demo",
+      "admin": false,
+      "storage": true,
+      "status": 405
+    },
+    {
+      "surface": "resume",
+      "kind": "",
+      "method": "GET",
+      "user": "Nastya",
+      "admin": false,
+      "storage": true,
+      "status": 200,
+      "owner": "Nastya"
+    },
+    {
+      "surface": "resume",
+      "kind": "",
+      "method": "PUT",
+      "user": "Nastya",
+      "admin": false,
+      "storage": true,
+      "status": 200,
+      "owner": "Nastya"
+    },
+    {
+      "surface": "resume",
+      "kind": "",
+      "method": "POST",
+      "user": "Nastya",
+      "admin": false,
+      "storage": true,
+      "status": 405
+    },
+    {
+      "surface": "prompts",
+      "kind": "",
+      "method": "GET",
+      "user": "Eugene",
+      "admin": true,
+      "storage": true,
+      "status": 200
+    },
+    {
+      "surface": "prompts",
+      "kind": "",
+      "method": "PUT",
+      "user": "Eugene",
+      "admin": true,
+      "storage": true,
+      "status": 404
+    },
+    {
+      "surface": "prompts",
+      "kind": "",
+      "method": "POST",
+      "user": "Eugene",
+      "admin": true,
+      "storage": true,
+      "status": 404
+    },
+    {
+      "surface": "prompts",
+      "kind": "cover_letter",
+      "method": "GET",
+      "user": "Eugene",
+      "admin": true,
+      "storage": true,
+      "status": 405
+    },
+    {
+      "surface": "prompts",
+      "kind": "cover_letter",
+      "method": "PUT",
+      "user": "Eugene",
+      "admin": true,
+      "storage": true,
+      "status": 200
+    },
+    {
+      "surface": "prompts",
+      "kind": "cover_letter",
+      "method": "POST",
+      "user": "Eugene",
+      "admin": true,
+      "storage": true,
+      "status": 405
+    },
+    {
+      "surface": "prompts",
+      "kind": "relevance",
+      "method": "GET",
+      "user": "Eugene",
+      "admin": true,
+      "storage": true,
+      "status": 405
+    },
+    {
+      "surface": "prompts",
+      "kind": "relevance",
+      "method": "PUT",
+      "user": "Eugene",
+      "admin": true,
+      "storage": true,
+      "status": 200
+    },
+    {
+      "surface": "prompts",
+      "kind": "relevance",
+      "method": "POST",
+      "user": "Eugene",
+      "admin": true,
+      "storage": true,
+      "status": 405
+    },
+    {
+      "surface": "prompts",
+      "kind": "vacancy_extraction",
+      "method": "GET",
+      "user": "Eugene",
+      "admin": true,
+      "storage": true,
+      "status": 405
+    },
+    {
+      "surface": "prompts",
+      "kind": "vacancy_extraction",
+      "method": "PUT",
+      "user": "Eugene",
+      "admin": true,
+      "storage": true,
+      "status": 200
+    },
+    {
+      "surface": "prompts",
+      "kind": "vacancy_extraction",
+      "method": "POST",
+      "user": "Eugene",
+      "admin": true,
+      "storage": true,
+      "status": 405
+    },
+    {
+      "surface": "prompts",
+      "kind": "vacancy_role",
+      "method": "GET",
+      "user": "Eugene",
+      "admin": true,
+      "storage": true,
+      "status": 405
+    },
+    {
+      "surface": "prompts",
+      "kind": "vacancy_role",
+      "method": "PUT",
+      "user": "Eugene",
+      "admin": true,
+      "storage": true,
+      "status": 200
+    },
+    {
+      "surface": "prompts",
+      "kind": "vacancy_role",
+      "method": "POST",
+      "user": "Eugene",
+      "admin": true,
+      "storage": true,
+      "status": 405
+    },
+    {
+      "surface": "prompts",
+      "kind": "CI_unknown",
+      "method": "GET",
+      "user": "Eugene",
+      "admin": true,
+      "storage": true,
+      "status": 404
+    },
+    {
+      "surface": "prompts",
+      "kind": "CI_unknown",
+      "method": "PUT",
+      "user": "Eugene",
+      "admin": true,
+      "storage": true,
+      "status": 404
+    },
+    {
+      "surface": "prompts",
+      "kind": "CI_unknown",
+      "method": "POST",
+      "user": "Eugene",
+      "admin": true,
+      "storage": true,
+      "status": 404
+    },
+    {
+      "surface": "prompts",
+      "kind": "",
+      "method": "GET",
+      "user": "Demo",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "prompts",
+      "kind": "",
+      "method": "PUT",
+      "user": "Demo",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "prompts",
+      "kind": "",
+      "method": "POST",
+      "user": "Demo",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "prompts",
+      "kind": "cover_letter",
+      "method": "GET",
+      "user": "Demo",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "prompts",
+      "kind": "cover_letter",
+      "method": "PUT",
+      "user": "Demo",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "prompts",
+      "kind": "cover_letter",
+      "method": "POST",
+      "user": "Demo",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "prompts",
+      "kind": "relevance",
+      "method": "GET",
+      "user": "Demo",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "prompts",
+      "kind": "relevance",
+      "method": "PUT",
+      "user": "Demo",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "prompts",
+      "kind": "relevance",
+      "method": "POST",
+      "user": "Demo",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "prompts",
+      "kind": "vacancy_extraction",
+      "method": "GET",
+      "user": "Demo",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "prompts",
+      "kind": "vacancy_extraction",
+      "method": "PUT",
+      "user": "Demo",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "prompts",
+      "kind": "vacancy_extraction",
+      "method": "POST",
+      "user": "Demo",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "prompts",
+      "kind": "vacancy_role",
+      "method": "GET",
+      "user": "Demo",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "prompts",
+      "kind": "vacancy_role",
+      "method": "PUT",
+      "user": "Demo",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "prompts",
+      "kind": "vacancy_role",
+      "method": "POST",
+      "user": "Demo",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "prompts",
+      "kind": "CI_unknown",
+      "method": "GET",
+      "user": "Demo",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "prompts",
+      "kind": "CI_unknown",
+      "method": "PUT",
+      "user": "Demo",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "prompts",
+      "kind": "CI_unknown",
+      "method": "POST",
+      "user": "Demo",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "prompts",
+      "kind": "",
+      "method": "GET",
+      "user": "Nastya",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "prompts",
+      "kind": "",
+      "method": "PUT",
+      "user": "Nastya",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "prompts",
+      "kind": "",
+      "method": "POST",
+      "user": "Nastya",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "prompts",
+      "kind": "cover_letter",
+      "method": "GET",
+      "user": "Nastya",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "prompts",
+      "kind": "cover_letter",
+      "method": "PUT",
+      "user": "Nastya",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "prompts",
+      "kind": "cover_letter",
+      "method": "POST",
+      "user": "Nastya",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "prompts",
+      "kind": "relevance",
+      "method": "GET",
+      "user": "Nastya",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "prompts",
+      "kind": "relevance",
+      "method": "PUT",
+      "user": "Nastya",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "prompts",
+      "kind": "relevance",
+      "method": "POST",
+      "user": "Nastya",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "prompts",
+      "kind": "vacancy_extraction",
+      "method": "GET",
+      "user": "Nastya",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "prompts",
+      "kind": "vacancy_extraction",
+      "method": "PUT",
+      "user": "Nastya",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "prompts",
+      "kind": "vacancy_extraction",
+      "method": "POST",
+      "user": "Nastya",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "prompts",
+      "kind": "vacancy_role",
+      "method": "GET",
+      "user": "Nastya",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "prompts",
+      "kind": "vacancy_role",
+      "method": "PUT",
+      "user": "Nastya",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "prompts",
+      "kind": "vacancy_role",
+      "method": "POST",
+      "user": "Nastya",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "prompts",
+      "kind": "CI_unknown",
+      "method": "GET",
+      "user": "Nastya",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "prompts",
+      "kind": "CI_unknown",
+      "method": "PUT",
+      "user": "Nastya",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "prompts",
+      "kind": "CI_unknown",
+      "method": "POST",
+      "user": "Nastya",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "models",
+      "kind": "",
+      "method": "GET",
+      "user": "Eugene",
+      "admin": true,
+      "storage": true,
+      "status": 200
+    },
+    {
+      "surface": "models",
+      "kind": "",
+      "method": "PUT",
+      "user": "Eugene",
+      "admin": true,
+      "storage": true,
+      "status": 404
+    },
+    {
+      "surface": "models",
+      "kind": "",
+      "method": "POST",
+      "user": "Eugene",
+      "admin": true,
+      "storage": true,
+      "status": 404
+    },
+    {
+      "surface": "models",
+      "kind": "cover_letter",
+      "method": "GET",
+      "user": "Eugene",
+      "admin": true,
+      "storage": true,
+      "status": 405
+    },
+    {
+      "surface": "models",
+      "kind": "cover_letter",
+      "method": "PUT",
+      "user": "Eugene",
+      "admin": true,
+      "storage": true,
+      "status": 200
+    },
+    {
+      "surface": "models",
+      "kind": "cover_letter",
+      "method": "POST",
+      "user": "Eugene",
+      "admin": true,
+      "storage": true,
+      "status": 405
+    },
+    {
+      "surface": "models",
+      "kind": "relevance",
+      "method": "GET",
+      "user": "Eugene",
+      "admin": true,
+      "storage": true,
+      "status": 405
+    },
+    {
+      "surface": "models",
+      "kind": "relevance",
+      "method": "PUT",
+      "user": "Eugene",
+      "admin": true,
+      "storage": true,
+      "status": 200
+    },
+    {
+      "surface": "models",
+      "kind": "relevance",
+      "method": "POST",
+      "user": "Eugene",
+      "admin": true,
+      "storage": true,
+      "status": 405
+    },
+    {
+      "surface": "models",
+      "kind": "vacancy_extraction",
+      "method": "GET",
+      "user": "Eugene",
+      "admin": true,
+      "storage": true,
+      "status": 405
+    },
+    {
+      "surface": "models",
+      "kind": "vacancy_extraction",
+      "method": "PUT",
+      "user": "Eugene",
+      "admin": true,
+      "storage": true,
+      "status": 200
+    },
+    {
+      "surface": "models",
+      "kind": "vacancy_extraction",
+      "method": "POST",
+      "user": "Eugene",
+      "admin": true,
+      "storage": true,
+      "status": 405
+    },
+    {
+      "surface": "models",
+      "kind": "vacancy_role",
+      "method": "GET",
+      "user": "Eugene",
+      "admin": true,
+      "storage": true,
+      "status": 405
+    },
+    {
+      "surface": "models",
+      "kind": "vacancy_role",
+      "method": "PUT",
+      "user": "Eugene",
+      "admin": true,
+      "storage": true,
+      "status": 200
+    },
+    {
+      "surface": "models",
+      "kind": "vacancy_role",
+      "method": "POST",
+      "user": "Eugene",
+      "admin": true,
+      "storage": true,
+      "status": 405
+    },
+    {
+      "surface": "models",
+      "kind": "CI_unknown",
+      "method": "GET",
+      "user": "Eugene",
+      "admin": true,
+      "storage": true,
+      "status": 404
+    },
+    {
+      "surface": "models",
+      "kind": "CI_unknown",
+      "method": "PUT",
+      "user": "Eugene",
+      "admin": true,
+      "storage": true,
+      "status": 404
+    },
+    {
+      "surface": "models",
+      "kind": "CI_unknown",
+      "method": "POST",
+      "user": "Eugene",
+      "admin": true,
+      "storage": true,
+      "status": 404
+    },
+    {
+      "surface": "models",
+      "kind": "",
+      "method": "GET",
+      "user": "Demo",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "models",
+      "kind": "",
+      "method": "PUT",
+      "user": "Demo",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "models",
+      "kind": "",
+      "method": "POST",
+      "user": "Demo",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "models",
+      "kind": "cover_letter",
+      "method": "GET",
+      "user": "Demo",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "models",
+      "kind": "cover_letter",
+      "method": "PUT",
+      "user": "Demo",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "models",
+      "kind": "cover_letter",
+      "method": "POST",
+      "user": "Demo",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "models",
+      "kind": "relevance",
+      "method": "GET",
+      "user": "Demo",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "models",
+      "kind": "relevance",
+      "method": "PUT",
+      "user": "Demo",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "models",
+      "kind": "relevance",
+      "method": "POST",
+      "user": "Demo",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "models",
+      "kind": "vacancy_extraction",
+      "method": "GET",
+      "user": "Demo",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "models",
+      "kind": "vacancy_extraction",
+      "method": "PUT",
+      "user": "Demo",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "models",
+      "kind": "vacancy_extraction",
+      "method": "POST",
+      "user": "Demo",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "models",
+      "kind": "vacancy_role",
+      "method": "GET",
+      "user": "Demo",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "models",
+      "kind": "vacancy_role",
+      "method": "PUT",
+      "user": "Demo",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "models",
+      "kind": "vacancy_role",
+      "method": "POST",
+      "user": "Demo",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "models",
+      "kind": "CI_unknown",
+      "method": "GET",
+      "user": "Demo",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "models",
+      "kind": "CI_unknown",
+      "method": "PUT",
+      "user": "Demo",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "models",
+      "kind": "CI_unknown",
+      "method": "POST",
+      "user": "Demo",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "models",
+      "kind": "",
+      "method": "GET",
+      "user": "Nastya",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "models",
+      "kind": "",
+      "method": "PUT",
+      "user": "Nastya",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "models",
+      "kind": "",
+      "method": "POST",
+      "user": "Nastya",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "models",
+      "kind": "cover_letter",
+      "method": "GET",
+      "user": "Nastya",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "models",
+      "kind": "cover_letter",
+      "method": "PUT",
+      "user": "Nastya",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "models",
+      "kind": "cover_letter",
+      "method": "POST",
+      "user": "Nastya",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "models",
+      "kind": "relevance",
+      "method": "GET",
+      "user": "Nastya",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "models",
+      "kind": "relevance",
+      "method": "PUT",
+      "user": "Nastya",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "models",
+      "kind": "relevance",
+      "method": "POST",
+      "user": "Nastya",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "models",
+      "kind": "vacancy_extraction",
+      "method": "GET",
+      "user": "Nastya",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "models",
+      "kind": "vacancy_extraction",
+      "method": "PUT",
+      "user": "Nastya",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "models",
+      "kind": "vacancy_extraction",
+      "method": "POST",
+      "user": "Nastya",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "models",
+      "kind": "vacancy_role",
+      "method": "GET",
+      "user": "Nastya",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "models",
+      "kind": "vacancy_role",
+      "method": "PUT",
+      "user": "Nastya",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "models",
+      "kind": "vacancy_role",
+      "method": "POST",
+      "user": "Nastya",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "models",
+      "kind": "CI_unknown",
+      "method": "GET",
+      "user": "Nastya",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "models",
+      "kind": "CI_unknown",
+      "method": "PUT",
+      "user": "Nastya",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "models",
+      "kind": "CI_unknown",
+      "method": "POST",
+      "user": "Nastya",
+      "admin": false,
+      "storage": true,
+      "status": 403
+    },
+    {
+      "surface": "resume",
+      "kind": "",
+      "method": "GET",
+      "user": "Eugene",
+      "admin": true,
+      "storage": false,
+      "status": 503
+    },
+    {
+      "surface": "resume",
+      "kind": "",
+      "method": "PUT",
+      "user": "Eugene",
+      "admin": true,
+      "storage": false,
+      "status": 503
+    },
+    {
+      "surface": "resume",
+      "kind": "",
+      "method": "HEAD",
+      "user": "Eugene",
+      "admin": true,
+      "storage": false,
+      "status": 405
+    },
+    {
+      "surface": "resume",
+      "kind": "",
+      "method": "GET",
+      "user": "Demo",
+      "admin": false,
+      "storage": false,
+      "status": 503
+    },
+    {
+      "surface": "resume",
+      "kind": "",
+      "method": "PUT",
+      "user": "Demo",
+      "admin": false,
+      "storage": false,
+      "status": 503
+    },
+    {
+      "surface": "resume",
+      "kind": "",
+      "method": "HEAD",
+      "user": "Demo",
+      "admin": false,
+      "storage": false,
+      "status": 405
+    },
+    {
+      "surface": "prompts",
+      "kind": "",
+      "method": "GET",
+      "user": "Eugene",
+      "admin": true,
+      "storage": false,
+      "status": 503
+    },
+    {
+      "surface": "prompts",
+      "kind": "",
+      "method": "PUT",
+      "user": "Eugene",
+      "admin": true,
+      "storage": false,
+      "status": 503
+    },
+    {
+      "surface": "prompts",
+      "kind": "",
+      "method": "HEAD",
+      "user": "Eugene",
+      "admin": true,
+      "storage": false,
+      "status": 503
+    },
+    {
+      "surface": "prompts",
+      "kind": "",
+      "method": "GET",
+      "user": "Demo",
+      "admin": false,
+      "storage": false,
+      "status": 403
+    },
+    {
+      "surface": "prompts",
+      "kind": "",
+      "method": "PUT",
+      "user": "Demo",
+      "admin": false,
+      "storage": false,
+      "status": 403
+    },
+    {
+      "surface": "prompts",
+      "kind": "",
+      "method": "HEAD",
+      "user": "Demo",
+      "admin": false,
+      "storage": false,
+      "status": 403
+    },
+    {
+      "surface": "models",
+      "kind": "",
+      "method": "GET",
+      "user": "Eugene",
+      "admin": true,
+      "storage": false,
+      "status": 503
+    },
+    {
+      "surface": "models",
+      "kind": "",
+      "method": "PUT",
+      "user": "Eugene",
+      "admin": true,
+      "storage": false,
+      "status": 503
+    },
+    {
+      "surface": "models",
+      "kind": "",
+      "method": "HEAD",
+      "user": "Eugene",
+      "admin": true,
+      "storage": false,
+      "status": 503
+    },
+    {
+      "surface": "models",
+      "kind": "",
+      "method": "GET",
+      "user": "Demo",
+      "admin": false,
+      "storage": false,
+      "status": 403
+    },
+    {
+      "surface": "models",
+      "kind": "",
+      "method": "PUT",
+      "user": "Demo",
+      "admin": false,
+      "storage": false,
+      "status": 403
+    },
+    {
+      "surface": "models",
+      "kind": "",
+      "method": "HEAD",
+      "user": "Demo",
+      "admin": false,
+      "storage": false,
+      "status": 403
+    }
+  ]
+}

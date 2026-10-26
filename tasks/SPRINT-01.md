@@ -1,6 +1,6 @@
 # Спринт 1.1 — функциональная миграция Go
 
-**Текущий активный спринт.** Релиз и переключение ещё не выполнены. `GO-001…GO-028` сохраняют исходную нумерацию работ `1.1.01…1.1.28`. `GO-029…GO-090` — выделенные узкие задачи, не подменяющие критерии крупных пунктов. Ни один коммит сам по себе не доказывает полную приёмку на MariaDB.
+**Текущий активный спринт.** Релиз и переключение ещё не выполнены. `GO-001…GO-028` сохраняют исходную нумерацию работ `1.1.01…1.1.28`. `GO-029…GO-093` — выделенные узкие задачи, не подменяющие критерии крупных пунктов. Ни один коммит сам по себе не доказывает полную приёмку на MariaDB.
 
 **Актуальный статус на 26.10.2026:** `[x]` — завершён именно указанный результат с доказательствами; `[ ]` — остаются критерии. Для больших GO-001…028 дополнительно отмечены проверенные части, чтобы не путать «код существует», «прошёл synthetic CI» и «принят внешний staging/релиз». Исторические v12–v21 ниже не являются текущим статусом: впоследствии прошли Go vet/race/tagged build, web, MariaDB schema/rollback/locking, авторизованный API и 14 browser-сценариев. [Актуальная контрольная точка](STACK.md), [инструкция запуска](../docs/deployment/README.md).
 
@@ -1191,3 +1191,26 @@
 - **Критерии:** archive→delete с приложениями/задачами; detach вместо удаления application/task/history; каскады личных states/letters/roles/source, поздний SQL rollback после detachment/delete и admin HTTP. Только disposable собственные synthetic IDs, без GO-032.
 - **Зависимости:** GO-088 creation и нужная GO-089 связность.
 - **Результат:** [PR #44](https://github.com/meInteractive/it-map/pull/44), code0b4b3aa/tree692116d1adb1c8e9e15ff603d15a6354712aa6de. Public40374264948 и MariaDB40374264558 pass: два required delete SQL/HTTP targets без skips, immediate/channel delete и archive→delete, сохранение applications/tasks/history двух users, четыре late faults включая реальный DELETE с FK cascades и fresh-pool retry. Прежние create/edit/CAS/CRM/receipt/task/scheduler/browser/API smoke pass; общий fixture/shared helpers и новый channel edit guard также прошли. Legacy archive JSON исправлен после локальной падающей regression; hard delete включает оба preservation flags даже false. После пользовательского merge #42/#43 PR #44 перенаправлен в main: он также доставляет GO-089, который #43 объединил в прежнюю feature branch. Локальные race/unit/tagged/vet/build/web/actionlint/source/history/manifest/negative guards успешны.
+
+
+### [ ] GO-091. Source-backed profile/settings контракты и схема v39 (часть GO-016)
+
+- **Приоритет:** Критический prerequisite backup.
+- **Критерии:** неизменённые legacy read/input функции подтверждают defaults, четыре kind и mapping пяти таблиц v39; Unicode code points (не UTF-16) и NUL/byte limits, exact fields/revision/model syntax/JEV kind restrictions. Route oracle подтверждает signed-user resume и admin-only shared prompts/models. Pure Go tests против синтетических source vectors; никаких SQL/provider calls.
+- **Границы:** не полная GO-016 и не готовый backup; SQL/API и CAS подтверждаются GO-092/093, live provider catalog/keys не подключаются.
+- **Результат:** добавлены 278 source input vectors, 135 authenticated route cases, 4 SQL-derived kind bindings и пять schema tables v39; defaults получены фактическими legacy readers на in-memory spies. Pure Go validations/permissions/mapping/default/schema tests проходят; обязательный source oracle добавлен в CI. SQL/API остаются GO-092/093.
+
+### [ ] GO-092. Личное резюме: SQL/HTTP CAS и user isolation (часть GO-016)
+
+- **Приоритет:** Критический prerequisite backup.
+- **Зависимости:** GO-091, existing user_profiles schema/auth/disposable guards.
+- **Критерии:** GET defaults без lazy DDL/write; PUT текущего signed user, code-point/NUL/256KiB limits, expected revision→increment/409, create/update/clear. Два SQL writer на одной revision, late rollback/fresh pool retry; actual auth/router/repository HTTP, никакого выбора чужого userName, schema/data сохранны для v39. Только required disposable CI без skips, cleanup сохраняет baseline.
+- **Результат:** не реализовано.
+
+### [ ] GO-093. Общие промты и модели: schema/data, SQL CAS и admin API (часть GO-016)
+
+- **Приоритет:** Критический prerequisite backup.
+- **Зависимости:** GO-091/092, пять existing tables без DDL.
+- **Критерии:** четыре prompt kind и model projections сохраняют source defaults и физический mapping; prompt/model revisions независимы в singleton settings. Shared text/admin read/write/CAS/clear, preserved model fields; model syntax/storage validation/JEV restrictions и provider validation gate на mocks, без обхода каталогов OpenAI/JEV. Реальные SQL/HTTP owner/admin/limit/409/rollback/race на disposable DB, rows и schema совместимы с v39. Provider-backed runtime choices остаются guarded до готового каталога; реальных keys/calls нет.
+- **Границы:** оставшиеся settings UI/provider clients/API documentation — полный GO-016 остаётся открыт. Готовность prerequisite для GO-041 фиксировать по точным SQL/HTTP proofs.
+- **Результат:** не реализовано.
