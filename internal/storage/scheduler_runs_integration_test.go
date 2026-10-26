@@ -398,12 +398,47 @@ func (c schedulerFaultConn) BeginTx(ctx context.Context, options driver.TxOption
 func (c schedulerFaultConn) QueryContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Rows, error) {
 	return c.Conn.(driver.QueryerContext).QueryContext(ctx, query, args)
 }
-func (c schedulerFaultConn) ExecContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Result, error) {
-	result, err := c.Conn.(driver.ExecerContext).ExecContext(ctx, query, args)
-	if err == nil && strings.HasPrefix(query, c.owner.prefix) && c.owner.fired.CompareAndSwap(false, true) {
+func (c schedulerFaultConn) Prepare(query string) (driver.Stmt, error) {
+	stmt, err := c.Conn.Prepare(query)
+	if err != nil {
+		return nil, err
+	}
+	return schedulerFaultStmt{Stmt: stmt, query: query, owner: c.owner}, nil
+}
+func (c schedulerFaultConn) PrepareContext(ctx context.Context, query string) (driver.Stmt, error) {
+	stmt, err := c.Conn.(driver.ConnPrepareContext).PrepareContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	return schedulerFaultStmt{Stmt: stmt, query: query, owner: c.owner}, nil
+}
+func (c schedulerFaultConnector) after(query string, result driver.Result, err error) (driver.Result, error) {
+	if err == nil && strings.HasPrefix(query, c.prefix) && c.fired.CompareAndSwap(false, true) {
 		return nil, errors.New("CI synthetic error after real scheduler SQL")
 	}
 	return result, err
+}
+func (c schedulerFaultConn) ExecContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Result, error) {
+	result, err := c.Conn.(driver.ExecerContext).ExecContext(ctx, query, args)
+	return c.owner.after(query, result, err)
+}
+
+type schedulerFaultStmt struct {
+	driver.Stmt
+	query string
+	owner schedulerFaultConnector
+}
+
+func (s schedulerFaultStmt) QueryContext(ctx context.Context, args []driver.NamedValue) (driver.Rows, error) {
+	return s.Stmt.(driver.StmtQueryContext).QueryContext(ctx, args)
+}
+func (s schedulerFaultStmt) ExecContext(ctx context.Context, args []driver.NamedValue) (driver.Result, error) {
+	result, err := s.Stmt.(driver.StmtExecContext).ExecContext(ctx, args)
+	return s.owner.after(s.query, result, err)
+}
+func (s schedulerFaultStmt) Exec(args []driver.Value) (driver.Result, error) {
+	result, err := s.Stmt.Exec(args)
+	return s.owner.after(s.query, result, err)
 }
 func schedulerFaultRepository(t *testing.T, generation, prefix string) (parser.RunRepository, *atomic.Bool) {
 	t.Helper()
