@@ -114,3 +114,10 @@ GO-062 / [PR #20](https://github.com/meInteractive/it-map/pull/20) поверх 
 Все указанные code SHA прошли соответствующие обязательные CI. Пять receiptwrites targets теперь реально выполняются без skips; cleanup сохраняет прежний readonly API/14 browser/native smoke. Локально live SQL явно пропускался без DSN, а четыре negative guards отказали до соединения. Go 1.23.12 compile/tagged tests, Go 1.27.3 vet/race/сборки, source/history/schema/fixtures/actionlint/manifest проверены; frontend build выполнен на GO-060, последующие изменения только test-only Go/workflow/docs. Build artifact вынесен в work перед source gate; generated dist в Git не добавлялся.
 
 Реальный сервер/SSH/systemd/TLS/согласованный снимок по-прежнему не подключены. Полные GO-005/007/013/031 остаются открыты. Следующая разрешённая узкая часть GO-031 — controlled authenticated HTTP create/replay/error/delete поверх disposable MariaDB, с отдельной фазой записи и восстановлением readonly fixtures; затем shortcut/смешанные операции и GO-032 по зависимостям. Новый номер выбирать после проверки актуального реестра/GitHub. Агент не выполнял merge PR, прямой push main/master, включение публикации, production/GPT Sites/D1 или реальную SQL-операцию вне CI.
+
+
+## Восстановление закрытого стека и приоритет GO-032
+
+GitHub повторно проверен 26.10.2026: #19 объединён в main 48fb03a, затем #21 — в #20 (b39e1a2), а #20 — в уже закрытую ветку #19 (7142c2c). Открытых PR нет; main пока не содержит GO-062/063. GO-064 / codex/GO-064-stack-and-priorities начинается от 7142c2c, присоединяет main обычным merge и возвращает весь результат отдельным PR в main. Diff internal/.github/go.mod/go.sum относительно проверенного 07e1ec0 пуст; история не переписывается.
+
+По явному уточнению пользователя GO-032 имеет средний приоритет. Текущий спринт только 1.1; следующая критическая порция — GO-031 HTTP create/replay/error/delete, затем shortcut/смешанные операции, GO-033/034. Более ранние упоминания GO-032 в критической очереди заменены этим уточнением. Никакого автоматического merge, real server/DB/production/GPT Sites/D1 действий.
