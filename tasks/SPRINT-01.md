@@ -1,6 +1,6 @@
 # Спринт 1.1 — функциональная миграция Go
 
-**Текущий активный спринт.** Релиз и переключение ещё не выполнены. `GO-001…GO-028` сохраняют исходную нумерацию работ `1.1.01…1.1.28`. `GO-029…GO-060` — выделенные узкие задачи, не подменяющие критерии крупных пунктов. Ни один коммит сам по себе не доказывает полную приёмку на MariaDB.
+**Текущий активный спринт.** Релиз и переключение ещё не выполнены. `GO-001…GO-028` сохраняют исходную нумерацию работ `1.1.01…1.1.28`. `GO-029…GO-061` — выделенные узкие задачи, не подменяющие критерии крупных пунктов. Ни один коммит сам по себе не доказывает полную приёмку на MariaDB.
 
 **Актуальный статус на 25.10.2026:** `[x]` — завершён именно указанный результат с доказательствами; `[ ]` — остаются критерии. Для больших GO-001…028 дополнительно отмечены проверенные части, чтобы не путать «код существует», «прошёл synthetic CI» и «принят внешний staging/релиз». Исторические v12–v21 ниже не являются текущим статусом: впоследствии прошли Go vet/race/tagged build, web, MariaDB schema/rollback/locking, авторизованный API и 14 browser-сценариев. [Актуальная контрольная точка](STACK.md), [инструкция запуска](../docs/deployment/README.md).
 
@@ -919,7 +919,7 @@
 - **Проверки:** env completeness, source/history/links/manifest, обязательный CI на точном SHA; без SQL/server действий.
 - **Результат:** codex/GO-059-shared-db-config, `e4f7ce9`, [PR #16](https://github.com/meInteractive/it-map/pull/16) в открытую ветку PR #13 после пользовательского merge #14. [Go/web/security](https://github.com/meInteractive/it-map/actions/runs/40197308011) и [MariaDB/API/browser/native](https://github.com/meInteractive/it-map/actions/runs/40197308055) прошли. PR #15 / GO-058 направлен поверх этой конфигурации; итоговый [CI d5fa211](https://github.com/meInteractive/it-map/actions/runs/40197422957) также успешен. Реальный SQL/server не изменялся.
 
-### [ ] GO-060. Конкурентное создание откликов на MariaDB (часть GO-031/GO-013)
+### [x] GO-060. Конкурентное создание откликов на MariaDB (часть GO-031/GO-013)
 
 - **Приоритет:** Критический.
 - **Зависимости:** GO-055/058, объединённые в main 0c473e0; synthetic CI/DSN/target/generation guards. Свободный номер проверен по реестру и открытым PR.
@@ -927,4 +927,15 @@
 - **Компоненты:** application_concurrency_integration_test.go, общий test-only receipt fixture, обязательный receiptwrites gate после readonly business suite.
 - **Критерии:** два разных физических соединения одновременно достигли generation FOR UPDATE при удерживаемой третьей транзакцией блокировке; одинаковый ключ даёт один create/один replay с общим ID; разные intent/одна vacancy/десятый слот дают одного победителя и точную доменную ошибку проигравшего. Число applications/receipts/history, отсутствие incomplete receipts и replay победителя проверяются SQL. Cleanup возвращает Demo=0, полностью сохраняет Eugene/history/generation.
 - **Проверки:** vet/race/обе сборки/tagged tests, четыре fail-closed guard сценария без SQL, source/history/schema/fixture/JS-oracle/actionlint/manifest; затем обязательный disposable MariaDB/все прежние API/browser/native smoke на точном SHA. Локальная БД не запускается.
-- **Результат:** реализация в codex/GO-060-receipt-concurrency от main 0c473e0; локально прошли vet (обычный/tagged), race, обе сборки, tagged suite (live SQL явно пропущен без DSN), module verify/tidy-diff, source/history/schema/fixture/JS-oracle/actionlint и frontend build. Все четыре negative guards подтвердили failure до соединения с нулём skips. До live CI задача открыта.
+- **Результат:** реализация в codex/GO-060-receipt-concurrency от main 0c473e0; локально прошли vet (обычный/tagged), race, обе сборки, tagged suite (live SQL явно пропущен без DSN), module verify/tidy-diff, source/history/schema/fixture/JS-oracle/actionlint и frontend build. Все четыре negative guards подтвердили failure до соединения с нулём skips. [PR #18](https://github.com/meInteractive/it-map/pull/18), код `660c3d1`: [Go/web/security](https://github.com/meInteractive/it-map/actions/runs/40236682531) и [MariaDB concurrency/receipt/API/14 browser/native smoke](https://github.com/meInteractive/it-map/actions/runs/40236682675) прошли. Узкий GO-060 завершён; GO-031 открыт.
+
+
+### [ ] GO-061. Откат незавершённого create и повтор после потери ответа (часть GO-031/GO-013)
+
+- **Приоритет:** Критический.
+- **Зависимости:** GO-058/060, обязательный CI кода 660c3d1; ветка от проверенной GO-060 с отдельным doc checkpoint 8978512.
+- **Границы:** обычный create, ошибка клиента перед history/receipt после реальных предыдущих INSERT и потерянное post-commit чтение. Реальный kill процесса/сервера, неопределённый COMMIT/сетевой разрыв и CAS не имитируются этим результатом.
+- **Компоненты:** test-only прозрачная обёртка реального pinned mysql driver, application_faults_integration_test.go и третий обязательный receiptwrites target.
+- **Критерии:** однократная ошибка точно в указанной точке не маскируется; подтверждены реальные предыдущие INSERT. До commit все applications/history/receipts откатываются, после commit сохраняется ровно один комплект. После закрытия всего interrupted pool новый repository/соединение повторяет тот же key/context/intent: fresh после rollback, replay с исходным ID после commit. Повтор/другой intent/поля/история и cleanup проверяются SQL.
+- **Проверки:** обычный/tagged vet, race, tagged tests/build/Go 1.23, fail-closed guards, source/history/schema/fixtures/actionlint/manifest; live SQL только в existing disposable CI, затем все прежние API/browser/native gates.
+- **Результат:** реализация в codex/GO-061-receipt-fault-recovery; локально прошли обычный/tagged vet, tagged race suite (live SQL явно пропущен без DSN), обе сборки, Go 1.23.12 storage compile/tests, source/history/schema/fixture/actionlint и четыре отрицательных guards до соединения без skips. До обязательного live CI остаётся открытой.
