@@ -54,6 +54,7 @@ type Options struct {
 	CompanyFlags         CompanyFlagLister
 	CompanyFlagWrites    CompanyFlagWriter
 	CompanyCRM           CompanyCRMReader
+	CompanyCRMWrites     CompanyCRMWriter
 	Tasks                TaskLister
 	TaskCreates          TaskCreator
 	TaskCompletion       TaskCompletionWriter
@@ -120,6 +121,9 @@ func NewHandlerWithOptions(logger *slog.Logger, opts Options) http.Handler {
 		}
 		if opts.CompanyCRM != nil {
 			mux.HandleFunc("GET /api/crm", CompanyCRMHandler(opts.Auth, opts.CompanyCRM))
+		}
+		if opts.CompanyCRMWrites != nil {
+			mux.HandleFunc("PUT /api/crm", CompanyCRMWriteHandler(opts.Auth, opts.CompanyCRMWrites))
 		}
 		if opts.CompanyFlagWrites != nil {
 			mux.HandleFunc("PUT /api/crm/favorite", CompanyFlagWriteHandler(opts.Auth, opts.CompanyFlagWrites, "favorite"))
