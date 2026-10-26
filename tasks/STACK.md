@@ -230,3 +230,6 @@ GO-084 / [PR #38](https://github.com/meInteractive/it-map/pull/38), code9986429/
 
 
 GO-085 начата от GO-084 checkpoint08c3969 с проверенным runtime9986429; отдельная codex/GO-085-company-crm-save направляется в codex/GO-084-crm-flag-writes. Перенос PUT /api/crm / atomic state-history и required disposable gates; до положительного CI задача открыта.
+
+
+GO-085 / [PR #39](https://github.com/meInteractive/it-map/pull/39), code8d9d16b/tree1fa5df8a468f8bbe64f20aca301f96defd7fa664: public40336444772 и MariaDB40336444745 успешны. CRMSaveDisposable/CRMSaveHTTPDisposable ran/pass без skips; все предыдущие SQL/14 browser/API smoke pass. Финальная отметка касается только статуса/доказательств/manifest, runtime не меняется.

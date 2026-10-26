@@ -196,7 +196,7 @@
 ### [ ] GO-010. CRM компаний и пользовательские списки
 
 - **Приоритет:** Критический.
-- **Критическая часть:** [x] Favorite/hidden SQL+HTTP, user isolation, UNIQUE/FK, concurrent merge и rollback проверены GO-084 / #38. [ ] Comment/status/history save и concurrency/rollback — GO-085. У legacy company CRM нет revision/CAS-поля; не изобретать новый контракт.
+- **Критическая часть:** [x] Favorite/hidden SQL+HTTP, user isolation, UNIQUE/FK, concurrent merge и rollback проверены GO-084 / #38. [x] Comment/status/history save и concurrency/rollback — GO-085 / #39. У legacy company CRM нет revision/CAS-поля; не изобретать новый контракт.
 - **Средняя часть:** [ ] Минимальный UI round-trip действий после SQL/API gates.
 - **Низкая часть:** [ ] Визуальная доводка CRM-панелей/списков.
 
@@ -1143,10 +1143,10 @@
 - **Границы:** только guarded disposable GitHub CI, локально SQL skip/negative guards; без схемных изменений. Legacy company flag API не имеет revision/CAS. Статус/comment/history save — GO-085; полная GO-010 открыта.
 - **Результат:** [PR #38](https://github.com/meInteractive/it-map/pull/38), code9986429. Первый CI воспроизвёл конкурентный дефект INSERT IGNORE → FOR UPDATE; no-op UPSERT с exclusive parent lock устранил его. Исправлен GET CRM для Unicode names. На точном code SHA public40335262404 и MariaDB40335262393 успешны: два CRM targets без skips, UNIQUE/FK, два SQL writers, late rollback/bootstrap/retry, signed HTTP/isolation/generic errors; прежние receipt/task/scheduler/browser/API smoke также pass. Локально race/unit/vet/build/web/actionlint/source/history/manifest и четыре guard отказа до подключения успешны.
 
-### [ ] GO-085. CRM comment/status/history: перенос и атомарная приёмка (часть GO-010)
+### [x] GO-085. CRM comment/status/history: перенос и атомарная приёмка (часть GO-010)
 
 - **Приоритет:** Критический.
 - **Зависимости:** GO-084 locks/user isolation, legacy saveCompanyCrm и GET projections.
 - **Критерии:** PUT /api/crm сохраняет контракт status/comment/история/vacancies, типы/UTF-16 лимит/права; SQL transaction не теряет flags, history добавляется только при смене статуса. Concurrent writes дают последовательную историю, rollback после state/history write не оставляет частичных данных; HTTP и owner isolation на disposable MariaDB.
 - **Границы:** у legacy company CRM нет revision token, не добавлять новый CAS API; версии других модулей сохранять. Не объявлять полный GO-010 завершённым по одной флаговой проверке.
-- **Результат:** перенесены typed UI status/comment PUT, атомарные SQL state/history и полный vacancies response; общая exclusive parent lock используется вместе с flags. 22 source-backed вектора выполняют неизменённый legacy validation block. Добавлены required SQL/HTTP targets для истории/owner isolation/трёх SQL writers/late rollback/retry; положительная disposable приёмка ожидает Actions. Строки не trim, null/omitted очищают форму; расширенные JS coercions вне типизированного UI не добавляются.
+- **Результат:** [PR #39](https://github.com/meInteractive/it-map/pull/39), code8d9d16b. На точном code SHA public40336444772 и MariaDB40336444745 успешны: 22 source-backed вектора из неизменённого legacy route; два новых required targets без skips, last-30 history, owner isolation/full vacancies response, три одновременно работающих SQL writers, late state/history faults с rollback/bootstrap/retry новым pool. Предыдущие CRM flags/receipts/tasks/scheduler/browser/API smoke pass. Локальные race/unit/vet/build/tagged/web/actionlint/source/history/manifest и четыре guard отказа до подключения прошли. Сохранён typed UI-контракт: строки без trim, null/omitted очищают форму; расширенные JS coercions не добавлены. Критическое CRM-ядро подтверждено, полная GO-010 ещё требует среднего UI round-trip.
