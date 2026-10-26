@@ -1193,19 +1193,20 @@
 - **Результат:** [PR #44](https://github.com/meInteractive/it-map/pull/44), code0b4b3aa/tree692116d1adb1c8e9e15ff603d15a6354712aa6de. Public40374264948 и MariaDB40374264558 pass: два required delete SQL/HTTP targets без skips, immediate/channel delete и archive→delete, сохранение applications/tasks/history двух users, четыре late faults включая реальный DELETE с FK cascades и fresh-pool retry. Прежние create/edit/CAS/CRM/receipt/task/scheduler/browser/API smoke pass; общий fixture/shared helpers и новый channel edit guard также прошли. Legacy archive JSON исправлен после локальной падающей regression; hard delete включает оба preservation flags даже false. После пользовательского merge #42/#43 PR #44 перенаправлен в main: он также доставляет GO-089, который #43 объединил в прежнюю feature branch. Локальные race/unit/tagged/vet/build/web/actionlint/source/history/manifest/negative guards успешны.
 
 
-### [ ] GO-091. Source-backed profile/settings контракты и схема v39 (часть GO-016)
+### [x] GO-091. Source-backed profile/settings контракты и схема v39 (часть GO-016)
 
 - **Приоритет:** Критический prerequisite backup.
 - **Критерии:** неизменённые legacy read/input функции подтверждают defaults, четыре kind и mapping пяти таблиц v39; Unicode code points (не UTF-16) и NUL/byte limits, exact fields/revision/model syntax/JEV kind restrictions. Route oracle подтверждает signed-user resume и admin-only shared prompts/models. Pure Go tests против синтетических source vectors; никаких SQL/provider calls.
 - **Границы:** не полная GO-016 и не готовый backup; SQL/API и CAS подтверждаются GO-092/093, live provider catalog/keys не подключаются.
-- **Результат:** добавлены 278 source input vectors, 135 authenticated route cases, 4 SQL-derived kind bindings и пять schema tables v39; defaults получены фактическими legacy readers на in-memory spies. Pure Go validations/permissions/mapping/default/schema tests проходят; обязательный source oracle добавлен в CI. SQL/API остаются GO-092/093.
+- **Результат:** [PR #45](https://github.com/meInteractive/it-map/pull/45), code35f6f74/tree0dae62b48a2c6b892d004598b34e0fdc05c00eef. Public40385568261 и MariaDB40385568172 pass: 278 input vectors, 135 route cases, 4 SQL-derived kind bindings, defaults фактических readers и пять tables v39; весь прежний SQL/browser/API smoke успешен. Локальные race/tagged/vet/build/web/actionlint/source/history/manifest pass. Pure-контракт не принимает SQL/API или live provider catalog, они остаются GO-092/093.
+
 
 ### [ ] GO-092. Личное резюме: SQL/HTTP CAS и user isolation (часть GO-016)
 
 - **Приоритет:** Критический prerequisite backup.
 - **Зависимости:** GO-091, existing user_profiles schema/auth/disposable guards.
 - **Критерии:** GET defaults без lazy DDL/write; PUT текущего signed user, code-point/NUL/256KiB limits, expected revision→increment/409, create/update/clear. Два SQL writer на одной revision, late rollback/fresh pool retry; actual auth/router/repository HTTP, никакого выбора чужого userName, schema/data сохранны для v39. Только required disposable CI без skips, cleanup сохраняет baseline.
-- **Результат:** не реализовано.
+- **Результат:** реализован signed-user GET/PUT, source code-point/NUL/body limits и PK-serialized CAS; добавлены required SQL/HTTP targets для defaults/no lazy writes, schema constraints, двух concurrent first writers/editors, late faults и owner isolation. Local compile/guards проходят; positive CI ожидается.
 
 ### [ ] GO-093. Общие промты и модели: schema/data, SQL CAS и admin API (часть GO-016)
 

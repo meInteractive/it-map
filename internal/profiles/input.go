@@ -12,6 +12,7 @@ import (
 )
 
 const MaxResumeLength = 20000
+const ResumeBodyLimit = 256 << 10
 const MaxSafeRevision int64 = 9007199254740991
 
 type InputError struct {
@@ -148,7 +149,7 @@ func ParsePrompt(kind string, body []byte, declaredLength int64) (TextInput, err
 	return parseText(kind, body, declaredLength)
 }
 func parseText(kind string, body []byte, declaredLength int64) (TextInput, error) {
-	field, limit, message := "resumeMd", 256<<10, "Передайте resumeMd и revision своего резюме."
+	field, limit, message := "resumeMd", ResumeBodyLimit, "Передайте resumeMd и revision своего резюме."
 	if kind != "" {
 		field, limit, message = "markdown", PromptBodyLimit(kind), "Передайте markdown и revision промта."
 	}
