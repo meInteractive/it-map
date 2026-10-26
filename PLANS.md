@@ -73,6 +73,8 @@ Gin vs остающийся в коде `net/http`; формат и инстру
 
 Пользователь перенёс фокус на задачи парсера: сначала высокий (критический), затем средний приоритет, только спринт 1.1. Это заменяет ближайшую очередь GO-073…075; незавершённый CRUD каналов/контактов сохраняет статус, но сейчас не исполняется. Порядок по зависимостям: синтетическая crypto compatibility GO-040 → safety-контракты настроек/источников/бюджетов GO-021/017/023 → durable leases/recovery GO-045/027; строгие classification/extraction/provenance и atomic import GO-024…026 по готовым prerequisites. Затем средние provider clients GO-036…039/адаптеры GO-043/044 и включение стадий GO-046. Не включать платные запросы, фоновый Go parser или параллельный Sites scheduler. ADR-016 остаётся предложенным: synthetic contract не является разрешением применять реальные секреты.
 
+Уточнение пользователя после переключения на парсер: после этого блока приоритетны критические подзадачи критических эпиков: GO-010 MariaDB mutation/user isolation/CAS/rollback, GO-012 create/edit/delete/favorite/hidden/revision/FK, затем GO-041 export v39 → GO-042 restore/generation/round-trip/crash после необходимой схемы GO-016 и CRM-ядра. Не считать наличие кода приёмкой записи, не закрывать родительский эпик по одному узкому тесту. GO-032 — средний, не входит в эту critical очередь.
+
 Крупные части разделены до реализации: GO-076 сохраняет проверенную вершину прежнего стека для main; GO-077 — synthetic AES-GCM interoperability; GO-078 — pure scheduler settings validation; GO-079 — pure conservative budget/time contract. GO-045 требует отдельной live disposable SQL/crash приёмки, GO-026 — готовых стадий; их не закрывать только по pure тестам.
 
 ### 1. Критический

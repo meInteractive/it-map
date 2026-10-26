@@ -1074,12 +1074,12 @@
 - **Результат:** не реализовано.
 
 
-### [ ] GO-076. Сохранить проверенный стек перед работой над парсером
+### [x] GO-076. Сохранить проверенный стек перед работой над парсером
 
 - **Приоритет:** Критический prerequisite нового поручения пользователя от 26.10.2026.
 - **Границы:** PR #26…30 объединены пользователем в родительские ветки, main=b3d4820 содержит только прежний #24. Сохранить 29458b2 с GO-068…072 и присоединить main без изменения runtime/test/workflow кода. Новый PR в main; никаких автоматических merge PR.
 - **Доказательство базы:** 29458b2: public 40292857092 и MariaDB/SQL/HTTP/16 browser/native 40292857030 успешны. Tree после merge main точно совпал с 29458b2.
-- **Результат:** рабочая codex/GO-076-parser-start, только checkpoint/порядок задач и manifest; до PR/CI открыт.
+- **Результат:** [PR #31](https://github.com/meInteractive/it-map/pull/31), published `534e8a9`: [public](https://github.com/meInteractive/it-map/actions/runs/40306369291) и [MariaDB/16 browser/API/native](https://github.com/meInteractive/it-map/actions/runs/40306369523) успешны. Code diff относительно 29458b2 пуст; только checkpoint/порядок задач и manifest.
 
 ### [ ] GO-077. Синтетическая AES-GCM совместимость ключей парсера (часть GO-040/017)
 
@@ -1087,7 +1087,7 @@
 - **Зависимости:** неизменные encryptGoogleToken/decryptGoogleToken и namespace derivation из legacy sources; только явно synthetic vectors.
 - **Критерии:** SHA256 google-calendar:secret+provider suffix, AES-256-GCM/12-byte nonce/16-byte tag, raw URL-safe Base64 iv.ciphertext-tag. JS→Go и Go→JS; corruption/другой secret/provider/формат не раскрывают plaintext или ключ в ошибках. Новые encrypt используют crypto/rand, deterministic nonce только в tests/oracle.
 - **Границы:** pure compatibility library, не чтение БД/env/реальных ключей и не provider/API wiring. ADR-016 и полная GO-040 остаются открыты до стратегии staging/секретов.
-- **Результат:** не реализовано.
+- **Результат:** код в codex/GO-077-parser-crypto; 15 deterministic JS vectors / 15 real Go-random encrypt→legacy JS decrypt, malformed/corruption/wrong domain/secret/fresh nonce checks локально прошли. Полная GO-040/ADR-016 остаётся открыта; до PR/mandatory CI узкая GO-077 не принята.
 
 ### [ ] GO-078. Контракт валидации настроек парсера (часть GO-021)
 
