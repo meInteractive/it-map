@@ -236,3 +236,6 @@ GO-085 / [PR #39](https://github.com/meInteractive/it-map/pull/39), code8d9d16b/
 
 
 GO-086 начата от GO-085 checkpointa24700a с проверенным runtime8d9d16b; codex/GO-086-vacancy-flags → codex/GO-085-company-crm-save. Принимается только personal flag SQL/HTTP часть GO-012, create/edit/delete пока открыты.
+
+
+GO-086 / [PR #40](https://github.com/meInteractive/it-map/pull/40), coded2f9e44/tree878fa419f66c5203f5c44092adb6b52b11e27caa: public40338099465 и MariaDB40338099284 успешны. VacancyFlagsDisposable/VacancyFlagHTTPDisposable ran/pass без skips; прежние SQL/14 browser/API smoke также pass. Финальный checkpoint меняет только статусы/план/доказательства и manifest. GO-012 create/edit/delete остаются открыты.

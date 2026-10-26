@@ -207,8 +207,8 @@
 - **Компоненты:** `internal/crm`, `internal/httpapi/company_flag_*`.
 - **Критерии готовности:** Изоляция пользователей; чтение и запись, конфликты и история корректны.
 - **Как проверить:** HTTP, конкурентные SQL-операции на staging.
-- **Известные ограничения:** Частичные обработчики реализованы; отсутствующие схемные unique требуют проверки.
-- **Результат:** коммиты 0f3a808, c69d9d7, ae6d776; PR не подтверждён.
+- **Известные ограничения:** Критическое typed UI SQL/API-ядро подтверждено на synthetic MariaDB; средний UI round-trip и полная приёмка родителя ещё открыты.
+- **Результат:** GO-084/085 / PR #38/#39 подтвердили flags/comment/status/history/owner isolation, constraints, SQL concurrency и late rollback. Сохраняется исходная история коммитов 0f3a808, c69d9d7, ae6d776; полная GO-010 не закрыта.
 
 ### [ ] GO-011. Чтение вакансий и дерево ролей
 
@@ -231,7 +231,7 @@
 ### [ ] GO-012. CRUD и пользовательское состояние вакансии
 
 - **Приоритет:** Критический.
-- **Критическая часть:** [ ] Проверить create/edit/delete/favorite/hidden, revision/CAS/rollback и FK на MariaDB. Не считать существующий код принятым CRUD. Пересчёт агентств GO-032 имеет средний приоритет и выполняется отдельной частью.
+- **Критическая часть:** [x] Favorite/hidden SQL+HTTP, user isolation/relevance/revision, UNIQUE/FK, concurrency и rollback — GO-086 / #40. [ ] Create/edit/delete, revision/CAS/rollback и FK связанных записей на MariaDB. Не считать существующий код принятым CRUD. Пересчёт агентств GO-032 имеет средний приоритет и выполняется отдельной частью.
 - **Средняя часть:** [ ] Рабочие формы и конфликт/повтор в UI после API-gate.
 - **Низкая часть:** [ ] Полировка форм/адаптивности редактора.
 
@@ -243,7 +243,7 @@
 - **Критерии готовности:** Полный CRUD включая агентства, транзакции и сохранение связей на MariaDB.
 - **Как проверить:** SQL integration/rollback/concurrency, UI forms.
 - **Известные ограничения:** Код большей части есть, удаление/редактирование агентств ограничено; staging нет.
-- **Результат:** коммиты e41c2ff, 9a69945, d602e08, 7b1792b; PR не подтверждён.
+- **Результат:** Исходные коммиты e41c2ff, 9a69945, d602e08, 7b1792b сами по себе не подтверждают CRUD. Favorite/hidden приняты GO-086 / PR #40; create/edit/delete и их связи требуют отдельных SQL/API gates.
 
 ### [ ] GO-013. Отклики, idempotency и история
 
@@ -1151,10 +1151,10 @@
 - **Границы:** у legacy company CRM нет revision token, не добавлять новый CAS API; версии других модулей сохранять. Не объявлять полный GO-010 завершённым по одной флаговой проверке.
 - **Результат:** [PR #39](https://github.com/meInteractive/it-map/pull/39), code8d9d16b. На точном code SHA public40336444772 и MariaDB40336444745 успешны: 22 source-backed вектора из неизменённого legacy route; два новых required targets без skips, last-30 history, owner isolation/full vacancies response, три одновременно работающих SQL writers, late state/history faults с rollback/bootstrap/retry новым pool. Предыдущие CRM flags/receipts/tasks/scheduler/browser/API smoke pass. Локальные race/unit/vet/build/tagged/web/actionlint/source/history/manifest и четыре guard отказа до подключения прошли. Сохранён typed UI-контракт: строки без trim, null/omitted очищают форму; расширенные JS coercions не добавлены. Критическое CRM-ядро подтверждено, полная GO-010 ещё требует среднего UI round-trip.
 
-### [ ] GO-086. Vacancy favorite/hidden: SQL и HTTP write gate (часть GO-012)
+### [x] GO-086. Vacancy favorite/hidden: SQL и HTTP write gate (часть GO-012)
 
 - **Приоритет:** Критический.
 - **Зависимости:** auth/catalog/существующие SetUserFlag, Detail и company projection; synthetic schema и disposable guard.
 - **Критерии:** insert/update/повтор/выключение favorite/hidden для своего пользователя, независимый flag и relevance не теряются; private list/detail/company readback, чужой owner из query/body не принимается. Общий vacancy и другой пользователь не меняются; flags не изменяют revision редактирования. UNIQUE/FK без DDL. Два SQL connections пишут flags без lost update; ошибка после реального INSERT/UPDATE откатывается, новый pool повторяет операцию. Required CI targets SQL/HTTP без skips; cleanup до старого smoke.
 - **Границы:** только disposable GitHub CI; flags API не принимает revision. Create/edit CAS/delete/FK связей проверяются отдельно; GO-032 остаётся средней.
-- **Результат:** добавлены guarded SQL/HTTP targets и required no-skip gate; runtime mutation не меняется. Fault driver вынесен в общий test-only helper, reused CRM gates проверяются повторно. Положительная MariaDB-приёмка ожидает CI.
+- **Результат:** [PR #40](https://github.com/meInteractive/it-map/pull/40), coded2f9e44/tree878fa419f66c5203f5c44092adb6b52b11e27caa. Public40338099465 и MariaDB40338099284 успешны: оба required vacancy SQL/HTTP targets без skips, реальные UNIQUE/FK, два writer, late INSERT/UPDATE rollback и fresh pool retry. Detail/list/company projections, owner isolation, relevance и revision сохранены. Все прежние CRM/receipt/task/scheduler/browser/API smoke pass; generic fault driver повторно проверен CRM gate. Локальные race/tagged/vet/build/web/actionlint/source/history/manifest и четыре negative guards до подключения успешны. Runtime mutation не менялся.
