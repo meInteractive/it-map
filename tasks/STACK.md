@@ -197,3 +197,6 @@ GO-072 подтверждён: [PR #30](https://github.com/meInteractive/it-map/
 
 
 GO-077 реализует только canonical legacy crypto compatibility. Пять namespaces включают Calendar и ключи парсера OpenAI/OpenRouter-JEV/Firecrawl/Apify; free/hobby и free/starter используют старые общие provider domains. 15 synthetic JS fixtures проверяют Go decrypt и deterministic ciphertext/tag; отдельный legacyinterop build tag отправляет 15 случайно зашифрованных Go значений настоящему JS decrypt. Никаких provider HTTP/secret reads/новых API. Строгий Go codec отвергает malformed/trailing/padded/noncanonical envelopes и значения свыше 64 KiB; это границы pure-порции, а не изменение подключённого API. ADR-016 остаётся предложенным. После parser-блока новые поручения: critical GO-010→GO-012 write/FK/CAS gates, затем GO-041→042 с нужной схемой GO-016; GO-032 средний.
+
+
+GO-077 / #32 `75ba9d7` подтверждён public40307364593 и MariaDB/16 browser/API/native40307364181. GO-078 в отдельной ветке codex/GO-078-parser-settings переносит pure validation/normalization из настоящего saveSchedulerSettings до SQL: 62 vectors/defaults/options и strict boundary checks, без runtime/API/jobs. GO-021/045 открыты. Следующая critical порция GO-079 upper-cost/time, затем отдельные durable SQL gates до любого paid клиента.

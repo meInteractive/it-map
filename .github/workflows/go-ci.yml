@@ -94,4 +94,5 @@ jobs:
           node scripts/check-task-create-contract.mjs
           node scripts/check-channel-input-contract.mjs
           node scripts/check-legacy-crypto.mjs
+          node scripts/check-parser-settings-contract.mjs
       - run: npm run build:web
