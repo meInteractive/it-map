@@ -266,8 +266,8 @@
 ### [ ] GO-014. Задачи, каналы и контакты
 
 - **Приоритет:** Критический.
-- **Критическая часть:** [x] Чтение задач и каналов есть, task list подтверждён synthetic CI. [ ] SQL/API create/reschedule/complete без календаря: код есть, полная интеграция GO-033 не принята. [ ] CRUD каналов/контактов GO-034.
-- **Средняя часть:** [ ] UI round-trip задач/источников; календарная интеграция отдельной GO-015.
+- **Критическая часть:** [x] Чтение задач и каналов есть, task list подтверждён synthetic CI. [x] SQL/API и desktop/mobile create/reschedule/complete/reopen/filters без Calendar, owner isolation/rollback/concurrency — GO-033/068…071. [ ] CRUD каналов/контактов GO-034.
+- **Средняя часть:** [x] UI round-trip задач GO-071. [ ] UI источников; календарная интеграция отдельной GO-015.
 - **Низкая часть:** [ ] Внешний вид задач/контактов/календарных меток.
 
 - **Статус:** [ ] — не принят целиком.
@@ -580,19 +580,19 @@
 - **Известные ограничения:** Текущие Go handlers ограничивают кейс агентств.
 - **Результат:** не завершено; коммита или PR нет.
 
-### [ ] GO-033. Задачи: создание, обновление и фильтры
+### [x] GO-033. Задачи: создание, обновление и фильтры
 
 - **Приоритет:** Критический.
 
-- **Статус:** [ ] — не принят целиком.
+- **Статус:** [x] — поддерживаемый legacy task API без Calendar sync проверен.
 - **Цель:** Довести CRUD задач.
-- **Что реализовать:** Реализовать POST/PUT с датами, таймзоной, сессиями и версиями.
+- **Что реализовать:** POST/PUT с датами/таймзоной/сессиями и сохранением существующей модели обновления. Legacy task API не имеет revision/CAS token; новые поля не вводятся. Дата и completed обновляются отдельно, concurrent field edits не теряются.
 - **Зависимости:** Schema/DB часть GO-005, auth GO-029 и task-контракты GO-014; проверяемая часть не зависит от полного Calendar sync.
 - **Компоненты:** `internal/tasks`, `internal/httpapi`.
-- **Критерии готовности:** Сценарии создания/редактирования/срока выполнены.
+- **Критерии готовности:** Поддерживаемые create/list/filter/reschedule/completion/reopen выполнены через SQL/HTTP/UI; owner/Origin/date/Calendar guards, rollback и concurrent independent edits проверены.
 - **Как проверить:** Unit+MariaDB+UI, conflict tests.
-- **Известные ограничения:** В Go добавлены POST создания задач и PUT изменения срока для пользователей **без** подключённого Google Calendar. При подключённом календаре операции возвращают 409 до переноса синхронизации. MariaDB staging и браузер не проверялись; задача остаётся открытой.
-- **Результат:** 3cb467c/88fe9f0 включены в текущие исходники: создание/срок без календаря, при подключённом календаре 409. Unit/HTTP есть; SQL write/user isolation/version и функциональный UI round-trip ещё не приняты.
+- **Известные ограничения:** При подключённом Google Calendar create/reschedule возвращают 409, linked-event reschedule также отказывает, local-only completion сохраняет metadata. Полный OAuth/sync — GO-015/035/040, не часть этой приёмки. Внешний staging/согласованный snapshot остаётся отдельным GO-005/007 gate; disposable MariaDB и desktop/mobile UI реально проверены.
+- **Результат:** GO-068 / #26 d5e820d исправил 10 JS-normalization расхождений; GO-069 / #27 c9f89ec подтвердил SQL write/Calendar guards/rollback; GO-070 / #28 a9f7f95 — HTTP/ошибки/даты/два concurrent edits и 34 JS cases; GO-071 / #29 179bce8 — реальный desktop/mobile create/reload/reschedule/complete/reopen/isolation. Все code SHA прошли обязательные public/MariaDB/API/старые 14 browser/native CI, оба новых UI проекта без skips/flaky. Подробные доказательства — docs/GO_TASK_WRITES.md и STACK.md. Parent GO-014 остаётся открыт для GO-034.
 
 
 ### [ ] GO-034. Каналы и контакты: CRUD
@@ -1033,11 +1033,11 @@
 - **Результат:** реализация в codex/GO-070-task-http от проверенного c9f89ec. Локально обычный/tagged vet/race/tests, обе сборки, Go 1.23 tasks/API, 34 JS cases, source/history/schema/fixtures/actionlint и четыре negative guards успешны; live SQL явно пропущен без DSN. [PR #28](https://github.com/meInteractive/it-map/pull/28), published `a9f7f95`: [Go/web/security/34 cases](https://github.com/meInteractive/it-map/actions/runs/40289210806) и [MariaDB/task SQL+HTTP/concurrency/API/14 browser/native](https://github.com/meInteractive/it-map/actions/runs/40289210834) успешны, ноль skips. Полная GO-033 остаётся открытой для UI и остальных критериев.
 
 
-### [ ] GO-071. Browser task write round-trip desktop/mobile (часть GO-033/GO-014)
+### [x] GO-071. Browser task write round-trip desktop/mobile (часть GO-033/GO-014)
 
 - **Приоритет:** Критический (минимальная функциональность UI), только спринт 1.1; GO-032 средний.
 - **Зависимости:** проверенный GO-070 a9f7f95 / #28, built SPA/Chromium и existing real SQL fixture/production router. Без внешнего staging или реальных данных.
 - **Критерии:** реальный Go HTTP/SPA/Repository/MariaDB server внутри guarded Go test; настоящие desktop/mobile UI create/reload/reschedule/complete/showCompleted/reopen с Moscow→UTC, сохранёнными полями и owner isolation. Два Playwright проекта фактически pass без skips/flaky; parent JSON gate тоже pass/no-skip. Никаких API mocks/force-click/screenshots/traces/cookie artifacts.
 - **Порядок:** после schema/readonly/receipt/task SQL+HTTP gates и build SPA/Chromium, перед прежними 14 readonly browser/API/native smoke. Отдельный taskbrowser tag/config не включает write tests в readonly suite. Bounded parent cleanup возвращает Demo=0, сохраняет Eugene/CRM/generation; следующий readonly smoke проверяет восстановленные fixtures.
 - **Границы:** поддерживаемый legacy task API без Calendar sync, только synthetic CI. Синхронизация Calendar остаётся GO-015/035/040; новые revision/CAS поля не вводятся. Полная внешняя приёмка GO-007 и snapshot GO-005 остаются отдельными.
-- **Результат:** реализация в codex/GO-071-task-browser от проверенного a9f7f95. Локально tagged vet/Go 1.23 compile, список ровно двух PW tests, отдельный TS typecheck новых browser/config файлов, source/history/schema/fixtures/actionlint и четыре browser-parent guards до подключения прошли. Полный tsc заблокирован прежним vite.config.ts import отсутствующего .openai/hosting.json, legacy hosting не менялся. До mandatory live browser CI открыта.
+- **Результат:** реализация в codex/GO-071-task-browser от проверенного a9f7f95. Локально tagged vet/Go 1.23 compile, список ровно двух PW tests, отдельный TS typecheck новых browser/config файлов, source/history/schema/fixtures/actionlint и четыре browser-parent guards до подключения прошли. Полный tsc заблокирован прежним vite.config.ts import отсутствующего .openai/hosting.json, legacy hosting не менялся. [PR #29](https://github.com/meInteractive/it-map/pull/29), published `179bce8`: [Go/web/security](https://github.com/meInteractive/it-map/actions/runs/40291235900) и [MariaDB/task SQL+HTTP/two task browser projects/14 readonly/browser/native](https://github.com/meInteractive/it-map/actions/runs/40291236012) успешны. Parent и оба browser проекта фактически прошли без skips/flaky.

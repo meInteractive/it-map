@@ -42,3 +42,14 @@ TestMariaDBTaskBrowserDisposable с tags mariadb,taskwrites,taskbrowser снач
 UI gate выполняется после установки built SPA/Chromium и SQL/HTTP gates, но ДО прежних 14 readonly/API/native smoke. Поэтому старые проверки получают очищенные fixtures; readonly DB user и прежние сценарии не заменяются writable доступом. Это минимальная функциональная приёмка существующего task API без Calendar sync; внешний staging/real server/SQL snapshot не подключаются.
 
 Локальная полная TypeScript проверка упирается в существующий vite.config.ts import исключённого из публичного снимка .openai/hosting.json. Hosting metadata не добавляется; новые browser/config файлы отдельно прошли tsc, Playwright list подтвердил ровно два проекта. Это не выдаётся за live browser pass — положительный результат требует disposable CI.
+
+
+Подтверждение GO-071: [PR #29](https://github.com/meInteractive/it-map/pull/29), 179bce8, [public](https://github.com/meInteractive/it-map/actions/runs/40291235900) и [MariaDB/task UI/14 readonly/browser/native](https://github.com/meInteractive/it-map/actions/runs/40291236012) успешны. Временный writable Go server прошёл оба task browser проекта: expected=2/skipped=0/unexpected=0/flaky=0. Cleanup восстановил исходные данные, после чего прошли старые 14 readonly/API/native smoke.
+
+## Приёмка поддерживаемого GO-033
+
+GO-033 завершён в поддерживаемом legacy task API без Calendar sync: GO-068 typed normalization, GO-069 SQL write/filters/Calendar guards/rollback, GO-070 HTTP/errors/34 date cases/concurrent field edits, GO-071 настоящий desktop/mobile create/reload/reschedule/completion/reopen/isolation. Это четыре отдельно проверенных результата с code SHA/PR/mandatory CI, а не закрытие по одному сгенерированному тесту.
+
+Legacy Task не содержит revision/CAS token: дата и completed передаются отдельными PUT, отсутствие новых version fields сохраняет API. Конкурирующие independent field mutations подтверждены на двух SQL connections, повтор completed не меняет timestamp, неправильные поля/даты отказывают до записи. При Calendar connection create/reschedule по-прежнему 409; OAuth/sync принадлежат GO-015/035/040. Полные GO-014/015, GO-005/007 staging/snapshot и production release не объявляются завершёнными.
+
+Полный repository tsc по-прежнему блокирует старый vite.config.ts import .openai/hosting.json; task browser/config отдельно прошли типизацию, SPA build и реальные UI tests. Hosting metadata/legacy не менялись.
