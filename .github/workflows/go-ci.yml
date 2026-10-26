@@ -94,6 +94,7 @@ jobs:
           node scripts/check-task-create-contract.mjs
           node scripts/check-crm-save-contract.mjs
           node scripts/check-profile-contract.mjs
+          node scripts/check-profile-storage-contract.mjs
           node scripts/check-channel-input-contract.mjs
           node scripts/check-legacy-crypto.mjs
           node scripts/check-parser-settings-contract.mjs

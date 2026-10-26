@@ -1,0 +1,617 @@
+{
+  "oracle": "Unchanged legacy save/read functions with source v39 DDL in SQLite :memory:. Clock values projected to presence only; text stored as SHA256 for compact synthetic vectors.",
+  "vectors": [
+    {
+      "kind": "cover_letter",
+      "first": "prompt",
+      "steps": [
+        {
+          "part": "prompt",
+          "input": {
+            "markdown": "CI source prompt 1",
+            "revision": 0
+          },
+          "prompt": {
+            "kind": "cover_letter",
+            "textHash": "e89d249d9cbb4bd6638a1463f231d4698241df58c17feb07e0b6bafa8e1716ed",
+            "revision": 1,
+            "hasUpdatedAt": true
+          },
+          "model": {
+            "kind": "cover_letter",
+            "provider": "openrouter",
+            "openaiModel": "",
+            "openrouterModel": "best_free",
+            "reasoningEffort": "medium",
+            "revision": 0,
+            "hasUpdatedAt": false
+          }
+        },
+        {
+          "part": "model",
+          "input": {
+            "provider": "openrouter",
+            "openaiModel": "CI_model:1",
+            "openrouterModel": "best_free",
+            "reasoningEffort": "high",
+            "revision": 0
+          },
+          "prompt": {
+            "kind": "cover_letter",
+            "textHash": "e89d249d9cbb4bd6638a1463f231d4698241df58c17feb07e0b6bafa8e1716ed",
+            "revision": 1,
+            "hasUpdatedAt": true
+          },
+          "model": {
+            "kind": "cover_letter",
+            "provider": "openrouter",
+            "openaiModel": "CI_model:1",
+            "openrouterModel": "best_free",
+            "reasoningEffort": "high",
+            "revision": 1,
+            "hasUpdatedAt": true
+          }
+        },
+        {
+          "part": "prompt",
+          "input": {
+            "markdown": "CI source prompt 2",
+            "revision": 1
+          },
+          "prompt": {
+            "kind": "cover_letter",
+            "textHash": "1bb327742981dd56190e143bf74cebfa5ab50bff6384c71005cb34ea4634c1c0",
+            "revision": 2,
+            "hasUpdatedAt": true
+          },
+          "model": {
+            "kind": "cover_letter",
+            "provider": "openrouter",
+            "openaiModel": "CI_model:1",
+            "openrouterModel": "best_free",
+            "reasoningEffort": "high",
+            "revision": 1,
+            "hasUpdatedAt": true
+          }
+        }
+      ]
+    },
+    {
+      "kind": "cover_letter",
+      "first": "model",
+      "steps": [
+        {
+          "part": "model",
+          "input": {
+            "provider": "openrouter",
+            "openaiModel": "CI_model:1",
+            "openrouterModel": "best_free",
+            "reasoningEffort": "high",
+            "revision": 0
+          },
+          "prompt": {
+            "kind": "cover_letter",
+            "textHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "revision": 0,
+            "hasUpdatedAt": false
+          },
+          "model": {
+            "kind": "cover_letter",
+            "provider": "openrouter",
+            "openaiModel": "CI_model:1",
+            "openrouterModel": "best_free",
+            "reasoningEffort": "high",
+            "revision": 1,
+            "hasUpdatedAt": true
+          }
+        },
+        {
+          "part": "prompt",
+          "input": {
+            "markdown": "CI source prompt 1",
+            "revision": 0
+          },
+          "prompt": {
+            "kind": "cover_letter",
+            "textHash": "e89d249d9cbb4bd6638a1463f231d4698241df58c17feb07e0b6bafa8e1716ed",
+            "revision": 1,
+            "hasUpdatedAt": true
+          },
+          "model": {
+            "kind": "cover_letter",
+            "provider": "openrouter",
+            "openaiModel": "CI_model:1",
+            "openrouterModel": "best_free",
+            "reasoningEffort": "high",
+            "revision": 1,
+            "hasUpdatedAt": true
+          }
+        },
+        {
+          "part": "model",
+          "input": {
+            "provider": "openrouter",
+            "openaiModel": "CI_model:1",
+            "openrouterModel": "best_free",
+            "reasoningEffort": "low",
+            "revision": 1
+          },
+          "prompt": {
+            "kind": "cover_letter",
+            "textHash": "e89d249d9cbb4bd6638a1463f231d4698241df58c17feb07e0b6bafa8e1716ed",
+            "revision": 1,
+            "hasUpdatedAt": true
+          },
+          "model": {
+            "kind": "cover_letter",
+            "provider": "openrouter",
+            "openaiModel": "CI_model:1",
+            "openrouterModel": "best_free",
+            "reasoningEffort": "low",
+            "revision": 2,
+            "hasUpdatedAt": true
+          }
+        }
+      ]
+    },
+    {
+      "kind": "relevance",
+      "first": "prompt",
+      "steps": [
+        {
+          "part": "prompt",
+          "input": {
+            "markdown": "CI source prompt 1",
+            "revision": 0
+          },
+          "prompt": {
+            "kind": "relevance",
+            "textHash": "e89d249d9cbb4bd6638a1463f231d4698241df58c17feb07e0b6bafa8e1716ed",
+            "revision": 1,
+            "hasUpdatedAt": true
+          },
+          "model": {
+            "kind": "relevance",
+            "provider": "openrouter",
+            "openaiModel": "",
+            "openrouterModel": "best_free",
+            "reasoningEffort": "medium",
+            "revision": 0,
+            "hasUpdatedAt": false
+          }
+        },
+        {
+          "part": "model",
+          "input": {
+            "provider": "openrouter",
+            "openaiModel": "CI_model:1",
+            "openrouterModel": "best_free",
+            "reasoningEffort": "high",
+            "revision": 0
+          },
+          "prompt": {
+            "kind": "relevance",
+            "textHash": "e89d249d9cbb4bd6638a1463f231d4698241df58c17feb07e0b6bafa8e1716ed",
+            "revision": 1,
+            "hasUpdatedAt": true
+          },
+          "model": {
+            "kind": "relevance",
+            "provider": "openrouter",
+            "openaiModel": "CI_model:1",
+            "openrouterModel": "best_free",
+            "reasoningEffort": "high",
+            "revision": 1,
+            "hasUpdatedAt": true
+          }
+        },
+        {
+          "part": "prompt",
+          "input": {
+            "markdown": "CI source prompt 2",
+            "revision": 1
+          },
+          "prompt": {
+            "kind": "relevance",
+            "textHash": "1bb327742981dd56190e143bf74cebfa5ab50bff6384c71005cb34ea4634c1c0",
+            "revision": 2,
+            "hasUpdatedAt": true
+          },
+          "model": {
+            "kind": "relevance",
+            "provider": "openrouter",
+            "openaiModel": "CI_model:1",
+            "openrouterModel": "best_free",
+            "reasoningEffort": "high",
+            "revision": 1,
+            "hasUpdatedAt": true
+          }
+        }
+      ]
+    },
+    {
+      "kind": "relevance",
+      "first": "model",
+      "steps": [
+        {
+          "part": "model",
+          "input": {
+            "provider": "openrouter",
+            "openaiModel": "CI_model:1",
+            "openrouterModel": "best_free",
+            "reasoningEffort": "high",
+            "revision": 0
+          },
+          "prompt": {
+            "kind": "relevance",
+            "textHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "revision": 0,
+            "hasUpdatedAt": false
+          },
+          "model": {
+            "kind": "relevance",
+            "provider": "openrouter",
+            "openaiModel": "CI_model:1",
+            "openrouterModel": "best_free",
+            "reasoningEffort": "high",
+            "revision": 1,
+            "hasUpdatedAt": true
+          }
+        },
+        {
+          "part": "prompt",
+          "input": {
+            "markdown": "CI source prompt 1",
+            "revision": 0
+          },
+          "prompt": {
+            "kind": "relevance",
+            "textHash": "e89d249d9cbb4bd6638a1463f231d4698241df58c17feb07e0b6bafa8e1716ed",
+            "revision": 1,
+            "hasUpdatedAt": true
+          },
+          "model": {
+            "kind": "relevance",
+            "provider": "openrouter",
+            "openaiModel": "CI_model:1",
+            "openrouterModel": "best_free",
+            "reasoningEffort": "high",
+            "revision": 1,
+            "hasUpdatedAt": true
+          }
+        },
+        {
+          "part": "model",
+          "input": {
+            "provider": "openrouter",
+            "openaiModel": "CI_model:1",
+            "openrouterModel": "best_free",
+            "reasoningEffort": "low",
+            "revision": 1
+          },
+          "prompt": {
+            "kind": "relevance",
+            "textHash": "e89d249d9cbb4bd6638a1463f231d4698241df58c17feb07e0b6bafa8e1716ed",
+            "revision": 1,
+            "hasUpdatedAt": true
+          },
+          "model": {
+            "kind": "relevance",
+            "provider": "openrouter",
+            "openaiModel": "CI_model:1",
+            "openrouterModel": "best_free",
+            "reasoningEffort": "low",
+            "revision": 2,
+            "hasUpdatedAt": true
+          }
+        }
+      ]
+    },
+    {
+      "kind": "vacancy_extraction",
+      "first": "prompt",
+      "steps": [
+        {
+          "part": "prompt",
+          "input": {
+            "markdown": "CI source prompt 1",
+            "revision": 0
+          },
+          "prompt": {
+            "kind": "vacancy_extraction",
+            "textHash": "e89d249d9cbb4bd6638a1463f231d4698241df58c17feb07e0b6bafa8e1716ed",
+            "revision": 1,
+            "hasUpdatedAt": true
+          },
+          "model": {
+            "kind": "vacancy_extraction",
+            "provider": "openrouter",
+            "openaiModel": "",
+            "openrouterModel": "best_free",
+            "reasoningEffort": "medium",
+            "revision": 0,
+            "hasUpdatedAt": true
+          }
+        },
+        {
+          "part": "model",
+          "input": {
+            "provider": "openrouter",
+            "openaiModel": "CI_model:1",
+            "openrouterModel": "best_free",
+            "reasoningEffort": "high",
+            "revision": 0
+          },
+          "prompt": {
+            "kind": "vacancy_extraction",
+            "textHash": "e89d249d9cbb4bd6638a1463f231d4698241df58c17feb07e0b6bafa8e1716ed",
+            "revision": 1,
+            "hasUpdatedAt": true
+          },
+          "model": {
+            "kind": "vacancy_extraction",
+            "provider": "openrouter",
+            "openaiModel": "CI_model:1",
+            "openrouterModel": "best_free",
+            "reasoningEffort": "high",
+            "revision": 1,
+            "hasUpdatedAt": true
+          }
+        },
+        {
+          "part": "prompt",
+          "input": {
+            "markdown": "CI source prompt 2",
+            "revision": 1
+          },
+          "prompt": {
+            "kind": "vacancy_extraction",
+            "textHash": "1bb327742981dd56190e143bf74cebfa5ab50bff6384c71005cb34ea4634c1c0",
+            "revision": 2,
+            "hasUpdatedAt": true
+          },
+          "model": {
+            "kind": "vacancy_extraction",
+            "provider": "openrouter",
+            "openaiModel": "CI_model:1",
+            "openrouterModel": "best_free",
+            "reasoningEffort": "high",
+            "revision": 1,
+            "hasUpdatedAt": true
+          }
+        }
+      ]
+    },
+    {
+      "kind": "vacancy_extraction",
+      "first": "model",
+      "steps": [
+        {
+          "part": "model",
+          "input": {
+            "provider": "openrouter",
+            "openaiModel": "CI_model:1",
+            "openrouterModel": "best_free",
+            "reasoningEffort": "high",
+            "revision": 0
+          },
+          "prompt": {
+            "kind": "vacancy_extraction",
+            "textHash": "5fb7d61549b94941c34c7184c9ef086d8e909e604fb45219a9055db52e91b66a",
+            "revision": 0,
+            "hasUpdatedAt": true
+          },
+          "model": {
+            "kind": "vacancy_extraction",
+            "provider": "openrouter",
+            "openaiModel": "CI_model:1",
+            "openrouterModel": "best_free",
+            "reasoningEffort": "high",
+            "revision": 1,
+            "hasUpdatedAt": true
+          }
+        },
+        {
+          "part": "prompt",
+          "input": {
+            "markdown": "CI source prompt 1",
+            "revision": 0
+          },
+          "prompt": {
+            "kind": "vacancy_extraction",
+            "textHash": "e89d249d9cbb4bd6638a1463f231d4698241df58c17feb07e0b6bafa8e1716ed",
+            "revision": 1,
+            "hasUpdatedAt": true
+          },
+          "model": {
+            "kind": "vacancy_extraction",
+            "provider": "openrouter",
+            "openaiModel": "CI_model:1",
+            "openrouterModel": "best_free",
+            "reasoningEffort": "high",
+            "revision": 1,
+            "hasUpdatedAt": true
+          }
+        },
+        {
+          "part": "model",
+          "input": {
+            "provider": "openrouter",
+            "openaiModel": "CI_model:1",
+            "openrouterModel": "best_free",
+            "reasoningEffort": "low",
+            "revision": 1
+          },
+          "prompt": {
+            "kind": "vacancy_extraction",
+            "textHash": "e89d249d9cbb4bd6638a1463f231d4698241df58c17feb07e0b6bafa8e1716ed",
+            "revision": 1,
+            "hasUpdatedAt": true
+          },
+          "model": {
+            "kind": "vacancy_extraction",
+            "provider": "openrouter",
+            "openaiModel": "CI_model:1",
+            "openrouterModel": "best_free",
+            "reasoningEffort": "low",
+            "revision": 2,
+            "hasUpdatedAt": true
+          }
+        }
+      ]
+    },
+    {
+      "kind": "vacancy_role",
+      "first": "prompt",
+      "steps": [
+        {
+          "part": "prompt",
+          "input": {
+            "markdown": "CI source prompt 1",
+            "revision": 0
+          },
+          "prompt": {
+            "kind": "vacancy_role",
+            "textHash": "e89d249d9cbb4bd6638a1463f231d4698241df58c17feb07e0b6bafa8e1716ed",
+            "revision": 1,
+            "hasUpdatedAt": true
+          },
+          "model": {
+            "kind": "vacancy_role",
+            "provider": "openrouter",
+            "openaiModel": "",
+            "openrouterModel": "jev",
+            "reasoningEffort": "medium",
+            "revision": 0,
+            "hasUpdatedAt": true
+          }
+        },
+        {
+          "part": "model",
+          "input": {
+            "provider": "openrouter",
+            "openaiModel": "CI_model:1",
+            "openrouterModel": "best_free",
+            "reasoningEffort": "high",
+            "revision": 0
+          },
+          "prompt": {
+            "kind": "vacancy_role",
+            "textHash": "e89d249d9cbb4bd6638a1463f231d4698241df58c17feb07e0b6bafa8e1716ed",
+            "revision": 1,
+            "hasUpdatedAt": true
+          },
+          "model": {
+            "kind": "vacancy_role",
+            "provider": "openrouter",
+            "openaiModel": "CI_model:1",
+            "openrouterModel": "best_free",
+            "reasoningEffort": "high",
+            "revision": 1,
+            "hasUpdatedAt": true
+          }
+        },
+        {
+          "part": "prompt",
+          "input": {
+            "markdown": "CI source prompt 2",
+            "revision": 1
+          },
+          "prompt": {
+            "kind": "vacancy_role",
+            "textHash": "1bb327742981dd56190e143bf74cebfa5ab50bff6384c71005cb34ea4634c1c0",
+            "revision": 2,
+            "hasUpdatedAt": true
+          },
+          "model": {
+            "kind": "vacancy_role",
+            "provider": "openrouter",
+            "openaiModel": "CI_model:1",
+            "openrouterModel": "best_free",
+            "reasoningEffort": "high",
+            "revision": 1,
+            "hasUpdatedAt": true
+          }
+        }
+      ]
+    },
+    {
+      "kind": "vacancy_role",
+      "first": "model",
+      "steps": [
+        {
+          "part": "model",
+          "input": {
+            "provider": "openrouter",
+            "openaiModel": "CI_model:1",
+            "openrouterModel": "best_free",
+            "reasoningEffort": "high",
+            "revision": 0
+          },
+          "prompt": {
+            "kind": "vacancy_role",
+            "textHash": "a44fa07714c18239c5f5041bfe2e3cc619d0efd67cecbd69c13470aff2c404e6",
+            "revision": 0,
+            "hasUpdatedAt": true
+          },
+          "model": {
+            "kind": "vacancy_role",
+            "provider": "openrouter",
+            "openaiModel": "CI_model:1",
+            "openrouterModel": "best_free",
+            "reasoningEffort": "high",
+            "revision": 1,
+            "hasUpdatedAt": true
+          }
+        },
+        {
+          "part": "prompt",
+          "input": {
+            "markdown": "CI source prompt 1",
+            "revision": 0
+          },
+          "prompt": {
+            "kind": "vacancy_role",
+            "textHash": "e89d249d9cbb4bd6638a1463f231d4698241df58c17feb07e0b6bafa8e1716ed",
+            "revision": 1,
+            "hasUpdatedAt": true
+          },
+          "model": {
+            "kind": "vacancy_role",
+            "provider": "openrouter",
+            "openaiModel": "CI_model:1",
+            "openrouterModel": "best_free",
+            "reasoningEffort": "high",
+            "revision": 1,
+            "hasUpdatedAt": true
+          }
+        },
+        {
+          "part": "model",
+          "input": {
+            "provider": "openrouter",
+            "openaiModel": "CI_model:1",
+            "openrouterModel": "best_free",
+            "reasoningEffort": "low",
+            "revision": 1
+          },
+          "prompt": {
+            "kind": "vacancy_role",
+            "textHash": "e89d249d9cbb4bd6638a1463f231d4698241df58c17feb07e0b6bafa8e1716ed",
+            "revision": 1,
+            "hasUpdatedAt": true
+          },
+          "model": {
+            "kind": "vacancy_role",
+            "provider": "openrouter",
+            "openaiModel": "CI_model:1",
+            "openrouterModel": "best_free",
+            "reasoningEffort": "low",
+            "revision": 2,
+            "hasUpdatedAt": true
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -25,14 +25,18 @@ type profileHTTP struct {
 	cookies map[string]*http.Cookie
 }
 
-func openProfileHTTP(f *profileResumeFixture, writer profiles.Repository) *profileHTTP {
+func openProfileHTTP(f *profileResumeFixture, writer profiles.Repository, configure ...func(*httpapi.Options)) *profileHTTP {
 	f.t.Helper()
 	manager, err := auth.NewManager(strings.Repeat("t", 64), map[string]string{"eugene": "CI_SYNTHETIC_TASK_PASSWORD", "demo": "CI_SYNTHETIC_TASK_PASSWORD", "nastya": "CI_SYNTHETIC_TASK_PASSWORD"})
 	if err != nil {
 		f.t.Fatal("cannot initialize synthetic profile auth")
 	}
 	h := &profileHTTP{f: f, cookies: map[string]*http.Cookie{}}
-	h.handler = httpapi.NewHandlerWithOptions(slog.New(slog.NewTextHandler(io.Discard, nil)), httpapi.Options{DB: f.db, Auth: manager, Resumes: writer})
+	opts := httpapi.Options{DB: f.db, Auth: manager, Resumes: writer}
+	for _, apply := range configure {
+		apply(&opts)
+	}
+	h.handler = httpapi.NewHandlerWithOptions(slog.New(slog.NewTextHandler(io.Discard, nil)), opts)
 	for _, login := range []string{"eugene", "demo", "nastya"} {
 		form := url.Values{"login": {login}, "password": {"CI_SYNTHETIC_TASK_PASSWORD"}}
 		req := httptest.NewRequest("POST", "https://itmap.test/auth", strings.NewReader(form.Encode()))
