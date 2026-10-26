@@ -31,3 +31,14 @@ No secret values are provided with this snapshot, including for deploy.
 Static scanning checks known key formats and suspicious filenames, not every possible
 credential, licensed dataset, personal datum, or hidden Git history. Human review is still
 required prior to making the repository public.
+
+
+## Использование в текущем репозитории
+
+Очищенный исторический `gpt-site` — эталон исходников, не точная копия работающей среды и не самостоятельный production-restore. Рабочие SQL-миграции с данными, приватная история, собранный `dist/` и project hosting ID не входят в публичный снимок. `src/data.json` заменён синтетическим каталогом; его наличие не означает доступ к рабочей D1.
+
+Реальные MariaDB/D1 dumps, JSON-backup v39, резюме, контакты и ключи хранятся вне GitHub. Их нельзя добавлять также в ветки, PR, releases или Actions logs. `.gitignore` не стирает уже опубликованную историю: для доступной истории отдельно выполняется `python3 scripts/check-git-history.py`; source gate и history audit проверяют известные правила, не обещая универсальный поиск всех приватных данных.
+
+Раздел How to use выше сохраняет историческую процедуру первичного импорта архива. Текущая разработка ведётся через feature branches/PR в main по [AGENTS.md](../AGENTS.md); рабочий порядок — в [PLANS.md](../PLANS.md), результаты и актуальная база стека — в [tasks/STACK.md](../tasks/STACK.md). Настройка шаблонов [развёртывания](deployment/README.md) сама по себе не выполняет deployment.
+
+Исторические и форматные справочники: [старое API](API.md), [backup v39](BACKUP_FORMAT.md), [очищенный source reference](SOURCE_REFERENCE.md), [чекпойнт V12](SPRINT_1_1_V12.md). V12 отражает прежний этап, а не текущую приёмку Go; текущие статусы находятся в [реестре задач](../tasks/README.md).
