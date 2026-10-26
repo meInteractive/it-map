@@ -28,25 +28,7 @@ func (r Repository) SetCompanyFlag(ctx context.Context, user, company, flag stri
 		return CompanyState{}, err
 	}
 	defer tx.Rollback()
-	var catalog []byte
-	if err = tx.QueryRowContext(ctx, `SELECT data_json FROM app_catalog WHERE id=1`).Scan(&catalog); err != nil {
-		return CompanyState{}, err
-	}
-	known, err := isKnownCompany(catalog, company)
-	if err != nil {
-		return CompanyState{}, err
-	}
-	if !known {
-		return CompanyState{}, ErrCompanyNotFound
-	}
-	// Acquire an exclusive parent lock immediately, including on duplicate keys.
-	// INSERT IGNORE can take shared duplicate-key locks in concurrent transactions;
-	// upgrading both to FOR UPDATE then deadlocks. Preserve all global CRM fields.
-	if _, err = tx.ExecContext(ctx, `INSERT INTO company_crm(company_name) VALUES(?) ON DUPLICATE KEY UPDATE company_name=VALUES(company_name)`, company); err != nil {
-		return CompanyState{}, err
-	}
-	var locked string
-	if err = tx.QueryRowContext(ctx, `SELECT company_name FROM company_crm WHERE company_name=? FOR UPDATE`, company).Scan(&locked); err != nil {
+	if err = lockCompany(ctx, tx, company); err != nil {
 		return CompanyState{}, err
 	}
 	rows, err := tx.QueryContext(ctx, `SELECT favorite,hidden FROM company_user_state

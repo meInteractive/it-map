@@ -31,7 +31,7 @@ func openCRMFlagHTTP(f *crmFlagFixture, writer crm.Repository) *crmFlagHTTP {
 		f.t.Fatal("cannot initialize synthetic CRM auth")
 	}
 	h := &crmFlagHTTP{f: f, cookies: map[string]*http.Cookie{}}
-	h.handler = httpapi.NewHandlerWithOptions(slog.New(slog.NewTextHandler(io.Discard, nil)), httpapi.Options{DB: f.db, Auth: manager, CompanyCRM: f.repo, CompanyFlags: f.repo, CompanyFlagWrites: writer})
+	h.handler = httpapi.NewHandlerWithOptions(slog.New(slog.NewTextHandler(io.Discard, nil)), httpapi.Options{DB: f.db, Auth: manager, CompanyCRM: f.repo, CompanyFlags: f.repo, CompanyFlagWrites: writer, CompanyCRMWrites: writer})
 	for _, login := range []string{"demo", "nastya"} {
 		form := url.Values{"login": {login}, "password": {"CI_SYNTHETIC_TASK_PASSWORD"}}
 		req := httptest.NewRequest("POST", "https://itmap.test/auth", strings.NewReader(form.Encode()))
