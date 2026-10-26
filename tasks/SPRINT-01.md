@@ -1043,14 +1043,14 @@
 - **Результат:** реализация в codex/GO-071-task-browser от проверенного a9f7f95. Локально tagged vet/Go 1.23 compile, список ровно двух PW tests, отдельный TS typecheck новых browser/config файлов, source/history/schema/fixtures/actionlint и четыре browser-parent guards до подключения прошли. Полный tsc заблокирован прежним vite.config.ts import отсутствующего .openai/hosting.json, legacy hosting не менялся. [PR #29](https://github.com/meInteractive/it-map/pull/29), published `179bce8`: [Go/web/security](https://github.com/meInteractive/it-map/actions/runs/40291235900) и [MariaDB/task SQL+HTTP/two task browser projects/14 readonly/browser/native](https://github.com/meInteractive/it-map/actions/runs/40291236012) успешны. Parent и оба browser проекта фактически прошли без skips/flaky.
 
 
-### [ ] GO-072. Legacy input-контракт независимых Telegram-каналов (часть GO-034)
+### [x] GO-072. Legacy input-контракт независимых Telegram-каналов (часть GO-034)
 
 - **Приоритет:** Критический, только спринт 1.1; GO-032 средний.
 - **Зависимости:** GO-071 / #29 `1fa08ba` — [public](https://github.com/meInteractive/it-map/actions/runs/40291660817), [MariaDB/2 task + 14 readonly/API/native](https://github.com/meInteractive/it-map/actions/runs/40291660811) успешны. Legacy server/repositories/channels.js не меняется.
 - **Границы:** pure Go input, typed UI payload/поддерживаемые RFC3339 dates; 55 input и 24 username vectors выполняются настоящими legacy JS functions без SQL/network/providers. Ни один channel write route не включается. Arbitrary JS coercions/полный WHATWG/Date.parse остаются вне этой узкой приёмки.
 - **Критерии:** canonical t.me URL/username, 5…64 символа с допустимой первой цифрой, формы @name/t.me/telegram.me/s, alias precedence, omitted/null PUT fallback/explicit empty, JS trim, UTF-16 name≤160/comment≤512, comment без trim, UTC milliseconds и fixed legacy validation messages. Existing vacancy message validator не переиспользуется: у него другой контракт.
 - **Проверки:** Go vet/race/build/tagged/minimum Go 1.23, 43 application/34 task/55 channel oracle vectors, web build/source/history/schema/fixtures/actionlint/manifest и required CI точного SHA. SQL/HTTP/ссылки — GO-073…075, GO-034 открыта.
-- **Результат:** реализация в codex/GO-072-channel-input от проверенной вершины #29. Локально vet/race/обе сборки/tagged/Go 1.23 channels, все три JS oracle, web build/source/history/schema/actionlint успешны. До обязательного CI открыта.
+- **Результат:** реализация в codex/GO-072-channel-input от проверенной вершины #29. Локально vet/race/обе сборки/tagged/Go 1.23 channels, все три JS oracle, web build/source/history/schema/actionlint успешны. [PR #30](https://github.com/meInteractive/it-map/pull/30), code `b89ee88`: [Go/web/security/JS contract](https://github.com/meInteractive/it-map/actions/runs/40292417590) и [MariaDB/task SQL+HTTP/2 task browser + 14 readonly/API/native](https://github.com/meInteractive/it-map/actions/runs/40292417772) успешны. GO-072 завершён только в указанном pure typed-input scope; GO-073…075/полная GO-034 открыты.
 
 ### [ ] GO-073. Channel CRUD с защитой vacancy sources (часть GO-034)
 
