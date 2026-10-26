@@ -227,3 +227,6 @@ GO-082 завершён как документальная порция: [PR #3
 
 
 GO-084 / [PR #38](https://github.com/meInteractive/it-map/pull/38), code9986429/tree65470cdeed6d77d535bc079429befb5ae5da7cf4: public40335262404 и MariaDB40335262393 успешны, CRM SQL/HTTP targets без skips и прежние browser/API smoke pass. Первый run40334908089 выявил конкурентную SQL-ошибку flags; no-op UPSERT заменил INSERT IGNORE и повторный gate подтвердил оба независимых flags. Checkpoint меняет только доказательства/статус и manifest; GO-010 целиком открыт.
+
+
+GO-085 начата от GO-084 checkpoint08c3969 с проверенным runtime9986429; отдельная codex/GO-085-company-crm-save направляется в codex/GO-084-crm-flag-writes. Перенос PUT /api/crm / atomic state-history и required disposable gates; до положительного CI задача открыта.

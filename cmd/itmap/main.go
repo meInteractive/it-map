@@ -49,6 +49,7 @@ func httpHandler(logger *slog.Logger, db *sql.DB, manager *auth.Manager) http.Ha
 		opts.CompanyFlags = crm.Repository{DB: db}
 		opts.CompanyFlagWrites = crm.Repository{DB: db}
 		opts.CompanyCRM = crm.Repository{DB: db}
+		opts.CompanyCRMWrites = crm.Repository{DB: db}
 		opts.TaskCompletion = tasks.Repository{DB: db}
 		opts.TaskReschedule = tasks.Repository{DB: db}
 	}

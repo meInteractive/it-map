@@ -1149,4 +1149,4 @@
 - **Зависимости:** GO-084 locks/user isolation, legacy saveCompanyCrm и GET projections.
 - **Критерии:** PUT /api/crm сохраняет контракт status/comment/история/vacancies, типы/UTF-16 лимит/права; SQL transaction не теряет flags, history добавляется только при смене статуса. Concurrent writes дают последовательную историю, rollback после state/history write не оставляет частичных данных; HTTP и owner isolation на disposable MariaDB.
 - **Границы:** у legacy company CRM нет revision token, не добавлять новый CAS API; версии других модулей сохранять. Не объявлять полный GO-010 завершённым по одной флаговой проверке.
-- **Результат:** не реализовано.
+- **Результат:** перенесены typed UI status/comment PUT, атомарные SQL state/history и полный vacancies response; общая exclusive parent lock используется вместе с flags. 22 source-backed вектора выполняют неизменённый legacy validation block. Добавлены required SQL/HTTP targets для истории/owner isolation/трёх SQL writers/late rollback/retry; положительная disposable приёмка ожидает Actions. Строки не trim, null/omitted очищают форму; расширенные JS coercions вне типизированного UI не добавляются.
