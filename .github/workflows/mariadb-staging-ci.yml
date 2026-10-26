@@ -136,6 +136,24 @@ jobs:
           assert not any(e.get('Action')=='skip' for e in events), 'required receipt test was skipped'
           print('PASS: durable receipt write gate ran with zero skips')
           PY
+      - name: Verify task writes ONLY in disposable CI
+        env:
+          ITMAP_REQUIRE_MARIADB_INTEGRATION: '1'
+          ITMAP_TEST_MARIADB_WRITE_DSN: 'itmap_ci:ci_only_disposable_writer@tcp(127.0.0.1:3306)/itmap_ci?parseTime=true&clientFoundRows=true&collation=utf8mb4_bin'
+        run: |
+          set -euo pipefail
+          result_file="$(mktemp)"
+          trap 'rm -f "$result_file"' EXIT
+          go test -race -tags mariadb,taskwrites ./internal/storage -run '^TestMariaDBTask(Writes|HTTP)Disposable$' -count=1 -json | tee "$result_file"
+          python3 - "$result_file" <<'PYCODE'
+          import json,sys
+          events=[json.loads(line) for line in open(sys.argv[1],encoding='utf8')]
+          targets=['TestMariaDBTaskWritesDisposable','TestMariaDBTaskHTTPDisposable']
+          for target in targets:
+              assert any(e.get('Test')==target and e.get('Action')=='pass' for e in events), f'required task test did not pass/run: {target}'
+          assert not any(e.get('Action')=='skip' for e in events), 'required task write test skipped'
+          print('PASS: task write gate ran with zero skips')
+          PYCODE
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -145,6 +163,23 @@ jobs:
           npm ci --no-audit --no-fund
           npm run build:web
           npx playwright install --with-deps --only-shell chromium
+      - name: Verify writable task UI ONLY in disposable CI
+        env:
+          ITMAP_REQUIRE_MARIADB_INTEGRATION: '1'
+          ITMAP_TEST_MARIADB_WRITE_DSN: 'itmap_ci:ci_only_disposable_writer@tcp(127.0.0.1:3306)/itmap_ci?parseTime=true&clientFoundRows=true&collation=utf8mb4_bin'
+        run: |
+          set -euo pipefail
+          result_file="$(mktemp)"
+          trap 'rm -f "$result_file"' EXIT
+          go test -tags mariadb,taskwrites,taskbrowser ./internal/storage -run '^TestMariaDBTaskBrowserDisposable$' -count=1 -json | tee "$result_file"
+          python3 - "$result_file" <<'PYCODE'
+          import json,sys
+          events=[json.loads(line) for line in open(sys.argv[1],encoding='utf8')]
+          target='TestMariaDBTaskBrowserDisposable'
+          assert any(e.get('Test')==target and e.get('Action')=='pass' for e in events), 'required task browser parent did not pass/run'
+          assert not any(e.get('Action')=='skip' for e in events), 'required task browser parent skipped'
+          print('PASS: task browser parent ran with zero skips')
+          PYCODE
       - name: Smoke the running Go server against disposable MariaDB
         env:
           APP_ENV: staging

@@ -151,3 +151,46 @@ GO-032 — средний, остаётся открытым. Полный GO-03
 GitHub проверен 26.10.2026: #22 объединён в main c00282a, #23 — в закрытую ветку #22 (08bf742), #25 — в открытую ветку #24 (a37a78c). Main пока не содержит GO-065…067. Открытый #24 перенаправляется из закрытого parent #23 в main; его актуальная вершина a37a78c содержит проверенный 3cfe83d. Main присоединён обычным merge, без rebase/force-push и без автоматического merge PR. Diff internal/.github/go.mod/go.sum относительно 3cfe83d пуст; обновляются только checkpoint/manifest. Новый CI требуется на точном SHA обновлённого #24.
 
 Следующая независимая критическая работа спринта 1.1 — GO-033: SQL/API create/reschedule/completion задач без Calendar, права/даты/ошибки/rollback и сохранение исходных readonly fixtures. GO-032 остаётся средним. Новая ветка начинается от проверенной актуальной вершины #24; если пользователь объединит #24 — база актуализируется по фактическому main.
+
+
+#24 перенаправлен в main через GitHub REST/CLI (коннектор отклоняет параметр base). b0023ab прошёл [Go/web/security](https://github.com/meInteractive/it-map/actions/runs/40285624819) и [MariaDB/API/14 browser/native](https://github.com/meInteractive/it-map/actions/runs/40285624924), #24 CLEAN. GO-068 / codex/GO-068-task-create-contract начинается от этой проверенной вершины: 31 JS-oracle case task create, исправление 10 воспроизведённых расхождений UTF-16/trim/Number.safeInteger. Следом — guarded SQL и HTTP части GO-033, без Calendar/live данных.
+
+
+GO-068 / [#26](https://github.com/meInteractive/it-map/pull/26): published d5e820d/tree bc334320 совпадает с локально проверенным draft, [public](https://github.com/meInteractive/it-map/actions/runs/40287308900) и [MariaDB/API/browser/native](https://github.com/meInteractive/it-map/actions/runs/40287308885) прошли. Git/gh write начал возвращать 401, рабочий GitHub-коннектор использован для blob/tree/commit/branch; локальный draft сохранён отдельной local-only веткой, опубликованная история не переписывается. GO-069 / codex/GO-069-task-sql-writes начинается от этого проверенного SHA: guarded SQL round-trip/Calendar guards/реальный rollback task writes, отдельный tag/required gate.
+
+
+GO-069 / [#27](https://github.com/meInteractive/it-map/pull/27): c9f89ec прошёл [public](https://github.com/meInteractive/it-map/actions/runs/40288051112) и [MariaDB/task writes/API/browser/native](https://github.com/meInteractive/it-map/actions/runs/40288051119), именованный task target без skips. GO-070 / codex/GO-070-task-http начинается от этой проверенной вершины: real HTTP/SQL round-trip/ошибки/Calendar guard и concurrent completion/reschedule. Дополнительно устранены воспроизведённые +24:00/+00:60/comma-fraction расхождения; JS fixture расширен 31→34. Последующая UI write приёмка — отдельная порция GO-033.
+
+
+GO-070 / [#28](https://github.com/meInteractive/it-map/pull/28): a9f7f95 прошёл [public/34 JS cases](https://github.com/meInteractive/it-map/actions/runs/40289210806) и [MariaDB/task HTTP+SQL/concurrency/API/14 browser/native](https://github.com/meInteractive/it-map/actions/runs/40289210834), required targets без skips. GO-071 / codex/GO-071-task-browser начинается от этой проверенной вершины: настоящий writable Go/SPA/MariaDB server под guard, два UI проекта create/reload/reschedule/complete/reopen/isolation. Cleanup до прежнего readonly smoke; write test не добавляется в старую readonly browser матрицу.
+
+
+## Проверенная GO-033 после GO-068…071, спринт 1.1
+
+| Подзадача | PR / code SHA | Обязательные CI |
+| --- | --- | --- |
+| GO-068 JS create normalization | [#26](https://github.com/meInteractive/it-map/pull/26) / d5e820d | [public](https://github.com/meInteractive/it-map/actions/runs/40287308900), [MariaDB/API/browser/native](https://github.com/meInteractive/it-map/actions/runs/40287308885) |
+| GO-069 task SQL/Calendar guard/rollback | [#27](https://github.com/meInteractive/it-map/pull/27) / c9f89ec | [public](https://github.com/meInteractive/it-map/actions/runs/40288051112), [MariaDB/API/browser/native](https://github.com/meInteractive/it-map/actions/runs/40288051119) |
+| GO-070 HTTP/dates/concurrent field edits | [#28](https://github.com/meInteractive/it-map/pull/28) / a9f7f95 | [public](https://github.com/meInteractive/it-map/actions/runs/40289210806), [MariaDB/API/browser/native](https://github.com/meInteractive/it-map/actions/runs/40289210834) |
+| GO-071 desktop/mobile task UI writes | [#29](https://github.com/meInteractive/it-map/pull/29) / 179bce8 | [public](https://github.com/meInteractive/it-map/actions/runs/40291235900), [MariaDB/2 task browser + 14 old readonly/native](https://github.com/meInteractive/it-map/actions/runs/40291236012) |
+
+Все code SHA прошли оба required CI; два task SQL/HTTP targets и browser Go parent фактически pass/no-skip, child PW expected=2/skipped=0/unexpected=0/flaky=0. Старые восемь receipt targets/14 readonly/API/native smoke сохранены и прошли после cleanup. Локально vet/race/build/tagged/Go 1.23/oracles/source/history/schema/fixtures/actionlint/manifest и negative guards успешны; live SQL/UI локально не запускались. Новые browser/config TS файлы отдельно проверены, полный tsc ограничен старым missing hosting import. Реальные env/tokens/SQL/private snapshots не использовались.
+
+GO-033 закрыт только в поддерживаемом task API без Calendar sync. Parent GO-014 остаётся открытым для GO-034; GO-015/035/040 — Calendar/crypto, GO-005/007 — внешний staging/снимок. GO-032 средний. Следующая критическая задача спринта 1.1 — GO-034 (каналы/контакты), по legacy auth/SQL/reference contract. Финальный doc checkpoint только актуализирует эти доказательства и SHA256SUMS; CI точного SHA требуется отдельно. Автоматического merge PR/production/D1/Sites/DNS/deploy/paid calls нет.
+
+
+## GO-072: начало каналов/контактов после проверенной GO-033
+
+Финальный GO-071 / #29 `1fa08ba` прошёл [public](https://github.com/meInteractive/it-map/actions/runs/40291660817) и [MariaDB/task SQL+HTTP/2 task browser + прежние 14/API/native](https://github.com/meInteractive/it-map/actions/runs/40291660811). Новая ветка codex/GO-072-channel-input начинается от этой проверенной вершины. До реализации GO-034 разделён на неизменяемые GO-072 input contract → GO-073 channel CRUD → GO-074 contacts CRUD → GO-075 disposable acceptance; полный GO-034 остаётся открыт. Только спринт 1.1, GO-032 средний.
+
+GO-072 добавляет pure Go normalize/validation и source-backed JS corpus: 55 input + 24 username vectors. Нет SQL writes или новых HTTP routes; existing GET и vacancy message validation не меняются. Scope typed UI/RFC3339, без обещания полного WHATWG/Date.parse/coercion parity. Следующая бизнес-часть — GO-073, с обязательной защитой ссылок вакансий и admin auth. Real DB/providers/инфраструктура/merge/deploy не используются.
+
+
+GO-072 подтверждён: [PR #30](https://github.com/meInteractive/it-map/pull/30), code `b89ee88` / tree `dc9b0864dbe8430134b632da66f08a63f649f4a2`; [public/55+24 channel vectors](https://github.com/meInteractive/it-map/actions/runs/40292417590) и [MariaDB/task SQL+HTTP/2 task browser + 14 readonly/API/native](https://github.com/meInteractive/it-map/actions/runs/40292417772) успешны. Узкая GO-072 принята; GO-034 и GO-073…075 открыты. Следующая конкретная задача — GO-073 admin channel mutations/связанные источники вакансий; legacy SQL/auth/FK контракт уже прочитан. Важно включить защиту sole-source delete и сериализацию duplicate/name checks; не считать нормализацию завершённым CRUD. Финальный doc checkpoint не меняет runtime/test/workflow код относительно проверенного b89ee88; обязательный CI точного head требуется отдельно.
+
+Открытый стек для последовательного review/merge пользователем: #24 → main, #26 → ветка #24, #27 → #26, #28 → #27, #29 → #28, #30 → #29. #25 уже объединён пользователем в ветку #24, его GO-067 содержится в #24. Ни один PR автоматически не объединён.
+
+
+## Переключение на парсер, 26.10.2026
+
+Пользователь запросил parser high→medium в спринте 1.1; GO-073…075 сейчас отложены. Финальный 29458b2 / #30 прошёл оба CI (40292857092/40292857030); PR #30 объединён в закрытый parent, main=b3d4820 содержит только #24. GO-076 сохраняет всю проверенную вершину 29458b2 и main через merge без изменений кода; tree 88e3fc37fc801d03e8028a0759e61155ac621180 совпадает до doc checkpoint. Новый стек начинается PR в main. Следующие pure critical-порции GO-077 crypto compatibility, GO-078 settings guards, GO-079 budgets/time; большие SQL/recovery/import и medium clients по зависимостям. ADR-016 остаётся предложенным, real secrets/providers не подключаются.

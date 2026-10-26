@@ -1,0 +1,1029 @@
+{
+  "oracle": "Unchanged legacy telegramChannelInput/normalizeTelegramUsername; typed synthetic UI payloads and RFC3339 dates only; no SQL/network",
+  "vectors": [
+    {
+      "name": "base",
+      "input": {
+        "name": "CI synthetic channel",
+        "url": "@ci_synthetic",
+        "comment": "",
+        "lastSuccessfulCheckAt": null
+      },
+      "current": null,
+      "valid": true,
+      "normalized": {
+        "name": "CI synthetic channel",
+        "url": "https://t.me/ci_synthetic",
+        "normalizedUsername": "ci_synthetic",
+        "username": "@ci_synthetic",
+        "lastSuccessfulCheckAt": null,
+        "comment": ""
+      }
+    },
+    {
+      "name": "trim-name",
+      "input": {
+        "name": " ﻿ CI synthetic channel ﻿ ",
+        "url": "@ci_synthetic",
+        "comment": "",
+        "lastSuccessfulCheckAt": null
+      },
+      "current": null,
+      "valid": true,
+      "normalized": {
+        "name": "CI synthetic channel",
+        "url": "https://t.me/ci_synthetic",
+        "normalizedUsername": "ci_synthetic",
+        "username": "@ci_synthetic",
+        "lastSuccessfulCheckAt": null,
+        "comment": ""
+      }
+    },
+    {
+      "name": "nel-name",
+      "input": {
+        "name": "CI synthetic",
+        "url": "@ci_synthetic",
+        "comment": "",
+        "lastSuccessfulCheckAt": null
+      },
+      "current": null,
+      "valid": true,
+      "normalized": {
+        "name": "CI synthetic",
+        "url": "https://t.me/ci_synthetic",
+        "normalizedUsername": "ci_synthetic",
+        "username": "@ci_synthetic",
+        "lastSuccessfulCheckAt": null,
+        "comment": ""
+      }
+    },
+    {
+      "name": "empty-name",
+      "input": {
+        "name": "",
+        "url": "@ci_synthetic",
+        "comment": "",
+        "lastSuccessfulCheckAt": null
+      },
+      "current": null,
+      "valid": false,
+      "error": "Укажите название Telegram-канала."
+    },
+    {
+      "name": "name-limit",
+      "input": {
+        "name": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "url": "@ci_synthetic",
+        "comment": "",
+        "lastSuccessfulCheckAt": null
+      },
+      "current": null,
+      "valid": true,
+      "normalized": {
+        "name": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "url": "https://t.me/ci_synthetic",
+        "normalizedUsername": "ci_synthetic",
+        "username": "@ci_synthetic",
+        "lastSuccessfulCheckAt": null,
+        "comment": ""
+      }
+    },
+    {
+      "name": "name-over-limit",
+      "input": {
+        "name": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "url": "@ci_synthetic",
+        "comment": "",
+        "lastSuccessfulCheckAt": null
+      },
+      "current": null,
+      "valid": false,
+      "error": "Название канала не должно превышать 160 символов."
+    },
+    {
+      "name": "name-emoji-limit",
+      "input": {
+        "name": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+        "url": "@ci_synthetic",
+        "comment": "",
+        "lastSuccessfulCheckAt": null
+      },
+      "current": null,
+      "valid": true,
+      "normalized": {
+        "name": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+        "url": "https://t.me/ci_synthetic",
+        "normalizedUsername": "ci_synthetic",
+        "username": "@ci_synthetic",
+        "lastSuccessfulCheckAt": null,
+        "comment": ""
+      }
+    },
+    {
+      "name": "name-emoji-over-limit",
+      "input": {
+        "name": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀x",
+        "url": "@ci_synthetic",
+        "comment": "",
+        "lastSuccessfulCheckAt": null
+      },
+      "current": null,
+      "valid": false,
+      "error": "Название канала не должно превышать 160 символов."
+    },
+    {
+      "name": "empty-comment",
+      "input": {
+        "name": "CI synthetic channel",
+        "url": "@ci_synthetic",
+        "comment": "",
+        "lastSuccessfulCheckAt": null
+      },
+      "current": null,
+      "valid": true,
+      "normalized": {
+        "name": "CI synthetic channel",
+        "url": "https://t.me/ci_synthetic",
+        "normalizedUsername": "ci_synthetic",
+        "username": "@ci_synthetic",
+        "lastSuccessfulCheckAt": null,
+        "comment": ""
+      }
+    },
+    {
+      "name": "comment-untrimmed",
+      "input": {
+        "name": "CI synthetic channel",
+        "url": "@ci_synthetic",
+        "comment": " ﻿ CI synthetic ﻿ ",
+        "lastSuccessfulCheckAt": null
+      },
+      "current": null,
+      "valid": true,
+      "normalized": {
+        "name": "CI synthetic channel",
+        "url": "https://t.me/ci_synthetic",
+        "normalizedUsername": "ci_synthetic",
+        "username": "@ci_synthetic",
+        "lastSuccessfulCheckAt": null,
+        "comment": " ﻿ CI synthetic ﻿ "
+      }
+    },
+    {
+      "name": "comment-limit",
+      "input": {
+        "name": "CI synthetic channel",
+        "url": "@ci_synthetic",
+        "comment": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "lastSuccessfulCheckAt": null
+      },
+      "current": null,
+      "valid": true,
+      "normalized": {
+        "name": "CI synthetic channel",
+        "url": "https://t.me/ci_synthetic",
+        "normalizedUsername": "ci_synthetic",
+        "username": "@ci_synthetic",
+        "lastSuccessfulCheckAt": null,
+        "comment": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      }
+    },
+    {
+      "name": "comment-over-limit",
+      "input": {
+        "name": "CI synthetic channel",
+        "url": "@ci_synthetic",
+        "comment": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "lastSuccessfulCheckAt": null
+      },
+      "current": null,
+      "valid": false,
+      "error": "Комментарий не должен превышать 512 символов."
+    },
+    {
+      "name": "comment-emoji-limit",
+      "input": {
+        "name": "CI synthetic channel",
+        "url": "@ci_synthetic",
+        "comment": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+        "lastSuccessfulCheckAt": null
+      },
+      "current": null,
+      "valid": true,
+      "normalized": {
+        "name": "CI synthetic channel",
+        "url": "https://t.me/ci_synthetic",
+        "normalizedUsername": "ci_synthetic",
+        "username": "@ci_synthetic",
+        "lastSuccessfulCheckAt": null,
+        "comment": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀"
+      }
+    },
+    {
+      "name": "comment-emoji-over-limit",
+      "input": {
+        "name": "CI synthetic channel",
+        "url": "@ci_synthetic",
+        "comment": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+        "lastSuccessfulCheckAt": null
+      },
+      "current": null,
+      "valid": false,
+      "error": "Комментарий не должен превышать 512 символов."
+    },
+    {
+      "name": "utc-check",
+      "input": {
+        "name": "CI synthetic channel",
+        "url": "@ci_synthetic",
+        "comment": "",
+        "lastSuccessfulCheckAt": "2026-10-26T11:45:00Z"
+      },
+      "current": null,
+      "valid": true,
+      "normalized": {
+        "name": "CI synthetic channel",
+        "url": "https://t.me/ci_synthetic",
+        "normalizedUsername": "ci_synthetic",
+        "username": "@ci_synthetic",
+        "lastSuccessfulCheckAt": "2026-10-26T11:45:00.000Z",
+        "comment": ""
+      }
+    },
+    {
+      "name": "msk-check",
+      "input": {
+        "name": "CI synthetic channel",
+        "url": "@ci_synthetic",
+        "comment": "",
+        "lastSuccessfulCheckAt": "2026-10-26T00:15:00+03:00"
+      },
+      "current": null,
+      "valid": true,
+      "normalized": {
+        "name": "CI synthetic channel",
+        "url": "https://t.me/ci_synthetic",
+        "normalizedUsername": "ci_synthetic",
+        "username": "@ci_synthetic",
+        "lastSuccessfulCheckAt": "2026-10-25T21:15:00.000Z",
+        "comment": ""
+      }
+    },
+    {
+      "name": "fraction-check",
+      "input": {
+        "name": "CI synthetic channel",
+        "url": "@ci_synthetic",
+        "comment": "",
+        "lastSuccessfulCheckAt": "2026-10-26T11:45:00.123456Z"
+      },
+      "current": null,
+      "valid": true,
+      "normalized": {
+        "name": "CI synthetic channel",
+        "url": "https://t.me/ci_synthetic",
+        "normalizedUsername": "ci_synthetic",
+        "username": "@ci_synthetic",
+        "lastSuccessfulCheckAt": "2026-10-26T11:45:00.123Z",
+        "comment": ""
+      }
+    },
+    {
+      "name": "trim-check",
+      "input": {
+        "name": "CI synthetic channel",
+        "url": "@ci_synthetic",
+        "comment": "",
+        "lastSuccessfulCheckAt": "﻿2026-10-26T11:45:00Z﻿"
+      },
+      "current": null,
+      "valid": true,
+      "normalized": {
+        "name": "CI synthetic channel",
+        "url": "https://t.me/ci_synthetic",
+        "normalizedUsername": "ci_synthetic",
+        "username": "@ci_synthetic",
+        "lastSuccessfulCheckAt": "2026-10-26T11:45:00.000Z",
+        "comment": ""
+      }
+    },
+    {
+      "name": "blank-check",
+      "input": {
+        "name": "CI synthetic channel",
+        "url": "@ci_synthetic",
+        "comment": "",
+        "lastSuccessfulCheckAt": " "
+      },
+      "current": null,
+      "valid": true,
+      "normalized": {
+        "name": "CI synthetic channel",
+        "url": "https://t.me/ci_synthetic",
+        "normalizedUsername": "ci_synthetic",
+        "username": "@ci_synthetic",
+        "lastSuccessfulCheckAt": null,
+        "comment": ""
+      }
+    },
+    {
+      "name": "bad-check",
+      "input": {
+        "name": "CI synthetic channel",
+        "url": "@ci_synthetic",
+        "comment": "",
+        "lastSuccessfulCheckAt": "CI invalid date"
+      },
+      "current": null,
+      "valid": false,
+      "error": "Укажите корректные дату и время последней проверки."
+    },
+    {
+      "name": "bad-offset-hour",
+      "input": {
+        "name": "CI synthetic channel",
+        "url": "@ci_synthetic",
+        "comment": "",
+        "lastSuccessfulCheckAt": "2026-10-26T11:45:00+24:00"
+      },
+      "current": null,
+      "valid": false,
+      "error": "Укажите корректные дату и время последней проверки."
+    },
+    {
+      "name": "bad-offset-minute",
+      "input": {
+        "name": "CI synthetic channel",
+        "url": "@ci_synthetic",
+        "comment": "",
+        "lastSuccessfulCheckAt": "2026-10-26T11:45:00+00:60"
+      },
+      "current": null,
+      "valid": false,
+      "error": "Укажите корректные дату и время последней проверки."
+    },
+    {
+      "name": "bad-comma-fraction",
+      "input": {
+        "name": "CI synthetic channel",
+        "url": "@ci_synthetic",
+        "comment": "",
+        "lastSuccessfulCheckAt": "2026-10-26T11:45:00,123Z"
+      },
+      "current": null,
+      "valid": false,
+      "error": "Укажите корректные дату и время последней проверки."
+    },
+    {
+      "name": "username-0",
+      "input": {
+        "name": "CI synthetic channel",
+        "url": "@CI_SYNTHETIC",
+        "comment": "",
+        "lastSuccessfulCheckAt": null
+      },
+      "current": null,
+      "valid": true,
+      "normalized": {
+        "name": "CI synthetic channel",
+        "url": "https://t.me/ci_synthetic",
+        "normalizedUsername": "ci_synthetic",
+        "username": "@ci_synthetic",
+        "lastSuccessfulCheckAt": null,
+        "comment": ""
+      }
+    },
+    {
+      "name": "username-1",
+      "input": {
+        "name": "CI synthetic channel",
+        "url": "t.me/ci_synthetic",
+        "comment": "",
+        "lastSuccessfulCheckAt": null
+      },
+      "current": null,
+      "valid": true,
+      "normalized": {
+        "name": "CI synthetic channel",
+        "url": "https://t.me/ci_synthetic",
+        "normalizedUsername": "ci_synthetic",
+        "username": "@ci_synthetic",
+        "lastSuccessfulCheckAt": null,
+        "comment": ""
+      }
+    },
+    {
+      "name": "username-2",
+      "input": {
+        "name": "CI synthetic channel",
+        "url": "https://t.me/ci_synthetic",
+        "comment": "",
+        "lastSuccessfulCheckAt": null
+      },
+      "current": null,
+      "valid": true,
+      "normalized": {
+        "name": "CI synthetic channel",
+        "url": "https://t.me/ci_synthetic",
+        "normalizedUsername": "ci_synthetic",
+        "username": "@ci_synthetic",
+        "lastSuccessfulCheckAt": null,
+        "comment": ""
+      }
+    },
+    {
+      "name": "username-3",
+      "input": {
+        "name": "CI synthetic channel",
+        "url": "HTTP://WWW.T.ME/S/CI_SYNTHETIC/123?x=1#part",
+        "comment": "",
+        "lastSuccessfulCheckAt": null
+      },
+      "current": null,
+      "valid": true,
+      "normalized": {
+        "name": "CI synthetic channel",
+        "url": "https://t.me/ci_synthetic",
+        "normalizedUsername": "ci_synthetic",
+        "username": "@ci_synthetic",
+        "lastSuccessfulCheckAt": null,
+        "comment": ""
+      }
+    },
+    {
+      "name": "username-4",
+      "input": {
+        "name": "CI synthetic channel",
+        "url": "https://telegram.me/ci_synthetic",
+        "comment": "",
+        "lastSuccessfulCheckAt": null
+      },
+      "current": null,
+      "valid": true,
+      "normalized": {
+        "name": "CI synthetic channel",
+        "url": "https://t.me/ci_synthetic",
+        "normalizedUsername": "ci_synthetic",
+        "username": "@ci_synthetic",
+        "lastSuccessfulCheckAt": null,
+        "comment": ""
+      }
+    },
+    {
+      "name": "username-5",
+      "input": {
+        "name": "CI synthetic channel",
+        "url": "@12345",
+        "comment": "",
+        "lastSuccessfulCheckAt": null
+      },
+      "current": null,
+      "valid": true,
+      "normalized": {
+        "name": "CI synthetic channel",
+        "url": "https://t.me/12345",
+        "normalizedUsername": "12345",
+        "username": "@12345",
+        "lastSuccessfulCheckAt": null,
+        "comment": ""
+      }
+    },
+    {
+      "name": "username-6",
+      "input": {
+        "name": "CI synthetic channel",
+        "url": "@_____",
+        "comment": "",
+        "lastSuccessfulCheckAt": null
+      },
+      "current": null,
+      "valid": true,
+      "normalized": {
+        "name": "CI synthetic channel",
+        "url": "https://t.me/_____",
+        "normalizedUsername": "_____",
+        "username": "@_____",
+        "lastSuccessfulCheckAt": null,
+        "comment": ""
+      }
+    },
+    {
+      "name": "username-7",
+      "input": {
+        "name": "CI synthetic channel",
+        "url": "@xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "comment": "",
+        "lastSuccessfulCheckAt": null
+      },
+      "current": null,
+      "valid": true,
+      "normalized": {
+        "name": "CI synthetic channel",
+        "url": "https://t.me/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "normalizedUsername": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "username": "@xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "lastSuccessfulCheckAt": null,
+        "comment": ""
+      }
+    },
+    {
+      "name": "username-8",
+      "input": {
+        "name": "CI synthetic channel",
+        "url": "@xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "comment": "",
+        "lastSuccessfulCheckAt": null
+      },
+      "current": null,
+      "valid": false,
+      "error": "Укажите корректную ссылку на публичный Telegram-канал или @username."
+    },
+    {
+      "name": "username-9",
+      "input": {
+        "name": "CI synthetic channel",
+        "url": "@abcd",
+        "comment": "",
+        "lastSuccessfulCheckAt": null
+      },
+      "current": null,
+      "valid": false,
+      "error": "Укажите корректную ссылку на публичный Telegram-канал или @username."
+    },
+    {
+      "name": "username-10",
+      "input": {
+        "name": "CI synthetic channel",
+        "url": "@ci-synthetic",
+        "comment": "",
+        "lastSuccessfulCheckAt": null
+      },
+      "current": null,
+      "valid": false,
+      "error": "Укажите корректную ссылку на публичный Telegram-канал или @username."
+    },
+    {
+      "name": "username-11",
+      "input": {
+        "name": "CI synthetic channel",
+        "url": "ci_synthetic",
+        "comment": "",
+        "lastSuccessfulCheckAt": null
+      },
+      "current": null,
+      "valid": false,
+      "error": "Укажите корректную ссылку на публичный Telegram-канал или @username."
+    },
+    {
+      "name": "username-12",
+      "input": {
+        "name": "CI synthetic channel",
+        "url": "https://example.org/ci_synthetic",
+        "comment": "",
+        "lastSuccessfulCheckAt": null
+      },
+      "current": null,
+      "valid": false,
+      "error": "Укажите корректную ссылку на публичный Telegram-канал или @username."
+    },
+    {
+      "name": "username-13",
+      "input": {
+        "name": "CI synthetic channel",
+        "url": "https://t.me",
+        "comment": "",
+        "lastSuccessfulCheckAt": null
+      },
+      "current": null,
+      "valid": false,
+      "error": "Укажите корректную ссылку на публичный Telegram-канал или @username."
+    },
+    {
+      "name": "username-14",
+      "input": {
+        "name": "CI synthetic channel",
+        "url": "https://t.me/s",
+        "comment": "",
+        "lastSuccessfulCheckAt": null
+      },
+      "current": null,
+      "valid": false,
+      "error": "Укажите корректную ссылку на публичный Telegram-канал или @username."
+    },
+    {
+      "name": "username-15",
+      "input": {
+        "name": "CI synthetic channel",
+        "url": "https://t.me/+ci_synthetic",
+        "comment": "",
+        "lastSuccessfulCheckAt": null
+      },
+      "current": null,
+      "valid": false,
+      "error": "Укажите корректную ссылку на публичный Telegram-канал или @username."
+    },
+    {
+      "name": "username-16",
+      "input": {
+        "name": "CI synthetic channel",
+        "url": "@@ci_synthetic",
+        "comment": "",
+        "lastSuccessfulCheckAt": null
+      },
+      "current": null,
+      "valid": true,
+      "normalized": {
+        "name": "CI synthetic channel",
+        "url": "https://t.me/ci_synthetic",
+        "normalizedUsername": "ci_synthetic",
+        "username": "@ci_synthetic",
+        "lastSuccessfulCheckAt": null,
+        "comment": ""
+      }
+    },
+    {
+      "name": "username-17",
+      "input": {
+        "name": "CI synthetic channel",
+        "url": "https://t.me/@ci_synthetic",
+        "comment": "",
+        "lastSuccessfulCheckAt": null
+      },
+      "current": null,
+      "valid": true,
+      "normalized": {
+        "name": "CI synthetic channel",
+        "url": "https://t.me/ci_synthetic",
+        "normalizedUsername": "ci_synthetic",
+        "username": "@ci_synthetic",
+        "lastSuccessfulCheckAt": null,
+        "comment": ""
+      }
+    },
+    {
+      "name": "username-18",
+      "input": {
+        "name": "CI synthetic channel",
+        "url": "https://t.me/%63i_synthetic",
+        "comment": "",
+        "lastSuccessfulCheckAt": null
+      },
+      "current": null,
+      "valid": false,
+      "error": "Укажите корректную ссылку на публичный Telegram-канал или @username."
+    },
+    {
+      "name": "username-19",
+      "input": {
+        "name": "CI synthetic channel",
+        "url": "https://t.me//s///ci_synthetic/123",
+        "comment": "",
+        "lastSuccessfulCheckAt": null
+      },
+      "current": null,
+      "valid": true,
+      "normalized": {
+        "name": "CI synthetic channel",
+        "url": "https://t.me/ci_synthetic",
+        "normalizedUsername": "ci_synthetic",
+        "username": "@ci_synthetic",
+        "lastSuccessfulCheckAt": null,
+        "comment": ""
+      }
+    },
+    {
+      "name": "username-20",
+      "input": {
+        "name": "CI synthetic channel",
+        "url": "https://t.me:443/ci_synthetic",
+        "comment": "",
+        "lastSuccessfulCheckAt": null
+      },
+      "current": null,
+      "valid": true,
+      "normalized": {
+        "name": "CI synthetic channel",
+        "url": "https://t.me/ci_synthetic",
+        "normalizedUsername": "ci_synthetic",
+        "username": "@ci_synthetic",
+        "lastSuccessfulCheckAt": null,
+        "comment": ""
+      }
+    },
+    {
+      "name": "username-21",
+      "input": {
+        "name": "CI synthetic channel",
+        "url": "https://www.telegram.me/ci_synthetic",
+        "comment": "",
+        "lastSuccessfulCheckAt": null
+      },
+      "current": null,
+      "valid": true,
+      "normalized": {
+        "name": "CI synthetic channel",
+        "url": "https://t.me/ci_synthetic",
+        "normalizedUsername": "ci_synthetic",
+        "username": "@ci_synthetic",
+        "lastSuccessfulCheckAt": null,
+        "comment": ""
+      }
+    },
+    {
+      "name": "username-22",
+      "input": {
+        "name": "CI synthetic channel",
+        "url": "﻿@ci_synthetic﻿",
+        "comment": "",
+        "lastSuccessfulCheckAt": null
+      },
+      "current": null,
+      "valid": true,
+      "normalized": {
+        "name": "CI synthetic channel",
+        "url": "https://t.me/ci_synthetic",
+        "normalizedUsername": "ci_synthetic",
+        "username": "@ci_synthetic",
+        "lastSuccessfulCheckAt": null,
+        "comment": ""
+      }
+    },
+    {
+      "name": "username-23",
+      "input": {
+        "name": "CI synthetic channel",
+        "url": "@ci_synthetic",
+        "comment": "",
+        "lastSuccessfulCheckAt": null
+      },
+      "current": null,
+      "valid": false,
+      "error": "Укажите корректную ссылку на публичный Telegram-канал или @username."
+    },
+    {
+      "name": "username-alias",
+      "input": {
+        "name": "CI synthetic channel",
+        "username": "@ci_alias"
+      },
+      "current": null,
+      "valid": true,
+      "normalized": {
+        "name": "CI synthetic channel",
+        "url": "https://t.me/ci_alias",
+        "normalizedUsername": "ci_alias",
+        "username": "@ci_alias",
+        "lastSuccessfulCheckAt": null,
+        "comment": ""
+      }
+    },
+    {
+      "name": "url-wins-over-alias",
+      "input": {
+        "name": "CI synthetic channel",
+        "url": "@ci_synthetic",
+        "comment": "",
+        "lastSuccessfulCheckAt": null,
+        "username": "@ci_alias"
+      },
+      "current": null,
+      "valid": true,
+      "normalized": {
+        "name": "CI synthetic channel",
+        "url": "https://t.me/ci_synthetic",
+        "normalizedUsername": "ci_synthetic",
+        "username": "@ci_synthetic",
+        "lastSuccessfulCheckAt": null,
+        "comment": ""
+      }
+    },
+    {
+      "name": "empty-url-does-not-fallback",
+      "input": {
+        "name": "CI synthetic channel",
+        "url": "",
+        "comment": "",
+        "lastSuccessfulCheckAt": null,
+        "username": "@ci_alias"
+      },
+      "current": null,
+      "valid": false,
+      "error": "Укажите корректную ссылку на публичный Telegram-канал или @username."
+    },
+    {
+      "name": "update-empty",
+      "input": {},
+      "current": {
+        "name": "CI synthetic channel",
+        "url": "https://t.me/ci_existing",
+        "comment": "CI old comment",
+        "lastSuccessfulCheckAt": "2026-10-26T11:45:00.000Z",
+        "normalizedUsername": "ci_existing",
+        "username": "@ci_existing"
+      },
+      "valid": true,
+      "normalized": {
+        "name": "CI synthetic channel",
+        "url": "https://t.me/ci_existing",
+        "normalizedUsername": "ci_existing",
+        "username": "@ci_existing",
+        "lastSuccessfulCheckAt": "2026-10-26T11:45:00.000Z",
+        "comment": "CI old comment"
+      }
+    },
+    {
+      "name": "update-comment",
+      "input": {
+        "comment": "CI new comment"
+      },
+      "current": {
+        "name": "CI synthetic channel",
+        "url": "https://t.me/ci_existing",
+        "comment": "CI old comment",
+        "lastSuccessfulCheckAt": "2026-10-26T11:45:00.000Z",
+        "normalizedUsername": "ci_existing",
+        "username": "@ci_existing"
+      },
+      "valid": true,
+      "normalized": {
+        "name": "CI synthetic channel",
+        "url": "https://t.me/ci_existing",
+        "normalizedUsername": "ci_existing",
+        "username": "@ci_existing",
+        "lastSuccessfulCheckAt": "2026-10-26T11:45:00.000Z",
+        "comment": "CI new comment"
+      }
+    },
+    {
+      "name": "update-null-fallback",
+      "input": {
+        "name": null,
+        "url": null,
+        "comment": null,
+        "lastSuccessfulCheckAt": null
+      },
+      "current": {
+        "name": "CI synthetic channel",
+        "url": "https://t.me/ci_existing",
+        "comment": "CI old comment",
+        "lastSuccessfulCheckAt": "2026-10-26T11:45:00.000Z",
+        "normalizedUsername": "ci_existing",
+        "username": "@ci_existing"
+      },
+      "valid": true,
+      "normalized": {
+        "name": "CI synthetic channel",
+        "url": "https://t.me/ci_existing",
+        "normalizedUsername": "ci_existing",
+        "username": "@ci_existing",
+        "lastSuccessfulCheckAt": "2026-10-26T11:45:00.000Z",
+        "comment": "CI old comment"
+      }
+    },
+    {
+      "name": "update-clear-check",
+      "input": {
+        "lastSuccessfulCheckAt": ""
+      },
+      "current": {
+        "name": "CI synthetic channel",
+        "url": "https://t.me/ci_existing",
+        "comment": "CI old comment",
+        "lastSuccessfulCheckAt": "2026-10-26T11:45:00.000Z",
+        "normalizedUsername": "ci_existing",
+        "username": "@ci_existing"
+      },
+      "valid": true,
+      "normalized": {
+        "name": "CI synthetic channel",
+        "url": "https://t.me/ci_existing",
+        "normalizedUsername": "ci_existing",
+        "username": "@ci_existing",
+        "lastSuccessfulCheckAt": null,
+        "comment": "CI old comment"
+      }
+    },
+    {
+      "name": "update-username-alias",
+      "input": {
+        "username": "@ci_alias"
+      },
+      "current": {
+        "name": "CI synthetic channel",
+        "url": "https://t.me/ci_existing",
+        "comment": "CI old comment",
+        "lastSuccessfulCheckAt": "2026-10-26T11:45:00.000Z",
+        "normalizedUsername": "ci_existing",
+        "username": "@ci_existing"
+      },
+      "valid": true,
+      "normalized": {
+        "name": "CI synthetic channel",
+        "url": "https://t.me/ci_alias",
+        "normalizedUsername": "ci_alias",
+        "username": "@ci_alias",
+        "lastSuccessfulCheckAt": "2026-10-26T11:45:00.000Z",
+        "comment": "CI old comment"
+      }
+    }
+  ],
+  "usernames": [
+    {
+      "input": "@CI_SYNTHETIC",
+      "output": "ci_synthetic"
+    },
+    {
+      "input": "t.me/ci_synthetic",
+      "output": "ci_synthetic"
+    },
+    {
+      "input": "https://t.me/ci_synthetic",
+      "output": "ci_synthetic"
+    },
+    {
+      "input": "HTTP://WWW.T.ME/S/CI_SYNTHETIC/123?x=1#part",
+      "output": "ci_synthetic"
+    },
+    {
+      "input": "https://telegram.me/ci_synthetic",
+      "output": "ci_synthetic"
+    },
+    {
+      "input": "@12345",
+      "output": "12345"
+    },
+    {
+      "input": "@_____",
+      "output": "_____"
+    },
+    {
+      "input": "@xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "output": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    },
+    {
+      "input": "@xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "output": ""
+    },
+    {
+      "input": "@abcd",
+      "output": ""
+    },
+    {
+      "input": "@ci-synthetic",
+      "output": ""
+    },
+    {
+      "input": "ci_synthetic",
+      "output": ""
+    },
+    {
+      "input": "https://example.org/ci_synthetic",
+      "output": ""
+    },
+    {
+      "input": "https://t.me",
+      "output": ""
+    },
+    {
+      "input": "https://t.me/s",
+      "output": ""
+    },
+    {
+      "input": "https://t.me/+ci_synthetic",
+      "output": ""
+    },
+    {
+      "input": "@@ci_synthetic",
+      "output": "ci_synthetic"
+    },
+    {
+      "input": "https://t.me/@ci_synthetic",
+      "output": "ci_synthetic"
+    },
+    {
+      "input": "https://t.me/%63i_synthetic",
+      "output": ""
+    },
+    {
+      "input": "https://t.me//s///ci_synthetic/123",
+      "output": "ci_synthetic"
+    },
+    {
+      "input": "https://t.me:443/ci_synthetic",
+      "output": "ci_synthetic"
+    },
+    {
+      "input": "https://www.telegram.me/ci_synthetic",
+      "output": "ci_synthetic"
+    },
+    {
+      "input": "﻿@ci_synthetic﻿",
+      "output": "ci_synthetic"
+    },
+    {
+      "input": "@ci_synthetic",
+      "output": ""
+    }
+  ]
+}

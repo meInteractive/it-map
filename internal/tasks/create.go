@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"strings"
-	"time"
+	"unicode/utf16"
 	"unicode/utf8"
 )
 
@@ -24,24 +24,10 @@ func (r Repository) Create(ctx context.Context, user string, input CreateInput) 
 	if r.DB == nil || strings.TrimSpace(user) == "" {
 		return 0, errors.New("task DB or user unavailable")
 	}
-	input.CompanyName = strings.TrimSpace(input.CompanyName)
-	input.Note = strings.TrimSpace(input.Note)
-	if input.CompanyName == "" || utf8.RuneCountInString(input.CompanyName) > 255 || utf8.RuneCountInString(input.Note) > 1200 {
-		return 0, ErrInvalidTask
-	}
-	switch input.Type {
-	case "call", "email", "messenger", "meeting":
-	default:
-		return 0, ErrInvalidTask
-	}
-	if input.VacancyID != nil && *input.VacancyID <= 0 {
-		return 0, ErrInvalidTask
-	}
-	due, err := time.Parse(time.RFC3339Nano, input.DueAt)
+	input, err := input.normalize()
 	if err != nil {
-		return 0, ErrInvalidTask
+		return 0, err
 	}
-	input.DueAt = due.UTC().Format("2006-01-02T15:04:05.000Z")
 
 	tx, err := r.DB.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
 	if err != nil {
@@ -98,4 +84,42 @@ func (r Repository) Create(ctx context.Context, user string, input CreateInput) 
 		return 0, err
 	}
 	return id, nil
+}
+
+// normalize preserves the typed legacy create contract before opening a transaction.
+func (input CreateInput) normalize() (CreateInput, error) {
+	input.CompanyName = trimTaskText(input.CompanyName)
+	input.Note = trimTaskText(input.Note)
+	if input.CompanyName == "" || utf8.RuneCountInString(input.CompanyName) > 255 || len(utf16.Encode([]rune(input.Note))) > 1200 {
+		return input, ErrInvalidTask
+	}
+	switch input.Type {
+	case "call", "email", "messenger", "meeting":
+	default:
+		return input, ErrInvalidTask
+	}
+	if input.VacancyID != nil && (*input.VacancyID <= 0 || *input.VacancyID > 1<<53-1) {
+		return input, ErrInvalidTask
+	}
+	normalized, err := normalizeTaskDeadline(input.DueAt)
+	if err != nil {
+		return input, ErrInvalidTask
+	}
+	input.DueAt = normalized
+
+	return input, nil
+}
+
+// ECMAScript trim excludes NEL and includes BOM, unlike strings.TrimSpace.
+func trimTaskText(value string) string {
+	return strings.TrimFunc(value, func(r rune) bool {
+		if r >= '\u2000' && r <= '\u200a' {
+			return true
+		}
+		switch r {
+		case '\t', '\n', '\v', '\f', '\r', ' ', '\u00a0', '\u1680', '\u2028', '\u2029', '\u202f', '\u205f', '\u3000', '\ufeff':
+			return true
+		}
+		return false
+	})
 }

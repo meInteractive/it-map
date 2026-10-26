@@ -1,0 +1,83 @@
+import { test, expect } from '../browser/fixtures.js';
+
+// Only the guarded Go integration parent starts this writable synthetic server.
+// No mocked responses, external requests, screenshots, traces or saved cookies.
+test('Задача: создание, перенос срока, завершение и повторное открытие', async ({ page, activate }, testInfo) => {
+  const password = process.env.ITMAP_SMOKE_PASSWORD;
+  if (!password || process.env.ITMAP_TASK_BROWSER_WRITES !== '1') throw new Error('Explicit synthetic task writer context is required.');
+  const note = `CI synthetic task browser ${testInfo.project.name}`;
+  const login = async (name: string) => {
+    await page.goto('/');
+    await page.getByLabel('Логин', { exact: true }).fill(name);
+    await page.getByLabel('Пароль', { exact: true }).fill(password);
+    await activate(page.getByRole('button', { name: 'Открыть карту', exact: true }));
+    await expect(page.getByRole('navigation', { name: 'Основные разделы' })).toBeVisible();
+  };
+  const companyTasks = async () => {
+    await activate(page.getByRole('button', { name: 'Список', exact: true }));
+    await activate(page.locator('.company-list-name', { hasText: 'CI Synthetic Employer' }));
+    const company = page.getByRole('dialog', { name: 'CI Synthetic Employer', exact: true });
+    await activate(company.getByRole('tab', { name: 'Задачи', exact: true }));
+    await expect(company.locator('.company-task-form')).toBeVisible();
+    return company;
+  };
+  await login('demo');
+  let company = await companyTasks();
+  const form = company.locator('.company-task-form');
+  await form.getByRole('combobox', { name: /^Тип задачи/ }).selectOption('meeting');
+  await form.getByLabel('Дата, МСК', { exact: true }).fill('2026-10-28');
+  await form.getByLabel('Время, МСК', { exact: true }).fill('00:15');
+  await form.getByLabel('Заметка', { exact: true }).fill(note);
+  const createdResponse = page.waitForResponse(r => new URL(r.url()).pathname === '/api/tasks' && r.request().method() === 'POST');
+  await activate(form.getByRole('button', { name: 'Добавить задачу', exact: true }));
+  const created = await createdResponse;
+  expect(created.status()).toBe(201);
+  const result = await created.json();
+  expect(result.ok).toBe(true);
+  expect(result.taskId).toBeGreaterThan(1);
+  expect(result.calendarSync).toEqual({ status: 'not_connected' });
+  const taskId = result.taskId as number;
+  let card = company.locator('.task-card').filter({ hasText: note });
+  await expect(card).toHaveCount(1);
+  await expect(card.locator('time')).toHaveAttribute('datetime', '2026-10-27T21:15:00.000Z');
+  await page.reload();
+  company = await companyTasks();
+  card = company.locator('.task-card').filter({ hasText: note });
+  await expect(card).toHaveCount(1);
+  await activate(card.getByRole('button', { name: 'Изменить дату и время', exact: true }));
+  await card.getByLabel('Дата, МСК', { exact: true }).fill('2026-10-29');
+  await card.getByLabel('Время, МСК', { exact: true }).fill('23:45');
+  const updateResponse = () => page.waitForResponse(r => new URL(r.url()).pathname === `/api/tasks/${taskId}` && r.request().method() === 'PUT');
+  const movedResponse = updateResponse();
+  await activate(card.getByRole('button', { name: 'Сохранить', exact: true }));
+  const moved = await movedResponse;
+  expect(moved.status()).toBe(200);
+  expect((await moved.json()).dueAt).toBe('2026-10-29T20:45:00.000Z');
+  await expect(card.locator('time')).toHaveAttribute('datetime', '2026-10-29T20:45:00.000Z');
+  const completedResponse = updateResponse();
+  await activate(card.getByRole('checkbox', { name: 'Выполнено', exact: true }));
+  expect((await completedResponse).status()).toBe(200);
+  await expect(card).toHaveCount(0);
+  await activate(company.getByRole('checkbox', { name: 'Показать завершённые', exact: true }));
+  await expect(card).toHaveCount(1);
+  await expect(card.getByRole('checkbox', { name: 'Выполнено', exact: true })).toBeChecked();
+  const completedRows = await page.request.get('/api/tasks?includeCompleted=1');
+  expect(completedRows.status()).toBe(200);
+  const completed = (await completedRows.json()).tasks.find((row: { id: number }) => row.id === taskId);
+  expect(completed.completed).toBe(true);
+  expect(completed.completedAt).toBeTruthy();
+  const reopenedResponse = updateResponse();
+  await activate(card.getByRole('checkbox', { name: 'Выполнено', exact: true }));
+  expect((await reopenedResponse).status()).toBe(200);
+  await expect(card.getByRole('checkbox', { name: 'Выполнено', exact: true })).not.toBeChecked();
+  const finalResponse = await page.request.get('/api/tasks?includeCompleted=1');
+  const final = (await finalResponse.json()).tasks.find((row: { id: number }) => row.id === taskId);
+  expect(final).toMatchObject({ companyName: 'CI Synthetic Employer', vacancyId: null, type: 'meeting', note,
+    dueAt: '2026-10-29T20:45:00.000Z', completed: false, completedAt: null });
+  await page.goto('/logout');
+  await login('nastya');
+  const foreign = await page.request.get('/api/tasks?includeCompleted=1');
+  expect(foreign.status()).toBe(200);
+  expect((await foreign.json()).tasks).toEqual([]);
+  expect((await page.request.put(`/api/tasks/${taskId}`, { data: { completed: true } })).status()).toBe(404);
+});

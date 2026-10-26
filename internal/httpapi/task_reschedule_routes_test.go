@@ -63,6 +63,8 @@ func TestTaskRescheduleHTTPContract(t *testing.T) {
 	}{
 		{good, "http://evil.test", "application/json", 403},
 		{good, "", "text/plain", 400},
+		{`{"dueAt":"2026-10-24T12:00:00+24:00"}`, "", "application/json", 400},
+		{`{"dueAt":"2026-10-24T12:00:00+00:60"}`, "", "application/json", 400},
 		{`{"dueAt":"2026-02-30T12:00:00Z"}`, "", "application/json", 400},
 		{`{"dueAt":"2026-10-24T12:00Z"}`, "", "application/json", 400},
 		{`{"dueAt":"2026-10-24T12:00:00.1234Z"}`, "", "application/json", 400},
