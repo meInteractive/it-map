@@ -1,0 +1,1769 @@
+{
+  "oracle": "Unchanged hhInput/apifyRequest/checkedRun/state; intercepted synthetic HTTP only",
+  "actor": "shahidirfan~hh-ru-job-scraper",
+  "runCapUsd": 0.25,
+  "readReserveUsd": 0.01,
+  "hh": [
+    {
+      "name": "employer",
+      "url": "https://hh.ru/employer/1",
+      "options": {},
+      "valid": true,
+      "normalized": {
+        "startUrl": "https://hh.ru/search/vacancy?employer_id=1&page=0&per_page=100",
+        "results_wanted": 100,
+        "max_pages": 1,
+        "api_only": true,
+        "include_raw_data": false,
+        "proxyConfiguration": {
+          "useApifyProxy": true
+        }
+      }
+    },
+    {
+      "name": "subdomain",
+      "url": "https://sber.hh.ru/employer/123/",
+      "options": {
+        "page": 3
+      },
+      "valid": true,
+      "normalized": {
+        "startUrl": "https://hh.ru/search/vacancy?employer_id=123&page=3&per_page=100",
+        "results_wanted": 100,
+        "max_pages": 1,
+        "api_only": true,
+        "include_raw_data": false,
+        "proxyConfiguration": {
+          "useApifyProxy": true
+        }
+      }
+    },
+    {
+      "name": "search",
+      "url": "https://hh.ru/search/vacancy?employer_id=1&text=CI+synthetic",
+      "options": {},
+      "valid": true,
+      "normalized": {
+        "startUrl": "https://hh.ru/search/vacancy?employer_id=1&text=CI+synthetic&page=0&per_page=100",
+        "results_wanted": 100,
+        "max_pages": 1,
+        "api_only": true,
+        "include_raw_data": false,
+        "proxyConfiguration": {
+          "useApifyProxy": true
+        }
+      }
+    },
+    {
+      "name": "query-order",
+      "url": "https://hh.ru/search/vacancy?text=CI%20synthetic&employer_id=1&page=9&per_page=20",
+      "options": {
+        "page": 2
+      },
+      "valid": true,
+      "normalized": {
+        "startUrl": "https://hh.ru/search/vacancy?text=CI+synthetic&employer_id=1&page=2&per_page=100",
+        "results_wanted": 100,
+        "max_pages": 1,
+        "api_only": true,
+        "include_raw_data": false,
+        "proxyConfiguration": {
+          "useApifyProxy": true
+        }
+      }
+    },
+    {
+      "name": "vacancy",
+      "url": "https://hh.ru/vacancy/123#CI",
+      "options": {},
+      "valid": true,
+      "normalized": {
+        "startUrl": "https://hh.ru/vacancy/123",
+        "results_wanted": 1,
+        "max_pages": 1,
+        "api_only": false,
+        "include_raw_data": false,
+        "proxyConfiguration": {
+          "useApifyProxy": true
+        }
+      }
+    },
+    {
+      "name": "detail",
+      "url": "https://hh.ru/vacancy/123?text=CI#CI",
+      "options": {
+        "detail": true
+      },
+      "valid": true,
+      "normalized": {
+        "startUrl": "https://hh.ru/vacancy/123?text=CI",
+        "results_wanted": 1,
+        "max_pages": 1,
+        "api_only": false,
+        "include_raw_data": false,
+        "proxyConfiguration": {
+          "useApifyProxy": true
+        }
+      }
+    },
+    {
+      "name": "vacancy-query-unicode",
+      "url": "https://hh.ru/vacancy/123?text=CI синтетика~*'<>",
+      "options": {},
+      "valid": true,
+      "normalized": {
+        "startUrl": "https://hh.ru/vacancy/123?text=CI%20%D1%81%D0%B8%D0%BD%D1%82%D0%B5%D1%82%D0%B8%D0%BA%D0%B0~*%27%3C%3E",
+        "results_wanted": 1,
+        "max_pages": 1,
+        "api_only": false,
+        "include_raw_data": false,
+        "proxyConfiguration": {
+          "useApifyProxy": true
+        }
+      }
+    },
+    {
+      "name": "subdomain-detail",
+      "url": "https://sber.hh.ru/vacancy/123/",
+      "options": {
+        "detail": true
+      },
+      "valid": true,
+      "normalized": {
+        "startUrl": "https://sber.hh.ru/vacancy/123/",
+        "results_wanted": 1,
+        "max_pages": 1,
+        "api_only": false,
+        "include_raw_data": false,
+        "proxyConfiguration": {
+          "useApifyProxy": true
+        }
+      }
+    },
+    {
+      "name": "default-port",
+      "url": "https://hh.ru:443/employer/1",
+      "options": {},
+      "valid": true,
+      "normalized": {
+        "startUrl": "https://hh.ru/search/vacancy?employer_id=1&page=0&per_page=100",
+        "results_wanted": 100,
+        "max_pages": 1,
+        "api_only": true,
+        "include_raw_data": false,
+        "proxyConfiguration": {
+          "useApifyProxy": true
+        }
+      }
+    },
+    {
+      "name": "mixed-case-host",
+      "url": "https://HH.RU/employer/1",
+      "options": {},
+      "valid": true,
+      "normalized": {
+        "startUrl": "https://hh.ru/search/vacancy?employer_id=1&page=0&per_page=100",
+        "results_wanted": 100,
+        "max_pages": 1,
+        "api_only": true,
+        "include_raw_data": false,
+        "proxyConfiguration": {
+          "useApifyProxy": true
+        }
+      }
+    },
+    {
+      "name": "order",
+      "url": "https://hh.ru/employer/1",
+      "options": {
+        "orderBy": "publication_time"
+      },
+      "valid": true,
+      "normalized": {
+        "startUrl": "https://hh.ru/search/vacancy?employer_id=1&page=0&per_page=100&order_by=publication_time",
+        "results_wanted": 100,
+        "max_pages": 1,
+        "api_only": true,
+        "include_raw_data": false,
+        "proxyConfiguration": {
+          "useApifyProxy": true
+        }
+      }
+    },
+    {
+      "name": "preserve-order",
+      "url": "https://hh.ru/search/vacancy?order_by=relevance&employer_id=1",
+      "options": {
+        "orderBy": "publication_time"
+      },
+      "valid": true,
+      "normalized": {
+        "startUrl": "https://hh.ru/search/vacancy?order_by=relevance&employer_id=1&page=0&per_page=100",
+        "results_wanted": 100,
+        "max_pages": 1,
+        "api_only": true,
+        "include_raw_data": false,
+        "proxyConfiguration": {
+          "useApifyProxy": true
+        }
+      }
+    },
+    {
+      "name": "bad-order",
+      "url": "https://hh.ru/employer/1",
+      "options": {
+        "orderBy": "CI"
+      },
+      "valid": false,
+      "code": "apify_data",
+      "status": 400,
+      "message": "Apify вернул неподдерживаемые данные."
+    },
+    {
+      "name": "title",
+      "url": "https://hh.ru/employer/1",
+      "options": {
+        "titleQuery": "NAME:(CI synthetic)"
+      },
+      "valid": true,
+      "normalized": {
+        "startUrl": "https://hh.ru/search/vacancy?employer_id=1&page=0&per_page=100&text=NAME%3A%28CI+synthetic%29",
+        "results_wanted": 100,
+        "max_pages": 1,
+        "api_only": true,
+        "include_raw_data": false,
+        "proxyConfiguration": {
+          "useApifyProxy": true
+        }
+      }
+    },
+    {
+      "name": "title-combined",
+      "url": "https://hh.ru/search/vacancy?employer_id=1&text=CI+original",
+      "options": {
+        "titleQuery": "NAME:(CI synthetic)"
+      },
+      "valid": true,
+      "normalized": {
+        "startUrl": "https://hh.ru/search/vacancy?employer_id=1&text=%28CI+original%29+AND+%28NAME%3A%28CI+synthetic%29%29&page=0&per_page=100",
+        "results_wanted": 100,
+        "max_pages": 1,
+        "api_only": true,
+        "include_raw_data": false,
+        "proxyConfiguration": {
+          "useApifyProxy": true
+        }
+      }
+    },
+    {
+      "name": "title-special-form",
+      "url": "https://hh.ru/search/vacancy?employer_id=1&text=CI~*",
+      "options": {
+        "titleQuery": "NAME:(CI~*)"
+      },
+      "valid": true,
+      "normalized": {
+        "startUrl": "https://hh.ru/search/vacancy?employer_id=1&text=%28CI%7E*%29+AND+%28NAME%3A%28CI%7E*%29%29&page=0&per_page=100",
+        "results_wanted": 100,
+        "max_pages": 1,
+        "api_only": true,
+        "include_raw_data": false,
+        "proxyConfiguration": {
+          "useApifyProxy": true
+        }
+      }
+    },
+    {
+      "name": "title-empty-old",
+      "url": "https://hh.ru/search/vacancy?text=&employer_id=1",
+      "options": {
+        "titleQuery": "NAME:(CI)"
+      },
+      "valid": true,
+      "normalized": {
+        "startUrl": "https://hh.ru/search/vacancy?text=NAME%3A%28CI%29&employer_id=1&page=0&per_page=100",
+        "results_wanted": 100,
+        "max_pages": 1,
+        "api_only": true,
+        "include_raw_data": false,
+        "proxyConfiguration": {
+          "useApifyProxy": true
+        }
+      }
+    },
+    {
+      "name": "duplicate-page",
+      "url": "https://hh.ru/search/vacancy?page=1&employer_id=1&page=2",
+      "options": {
+        "page": 3
+      },
+      "valid": true,
+      "normalized": {
+        "startUrl": "https://hh.ru/search/vacancy?page=3&employer_id=1&per_page=100",
+        "results_wanted": 100,
+        "max_pages": 1,
+        "api_only": true,
+        "include_raw_data": false,
+        "proxyConfiguration": {
+          "useApifyProxy": true
+        }
+      }
+    },
+    {
+      "name": "title-invalid",
+      "url": "https://hh.ru/employer/1",
+      "options": {
+        "titleQuery": "CI"
+      },
+      "valid": false,
+      "code": "apify_data",
+      "status": 400,
+      "message": "Apify вернул неподдерживаемые данные."
+    },
+    {
+      "name": "title-control",
+      "url": "https://hh.ru/employer/1",
+      "options": {
+        "titleQuery": "NAME:(CI\n)"
+      },
+      "valid": false,
+      "code": "apify_data",
+      "status": 400,
+      "message": "Apify вернул неподдерживаемые данные."
+    },
+    {
+      "name": "title-over",
+      "url": "https://hh.ru/employer/1",
+      "options": {
+        "titleQuery": "NAME:(xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx)"
+      },
+      "valid": false,
+      "code": "apify_data",
+      "status": 400,
+      "message": "Apify вернул неподдерживаемые данные."
+    },
+    {
+      "name": "title-null",
+      "url": "https://hh.ru/employer/1",
+      "options": {
+        "titleQuery": null
+      },
+      "valid": true,
+      "normalized": {
+        "startUrl": "https://hh.ru/search/vacancy?employer_id=1&page=0&per_page=100",
+        "results_wanted": 100,
+        "max_pages": 1,
+        "api_only": true,
+        "include_raw_data": false,
+        "proxyConfiguration": {
+          "useApifyProxy": true
+        }
+      }
+    },
+    {
+      "name": "http",
+      "url": "http://hh.ru/employer/1",
+      "options": {},
+      "valid": false,
+      "code": "apify_scope",
+      "status": 400,
+      "message": "Для Apify допустим только источник hh.ru с конкретным работодателем или вакансией."
+    },
+    {
+      "name": "foreign",
+      "url": "https://ci.invalid/employer/1",
+      "options": {},
+      "valid": false,
+      "code": "apify_scope",
+      "status": 400,
+      "message": "Для Apify допустим только источник hh.ru с конкретным работодателем или вакансией."
+    },
+    {
+      "name": "lookalike",
+      "url": "https://hh.ru.ci.invalid/employer/1",
+      "options": {},
+      "valid": false,
+      "code": "apify_scope",
+      "status": 400,
+      "message": "Для Apify допустим только источник hh.ru с конкретным работодателем или вакансией."
+    },
+    {
+      "name": "other-region",
+      "url": "https://hh.kz/employer/1",
+      "options": {},
+      "valid": false,
+      "code": "apify_scope",
+      "status": 400,
+      "message": "Для Apify допустим только источник hh.ru с конкретным работодателем или вакансией."
+    },
+    {
+      "name": "userinfo",
+      "url": "https://CI@hh.ru/employer/1",
+      "options": {},
+      "valid": false,
+      "code": "apify_scope",
+      "status": 400,
+      "message": "Для Apify допустим только источник hh.ru с конкретным работодателем или вакансией."
+    },
+    {
+      "name": "port",
+      "url": "https://hh.ru:444/employer/1",
+      "options": {},
+      "valid": false,
+      "code": "apify_scope",
+      "status": 400,
+      "message": "Для Apify допустим только источник hh.ru с конкретным работодателем или вакансией."
+    },
+    {
+      "name": "ip",
+      "url": "https://127.0.0.1/employer/1",
+      "options": {},
+      "valid": false,
+      "code": "apify_scope",
+      "status": 400,
+      "message": "Для Apify допустим только источник hh.ru с конкретным работодателем или вакансией."
+    },
+    {
+      "name": "search-no-employer",
+      "url": "https://hh.ru/search/vacancy?text=CI",
+      "options": {},
+      "valid": false,
+      "code": "apify_scope",
+      "status": 400,
+      "message": "Для Apify допустим только источник hh.ru с конкретным работодателем или вакансией."
+    },
+    {
+      "name": "search-two-employers",
+      "url": "https://hh.ru/search/vacancy?employer_id=1&employer_id=2",
+      "options": {},
+      "valid": false,
+      "code": "apify_scope",
+      "status": 400,
+      "message": "Для Apify допустим только источник hh.ru с конкретным работодателем или вакансией."
+    },
+    {
+      "name": "employer-id-invalid",
+      "url": "https://hh.ru/search/vacancy?employer_id=CI",
+      "options": {},
+      "valid": false,
+      "code": "apify_scope",
+      "status": 400,
+      "message": "Для Apify допустим только источник hh.ru с конкретным работодателем или вакансией."
+    },
+    {
+      "name": "detail-list",
+      "url": "https://hh.ru/employer/1",
+      "options": {
+        "detail": true
+      },
+      "valid": false,
+      "code": "apify_scope",
+      "status": 400,
+      "message": "Для Apify допустим только источник hh.ru с конкретным работодателем или вакансией."
+    },
+    {
+      "name": "wrong-path",
+      "url": "https://hh.ru/CI?employer_id=1",
+      "options": {},
+      "valid": false,
+      "code": "apify_scope",
+      "status": 400,
+      "message": "Для Apify допустим только источник hh.ru с конкретным работодателем или вакансией."
+    },
+    {
+      "name": "encoded-employer",
+      "url": "https://hh.ru/search/vacancy?employer_id=%31",
+      "options": {},
+      "valid": true,
+      "normalized": {
+        "startUrl": "https://hh.ru/search/vacancy?employer_id=1&page=0&per_page=100",
+        "results_wanted": 100,
+        "max_pages": 1,
+        "api_only": true,
+        "include_raw_data": false,
+        "proxyConfiguration": {
+          "useApifyProxy": true
+        }
+      }
+    },
+    {
+      "name": "employer-drops-query",
+      "url": "https://hh.ru/employer/001?employer_id=2&text=CI",
+      "options": {},
+      "valid": true,
+      "normalized": {
+        "startUrl": "https://hh.ru/search/vacancy?employer_id=001&page=0&per_page=100",
+        "results_wanted": 100,
+        "max_pages": 1,
+        "api_only": true,
+        "include_raw_data": false,
+        "proxyConfiguration": {
+          "useApifyProxy": true
+        }
+      }
+    }
+  ],
+  "transport": [
+    {
+      "name": "get-/users/me",
+      "path": "/users/me",
+      "options": {},
+      "response": {
+        "status": 200,
+        "body": "{\"synthetic\":true}"
+      },
+      "valid": true,
+      "value": {
+        "synthetic": true
+      },
+      "calls": 1,
+      "request": {
+        "url": "https://api.apify.com/v2/users/me",
+        "method": "GET",
+        "redirect": "manual",
+        "authOK": true,
+        "contentType": "application/json",
+        "body": null
+      }
+    },
+    {
+      "name": "get-/users/me/limits",
+      "path": "/users/me/limits",
+      "options": {},
+      "response": {
+        "status": 200,
+        "body": "{\"synthetic\":true}"
+      },
+      "valid": true,
+      "value": {
+        "synthetic": true
+      },
+      "calls": 1,
+      "request": {
+        "url": "https://api.apify.com/v2/users/me/limits",
+        "method": "GET",
+        "redirect": "manual",
+        "authOK": true,
+        "contentType": "application/json",
+        "body": null
+      }
+    },
+    {
+      "name": "get-/users/me/usage/monthly",
+      "path": "/users/me/usage/monthly",
+      "options": {},
+      "response": {
+        "status": 200,
+        "body": "{\"synthetic\":true}"
+      },
+      "valid": true,
+      "value": {
+        "synthetic": true
+      },
+      "calls": 1,
+      "request": {
+        "url": "https://api.apify.com/v2/users/me/usage/monthly",
+        "method": "GET",
+        "redirect": "manual",
+        "authOK": true,
+        "contentType": "application/json",
+        "body": null
+      }
+    },
+    {
+      "name": "get-/actor-runs/Run123",
+      "path": "/actor-runs/Run123",
+      "options": {},
+      "response": {
+        "status": 200,
+        "body": "{\"synthetic\":true}"
+      },
+      "valid": true,
+      "value": {
+        "synthetic": true
+      },
+      "calls": 1,
+      "request": {
+        "url": "https://api.apify.com/v2/actor-runs/Run123",
+        "method": "GET",
+        "redirect": "manual",
+        "authOK": true,
+        "contentType": "application/json",
+        "body": null
+      }
+    },
+    {
+      "name": "get-/datasets/Data123",
+      "path": "/datasets/Data123",
+      "options": {},
+      "response": {
+        "status": 200,
+        "body": "{\"synthetic\":true}"
+      },
+      "valid": true,
+      "value": {
+        "synthetic": true
+      },
+      "calls": 1,
+      "request": {
+        "url": "https://api.apify.com/v2/datasets/Data123",
+        "method": "GET",
+        "redirect": "manual",
+        "authOK": true,
+        "contentType": "application/json",
+        "body": null
+      }
+    },
+    {
+      "name": "get-/datasets/Data123/items?format=json",
+      "path": "/datasets/Data123/items?format=json",
+      "options": {},
+      "response": {
+        "status": 200,
+        "body": "{\"synthetic\":true}"
+      },
+      "valid": true,
+      "value": {
+        "synthetic": true
+      },
+      "calls": 1,
+      "request": {
+        "url": "https://api.apify.com/v2/datasets/Data123/items?format=json",
+        "method": "GET",
+        "redirect": "manual",
+        "authOK": true,
+        "contentType": "application/json",
+        "body": null
+      }
+    },
+    {
+      "name": "get-/key-value-stores/Store123/records/INPUT",
+      "path": "/key-value-stores/Store123/records/INPUT",
+      "options": {},
+      "response": {
+        "status": 200,
+        "body": "{\"synthetic\":true}"
+      },
+      "valid": true,
+      "value": {
+        "synthetic": true
+      },
+      "calls": 1,
+      "request": {
+        "url": "https://api.apify.com/v2/key-value-stores/Store123/records/INPUT",
+        "method": "GET",
+        "redirect": "manual",
+        "authOK": true,
+        "contentType": "application/json",
+        "body": null
+      }
+    },
+    {
+      "name": "start",
+      "path": "/actors/shahidirfan~hh-ru-job-scraper/runs?timeout=180&maxTotalChargeUsd=0.25&restartOnError=false&waitForFinish=0",
+      "options": {
+        "method": "POST",
+        "body": {
+          "synthetic": "CI"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": "{\"synthetic\":true}"
+      },
+      "valid": true,
+      "value": {
+        "synthetic": true
+      },
+      "calls": 1,
+      "request": {
+        "url": "https://api.apify.com/v2/actors/shahidirfan~hh-ru-job-scraper/runs?timeout=180&maxTotalChargeUsd=0.25&restartOnError=false&waitForFinish=0",
+        "method": "POST",
+        "redirect": "manual",
+        "authOK": true,
+        "contentType": "application/json",
+        "body": "{\"synthetic\":\"CI\"}"
+      }
+    },
+    {
+      "name": "text-log",
+      "path": "/logs/Log123",
+      "options": {
+        "text": true
+      },
+      "response": {
+        "status": 200,
+        "body": "CI synthetic log"
+      },
+      "valid": true,
+      "value": "CI synthetic log",
+      "calls": 1,
+      "request": {
+        "url": "https://api.apify.com/v2/logs/Log123",
+        "method": "GET",
+        "redirect": "manual",
+        "authOK": true,
+        "contentType": "application/json",
+        "body": null
+      }
+    },
+    {
+      "name": "foreign",
+      "path": "https://ci.invalid/",
+      "options": {},
+      "response": {
+        "status": 200,
+        "body": "{\"synthetic\":true}"
+      },
+      "valid": false,
+      "code": "apify_scope",
+      "status": 400,
+      "message": "Для Apify допустим только источник hh.ru с конкретным работодателем или вакансией.",
+      "calls": 0,
+      "request": null
+    },
+    {
+      "name": "relative-host",
+      "path": "//ci.invalid/",
+      "options": {},
+      "response": {
+        "status": 200,
+        "body": "{\"synthetic\":true}"
+      },
+      "valid": false,
+      "code": "apify_scope",
+      "status": 400,
+      "message": "Для Apify допустим только источник hh.ru с конкретным работодателем или вакансией.",
+      "calls": 0,
+      "request": null
+    },
+    {
+      "name": "path-traversal",
+      "path": "/actor-runs/../CI",
+      "options": {},
+      "response": {
+        "status": 200,
+        "body": "{\"synthetic\":true}"
+      },
+      "valid": false,
+      "code": "apify_scope",
+      "status": 400,
+      "message": "Для Apify допустим только источник hh.ru с конкретным работодателем или вакансией.",
+      "calls": 0,
+      "request": null
+    },
+    {
+      "name": "wrong-resource",
+      "path": "/CI",
+      "options": {},
+      "response": {
+        "status": 200,
+        "body": "{\"synthetic\":true}"
+      },
+      "valid": false,
+      "code": "apify_scope",
+      "status": 400,
+      "message": "Для Apify допустим только источник hh.ru с конкретным работодателем или вакансией.",
+      "calls": 0,
+      "request": null
+    },
+    {
+      "name": "dataset-post",
+      "path": "/datasets/Data123",
+      "options": {
+        "method": "POST"
+      },
+      "response": {
+        "status": 200,
+        "body": "{\"synthetic\":true}"
+      },
+      "valid": false,
+      "code": "apify_scope",
+      "status": 400,
+      "message": "Для Apify допустим только источник hh.ru с конкретным работодателем или вакансией.",
+      "calls": 0,
+      "request": null
+    },
+    {
+      "name": "account-post",
+      "path": "/users/me",
+      "options": {
+        "method": "POST"
+      },
+      "response": {
+        "status": 200,
+        "body": "{\"synthetic\":true}"
+      },
+      "valid": false,
+      "code": "apify_scope",
+      "status": 400,
+      "message": "Для Apify допустим только источник hh.ru с конкретным работодателем или вакансией.",
+      "calls": 0,
+      "request": null
+    },
+    {
+      "name": "log-post",
+      "path": "/logs/Log123",
+      "options": {
+        "method": "POST"
+      },
+      "response": {
+        "status": 200,
+        "body": "{\"synthetic\":true}"
+      },
+      "valid": false,
+      "code": "apify_scope",
+      "status": 400,
+      "message": "Для Apify допустим только источник hh.ru с конкретным работодателем или вакансией.",
+      "calls": 0,
+      "request": null
+    },
+    {
+      "name": "text-run",
+      "path": "/actor-runs/Run123",
+      "options": {
+        "text": true
+      },
+      "response": {
+        "status": 200,
+        "body": "{\"synthetic\":true}"
+      },
+      "valid": false,
+      "code": "apify_scope",
+      "status": 400,
+      "message": "Для Apify допустим только источник hh.ru с конкретным работодателем или вакансией.",
+      "calls": 0,
+      "request": null
+    },
+    {
+      "name": "status-200",
+      "path": "/actor-runs/Run123",
+      "options": {},
+      "response": {
+        "status": 200,
+        "body": "{\"synthetic\":true}"
+      },
+      "valid": true,
+      "value": {
+        "synthetic": true
+      },
+      "calls": 1,
+      "request": {
+        "url": "https://api.apify.com/v2/actor-runs/Run123",
+        "method": "GET",
+        "redirect": "manual",
+        "authOK": true,
+        "contentType": "application/json",
+        "body": null
+      }
+    },
+    {
+      "name": "status-201",
+      "path": "/actor-runs/Run123",
+      "options": {},
+      "response": {
+        "status": 201,
+        "body": "{\"synthetic\":true}"
+      },
+      "valid": true,
+      "value": {
+        "synthetic": true
+      },
+      "calls": 1,
+      "request": {
+        "url": "https://api.apify.com/v2/actor-runs/Run123",
+        "method": "GET",
+        "redirect": "manual",
+        "authOK": true,
+        "contentType": "application/json",
+        "body": null
+      }
+    },
+    {
+      "name": "status-204",
+      "path": "/actor-runs/Run123",
+      "options": {},
+      "response": {
+        "status": 204,
+        "mode": "empty"
+      },
+      "valid": false,
+      "code": "apify_data",
+      "status": 502,
+      "message": "Apify вернул неподдерживаемые данные.",
+      "calls": 1,
+      "request": {
+        "url": "https://api.apify.com/v2/actor-runs/Run123",
+        "method": "GET",
+        "redirect": "manual",
+        "authOK": true,
+        "contentType": "application/json",
+        "body": null
+      }
+    },
+    {
+      "name": "status-302",
+      "path": "/actor-runs/Run123",
+      "options": {},
+      "response": {
+        "status": 302,
+        "body": "{\"synthetic\":true}"
+      },
+      "valid": false,
+      "code": "apify_data",
+      "status": 503,
+      "message": "Apify вернул неподдерживаемые данные.",
+      "calls": 1,
+      "request": {
+        "url": "https://api.apify.com/v2/actor-runs/Run123",
+        "method": "GET",
+        "redirect": "manual",
+        "authOK": true,
+        "contentType": "application/json",
+        "body": null
+      }
+    },
+    {
+      "name": "status-400",
+      "path": "/actor-runs/Run123",
+      "options": {},
+      "response": {
+        "status": 400,
+        "body": "{\"synthetic\":true}"
+      },
+      "valid": false,
+      "code": "apify_data",
+      "status": 503,
+      "message": "Apify вернул неподдерживаемые данные.",
+      "calls": 1,
+      "request": {
+        "url": "https://api.apify.com/v2/actor-runs/Run123",
+        "method": "GET",
+        "redirect": "manual",
+        "authOK": true,
+        "contentType": "application/json",
+        "body": null
+      }
+    },
+    {
+      "name": "status-401",
+      "path": "/actor-runs/Run123",
+      "options": {},
+      "response": {
+        "status": 401,
+        "body": "{\"synthetic\":true}"
+      },
+      "valid": false,
+      "code": "apify_auth",
+      "status": 400,
+      "message": "Apify: проверьте API-токен и его права.",
+      "calls": 1,
+      "request": {
+        "url": "https://api.apify.com/v2/actor-runs/Run123",
+        "method": "GET",
+        "redirect": "manual",
+        "authOK": true,
+        "contentType": "application/json",
+        "body": null
+      }
+    },
+    {
+      "name": "status-402",
+      "path": "/actor-runs/Run123",
+      "options": {},
+      "response": {
+        "status": 402,
+        "body": "{\"synthetic\":true}"
+      },
+      "valid": false,
+      "code": "apify_budget",
+      "status": 503,
+      "message": "Недостаточно доступного бюджета Apify для нового запуска с учётом резервов. Сбор сохранён для продолжения.",
+      "calls": 1,
+      "request": {
+        "url": "https://api.apify.com/v2/actor-runs/Run123",
+        "method": "GET",
+        "redirect": "manual",
+        "authOK": true,
+        "contentType": "application/json",
+        "body": null
+      }
+    },
+    {
+      "name": "status-403",
+      "path": "/actor-runs/Run123",
+      "options": {},
+      "response": {
+        "status": 403,
+        "body": "{\"synthetic\":true}"
+      },
+      "valid": false,
+      "code": "apify_auth",
+      "status": 400,
+      "message": "Apify: проверьте API-токен и его права.",
+      "calls": 1,
+      "request": {
+        "url": "https://api.apify.com/v2/actor-runs/Run123",
+        "method": "GET",
+        "redirect": "manual",
+        "authOK": true,
+        "contentType": "application/json",
+        "body": null
+      }
+    },
+    {
+      "name": "status-404",
+      "path": "/actor-runs/Run123",
+      "options": {},
+      "response": {
+        "status": 404,
+        "body": "{\"synthetic\":true}"
+      },
+      "valid": false,
+      "code": "apify_data",
+      "status": 503,
+      "message": "Apify вернул неподдерживаемые данные.",
+      "calls": 1,
+      "request": {
+        "url": "https://api.apify.com/v2/actor-runs/Run123",
+        "method": "GET",
+        "redirect": "manual",
+        "authOK": true,
+        "contentType": "application/json",
+        "body": null
+      }
+    },
+    {
+      "name": "status-408",
+      "path": "/actor-runs/Run123",
+      "options": {},
+      "response": {
+        "status": 408,
+        "body": "{\"synthetic\":true}"
+      },
+      "valid": false,
+      "code": "apify_data",
+      "status": 503,
+      "message": "Apify вернул неподдерживаемые данные.",
+      "calls": 1,
+      "request": {
+        "url": "https://api.apify.com/v2/actor-runs/Run123",
+        "method": "GET",
+        "redirect": "manual",
+        "authOK": true,
+        "contentType": "application/json",
+        "body": null
+      }
+    },
+    {
+      "name": "status-429",
+      "path": "/actor-runs/Run123",
+      "options": {},
+      "response": {
+        "status": 429,
+        "body": "{\"synthetic\":true}"
+      },
+      "valid": false,
+      "code": "apify_busy",
+      "status": 503,
+      "message": "Другой запуск Apify ещё выполняется.",
+      "calls": 1,
+      "request": {
+        "url": "https://api.apify.com/v2/actor-runs/Run123",
+        "method": "GET",
+        "redirect": "manual",
+        "authOK": true,
+        "contentType": "application/json",
+        "body": null
+      }
+    },
+    {
+      "name": "status-500",
+      "path": "/actor-runs/Run123",
+      "options": {},
+      "response": {
+        "status": 500,
+        "body": "{\"synthetic\":true}"
+      },
+      "valid": false,
+      "code": "apify_network",
+      "status": 503,
+      "message": "Apify временно недоступен.",
+      "calls": 1,
+      "request": {
+        "url": "https://api.apify.com/v2/actor-runs/Run123",
+        "method": "GET",
+        "redirect": "manual",
+        "authOK": true,
+        "contentType": "application/json",
+        "body": null
+      }
+    },
+    {
+      "name": "status-503",
+      "path": "/actor-runs/Run123",
+      "options": {},
+      "response": {
+        "status": 503,
+        "body": "{\"synthetic\":true}"
+      },
+      "valid": false,
+      "code": "apify_network",
+      "status": 503,
+      "message": "Apify временно недоступен.",
+      "calls": 1,
+      "request": {
+        "url": "https://api.apify.com/v2/actor-runs/Run123",
+        "method": "GET",
+        "redirect": "manual",
+        "authOK": true,
+        "contentType": "application/json",
+        "body": null
+      }
+    },
+    {
+      "name": "text-no-content",
+      "path": "/logs/Log123",
+      "options": {
+        "text": true
+      },
+      "response": {
+        "status": 204,
+        "mode": "empty"
+      },
+      "valid": false,
+      "code": "apify_data",
+      "status": 502,
+      "message": "Apify вернул неподдерживаемые данные.",
+      "calls": 1,
+      "request": {
+        "url": "https://api.apify.com/v2/logs/Log123",
+        "method": "GET",
+        "redirect": "manual",
+        "authOK": true,
+        "contentType": "application/json",
+        "body": null
+      }
+    },
+    {
+      "name": "bad-json",
+      "path": "/actor-runs/Run123",
+      "options": {},
+      "response": {
+        "status": 200,
+        "body": "CI not JSON"
+      },
+      "valid": false,
+      "code": "apify_data",
+      "status": 502,
+      "message": "Apify вернул неподдерживаемые данные.",
+      "calls": 1,
+      "request": {
+        "url": "https://api.apify.com/v2/actor-runs/Run123",
+        "method": "GET",
+        "redirect": "manual",
+        "authOK": true,
+        "contentType": "application/json",
+        "body": null
+      }
+    },
+    {
+      "name": "too-large",
+      "path": "/actor-runs/Run123",
+      "options": {
+        "maxBytes": 2
+      },
+      "response": {
+        "status": 200,
+        "body": "{\"synthetic\":true}"
+      },
+      "valid": false,
+      "code": "apify_data",
+      "status": 502,
+      "message": "Apify вернул неподдерживаемые данные.",
+      "calls": 1,
+      "request": {
+        "url": "https://api.apify.com/v2/actor-runs/Run123",
+        "method": "GET",
+        "redirect": "manual",
+        "authOK": true,
+        "contentType": "application/json",
+        "body": null
+      }
+    },
+    {
+      "name": "network",
+      "path": "/actor-runs/Run123",
+      "options": {},
+      "response": {
+        "mode": "network"
+      },
+      "valid": false,
+      "code": "apify_network",
+      "status": 503,
+      "message": "Apify временно недоступен.",
+      "calls": 1,
+      "request": {
+        "url": "https://api.apify.com/v2/actor-runs/Run123",
+        "method": "GET",
+        "redirect": "manual",
+        "authOK": true,
+        "contentType": "application/json",
+        "body": null
+      }
+    },
+    {
+      "name": "stream-error",
+      "path": "/actor-runs/Run123",
+      "options": {},
+      "response": {
+        "mode": "stream-error"
+      },
+      "valid": false,
+      "code": "apify_network",
+      "status": 503,
+      "message": "Apify временно недоступен.",
+      "calls": 1,
+      "request": {
+        "url": "https://api.apify.com/v2/actor-runs/Run123",
+        "method": "GET",
+        "redirect": "manual",
+        "authOK": true,
+        "contentType": "application/json",
+        "body": null
+      }
+    },
+    {
+      "name": "bom",
+      "path": "/actor-runs/Run123",
+      "options": {},
+      "response": {
+        "status": 200,
+        "body": "﻿{\"synthetic\":true}"
+      },
+      "valid": true,
+      "value": {
+        "synthetic": true
+      },
+      "calls": 1,
+      "request": {
+        "url": "https://api.apify.com/v2/actor-runs/Run123",
+        "method": "GET",
+        "redirect": "manual",
+        "authOK": true,
+        "contentType": "application/json",
+        "body": null
+      }
+    }
+  ],
+  "runs": [
+    {
+      "input": {
+        "id": "Run123",
+        "defaultDatasetId": "Data123",
+        "status": "READY",
+        "usageTotalUsd": 0.02
+      },
+      "valid": true,
+      "state": "running"
+    },
+    {
+      "input": {
+        "id": "Run123",
+        "defaultDatasetId": "Data123",
+        "status": "RUNNING",
+        "usageTotalUsd": 0.02
+      },
+      "valid": true,
+      "state": "running"
+    },
+    {
+      "input": {
+        "id": "Run123",
+        "defaultDatasetId": "Data123",
+        "status": "SUCCEEDED",
+        "usageTotalUsd": 0.02
+      },
+      "valid": true,
+      "state": "succeeded"
+    },
+    {
+      "input": {
+        "id": "Run123",
+        "defaultDatasetId": "Data123",
+        "status": "FAILED",
+        "usageTotalUsd": 0.02
+      },
+      "valid": true,
+      "state": "failed"
+    },
+    {
+      "input": {
+        "id": "Run123",
+        "defaultDatasetId": "Data123",
+        "status": "TIMED-OUT",
+        "usageTotalUsd": 0.02
+      },
+      "valid": true,
+      "state": "failed"
+    },
+    {
+      "input": {
+        "id": "Run123",
+        "defaultDatasetId": "Data123",
+        "status": "ABORTING",
+        "usageTotalUsd": 0.02
+      },
+      "valid": true,
+      "state": "running"
+    },
+    {
+      "input": {
+        "id": "Run123",
+        "defaultDatasetId": "Data123",
+        "status": "ABORTED",
+        "usageTotalUsd": 0.02
+      },
+      "valid": true,
+      "state": "failed"
+    },
+    {
+      "input": {
+        "id": "Run123",
+        "defaultDatasetId": "Data123",
+        "status": "TIMING-OUT",
+        "usageTotalUsd": 0.02
+      },
+      "valid": true,
+      "state": "running"
+    },
+    {
+      "input": {
+        "id": "Run123",
+        "defaultDatasetId": "Data123",
+        "status": "CI_UNKNOWN",
+        "usageTotalUsd": 0.02
+      },
+      "valid": false,
+      "code": "apify_data",
+      "status": 502
+    },
+    {
+      "input": null,
+      "legacyAccepted": false,
+      "valid": false,
+      "code": "apify_data",
+      "status": 502
+    },
+    {
+      "input": {
+        "id": "bad-id",
+        "defaultDatasetId": "Data123",
+        "status": "RUNNING"
+      },
+      "legacyAccepted": false,
+      "valid": false,
+      "code": "apify_data",
+      "status": 502
+    },
+    {
+      "input": {
+        "id": "Run123",
+        "status": "RUNNING"
+      },
+      "legacyAccepted": true,
+      "valid": false,
+      "code": "apify_data",
+      "status": 502,
+      "reason": "Legacy regexp coerces missing/null/numeric ID; Go rejects noncanonical provider identity before persistence"
+    },
+    {
+      "input": {
+        "id": 123,
+        "defaultDatasetId": 456,
+        "status": "RUNNING"
+      },
+      "legacyAccepted": true,
+      "valid": false,
+      "code": "apify_data",
+      "status": 502,
+      "reason": "Legacy regexp coerces missing/null/numeric ID; Go rejects noncanonical provider identity before persistence"
+    },
+    {
+      "input": {
+        "id": null,
+        "defaultDatasetId": "Data123",
+        "status": "RUNNING"
+      },
+      "legacyAccepted": true,
+      "valid": false,
+      "code": "apify_data",
+      "status": 502,
+      "reason": "Legacy regexp coerces missing/null/numeric ID; Go rejects noncanonical provider identity before persistence"
+    }
+  ],
+  "datasets": [
+    {
+      "name": "items-empty",
+      "kind": "items",
+      "id": "Data123",
+      "offset": 0,
+      "clean": false,
+      "body": [],
+      "valid": true,
+      "value": [],
+      "calls": 1,
+      "requestURL": "https://api.apify.com/v2/datasets/Data123/items?format=json&clean=false&skipHidden=true&skipEmpty=false&offset=0&limit=10"
+    },
+    {
+      "name": "items-ten",
+      "kind": "items",
+      "id": "Data123",
+      "offset": 10,
+      "clean": true,
+      "body": [
+        {
+          "synthetic": true
+        },
+        {
+          "synthetic": true
+        },
+        {
+          "synthetic": true
+        },
+        {
+          "synthetic": true
+        },
+        {
+          "synthetic": true
+        },
+        {
+          "synthetic": true
+        },
+        {
+          "synthetic": true
+        },
+        {
+          "synthetic": true
+        },
+        {
+          "synthetic": true
+        },
+        {
+          "synthetic": true
+        }
+      ],
+      "valid": true,
+      "value": [
+        {
+          "synthetic": true
+        },
+        {
+          "synthetic": true
+        },
+        {
+          "synthetic": true
+        },
+        {
+          "synthetic": true
+        },
+        {
+          "synthetic": true
+        },
+        {
+          "synthetic": true
+        },
+        {
+          "synthetic": true
+        },
+        {
+          "synthetic": true
+        },
+        {
+          "synthetic": true
+        },
+        {
+          "synthetic": true
+        }
+      ],
+      "calls": 1,
+      "requestURL": "https://api.apify.com/v2/datasets/Data123/items?format=json&clean=true&skipHidden=true&skipEmpty=true&offset=10&limit=10"
+    },
+    {
+      "name": "items-eleven",
+      "kind": "items",
+      "id": "Data123",
+      "offset": 0,
+      "clean": false,
+      "body": [
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {}
+      ],
+      "valid": false,
+      "code": "apify_data",
+      "status": 502,
+      "message": "Apify вернул неподдерживаемые данные.",
+      "calls": 1,
+      "requestURL": "https://api.apify.com/v2/datasets/Data123/items?format=json&clean=false&skipHidden=true&skipEmpty=false&offset=0&limit=10"
+    },
+    {
+      "name": "items-null",
+      "kind": "items",
+      "id": "Data123",
+      "offset": 0,
+      "clean": false,
+      "body": null,
+      "valid": false,
+      "code": "apify_data",
+      "status": 502,
+      "message": "Apify вернул неподдерживаемые данные.",
+      "calls": 1,
+      "requestURL": "https://api.apify.com/v2/datasets/Data123/items?format=json&clean=false&skipHidden=true&skipEmpty=false&offset=0&limit=10"
+    },
+    {
+      "name": "items-object",
+      "kind": "items",
+      "id": "Data123",
+      "offset": 0,
+      "clean": false,
+      "body": {},
+      "valid": false,
+      "code": "apify_data",
+      "status": 502,
+      "message": "Apify вернул неподдерживаемые данные.",
+      "calls": 1,
+      "requestURL": "https://api.apify.com/v2/datasets/Data123/items?format=json&clean=false&skipHidden=true&skipEmpty=false&offset=0&limit=10"
+    },
+    {
+      "name": "items-invalid-id",
+      "kind": "items",
+      "id": "bad-id",
+      "offset": 0,
+      "clean": false,
+      "body": [],
+      "valid": false,
+      "code": "apify_data",
+      "status": 400,
+      "message": "Apify вернул неподдерживаемые данные.",
+      "calls": 0,
+      "requestURL": null
+    },
+    {
+      "name": "items-negative-offset",
+      "kind": "items",
+      "id": "Data123",
+      "offset": -1,
+      "clean": false,
+      "body": [],
+      "valid": false,
+      "code": "apify_data",
+      "status": 400,
+      "message": "Apify вернул неподдерживаемые данные.",
+      "calls": 0,
+      "requestURL": null
+    },
+    {
+      "name": "items-unsafe-offset",
+      "kind": "items",
+      "id": "Data123",
+      "offset": 9007199254740992,
+      "clean": false,
+      "body": [],
+      "valid": false,
+      "code": "apify_data",
+      "status": 400,
+      "message": "Apify вернул неподдерживаемые данные.",
+      "calls": 0,
+      "requestURL": null
+    },
+    {
+      "name": "info",
+      "kind": "info",
+      "id": "Data123",
+      "body": {
+        "data": {
+          "id": "Data123",
+          "itemCount": 12,
+          "cleanItemCount": 10,
+          "modifiedAt": "2026-10-26T12:00:00.000Z"
+        }
+      },
+      "valid": true,
+      "value": {
+        "itemCount": 12,
+        "cleanItemCount": 10,
+        "modifiedAt": "2026-10-26T12:00:00.000Z"
+      },
+      "calls": 1,
+      "requestURL": "https://api.apify.com/v2/datasets/Data123"
+    },
+    {
+      "name": "info-clean-null",
+      "kind": "info",
+      "id": "Data123",
+      "body": {
+        "data": {
+          "id": "Data123",
+          "itemCount": 12,
+          "cleanItemCount": null
+        }
+      },
+      "valid": true,
+      "value": {
+        "itemCount": 12,
+        "cleanItemCount": null
+      },
+      "calls": 1,
+      "requestURL": "https://api.apify.com/v2/datasets/Data123"
+    },
+    {
+      "name": "info-clean-invalid",
+      "kind": "info",
+      "id": "Data123",
+      "body": {
+        "data": {
+          "id": "Data123",
+          "itemCount": 12,
+          "cleanItemCount": "10",
+          "modifiedAt": "CI invalid date"
+        }
+      },
+      "valid": true,
+      "value": {
+        "itemCount": 12,
+        "cleanItemCount": null
+      },
+      "calls": 1,
+      "requestURL": "https://api.apify.com/v2/datasets/Data123"
+    },
+    {
+      "name": "info-invalid-date-offset",
+      "kind": "info",
+      "id": "Data123",
+      "body": {
+        "data": {
+          "id": "Data123",
+          "itemCount": 12,
+          "modifiedAt": "2026-10-26T12:00:00+24:00"
+        }
+      },
+      "valid": true,
+      "value": {
+        "itemCount": 12,
+        "cleanItemCount": null
+      },
+      "calls": 1,
+      "requestURL": "https://api.apify.com/v2/datasets/Data123"
+    },
+    {
+      "name": "info-foreign-id",
+      "kind": "info",
+      "id": "Data123",
+      "body": {
+        "data": {
+          "id": "Other",
+          "itemCount": 1
+        }
+      },
+      "valid": false,
+      "code": "apify_data",
+      "status": 502,
+      "message": "Apify вернул неподдерживаемые данные.",
+      "calls": 1,
+      "requestURL": "https://api.apify.com/v2/datasets/Data123"
+    },
+    {
+      "name": "info-negative-count",
+      "kind": "info",
+      "id": "Data123",
+      "body": {
+        "data": {
+          "id": "Data123",
+          "itemCount": -1
+        }
+      },
+      "valid": false,
+      "code": "apify_data",
+      "status": 502,
+      "message": "Apify вернул неподдерживаемые данные.",
+      "calls": 1,
+      "requestURL": "https://api.apify.com/v2/datasets/Data123"
+    },
+    {
+      "name": "info-string-count",
+      "kind": "info",
+      "id": "Data123",
+      "body": {
+        "data": {
+          "id": "Data123",
+          "itemCount": "1"
+        }
+      },
+      "valid": false,
+      "code": "apify_data",
+      "status": 502,
+      "message": "Apify вернул неподдерживаемые данные.",
+      "calls": 1,
+      "requestURL": "https://api.apify.com/v2/datasets/Data123"
+    },
+    {
+      "name": "info-null-count",
+      "kind": "info",
+      "id": "Data123",
+      "body": {
+        "data": {
+          "id": "Data123",
+          "itemCount": null
+        }
+      },
+      "valid": false,
+      "code": "apify_data",
+      "status": 502,
+      "message": "Apify вернул неподдерживаемые данные.",
+      "calls": 1,
+      "requestURL": "https://api.apify.com/v2/datasets/Data123"
+    },
+    {
+      "name": "info-missing-count",
+      "kind": "info",
+      "id": "Data123",
+      "body": {
+        "data": {
+          "id": "Data123"
+        }
+      },
+      "valid": false,
+      "code": "apify_data",
+      "status": 502,
+      "message": "Apify вернул неподдерживаемые данные.",
+      "calls": 1,
+      "requestURL": "https://api.apify.com/v2/datasets/Data123"
+    },
+    {
+      "name": "info-invalid-id",
+      "kind": "info",
+      "id": "bad-id",
+      "body": {
+        "data": {
+          "id": "bad-id",
+          "itemCount": 1
+        }
+      },
+      "valid": false,
+      "code": "apify_data",
+      "status": 400,
+      "message": "Apify вернул неподдерживаемые данные.",
+      "calls": 0,
+      "requestURL": null
+    }
+  ]
+}
