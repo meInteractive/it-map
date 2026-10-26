@@ -63,6 +63,8 @@ func ManualVacancyCreateHandler(m *auth.Manager, repo ManualVacancyCreator) http
 		defer cancel()
 		rows, err := repo.CreateManual(ctx, user.Name, payload.Input)
 		switch {
+		case errors.Is(err, vacancies.ErrChannelNotFound) && strings.EqualFold(strings.TrimSpace(payload.EntityType), "channel"):
+			jsonReply(w, 404, map[string]string{"error": "Telegram-канал не найден."})
 		case errors.Is(err, vacancies.ErrInvalidVacancyInput), errors.Is(err, vacancies.ErrInvalidRole), errors.Is(err, vacancies.ErrInvalidChannel):
 			jsonReply(w, 400, map[string]string{"error": "Некорректные данные вакансии, роли или Telegram-источника."})
 		case errors.Is(err, vacancies.ErrInvalidOwner):

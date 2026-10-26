@@ -101,6 +101,22 @@ func TestManualVacancyCreateRoute(t *testing.T) {
 			t.Fatalf("%d %s", w.Code, w.Body.String())
 		}
 	}
+	for _, tc := range []struct {
+		body   string
+		err    error
+		status int
+	}{
+		{`{"entityType":"channel","telegramChannelId":999999}`, vacancies.ErrChannelNotFound, 404},
+		{`{"entityType":" CHANNEL ","telegramChannelId":999999}`, vacancies.ErrChannelNotFound, 404},
+		{`{"entityType":"company","telegramChannelId":999999}`, vacancies.ErrChannelNotFound, 400},
+		{`{"entityType":"channel","telegramChannelId":9}`, vacancies.ErrInvalidChannel, 400},
+	} {
+		probe.err = tc.err
+		if w := call(adminToken, tc.body, "", "", "application/json"); w.Code != tc.status {
+			t.Fatalf("missing channel owner must match legacy 404; got %d, want %d", w.Code, tc.status)
+		}
+	}
+
 	req := httptest.NewRequest("POST", "/api/vacancies", strings.NewReader(valid))
 	req.Header.Set("Content-Type", "application/json")
 	w = httptest.NewRecorder()

@@ -1,4 +1,4 @@
-//go:build mariadb && (crmwrites || vacancywrites)
+//go:build mariadb && (crmwrites || vacancywrites || vacancycreates)
 
 package storage
 

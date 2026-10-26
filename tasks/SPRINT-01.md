@@ -1,6 +1,6 @@
 # Спринт 1.1 — функциональная миграция Go
 
-**Текущий активный спринт.** Релиз и переключение ещё не выполнены. `GO-001…GO-028` сохраняют исходную нумерацию работ `1.1.01…1.1.28`. `GO-029…GO-087` — выделенные узкие задачи, не подменяющие критерии крупных пунктов. Ни один коммит сам по себе не доказывает полную приёмку на MariaDB.
+**Текущий активный спринт.** Релиз и переключение ещё не выполнены. `GO-001…GO-028` сохраняют исходную нумерацию работ `1.1.01…1.1.28`. `GO-029…GO-090` — выделенные узкие задачи, не подменяющие критерии крупных пунктов. Ни один коммит сам по себе не доказывает полную приёмку на MariaDB.
 
 **Актуальный статус на 26.10.2026:** `[x]` — завершён именно указанный результат с доказательствами; `[ ]` — остаются критерии. Для больших GO-001…028 дополнительно отмечены проверенные части, чтобы не путать «код существует», «прошёл synthetic CI» и «принят внешний staging/релиз». Исторические v12–v21 ниже не являются текущим статусом: впоследствии прошли Go vet/race/tagged build, web, MariaDB schema/rollback/locking, авторизованный API и 14 browser-сценариев. [Актуальная контрольная точка](STACK.md), [инструкция запуска](../docs/deployment/README.md).
 
@@ -1166,3 +1166,26 @@
 - **Причина:** #38 объединён в mainc9d6c57 раньше, чем #39/#40 были объединены в прежние родительские feature branches. MERGED у этих PR не доставил их код в default branch.
 - **Критерии:** отдельный PR в актуальный main сохраняет принятые #39/#40 и историю; runtime/test/workflow tree совпадает с проверенным #40; no-op merge и повторный synthetic CI. Не сливать автоматически.
 - **Результат:** [PR #41](https://github.com/meInteractive/it-map/pull/41), mergebfe1280/treee8686f8c5352b904d5aed93230972da140b422f9 полностью совпал с #40/2ff18e7. Нового runtime нет, Actions ожидаются.
+
+
+### [ ] GO-088. Vacancy create: SQL и admin HTTP gate (часть GO-012)
+
+- **Приоритет:** Критический.
+- **Зависимости:** GO-086 user-state gate и existing CreateManual/role directory/Telegram provenance; GO-087 доставляет стек в main.
+- **Критерии:** полное создание company/channel с bootstrap FK, leaf roles, source, shared letter и личным relevance; invalid owner/role/channel и повтор URL/message без частичных строк. Два независимых writer дают ровно одно создание при совпадении URL/message; named lock освобождается и pool max1 не зависает при readback. Реальные поздние SQL ошибки после parent/vacancy/role/source/private state откатываются целиком, новый pool повторяет операцию. Signed admin HTTP 201/guards/errors и owner isolation; SQL targets обязательны без skips. Cleanup сохраняет seed vacancy1 и исходный каталог/roles/generation.
+- **Границы:** только disposable GitHub CI, без DDL/provider calls; agency salary projection GO-032 средний, edit CAS и delete остаются отдельными.
+- **Результат:** [PR #42](https://github.com/meInteractive/it-map/pull/42), первые SQL/HTTP gates опубликованы b2c6dd5; локальная HTTP regression воспроизвела 400 вместо legacy 404 для отсутствующего channel owner. Введена отдельная wrapped ErrChannelNotFound и точная HTTP mapping, некорректная source URL остаётся 400. Положительная SQL-приёмка ожидает Actions.
+
+### [ ] GO-089. Vacancy edit: revision/CAS и связанные записи (часть GO-012)
+
+- **Приоритет:** Критический.
+- **Критерии:** GET revision → PUT, missing/stale 428/409, два writer с одной revision; flags/personal/shared letter/roles/provenance, owner move bootstrap и company links applications/tasks, late rollback и admin HTTP. Только собственные synthetic IDs; без GO-032.
+- **Зависимости:** GO-088 fixtures и проверенное создание, GO-086 flags.
+- **Результат:** не реализовано.
+
+### [ ] GO-090. Vacancy archive/delete: FK и сохранение CRM (часть GO-012)
+
+- **Приоритет:** Критический.
+- **Критерии:** archive→delete с приложениями/задачами; detach вместо удаления application/task/history; каскады личных states/letters/roles/source, поздний SQL rollback после detachment/delete и admin HTTP. Только disposable собственные synthetic IDs, без GO-032.
+- **Зависимости:** GO-088 creation и нужная GO-089 связность.
+- **Результат:** не реализовано.

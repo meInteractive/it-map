@@ -242,3 +242,6 @@ GO-086 / [PR #40](https://github.com/meInteractive/it-map/pull/40), coded2f9e44/
 
 
 Проверка после пользовательского merge #38/#39/#40: mainc9d6c57 содержит только #38; #39 merged848914e в прежнюю GO-084, #40 merged6b7d47f в прежнюю GO-085. GO-087 / [PR #41](https://github.com/meInteractive/it-map/pull/41) направлен непосредственно в main, mergebfe1280 сохраняет родителей mainc9d6c57 и #40/2ff18e7. Treee8686f8c5352b904d5aed93230972da140b422f9 совпадает с проверенным #40, runtime не меняется.
+
+
+GO-088 начата от GO-087/#41 checkpoint9093c48: отдельная codex/GO-088-vacancy-create-gate направляется в codex/GO-087-deliver-merged-stack. Критерии create/edit/delete разделены GO-088/089/090 до реализации. Добавлены creation fixture и SQL/HTTP gates; положительная SQL-приёмка ожидает CI.
