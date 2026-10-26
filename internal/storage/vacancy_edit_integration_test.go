@@ -13,14 +13,6 @@ import (
 	"itmap/internal/vacancies"
 )
 
-func (f *vacancyCreateFixture) detail(user string, id int64) vacancies.Detail {
-	f.t.Helper()
-	v, err := f.repo.DetailByID(f.ctx, user, id)
-	if err != nil {
-		f.t.Fatalf("owned vacancy detail failed: %T", err)
-	}
-	return v.Vacancy
-}
 func (f *vacancyCreateFixture) editInput(v vacancies.Detail) vacancies.UpdateRequest {
 	in := f.input("edit")
 	in.URL = v.URL
@@ -36,23 +28,6 @@ func (f *vacancyCreateFixture) edit(id int64, in vacancies.UpdateRequest) vacanc
 		f.t.Fatalf("manual vacancy update failed: %T", err)
 	}
 	return f.detail("Demo", id)
-}
-func (f *vacancyCreateFixture) linked(id int64) {
-	f.t.Helper()
-	for _, user := range []string{"Demo", "Nastya"} {
-		app := f.insert(`INSERT INTO company_applications(user_name,company_name,vacancy_id,status,comment_md,application_sources) VALUES(?,?,?,'Откликнулся','CI linked comment','["site"]')`, user, crudCompany, id)
-		f.insert(`INSERT INTO company_application_status_history(application_id,from_status,to_status) VALUES(?,'','Откликнулся')`, app)
-		f.insert(`INSERT INTO company_tasks(user_name,company_name,vacancy_id,type,note,due_at) VALUES(?,?,?,'call','CI linked task','2026-10-26T12:00:00Z')`, user, crudCompany, id)
-	}
-}
-func (f *vacancyCreateFixture) links(id int64) string {
-	f.t.Helper()
-	var result string
-	f.scan(`SELECT JSON_ARRAY(
- (SELECT JSON_ARRAYAGG(JSON_ARRAY(id,user_name,company_name,vacancy_id,status,comment_md,updated_at) ORDER BY id) FROM company_applications WHERE vacancy_id=?),
- (SELECT JSON_ARRAYAGG(JSON_ARRAY(id,user_name,company_name,vacancy_id,type,note,due_at,completed,created_at,completed_at) ORDER BY id) FROM company_tasks WHERE vacancy_id=?),
- (SELECT JSON_ARRAYAGG(JSON_ARRAY(h.id,h.application_id,h.from_status,h.to_status,h.changed_at) ORDER BY h.id) FROM company_application_status_history h JOIN company_applications a ON a.id=h.application_id WHERE a.vacancy_id=?))`, []any{id, id, id}, &result)
-	return result
 }
 func TestMariaDBVacancyEditDisposable(t *testing.T) {
 	t.Run("whole form CAS flags roles letters and source presence", func(t *testing.T) {
@@ -136,6 +111,29 @@ func TestMariaDBVacancyEditDisposable(t *testing.T) {
 		}
 		f.assertLockFree()
 	})
+	t.Run("channel editing keeps source and rejects removing its owner", func(t *testing.T) {
+		f := openVacancyCreateFixture(t)
+		input := f.input("channel-edit")
+		input.CompanyName = ""
+		input.EntityType = "channel"
+		created := f.created(f.repo, input)
+		before := f.detail("Demo", created.ID)
+		got := f.edit(created.ID, f.editInput(before))
+		if got.EntityType != "channel" || got.CompanyName != created.CompanyName || len(got.TelegramSources) != 1 || got.TelegramSources[0].ChannelID != f.channel {
+			t.Fatal("channel edit lost pseudo-owner or source")
+		}
+		detach := f.editInput(got)
+		detach.TelegramProvided = true
+		detach.TelegramChannelID = nil
+		detach.TelegramMessageURL = ""
+		if _, err := f.repo.UpdateManual(f.ctx, "Demo", created.ID, detach); !errors.Is(err, vacancies.ErrInvalidVacancyInput) {
+			t.Fatal("channel editor accepted detaching its required owner/source")
+		}
+		if !reflect.DeepEqual(got, f.detail("Demo", created.ID)) {
+			t.Fatal("rejected channel edit changed fields")
+		}
+	})
+
 	t.Run("owner move bootstraps FK parent and preserves linked CRM", func(t *testing.T) {
 		f := openVacancyCreateFixture(t)
 		created := f.created(f.repo, f.input("owner"))

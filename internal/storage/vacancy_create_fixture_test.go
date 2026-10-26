@@ -189,3 +189,28 @@ func (f *vacancyCreateFixture) created(repo vacancies.Repository, input vacancie
 	f.t.Fatal("create response missed the inserted vacancy")
 	return vacancies.CompanyVacancy{}
 }
+func (f *vacancyCreateFixture) detail(user string, id int64) vacancies.Detail {
+	f.t.Helper()
+	v, err := f.repo.DetailByID(f.ctx, user, id)
+	if err != nil {
+		f.t.Fatalf("owned vacancy detail failed: %T", err)
+	}
+	return v.Vacancy
+}
+func (f *vacancyCreateFixture) linked(id int64) {
+	f.t.Helper()
+	for _, user := range []string{"Demo", "Nastya"} {
+		app := f.insert(`INSERT INTO company_applications(user_name,company_name,vacancy_id,status,comment_md,application_sources) VALUES(?,?,?,'Откликнулся','CI linked comment','["site"]')`, user, crudCompany, id)
+		f.insert(`INSERT INTO company_application_status_history(application_id,from_status,to_status) VALUES(?,'','Откликнулся')`, app)
+		f.insert(`INSERT INTO company_tasks(user_name,company_name,vacancy_id,type,note,due_at) VALUES(?,?,?,'call','CI linked task','2026-10-26T12:00:00Z')`, user, crudCompany, id)
+	}
+}
+func (f *vacancyCreateFixture) links(id int64) string {
+	f.t.Helper()
+	var result string
+	f.scan(`SELECT JSON_ARRAY(
+ (SELECT JSON_ARRAYAGG(JSON_ARRAY(id,user_name,company_name,vacancy_id,status,comment_md,updated_at) ORDER BY id) FROM company_applications WHERE vacancy_id=?),
+ (SELECT JSON_ARRAYAGG(JSON_ARRAY(id,user_name,company_name,vacancy_id,type,note,due_at,completed,created_at,completed_at) ORDER BY id) FROM company_tasks WHERE vacancy_id=?),
+ (SELECT JSON_ARRAYAGG(JSON_ARRAY(h.id,h.application_id,h.from_status,h.to_status,h.changed_at) ORDER BY h.id) FROM company_application_status_history h JOIN company_applications a ON a.id=h.application_id WHERE a.vacancy_id=?))`, []any{id, id, id}, &result)
+	return result
+}

@@ -47,6 +47,10 @@ func ManualVacancyDeleteHandler(m *auth.Manager, repo ManualVacancyDeleter) http
 		case err != nil:
 			jsonReply(w, http.StatusServiceUnavailable, map[string]string{"error": "Не удалось удалить вакансию."})
 		default:
+			if result.Archived {
+				jsonReply(w, http.StatusOK, map[string]any{"ok": result.OK, "archived": true, "companyName": result.CompanyName})
+				return
+			}
 			jsonReply(w, http.StatusOK, result)
 		}
 	})

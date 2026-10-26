@@ -231,7 +231,7 @@
 ### [ ] GO-012. CRUD и пользовательское состояние вакансии
 
 - **Приоритет:** Критический.
-- **Критическая часть:** [x] Favorite/hidden SQL+HTTP, user isolation/relevance/revision, UNIQUE/FK, concurrency и rollback — GO-086 / #40. [x] Create и его FK/rollback/concurrency/admin API — GO-088 / #42. [ ] Edit/delete, revision/CAS/rollback и FK связанных записей на MariaDB. Не считать существующий код принятым CRUD. Пересчёт агентств GO-032 имеет средний приоритет и выполняется отдельной частью.
+- **Критическая часть:** [x] Favorite/hidden SQL+HTTP, user isolation/relevance/revision, UNIQUE/FK, concurrency и rollback — GO-086 / #40. [x] Create и его FK/rollback/concurrency/admin API — GO-088 / #42. [x] Edit revision/CAS/owner move/rollback и связанные FK — GO-089 / #43. [ ] Archive/delete и сохранение связанных CRM записей — GO-090. Не считать существующий код принятым CRUD. Пересчёт агентств GO-032 имеет средний приоритет и выполняется отдельной частью.
 - **Средняя часть:** [ ] Рабочие формы и конфликт/повтор в UI после API-gate.
 - **Низкая часть:** [ ] Полировка форм/адаптивности редактора.
 
@@ -1177,16 +1177,17 @@
 - **Результат:** [PR #42](https://github.com/meInteractive/it-map/pull/42), codeb34918d. Public40371043954 и MariaDB40371043986 pass: два create SQL/HTTP targets без skips, пять late fault stages, два creator race, MaxOpenConns=1/named-lock release, role/source/relevance projections и admin guards. Первый run40370731767 подтвердил SQL и воспроизвёл 400 вместо legacy 404 missing channel owner; wrapped ErrChannelNotFound/HTTP mapping устранили дефект, неверная source URL осталась 400. Прежние SQL/browser/API smoke и локальные race/vet/build/tagged/web/actionlint/source/history/manifest/negative guards успешны. После merge #41 PR #42 перенаправлен в main.
 
 
-### [ ] GO-089. Vacancy edit: revision/CAS и связанные записи (часть GO-012)
+### [x] GO-089. Vacancy edit: revision/CAS и связанные записи (часть GO-012)
 
 - **Приоритет:** Критический.
 - **Критерии:** GET revision → PUT, missing/stale 428/409, два writer с одной revision; flags/personal/shared letter/roles/provenance, owner move bootstrap и company links applications/tasks, late rollback и admin HTTP. Только собственные synthetic IDs; без GO-032.
 - **Зависимости:** GO-088 fixtures и проверенное создание, GO-086 flags.
-- **Результат:** добавлены SQL/HTTP gates, CAS race и rollback state/roles/letters/source/relevance/application/task links. Первый CI40372641813 подтвердил CAS/HTTP/letters/восемь late faults и воспроизвёл FK-ошибку свежего known owner без company_crm. Добавлен transactional no-op UPSERT parent до UPDATE vacancy/links; повторная полная SQL-приёмка ожидается.
+- **Результат:** [PR #43](https://github.com/meInteractive/it-map/pull/43), codef06076b. Public40373140791 и MariaDB40373143125 pass: оба edit SQL/HTTP targets без skips, CAS race/428/409, flags/letters/roles/source presence, восемь late faults/retry и owner move с application/task/history двух users. Первый run40372641813 подтвердил прочие сценарии и воспроизвёл fresh owner FK error; transactional parent UPSERT устранил её и сам откатывается при late task fault. Все прежние create/CRM/receipt/task/scheduler/browser/API smoke pass.
+
 
 ### [ ] GO-090. Vacancy archive/delete: FK и сохранение CRM (часть GO-012)
 
 - **Приоритет:** Критический.
 - **Критерии:** archive→delete с приложениями/задачами; detach вместо удаления application/task/history; каскады личных states/letters/roles/source, поздний SQL rollback после detachment/delete и admin HTTP. Только disposable собственные synthetic IDs, без GO-032.
 - **Зависимости:** GO-088 creation и нужная GO-089 связность.
-- **Результат:** не реализовано.
+- **Результат:** добавлены guarded SQL/HTTP delete targets; локальная HTTP regression воспроизвела лишние preserved-поля в archive reply и проверяет точный legacy JSON. Archive projection исправлена, полный delete сохраняет два boolean flags даже false. Positive MariaDB CI ожидается.

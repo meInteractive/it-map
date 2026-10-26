@@ -252,3 +252,8 @@ GO-087/#41 на9093c48 прошёл public40369680449/MariaDB40369680396, пол
 GO-088 / #42, codeb34918d/treef8086c3ced9776c4eeb83eabbe07134ffa6eba37: public40371043954 и MariaDB40371043986 pass, два required create targets без skips и все старые SQL/browser/API smoke pass. Пять late faults, два duplicate races, named-lock release/max1 pool и admin API приняты; missing channel owner404 исправлен после первого SQL/HTTP run.
 
 GO-089 начата от проверенного b34918d, codex/GO-089-vacancy-edit-gate → codex/GO-088-vacancy-create-gate; SQL/HTTP edit/CAS/owner move gates ожидают положительный CI.
+
+
+GO-089 / #43, codef06076b/tree09539438b1f95fc830b24de185ccfcb45f5f7683: public40373140791 и MariaDB40373143125 pass, оба required edit/CAS SQL/HTTP targets без skips и все прежние SQL/browser/API smoke pass. Первый run40372641813 воспроизвёл missing FK parent fresh owner; transactional UPSERT и late rollback подтверждены повторно.
+
+GO-090 начата от проверенного f06076b, codex/GO-090-vacancy-delete-gate → codex/GO-089-vacancy-edit-gate. Только synthetic archive/delete/FK/CRM retention; общий fixture/shared helpers повторно проверяются create/edit gates.
