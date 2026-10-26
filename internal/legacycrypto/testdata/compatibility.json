@@ -1,0 +1,126 @@
+{
+  "synthetic": true,
+  "oracle": "Unchanged legacy AES-GCM helpers; known synthetic secret/plaintext/nonce; no real keys, DB or network",
+  "vectors": [
+    {
+      "name": "calendar-ascii",
+      "secret": "CI SYNTHETIC session secret, never a credential",
+      "domain": "",
+      "plaintext": "CI SYNTHETIC VALUE",
+      "iv": "000102030405060708090a0b",
+      "envelope": "AAECAwQFBgcICQoL.MMRj5teT5jF2p1H2tgS_7qgZYelgNKk68cXNj0b0hPCGNA"
+    },
+    {
+      "name": "calendar-unicode",
+      "secret": "CI SYNTHETIC секрет 😀",
+      "domain": "",
+      "plaintext": "CI синтетика 😀\n\u0000<&>",
+      "iv": "0d0e0f101112131415161718",
+      "envelope": "DQ4PEBESExQVFhcY.IFjx6q4KXO-k21Y_HdWh92NhY7SeEnZHQE5fYQZQ2v-rAy4qMa6vkz_DPhp85-I"
+    },
+    {
+      "name": "calendar-empty",
+      "secret": "CI SYNTHETIC session secret, never a credential",
+      "domain": "",
+      "plaintext": "",
+      "iv": "1a1b1c1d1e1f202122232425",
+      "envelope": "GhscHR4fICEiIyQl.hDbkDOfkf6j2RSp7hKElmA"
+    },
+    {
+      "name": ":openai:v1-ascii",
+      "secret": "CI SYNTHETIC session secret, never a credential",
+      "domain": ":openai:v1",
+      "plaintext": "CI SYNTHETIC VALUE",
+      "iv": "2728292a2b2c2d2e2f303132",
+      "envelope": "JygpKissLS4vMDEy.QNJrADCClWKGl4vBin9KMGCL_kE9cCgMyp0J3Huo4M-7vg"
+    },
+    {
+      "name": ":openai:v1-unicode",
+      "secret": "CI SYNTHETIC секрет 😀",
+      "domain": ":openai:v1",
+      "plaintext": "CI синтетика 😀\n\u0000<&>",
+      "iv": "3435363738393a3b3c3d3e3f",
+      "envelope": "NDU2Nzg5Ojs8PT4_.HZrLT1N2KzG2hKCwSixJA2oXA3yCU07Oq_UKEUu0p-quaYJBuKb9kc-9OUZzEuc"
+    },
+    {
+      "name": ":openai:v1-empty",
+      "secret": "CI SYNTHETIC session secret, never a credential",
+      "domain": ":openai:v1",
+      "plaintext": "",
+      "iv": "4142434445464748494a4b4c",
+      "envelope": "QUJDREVGR0hJSktM.ryy8Jdgu2QpTy14KETFrXg"
+    },
+    {
+      "name": ":openrouter:v1-ascii",
+      "secret": "CI SYNTHETIC session secret, never a credential",
+      "domain": ":openrouter:v1",
+      "plaintext": "CI SYNTHETIC VALUE",
+      "iv": "4e4f50515253545556575859",
+      "envelope": "Tk9QUVJTVFVWV1hZ.svb63FXmDo9vEAVLhxNBK4xVkpIiL8y0_hcLG71AoXm60Q"
+    },
+    {
+      "name": ":openrouter:v1-unicode",
+      "secret": "CI SYNTHETIC секрет 😀",
+      "domain": ":openrouter:v1",
+      "plaintext": "CI синтетика 😀\n\u0000<&>",
+      "iv": "5b5c5d5e5f60616263646566",
+      "envelope": "W1xdXl9gYWJjZGVm.TiJJ2flYQiqMwPVJ9QfR8byYYuCBXhIwZgVzCbYmgSblTmGabAanW7y0wP_Ce8U"
+    },
+    {
+      "name": ":openrouter:v1-empty",
+      "secret": "CI SYNTHETIC session secret, never a credential",
+      "domain": ":openrouter:v1",
+      "plaintext": "",
+      "iv": "68696a6b6c6d6e6f70717273",
+      "envelope": "aGlqa2xtbm9wcXJz.0E8ZOajh6mwo3qmkEL09nw"
+    },
+    {
+      "name": ":firecrawl:v1-ascii",
+      "secret": "CI SYNTHETIC session secret, never a credential",
+      "domain": ":firecrawl:v1",
+      "plaintext": "CI SYNTHETIC VALUE",
+      "iv": "75767778797a7b7c7d7e7f80",
+      "envelope": "dXZ3eHl6e3x9fn-A.W4FHPF83_JtHT25Oaa4TDOYnGaCgFUb_B4Or4ICUirz-xg"
+    },
+    {
+      "name": ":firecrawl:v1-unicode",
+      "secret": "CI SYNTHETIC секрет 😀",
+      "domain": ":firecrawl:v1",
+      "plaintext": "CI синтетика 😀\n\u0000<&>",
+      "iv": "82838485868788898a8b8c8d",
+      "envelope": "goOEhYaHiImKi4yN.OKdmb6G2abWTJO4RtsFOccrte2-RFY4hebLByLWxGr1kN8rBcn5bWPWp4_IPEw4"
+    },
+    {
+      "name": ":firecrawl:v1-empty",
+      "secret": "CI SYNTHETIC session secret, never a credential",
+      "domain": ":firecrawl:v1",
+      "plaintext": "",
+      "iv": "8f909192939495969798999a",
+      "envelope": "j5CRkpOUlZaXmJma.DHMfAUOfXlER0nYVA6fr7w"
+    },
+    {
+      "name": ":apify:v1-ascii",
+      "secret": "CI SYNTHETIC session secret, never a credential",
+      "domain": ":apify:v1",
+      "plaintext": "CI SYNTHETIC VALUE",
+      "iv": "9c9d9e9fa0a1a2a3a4a5a6a7",
+      "envelope": "nJ2en6ChoqOkpaan.z93cs8Pr3DedkxqeSI0ToamTSoL2Fqk80BvtXQ-z3I7OIA"
+    },
+    {
+      "name": ":apify:v1-unicode",
+      "secret": "CI SYNTHETIC секрет 😀",
+      "domain": ":apify:v1",
+      "plaintext": "CI синтетика 😀\n\u0000<&>",
+      "iv": "a9aaabacadaeafb0b1b2b3b4",
+      "envelope": "qaqrrK2ur7CxsrO0.M734ay-OrDOBxVeZcF5-cXgIn7nuuH-wLE-Z5EzbH_W_ZWu5y2XO9_zbfEfBLIM"
+    },
+    {
+      "name": ":apify:v1-empty",
+      "secret": "CI SYNTHETIC session secret, never a credential",
+      "domain": ":apify:v1",
+      "plaintext": "",
+      "iv": "b6b7b8b9babbbcbdbebfc0c1",
+      "envelope": "tre4ubq7vL2-v8DB.tEvddSu4pcggUKKOYM2m8A"
+    }
+  ]
+}

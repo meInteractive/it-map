@@ -1,0 +1,1365 @@
+{
+  "oracle": "Unchanged saveSchedulerSettings validation/normalization before SQL; synthetic previous state; no DB/network",
+  "defaults": {
+    "enabled": false,
+    "agenciesEnabled": false,
+    "ownerName": "Eugene",
+    "dayBudgetUsd": 0,
+    "monthBudgetUsd": 0,
+    "revision": 0,
+    "sourceIds": [],
+    "intervalDays": 7,
+    "priorities": {
+      "import_vacancy": 100,
+      "assign_roles": 90,
+      "score_relevance": 85,
+      "extract_vacancy": 80,
+      "fetch_full_text": 70,
+      "classify_title": 60,
+      "scan_source": 20,
+      "diagnostic": 0
+    },
+    "favoritesOnly": true,
+    "cloudConnected": false
+  },
+  "options": [
+    {
+      "id": "companySite",
+      "name": "Сайт компании",
+      "supported": true,
+      "reason": null
+    },
+    {
+      "id": "hh",
+      "name": "HH",
+      "supported": true,
+      "reason": null
+    },
+    {
+      "id": "habr",
+      "name": "Хабр",
+      "supported": true,
+      "reason": null
+    },
+    {
+      "id": "getmatch",
+      "name": "Getmatch",
+      "supported": true,
+      "reason": null
+    },
+    {
+      "id": "telegram",
+      "name": "Telegram",
+      "supported": false,
+      "reason": "Telegram не поддерживается этим сборщиком."
+    },
+    {
+      "id": "dreamJob",
+      "name": "DreamJob",
+      "supported": false,
+      "reason": "Нужен отдельный адаптер списка вакансий."
+    },
+    {
+      "id": "hCareers",
+      "name": "Эйч",
+      "supported": false,
+      "reason": "Нужен отдельный адаптер списка вакансий."
+    },
+    {
+      "id": "rabota",
+      "name": "rabota.ru",
+      "supported": true,
+      "reason": null
+    }
+  ],
+  "previous": {
+    "enabled": true,
+    "agenciesEnabled": false,
+    "ownerName": "Eugene",
+    "dayBudgetUsd": 5,
+    "monthBudgetUsd": 50,
+    "revision": 7,
+    "sourceIds": [
+      "hh"
+    ],
+    "intervalDays": 7,
+    "priorities": {
+      "import_vacancy": 100,
+      "assign_roles": 90,
+      "score_relevance": 85,
+      "extract_vacancy": 80,
+      "fetch_full_text": 70,
+      "classify_title": 60,
+      "scan_source": 20,
+      "diagnostic": 0
+    },
+    "favoritesOnly": true,
+    "cloudConnected": true
+  },
+  "vectors": [
+    {
+      "name": "base",
+      "input": {
+        "enabled": false,
+        "revision": 7,
+        "dayBudgetUsd": 0,
+        "monthBudgetUsd": 0
+      },
+      "valid": true,
+      "normalized": {
+        "next": {
+          "enabled": false,
+          "agenciesEnabled": false,
+          "ownerName": "Eugene",
+          "dayBudgetUsd": 0,
+          "monthBudgetUsd": 0,
+          "revision": 8,
+          "sourceIds": [
+            "hh"
+          ],
+          "intervalDays": 7,
+          "priorities": {
+            "import_vacancy": 100,
+            "assign_roles": 90,
+            "score_relevance": 85,
+            "extract_vacancy": 80,
+            "fetch_full_text": 70,
+            "classify_title": 60,
+            "scan_source": 20,
+            "diagnostic": 0
+          },
+          "favoritesOnly": true,
+          "cloudConnected": true
+        },
+        "expectedRevision": 7
+      }
+    },
+    {
+      "name": "enable",
+      "input": {
+        "enabled": true,
+        "revision": 7,
+        "dayBudgetUsd": 0,
+        "monthBudgetUsd": 0
+      },
+      "valid": true,
+      "normalized": {
+        "next": {
+          "enabled": true,
+          "agenciesEnabled": false,
+          "ownerName": "Eugene",
+          "dayBudgetUsd": 0,
+          "monthBudgetUsd": 0,
+          "revision": 8,
+          "sourceIds": [
+            "hh"
+          ],
+          "intervalDays": 7,
+          "priorities": {
+            "import_vacancy": 100,
+            "assign_roles": 90,
+            "score_relevance": 85,
+            "extract_vacancy": 80,
+            "fetch_full_text": 70,
+            "classify_title": 60,
+            "scan_source": 20,
+            "diagnostic": 0
+          },
+          "favoritesOnly": true,
+          "cloudConnected": true
+        },
+        "expectedRevision": 7
+      }
+    },
+    {
+      "name": "budgets",
+      "input": {
+        "enabled": false,
+        "revision": 7,
+        "dayBudgetUsd": 1.25,
+        "monthBudgetUsd": 12.5
+      },
+      "valid": true,
+      "normalized": {
+        "next": {
+          "enabled": false,
+          "agenciesEnabled": false,
+          "ownerName": "Eugene",
+          "dayBudgetUsd": 1.25,
+          "monthBudgetUsd": 12.5,
+          "revision": 8,
+          "sourceIds": [
+            "hh"
+          ],
+          "intervalDays": 7,
+          "priorities": {
+            "import_vacancy": 100,
+            "assign_roles": 90,
+            "score_relevance": 85,
+            "extract_vacancy": 80,
+            "fetch_full_text": 70,
+            "classify_title": 60,
+            "scan_source": 20,
+            "diagnostic": 0
+          },
+          "favoritesOnly": true,
+          "cloudConnected": true
+        },
+        "expectedRevision": 7
+      }
+    },
+    {
+      "name": "budget-limit",
+      "input": {
+        "enabled": false,
+        "revision": 7,
+        "dayBudgetUsd": 10000,
+        "monthBudgetUsd": 10000
+      },
+      "valid": true,
+      "normalized": {
+        "next": {
+          "enabled": false,
+          "agenciesEnabled": false,
+          "ownerName": "Eugene",
+          "dayBudgetUsd": 10000,
+          "monthBudgetUsd": 10000,
+          "revision": 8,
+          "sourceIds": [
+            "hh"
+          ],
+          "intervalDays": 7,
+          "priorities": {
+            "import_vacancy": 100,
+            "assign_roles": 90,
+            "score_relevance": 85,
+            "extract_vacancy": 80,
+            "fetch_full_text": 70,
+            "classify_title": 60,
+            "scan_source": 20,
+            "diagnostic": 0
+          },
+          "favoritesOnly": true,
+          "cloudConnected": true
+        },
+        "expectedRevision": 7
+      }
+    },
+    {
+      "name": "negative-day",
+      "input": {
+        "enabled": false,
+        "revision": 7,
+        "dayBudgetUsd": -1,
+        "monthBudgetUsd": 0
+      },
+      "valid": false,
+      "error": "Передайте enabled, дневной/месячный бюджет USD (0–10000) и revision.",
+      "status": 400
+    },
+    {
+      "name": "negative-month",
+      "input": {
+        "enabled": false,
+        "revision": 7,
+        "dayBudgetUsd": 0,
+        "monthBudgetUsd": -1
+      },
+      "valid": false,
+      "error": "Передайте enabled, дневной/месячный бюджет USD (0–10000) и revision.",
+      "status": 400
+    },
+    {
+      "name": "over-day",
+      "input": {
+        "enabled": false,
+        "revision": 7,
+        "dayBudgetUsd": 10000.01,
+        "monthBudgetUsd": 0
+      },
+      "valid": false,
+      "error": "Передайте enabled, дневной/месячный бюджет USD (0–10000) и revision.",
+      "status": 400
+    },
+    {
+      "name": "over-month",
+      "input": {
+        "enabled": false,
+        "revision": 7,
+        "dayBudgetUsd": 0,
+        "monthBudgetUsd": 10001
+      },
+      "valid": false,
+      "error": "Передайте enabled, дневной/месячный бюджет USD (0–10000) и revision.",
+      "status": 400
+    },
+    {
+      "name": "string-budget",
+      "input": {
+        "enabled": false,
+        "revision": 7,
+        "dayBudgetUsd": "1",
+        "monthBudgetUsd": 0
+      },
+      "valid": false,
+      "error": "Передайте enabled, дневной/месячный бюджет USD (0–10000) и revision.",
+      "status": 400
+    },
+    {
+      "name": "null-budget",
+      "input": {
+        "enabled": false,
+        "revision": 7,
+        "dayBudgetUsd": 0,
+        "monthBudgetUsd": null
+      },
+      "valid": false,
+      "error": "Передайте enabled, дневной/месячный бюджет USD (0–10000) и revision.",
+      "status": 400
+    },
+    {
+      "name": "bad-enabled",
+      "input": {
+        "enabled": 1,
+        "revision": 7,
+        "dayBudgetUsd": 0,
+        "monthBudgetUsd": 0
+      },
+      "valid": false,
+      "error": "Передайте enabled, дневной/месячный бюджет USD (0–10000) и revision.",
+      "status": 400
+    },
+    {
+      "name": "null-enabled",
+      "input": {
+        "enabled": null,
+        "revision": 7,
+        "dayBudgetUsd": 0,
+        "monthBudgetUsd": 0
+      },
+      "valid": false,
+      "error": "Передайте enabled, дневной/месячный бюджет USD (0–10000) и revision.",
+      "status": 400
+    },
+    {
+      "name": "string-revision",
+      "input": {
+        "enabled": false,
+        "revision": "7",
+        "dayBudgetUsd": 0,
+        "monthBudgetUsd": 0
+      },
+      "valid": false,
+      "error": "Передайте enabled, дневной/месячный бюджет USD (0–10000) и revision.",
+      "status": 400
+    },
+    {
+      "name": "null-revision",
+      "input": {
+        "enabled": false,
+        "revision": null,
+        "dayBudgetUsd": 0,
+        "monthBudgetUsd": 0
+      },
+      "valid": false,
+      "error": "Передайте enabled, дневной/месячный бюджет USD (0–10000) и revision.",
+      "status": 400
+    },
+    {
+      "name": "fraction-revision",
+      "input": {
+        "enabled": false,
+        "revision": 1.5,
+        "dayBudgetUsd": 0,
+        "monthBudgetUsd": 0
+      },
+      "valid": false,
+      "error": "Передайте enabled, дневной/месячный бюджет USD (0–10000) и revision.",
+      "status": 400
+    },
+    {
+      "name": "max-safe-revision",
+      "input": {
+        "enabled": false,
+        "revision": 9007199254740991,
+        "dayBudgetUsd": 0,
+        "monthBudgetUsd": 0
+      },
+      "valid": true,
+      "normalized": {
+        "next": {
+          "enabled": false,
+          "agenciesEnabled": false,
+          "ownerName": "Eugene",
+          "dayBudgetUsd": 0,
+          "monthBudgetUsd": 0,
+          "revision": 8,
+          "sourceIds": [
+            "hh"
+          ],
+          "intervalDays": 7,
+          "priorities": {
+            "import_vacancy": 100,
+            "assign_roles": 90,
+            "score_relevance": 85,
+            "extract_vacancy": 80,
+            "fetch_full_text": 70,
+            "classify_title": 60,
+            "scan_source": 20,
+            "diagnostic": 0
+          },
+          "favoritesOnly": true,
+          "cloudConnected": true
+        },
+        "expectedRevision": 9007199254740991
+      }
+    },
+    {
+      "name": "unsafe-revision",
+      "input": {
+        "enabled": false,
+        "revision": 9007199254740992,
+        "dayBudgetUsd": 0,
+        "monthBudgetUsd": 0
+      },
+      "valid": false,
+      "error": "Передайте enabled, дневной/месячный бюджет USD (0–10000) и revision.",
+      "status": 400
+    },
+    {
+      "name": "negative-revision-preserved-for-cas",
+      "input": {
+        "enabled": false,
+        "revision": -1,
+        "dayBudgetUsd": 0,
+        "monthBudgetUsd": 0
+      },
+      "valid": true,
+      "normalized": {
+        "next": {
+          "enabled": false,
+          "agenciesEnabled": false,
+          "ownerName": "Eugene",
+          "dayBudgetUsd": 0,
+          "monthBudgetUsd": 0,
+          "revision": 8,
+          "sourceIds": [
+            "hh"
+          ],
+          "intervalDays": 7,
+          "priorities": {
+            "import_vacancy": 100,
+            "assign_roles": 90,
+            "score_relevance": 85,
+            "extract_vacancy": 80,
+            "fetch_full_text": 70,
+            "classify_title": 60,
+            "scan_source": 20,
+            "diagnostic": 0
+          },
+          "favoritesOnly": true,
+          "cloudConnected": true
+        },
+        "expectedRevision": -1
+      }
+    },
+    {
+      "name": "unknown-field",
+      "input": {
+        "enabled": false,
+        "revision": 7,
+        "dayBudgetUsd": 0,
+        "monthBudgetUsd": 0,
+        "token": "CI SYNTHETIC placeholder"
+      },
+      "valid": false,
+      "error": "Передайте enabled, дневной/месячный бюджет USD (0–10000) и revision.",
+      "status": 400
+    },
+    {
+      "name": "owner-cannot-be-input",
+      "input": {
+        "enabled": false,
+        "revision": 7,
+        "dayBudgetUsd": 0,
+        "monthBudgetUsd": 0,
+        "ownerName": "Demo"
+      },
+      "valid": false,
+      "error": "Передайте enabled, дневной/месячный бюджет USD (0–10000) и revision.",
+      "status": 400
+    },
+    {
+      "name": "cloud-owner-cannot-be-input",
+      "input": {
+        "enabled": false,
+        "revision": 7,
+        "dayBudgetUsd": 0,
+        "monthBudgetUsd": 0,
+        "cloudOwnerId": "CI SYNTHETIC not token"
+      },
+      "valid": false,
+      "error": "Передайте enabled, дневной/месячный бюджет USD (0–10000) и revision.",
+      "status": 400
+    },
+    {
+      "name": "agencies-on",
+      "input": {
+        "enabled": false,
+        "revision": 7,
+        "dayBudgetUsd": 0,
+        "monthBudgetUsd": 0,
+        "agenciesEnabled": true
+      },
+      "valid": true,
+      "normalized": {
+        "next": {
+          "enabled": false,
+          "agenciesEnabled": true,
+          "ownerName": "Eugene",
+          "dayBudgetUsd": 0,
+          "monthBudgetUsd": 0,
+          "revision": 8,
+          "sourceIds": [
+            "hh"
+          ],
+          "intervalDays": 7,
+          "priorities": {
+            "import_vacancy": 100,
+            "assign_roles": 90,
+            "score_relevance": 85,
+            "extract_vacancy": 80,
+            "fetch_full_text": 70,
+            "classify_title": 60,
+            "scan_source": 20,
+            "diagnostic": 0
+          },
+          "favoritesOnly": true,
+          "cloudConnected": true
+        },
+        "expectedRevision": 7
+      }
+    },
+    {
+      "name": "agencies-null",
+      "input": {
+        "enabled": false,
+        "revision": 7,
+        "dayBudgetUsd": 0,
+        "monthBudgetUsd": 0,
+        "agenciesEnabled": null
+      },
+      "valid": false,
+      "error": "Выберите поддерживаемые источники без повторов, период 1/3/7 дней и область компаний.",
+      "status": 400
+    },
+    {
+      "name": "agencies-number",
+      "input": {
+        "enabled": false,
+        "revision": 7,
+        "dayBudgetUsd": 0,
+        "monthBudgetUsd": 0,
+        "agenciesEnabled": 1
+      },
+      "valid": false,
+      "error": "Выберите поддерживаемые источники без повторов, период 1/3/7 дней и область компаний.",
+      "status": 400
+    },
+    {
+      "name": "favorites-off",
+      "input": {
+        "enabled": false,
+        "revision": 7,
+        "dayBudgetUsd": 0,
+        "monthBudgetUsd": 0,
+        "favoritesOnly": false
+      },
+      "valid": true,
+      "normalized": {
+        "next": {
+          "enabled": false,
+          "agenciesEnabled": false,
+          "ownerName": "Eugene",
+          "dayBudgetUsd": 0,
+          "monthBudgetUsd": 0,
+          "revision": 8,
+          "sourceIds": [
+            "hh"
+          ],
+          "intervalDays": 7,
+          "priorities": {
+            "import_vacancy": 100,
+            "assign_roles": 90,
+            "score_relevance": 85,
+            "extract_vacancy": 80,
+            "fetch_full_text": 70,
+            "classify_title": 60,
+            "scan_source": 20,
+            "diagnostic": 0
+          },
+          "favoritesOnly": false,
+          "cloudConnected": true
+        },
+        "expectedRevision": 7
+      }
+    },
+    {
+      "name": "favorites-null",
+      "input": {
+        "enabled": false,
+        "revision": 7,
+        "dayBudgetUsd": 0,
+        "monthBudgetUsd": 0,
+        "favoritesOnly": null
+      },
+      "valid": false,
+      "error": "Выберите поддерживаемые источники без повторов, период 1/3/7 дней и область компаний.",
+      "status": 400
+    },
+    {
+      "name": "favorites-string",
+      "input": {
+        "enabled": false,
+        "revision": 7,
+        "dayBudgetUsd": 0,
+        "monthBudgetUsd": 0,
+        "favoritesOnly": "true"
+      },
+      "valid": false,
+      "error": "Выберите поддерживаемые источники без повторов, период 1/3/7 дней и область компаний.",
+      "status": 400
+    },
+    {
+      "name": "interval-one",
+      "input": {
+        "enabled": false,
+        "revision": 7,
+        "dayBudgetUsd": 0,
+        "monthBudgetUsd": 0,
+        "intervalDays": 1
+      },
+      "valid": true,
+      "normalized": {
+        "next": {
+          "enabled": false,
+          "agenciesEnabled": false,
+          "ownerName": "Eugene",
+          "dayBudgetUsd": 0,
+          "monthBudgetUsd": 0,
+          "revision": 8,
+          "sourceIds": [
+            "hh"
+          ],
+          "intervalDays": 1,
+          "priorities": {
+            "import_vacancy": 100,
+            "assign_roles": 90,
+            "score_relevance": 85,
+            "extract_vacancy": 80,
+            "fetch_full_text": 70,
+            "classify_title": 60,
+            "scan_source": 20,
+            "diagnostic": 0
+          },
+          "favoritesOnly": true,
+          "cloudConnected": true
+        },
+        "expectedRevision": 7
+      }
+    },
+    {
+      "name": "interval-three",
+      "input": {
+        "enabled": false,
+        "revision": 7,
+        "dayBudgetUsd": 0,
+        "monthBudgetUsd": 0,
+        "intervalDays": 3
+      },
+      "valid": true,
+      "normalized": {
+        "next": {
+          "enabled": false,
+          "agenciesEnabled": false,
+          "ownerName": "Eugene",
+          "dayBudgetUsd": 0,
+          "monthBudgetUsd": 0,
+          "revision": 8,
+          "sourceIds": [
+            "hh"
+          ],
+          "intervalDays": 3,
+          "priorities": {
+            "import_vacancy": 100,
+            "assign_roles": 90,
+            "score_relevance": 85,
+            "extract_vacancy": 80,
+            "fetch_full_text": 70,
+            "classify_title": 60,
+            "scan_source": 20,
+            "diagnostic": 0
+          },
+          "favoritesOnly": true,
+          "cloudConnected": true
+        },
+        "expectedRevision": 7
+      }
+    },
+    {
+      "name": "interval-seven",
+      "input": {
+        "enabled": false,
+        "revision": 7,
+        "dayBudgetUsd": 0,
+        "monthBudgetUsd": 0,
+        "intervalDays": 7
+      },
+      "valid": true,
+      "normalized": {
+        "next": {
+          "enabled": false,
+          "agenciesEnabled": false,
+          "ownerName": "Eugene",
+          "dayBudgetUsd": 0,
+          "monthBudgetUsd": 0,
+          "revision": 8,
+          "sourceIds": [
+            "hh"
+          ],
+          "intervalDays": 7,
+          "priorities": {
+            "import_vacancy": 100,
+            "assign_roles": 90,
+            "score_relevance": 85,
+            "extract_vacancy": 80,
+            "fetch_full_text": 70,
+            "classify_title": 60,
+            "scan_source": 20,
+            "diagnostic": 0
+          },
+          "favoritesOnly": true,
+          "cloudConnected": true
+        },
+        "expectedRevision": 7
+      }
+    },
+    {
+      "name": "interval-two",
+      "input": {
+        "enabled": false,
+        "revision": 7,
+        "dayBudgetUsd": 0,
+        "monthBudgetUsd": 0,
+        "intervalDays": 2
+      },
+      "valid": false,
+      "error": "Выберите поддерживаемые источники без повторов, период 1/3/7 дней и область компаний.",
+      "status": 400
+    },
+    {
+      "name": "interval-string",
+      "input": {
+        "enabled": false,
+        "revision": 7,
+        "dayBudgetUsd": 0,
+        "monthBudgetUsd": 0,
+        "intervalDays": "1"
+      },
+      "valid": false,
+      "error": "Выберите поддерживаемые источники без повторов, период 1/3/7 дней и область компаний.",
+      "status": 400
+    },
+    {
+      "name": "interval-null",
+      "input": {
+        "enabled": false,
+        "revision": 7,
+        "dayBudgetUsd": 0,
+        "monthBudgetUsd": 0,
+        "intervalDays": null
+      },
+      "valid": false,
+      "error": "Выберите поддерживаемые источники без повторов, период 1/3/7 дней и область компаний.",
+      "status": 400
+    },
+    {
+      "name": "sources-empty",
+      "input": {
+        "enabled": false,
+        "revision": 7,
+        "dayBudgetUsd": 0,
+        "monthBudgetUsd": 0,
+        "sourceIds": []
+      },
+      "valid": true,
+      "normalized": {
+        "next": {
+          "enabled": false,
+          "agenciesEnabled": false,
+          "ownerName": "Eugene",
+          "dayBudgetUsd": 0,
+          "monthBudgetUsd": 0,
+          "revision": 8,
+          "sourceIds": [],
+          "intervalDays": 7,
+          "priorities": {
+            "import_vacancy": 100,
+            "assign_roles": 90,
+            "score_relevance": 85,
+            "extract_vacancy": 80,
+            "fetch_full_text": 70,
+            "classify_title": 60,
+            "scan_source": 20,
+            "diagnostic": 0
+          },
+          "favoritesOnly": true,
+          "cloudConnected": true
+        },
+        "expectedRevision": 7
+      }
+    },
+    {
+      "name": "sources-all-supported",
+      "input": {
+        "enabled": false,
+        "revision": 7,
+        "dayBudgetUsd": 0,
+        "monthBudgetUsd": 0,
+        "sourceIds": [
+          "companySite",
+          "hh",
+          "habr",
+          "getmatch",
+          "rabota"
+        ]
+      },
+      "valid": true,
+      "normalized": {
+        "next": {
+          "enabled": false,
+          "agenciesEnabled": false,
+          "ownerName": "Eugene",
+          "dayBudgetUsd": 0,
+          "monthBudgetUsd": 0,
+          "revision": 8,
+          "sourceIds": [
+            "companySite",
+            "hh",
+            "habr",
+            "getmatch",
+            "rabota"
+          ],
+          "intervalDays": 7,
+          "priorities": {
+            "import_vacancy": 100,
+            "assign_roles": 90,
+            "score_relevance": 85,
+            "extract_vacancy": 80,
+            "fetch_full_text": 70,
+            "classify_title": 60,
+            "scan_source": 20,
+            "diagnostic": 0
+          },
+          "favoritesOnly": true,
+          "cloudConnected": true
+        },
+        "expectedRevision": 7
+      }
+    },
+    {
+      "name": "sources-duplicate",
+      "input": {
+        "enabled": false,
+        "revision": 7,
+        "dayBudgetUsd": 0,
+        "monthBudgetUsd": 0,
+        "sourceIds": [
+          "hh",
+          "hh"
+        ]
+      },
+      "valid": false,
+      "error": "Выберите поддерживаемые источники без повторов, период 1/3/7 дней и область компаний.",
+      "status": 400
+    },
+    {
+      "name": "sources-unsupported",
+      "input": {
+        "enabled": false,
+        "revision": 7,
+        "dayBudgetUsd": 0,
+        "monthBudgetUsd": 0,
+        "sourceIds": [
+          "telegram"
+        ]
+      },
+      "valid": false,
+      "error": "Выберите поддерживаемые источники без повторов, период 1/3/7 дней и область компаний.",
+      "status": 400
+    },
+    {
+      "name": "sources-unknown",
+      "input": {
+        "enabled": false,
+        "revision": 7,
+        "dayBudgetUsd": 0,
+        "monthBudgetUsd": 0,
+        "sourceIds": [
+          "CI synthetic source"
+        ]
+      },
+      "valid": false,
+      "error": "Выберите поддерживаемые источники без повторов, период 1/3/7 дней и область компаний.",
+      "status": 400
+    },
+    {
+      "name": "sources-null",
+      "input": {
+        "enabled": false,
+        "revision": 7,
+        "dayBudgetUsd": 0,
+        "monthBudgetUsd": 0,
+        "sourceIds": null
+      },
+      "valid": false,
+      "error": "Выберите поддерживаемые источники без повторов, период 1/3/7 дней и область компаний.",
+      "status": 400
+    },
+    {
+      "name": "sources-string",
+      "input": {
+        "enabled": false,
+        "revision": 7,
+        "dayBudgetUsd": 0,
+        "monthBudgetUsd": 0,
+        "sourceIds": "hh"
+      },
+      "valid": false,
+      "error": "Выберите поддерживаемые источники без повторов, период 1/3/7 дней и область компаний.",
+      "status": 400
+    },
+    {
+      "name": "sources-number-item",
+      "input": {
+        "enabled": false,
+        "revision": 7,
+        "dayBudgetUsd": 0,
+        "monthBudgetUsd": 0,
+        "sourceIds": [
+          1
+        ]
+      },
+      "valid": false,
+      "error": "Выберите поддерживаемые источники без повторов, период 1/3/7 дней и область компаний.",
+      "status": 400
+    },
+    {
+      "name": "sources-many",
+      "input": {
+        "enabled": false,
+        "revision": 7,
+        "dayBudgetUsd": 0,
+        "monthBudgetUsd": 0,
+        "sourceIds": [
+          "hh",
+          "hh",
+          "hh",
+          "hh",
+          "hh",
+          "hh",
+          "hh",
+          "hh",
+          "hh"
+        ]
+      },
+      "valid": false,
+      "error": "Выберите поддерживаемые источники без повторов, период 1/3/7 дней и область компаний.",
+      "status": 400
+    },
+    {
+      "name": "priorities-empty",
+      "input": {
+        "enabled": false,
+        "revision": 7,
+        "dayBudgetUsd": 0,
+        "monthBudgetUsd": 0,
+        "priorities": {}
+      },
+      "valid": true,
+      "normalized": {
+        "next": {
+          "enabled": false,
+          "agenciesEnabled": false,
+          "ownerName": "Eugene",
+          "dayBudgetUsd": 0,
+          "monthBudgetUsd": 0,
+          "revision": 8,
+          "sourceIds": [
+            "hh"
+          ],
+          "intervalDays": 7,
+          "priorities": {
+            "import_vacancy": 100,
+            "assign_roles": 90,
+            "score_relevance": 85,
+            "extract_vacancy": 80,
+            "fetch_full_text": 70,
+            "classify_title": 60,
+            "scan_source": 20,
+            "diagnostic": 0
+          },
+          "favoritesOnly": true,
+          "cloudConnected": true
+        },
+        "expectedRevision": 7
+      }
+    },
+    {
+      "name": "priorities-null",
+      "input": {
+        "enabled": false,
+        "revision": 7,
+        "dayBudgetUsd": 0,
+        "monthBudgetUsd": 0,
+        "priorities": null
+      },
+      "valid": true,
+      "normalized": {
+        "next": {
+          "enabled": false,
+          "agenciesEnabled": false,
+          "ownerName": "Eugene",
+          "dayBudgetUsd": 0,
+          "monthBudgetUsd": 0,
+          "revision": 8,
+          "sourceIds": [
+            "hh"
+          ],
+          "intervalDays": 7,
+          "priorities": {
+            "import_vacancy": 100,
+            "assign_roles": 90,
+            "score_relevance": 85,
+            "extract_vacancy": 80,
+            "fetch_full_text": 70,
+            "classify_title": 60,
+            "scan_source": 20,
+            "diagnostic": 0
+          },
+          "favoritesOnly": true,
+          "cloudConnected": true
+        },
+        "expectedRevision": 7
+      }
+    },
+    {
+      "name": "priorities-partial",
+      "input": {
+        "enabled": false,
+        "revision": 7,
+        "dayBudgetUsd": 0,
+        "monthBudgetUsd": 0,
+        "priorities": {
+          "scan_source": 95
+        }
+      },
+      "valid": true,
+      "normalized": {
+        "next": {
+          "enabled": false,
+          "agenciesEnabled": false,
+          "ownerName": "Eugene",
+          "dayBudgetUsd": 0,
+          "monthBudgetUsd": 0,
+          "revision": 8,
+          "sourceIds": [
+            "hh"
+          ],
+          "intervalDays": 7,
+          "priorities": {
+            "import_vacancy": 100,
+            "assign_roles": 90,
+            "score_relevance": 85,
+            "extract_vacancy": 80,
+            "fetch_full_text": 70,
+            "classify_title": 60,
+            "scan_source": 95,
+            "diagnostic": 0
+          },
+          "favoritesOnly": true,
+          "cloudConnected": true
+        },
+        "expectedRevision": 7
+      }
+    },
+    {
+      "name": "priorities-zero",
+      "input": {
+        "enabled": false,
+        "revision": 7,
+        "dayBudgetUsd": 0,
+        "monthBudgetUsd": 0,
+        "priorities": {
+          "import_vacancy": 0,
+          "assign_roles": 0,
+          "score_relevance": 0,
+          "extract_vacancy": 0,
+          "fetch_full_text": 0,
+          "classify_title": 0,
+          "scan_source": 0,
+          "diagnostic": 0
+        }
+      },
+      "valid": true,
+      "normalized": {
+        "next": {
+          "enabled": false,
+          "agenciesEnabled": false,
+          "ownerName": "Eugene",
+          "dayBudgetUsd": 0,
+          "monthBudgetUsd": 0,
+          "revision": 8,
+          "sourceIds": [
+            "hh"
+          ],
+          "intervalDays": 7,
+          "priorities": {
+            "import_vacancy": 0,
+            "assign_roles": 0,
+            "score_relevance": 0,
+            "extract_vacancy": 0,
+            "fetch_full_text": 0,
+            "classify_title": 0,
+            "scan_source": 0,
+            "diagnostic": 0
+          },
+          "favoritesOnly": true,
+          "cloudConnected": true
+        },
+        "expectedRevision": 7
+      }
+    },
+    {
+      "name": "priorities-limit",
+      "input": {
+        "enabled": false,
+        "revision": 7,
+        "dayBudgetUsd": 0,
+        "monthBudgetUsd": 0,
+        "priorities": {
+          "scan_source": 100
+        }
+      },
+      "valid": true,
+      "normalized": {
+        "next": {
+          "enabled": false,
+          "agenciesEnabled": false,
+          "ownerName": "Eugene",
+          "dayBudgetUsd": 0,
+          "monthBudgetUsd": 0,
+          "revision": 8,
+          "sourceIds": [
+            "hh"
+          ],
+          "intervalDays": 7,
+          "priorities": {
+            "import_vacancy": 100,
+            "assign_roles": 90,
+            "score_relevance": 85,
+            "extract_vacancy": 80,
+            "fetch_full_text": 70,
+            "classify_title": 60,
+            "scan_source": 100,
+            "diagnostic": 0
+          },
+          "favoritesOnly": true,
+          "cloudConnected": true
+        },
+        "expectedRevision": 7
+      }
+    },
+    {
+      "name": "priorities-negative",
+      "input": {
+        "enabled": false,
+        "revision": 7,
+        "dayBudgetUsd": 0,
+        "monthBudgetUsd": 0,
+        "priorities": {
+          "scan_source": -1
+        }
+      },
+      "valid": false,
+      "error": "Приоритеты: целые0–100 для всех типов.",
+      "status": 400
+    },
+    {
+      "name": "priorities-over",
+      "input": {
+        "enabled": false,
+        "revision": 7,
+        "dayBudgetUsd": 0,
+        "monthBudgetUsd": 0,
+        "priorities": {
+          "scan_source": 101
+        }
+      },
+      "valid": false,
+      "error": "Приоритеты: целые0–100 для всех типов.",
+      "status": 400
+    },
+    {
+      "name": "priorities-fraction",
+      "input": {
+        "enabled": false,
+        "revision": 7,
+        "dayBudgetUsd": 0,
+        "monthBudgetUsd": 0,
+        "priorities": {
+          "scan_source": 1.5
+        }
+      },
+      "valid": false,
+      "error": "Приоритеты: целые0–100 для всех типов.",
+      "status": 400
+    },
+    {
+      "name": "priorities-string-value",
+      "input": {
+        "enabled": false,
+        "revision": 7,
+        "dayBudgetUsd": 0,
+        "monthBudgetUsd": 0,
+        "priorities": {
+          "scan_source": "10"
+        }
+      },
+      "valid": false,
+      "error": "Приоритеты: целые0–100 для всех типов.",
+      "status": 400
+    },
+    {
+      "name": "priorities-null-value",
+      "input": {
+        "enabled": false,
+        "revision": 7,
+        "dayBudgetUsd": 0,
+        "monthBudgetUsd": 0,
+        "priorities": {
+          "scan_source": null
+        }
+      },
+      "valid": false,
+      "error": "Приоритеты: целые0–100 для всех типов.",
+      "status": 400
+    },
+    {
+      "name": "priorities-unknown",
+      "input": {
+        "enabled": false,
+        "revision": 7,
+        "dayBudgetUsd": 0,
+        "monthBudgetUsd": 0,
+        "priorities": {
+          "CI_synthetic": 5
+        }
+      },
+      "valid": false,
+      "error": "Приоритеты: целые0–100 для всех типов.",
+      "status": 400
+    },
+    {
+      "name": "priorities-array",
+      "input": {
+        "enabled": false,
+        "revision": 7,
+        "dayBudgetUsd": 0,
+        "monthBudgetUsd": 0,
+        "priorities": []
+      },
+      "valid": false,
+      "error": "Приоритеты должны быть объектом.",
+      "status": 400
+    },
+    {
+      "name": "priorities-string",
+      "input": {
+        "enabled": false,
+        "revision": 7,
+        "dayBudgetUsd": 0,
+        "monthBudgetUsd": 0,
+        "priorities": "CI synthetic"
+      },
+      "valid": false,
+      "error": "Приоритеты должны быть объектом.",
+      "status": 400
+    },
+    {
+      "name": "missing-enabled",
+      "input": {
+        "revision": 7,
+        "dayBudgetUsd": 0,
+        "monthBudgetUsd": 0
+      },
+      "valid": false,
+      "error": "Передайте enabled, дневной/месячный бюджет USD (0–10000) и revision.",
+      "status": 400
+    },
+    {
+      "name": "missing-revision",
+      "input": {
+        "enabled": false,
+        "dayBudgetUsd": 0,
+        "monthBudgetUsd": 0
+      },
+      "valid": false,
+      "error": "Передайте enabled, дневной/месячный бюджет USD (0–10000) и revision.",
+      "status": 400
+    },
+    {
+      "name": "missing-dayBudgetUsd",
+      "input": {
+        "enabled": false,
+        "revision": 7,
+        "monthBudgetUsd": 0
+      },
+      "valid": false,
+      "error": "Передайте enabled, дневной/месячный бюджет USD (0–10000) и revision.",
+      "status": 400
+    },
+    {
+      "name": "missing-monthBudgetUsd",
+      "input": {
+        "enabled": false,
+        "revision": 7,
+        "dayBudgetUsd": 0
+      },
+      "valid": false,
+      "error": "Передайте enabled, дневной/месячный бюджет USD (0–10000) и revision.",
+      "status": 400
+    },
+    {
+      "name": "null",
+      "input": null,
+      "valid": false,
+      "error": "Передайте enabled, дневной/месячный бюджет USD (0–10000) и revision.",
+      "status": 400
+    },
+    {
+      "name": "array",
+      "input": [],
+      "valid": false,
+      "error": "Передайте enabled, дневной/месячный бюджет USD (0–10000) и revision.",
+      "status": 400
+    },
+    {
+      "name": "boolean",
+      "input": true,
+      "valid": false,
+      "error": "Передайте enabled, дневной/месячный бюджет USD (0–10000) и revision.",
+      "status": 400
+    }
+  ]
+}

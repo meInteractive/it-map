@@ -47,6 +47,12 @@ jobs:
         run: go vet ./...
       - name: Go tests
         run: go test -race ./...
+      - name: Set up Node for required synthetic crypto interoperability
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify Go encryption with unchanged legacy JS decryption
+        run: go test -race -tags legacyinterop ./internal/legacycrypto -count=1
       - name: Test read-only staging smoke contract
         run: python3 scripts/test-staging-smoke.py
       - name: Build offline-compatible migration shell
@@ -87,4 +93,6 @@ jobs:
           node scripts/check-creation-contract.mjs
           node scripts/check-task-create-contract.mjs
           node scripts/check-channel-input-contract.mjs
+          node scripts/check-legacy-crypto.mjs
+          node scripts/check-parser-settings-contract.mjs
       - run: npm run build:web
