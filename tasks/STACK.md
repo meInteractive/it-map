@@ -262,3 +262,6 @@ GO-090 начата от проверенного f06076b, codex/GO-090-vacancy-
 GO-090 / #44, code0b4b3aa/tree692116d1adb1c8e9e15ff603d15a6354712aa6de: public40374264948 и MariaDB40374264558 pass, оба delete SQL/HTTP targets без skips и весь прежний SQL/browser/API suite успешен. Четыре late faults восстанавливают архив, refs и FK children после actual DELETE; fresh pool retry сохраняет applications/tasks/history.
 
 Пользователь merged #42 в mainc8e79b9, затем #43 в прежнюю GO-088/77c8ee6. Открытый #44 сразу перенаправлен в main, содержит GO-089/090; diffb34918d→mainc8e79b9 пуст, поэтому проверенное runtime дерево остаётся прежним. Финальный checkpoint меняет только task status/plan/evidence/manifest. Требуется пользовательский merge #44 для доставки edit/delete в main; автоматический merge не выполняется.
+
+
+После merge #44 maine75b7df содержит checkpoint7060858 и весь принятый GO-089/090 runtime; ancestry и пустой tree diff подтверждены. GO-091 начинается от актуального origin/main=e75b7df, codex/GO-091-profile-contracts → main. Порция содержит source-backed контракты и schema/default metadata; нового SQL/HTTP wiring нет.

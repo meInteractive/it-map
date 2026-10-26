@@ -1,0 +1,264 @@
+{
+  "version": 39,
+  "tables": [
+    {
+      "name": "user_profiles",
+      "columns": [
+        {
+          "name": "user_name",
+          "type": "TEXT",
+          "notNull": true,
+          "defaultValue": null,
+          "primaryKey": true
+        },
+        {
+          "name": "resume_md",
+          "type": "TEXT",
+          "notNull": true,
+          "defaultValue": "''",
+          "primaryKey": false
+        },
+        {
+          "name": "revision",
+          "type": "INTEGER",
+          "notNull": true,
+          "defaultValue": "0",
+          "primaryKey": false
+        },
+        {
+          "name": "updated_at",
+          "type": "TEXT",
+          "notNull": true,
+          "defaultValue": "CURRENT_TIMESTAMP",
+          "primaryKey": false
+        }
+      ],
+      "foreignKeys": [],
+      "parentTables": []
+    },
+    {
+      "name": "system_prompts",
+      "columns": [
+        {
+          "name": "kind",
+          "type": "TEXT",
+          "notNull": true,
+          "defaultValue": null,
+          "primaryKey": true
+        },
+        {
+          "name": "markdown",
+          "type": "TEXT",
+          "notNull": true,
+          "defaultValue": "''",
+          "primaryKey": false
+        },
+        {
+          "name": "revision",
+          "type": "INTEGER",
+          "notNull": true,
+          "defaultValue": "0",
+          "primaryKey": false
+        },
+        {
+          "name": "updated_at",
+          "type": "TEXT",
+          "notNull": true,
+          "defaultValue": "CURRENT_TIMESTAMP",
+          "primaryKey": false
+        }
+      ],
+      "foreignKeys": [],
+      "parentTables": []
+    },
+    {
+      "name": "prompt_model_settings",
+      "columns": [
+        {
+          "name": "kind",
+          "type": "TEXT",
+          "notNull": true,
+          "defaultValue": null,
+          "primaryKey": true
+        },
+        {
+          "name": "provider",
+          "type": "TEXT",
+          "notNull": true,
+          "defaultValue": "'openrouter'",
+          "primaryKey": false
+        },
+        {
+          "name": "openai_model",
+          "type": "TEXT",
+          "notNull": true,
+          "defaultValue": "''",
+          "primaryKey": false
+        },
+        {
+          "name": "reasoning_effort",
+          "type": "TEXT",
+          "notNull": true,
+          "defaultValue": "'medium'",
+          "primaryKey": false
+        },
+        {
+          "name": "revision",
+          "type": "INTEGER",
+          "notNull": true,
+          "defaultValue": "0",
+          "primaryKey": false
+        },
+        {
+          "name": "updated_at",
+          "type": "TEXT",
+          "notNull": true,
+          "defaultValue": "CURRENT_TIMESTAMP",
+          "primaryKey": false
+        },
+        {
+          "name": "openrouter_model",
+          "type": "TEXT",
+          "notNull": true,
+          "defaultValue": "'best_free'",
+          "primaryKey": false
+        }
+      ],
+      "foreignKeys": [],
+      "parentTables": []
+    },
+    {
+      "name": "vacancy_detail_settings",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "notNull": false,
+          "defaultValue": null,
+          "primaryKey": true
+        },
+        {
+          "name": "markdown",
+          "type": "TEXT",
+          "notNull": true,
+          "defaultValue": null,
+          "primaryKey": false
+        },
+        {
+          "name": "prompt_revision",
+          "type": "INTEGER",
+          "notNull": true,
+          "defaultValue": "0",
+          "primaryKey": false
+        },
+        {
+          "name": "provider",
+          "type": "TEXT",
+          "notNull": true,
+          "defaultValue": "'openrouter'",
+          "primaryKey": false
+        },
+        {
+          "name": "openai_model",
+          "type": "TEXT",
+          "notNull": true,
+          "defaultValue": "''",
+          "primaryKey": false
+        },
+        {
+          "name": "reasoning_effort",
+          "type": "TEXT",
+          "notNull": true,
+          "defaultValue": "'medium'",
+          "primaryKey": false
+        },
+        {
+          "name": "model_revision",
+          "type": "INTEGER",
+          "notNull": true,
+          "defaultValue": "0",
+          "primaryKey": false
+        },
+        {
+          "name": "updated_at",
+          "type": "TEXT",
+          "notNull": true,
+          "defaultValue": "CURRENT_TIMESTAMP",
+          "primaryKey": false
+        }
+      ],
+      "foreignKeys": [],
+      "parentTables": []
+    },
+    {
+      "name": "vacancy_role_settings",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "notNull": false,
+          "defaultValue": null,
+          "primaryKey": true
+        },
+        {
+          "name": "markdown",
+          "type": "TEXT",
+          "notNull": true,
+          "defaultValue": null,
+          "primaryKey": false
+        },
+        {
+          "name": "prompt_revision",
+          "type": "INTEGER",
+          "notNull": true,
+          "defaultValue": "0",
+          "primaryKey": false
+        },
+        {
+          "name": "provider",
+          "type": "TEXT",
+          "notNull": true,
+          "defaultValue": "'openrouter'",
+          "primaryKey": false
+        },
+        {
+          "name": "openai_model",
+          "type": "TEXT",
+          "notNull": true,
+          "defaultValue": "''",
+          "primaryKey": false
+        },
+        {
+          "name": "reasoning_effort",
+          "type": "TEXT",
+          "notNull": true,
+          "defaultValue": "'medium'",
+          "primaryKey": false
+        },
+        {
+          "name": "model_revision",
+          "type": "INTEGER",
+          "notNull": true,
+          "defaultValue": "0",
+          "primaryKey": false
+        },
+        {
+          "name": "updated_at",
+          "type": "TEXT",
+          "notNull": true,
+          "defaultValue": "CURRENT_TIMESTAMP",
+          "primaryKey": false
+        },
+        {
+          "name": "openrouter_model",
+          "type": "TEXT",
+          "notNull": true,
+          "defaultValue": "'best_free'",
+          "primaryKey": false
+        }
+      ],
+      "foreignKeys": [],
+      "parentTables": []
+    }
+  ]
+}
