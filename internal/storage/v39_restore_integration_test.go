@@ -233,6 +233,22 @@ func TestMariaDBV39RestoreDisposable(t *testing.T) {
 			t.Fatal("value verification did not roll back")
 		}
 	})
+	t.Run("SQL scalar losses rejected before connection and DDL", func(t *testing.T) {
+		f := openRestoreFixture(t)
+		for _, raw := range []string{`"\ud800"`, `7`, `null`} {
+			body := f.resign(func(p *backup.Payload) { restoreTable(p, "user_profiles").Rows[0]["resume_md"] = json.RawMessage(raw) })
+			// Nil repository proves rejection precedes DB acquisition/counter DDL.
+			if _, e := (backup.Repository{}).RestoreV39(f.ctx, body); backup.ErrorStatus(e) != 400 {
+				t.Fatal("lossy scalar reached storage acquisition")
+			}
+		}
+		for _, raw := range []string{`9007199254740992`, `1.25`, `"7"`} {
+			body := f.resign(func(p *backup.Payload) { restoreTable(p, "user_profiles").Rows[0]["revision"] = json.RawMessage(raw) })
+			if _, e := (backup.Repository{}).RestoreV39(f.ctx, body); backup.ErrorStatus(e) != 400 {
+				t.Fatal("lossy INTEGER reached storage acquisition")
+			}
+		}
+	})
 	for _, kind := range []string{"duplicate primary key", "CHECK constraint", "composite FK"} {
 		t.Run(kind+" rollback", func(t *testing.T) {
 			f := openRestoreFixture(t)
@@ -247,7 +263,7 @@ func TestMariaDBV39RestoreDisposable(t *testing.T) {
 					tab := restoreTable(p, "vacancy_parser_roles")
 					tab.Rows = append(tab.Rows, map[string]json.RawMessage{"vacancy_id": json.RawMessage("1"), "role_id": json.RawMessage("8"), "candidate_id": json.RawMessage("11")})
 				case "CHECK constraint":
-					restoreTable(p, "company_vacancies").Rows[0]["archived"] = json.RawMessage("2")
+					restoreTable(p, "company_vacancy_user_state").Rows[0]["relevance"] = json.RawMessage("101")
 				}
 			})
 			if _, e := (backup.Repository{DB: f.db}).RestoreV39(f.ctx, body); e == nil {
