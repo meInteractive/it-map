@@ -13,6 +13,12 @@ var document []byte
 //go:embed default_catalog.json
 var defaultCatalog []byte
 
+//go:embed historical_policy.json
+var historicalPolicy []byte
+
+// HistoricalPolicy contains source role templates, warnings and Unicode metadata.
+func HistoricalPolicy() json.RawMessage { return append(json.RawMessage(nil), historicalPolicy...) }
+
 //go:embed restore_policy.json
 var restorePolicy []byte
 

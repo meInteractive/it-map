@@ -1288,6 +1288,7 @@
 - **Приоритет:** Критический.
 - **Зависимости:** GO-100-A, GO-097/098/099.
 - **Критерии:** source preserve-vs-clear, defaults/warnings и role mapping; destination state считывается согласованно, preserve rows не теряют конкурентные writes между planning и replacement; old counters/high-water; required disposable SQL success/rollback/round-trip/HTTP для границ версий.
+- **Декомпозиция до реализации:** GO-100-B-P — pure modern historical plan и source oracle; GO-100-B-S — safe counter/data TX, preserved destination snapshot и SQL/HTTP proof. Родитель B открыт до обеих частей.
 - **Результат:** не реализовано.
 
 ### [ ] GO-100-C. Legacy v14–15 validation и restore
@@ -1302,4 +1303,18 @@
 - **Приоритет:** Критический для новой базы.
 - **Зависимости:** GO-100-B/C, trusted baseline/schema и проверенный DDL preflight.
 - **Критерии:** доверенный версионированный DDL без uploaded SQL; полный schema/inventory check и отсутствие fallible post-commit normalization; implicit DDL commit отделён от atomic data TX, failure/retry доказаны на synthetic disposable DB. Без миграционного фреймворка и применения к реальным БД.
+- **Результат:** не реализовано.
+
+### [ ] GO-100-B-P. Pure historical restore plan v16–38
+
+- **Приоритет:** Критический prerequisite GO-100-B.
+- **Зависимости:** GO-100-A, GO-097, unchanged prepareBackupRestore/restoreBackup.
+- **Критерии:** exact tables/defaults/warnings/preserve-vs-clear/immutable-token filtering; stable-key classification mapping и legacy single-role migration с Unicode/ambiguity semantics; caller-owned input/state не меняется, метаданные SQL не выполняются. Required source differential gates по всем версиям и границам, без SQL/providers.
+- **Результат:** PrepareModernRestore переносит source defaults/preserve/clear/warnings, stable-key prompts и legacy role mapping, UTF16/full Unicode lower-case/ambiguity, immutable-token history filtering. Caller snapshot копируется с canonical scalar identity. Source policy содержит только публичные defaults/warnings/Unicode metadata, без рабочих строк; required oracle выполняет unchanged JS plan/restore на metadata spies — 216 случаев, все 24 версии. Local race/unit/interop/vet/tagged/build/web/actionlint/source/history pass; CI/PR proof ожидаются. Runtime historical SQL/HTTP ещё не подключён.
+
+### [ ] GO-100-B-S. SQL/HTTP historical restore v16–38
+
+- **Приоритет:** Критический.
+- **Зависимости:** GO-100-B-P, GO-098/099/101.
+- **Критерии:** counter DDL до data TX; generation lock первым, актуальные preserve rows под row/range locks до replacement; оба порядка concurrent preserve writer/restore не теряют данные; все version boundaries, counters, late rollback/retry/round-trip/admin HTTP в required disposable MariaDB CI без skips. Без реальных DB/keys/backups и bootstrap.
 - **Результат:** не реализовано.

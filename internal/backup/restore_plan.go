@@ -16,6 +16,7 @@ type RestorePlan struct {
 	Sequences                          []Sequence
 	Catalog                            json.RawMessage
 	Rows                               int
+	SourceVersion                      int
 }
 
 func setJSONMember(v *jsonValue, key []uint16, value *jsonValue) {
@@ -178,8 +179,13 @@ func PrepareV39Restore(data []byte) (*RestorePlan, error) {
 	if err != nil {
 		return nil, err
 	}
+	return finishRestorePlan(payload)
+}
+
+func finishRestorePlan(payload *Payload) (*RestorePlan, error) {
+	var err error
 	rules := v39.RestorePolicy()
-	plan := &RestorePlan{Tables: payload.Storage.Tables, Warnings: rules.Warnings, Sequences: payload.Metadata.Sequences, Catalog: payload.Catalog}
+	plan := &RestorePlan{SourceVersion: int(payload.Version), Tables: payload.Storage.Tables, Warnings: rules.Warnings, Sequences: payload.Metadata.Sequences, Catalog: payload.Catalog}
 	byName := map[string]int{}
 	for i, t := range plan.Tables {
 		byName[t.Name] = i

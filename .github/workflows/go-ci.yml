@@ -57,6 +57,8 @@ jobs:
         run: go test -race -tags legacyinterop ./internal/backup -run '^TestLegacyV39Contract$' -count=1
       - name: Verify signed historical v16-38 layouts with unchanged legacy JS
         run: go test -race -tags legacyinterop ./internal/backup -run '^TestLegacyHistoricalFormat$' -count=1
+      - name: Verify historical v16-38 plans and Unicode policy with unchanged legacy JS
+        run: go test -race -tags legacyinterop ./internal/backup -run '^TestLegacyHistoricalPlan$' -count=1
       - name: Verify Go v39 restore plan with unchanged legacy JS and zero SQL
         run: go test -race -tags legacyinterop ./internal/backup -run '^TestLegacyV39RestorePlan$' -count=1
       - name: Verify delayed result boundary against unchanged legacy generation facade
