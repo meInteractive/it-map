@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"itmap/internal/dbretry"
 	"regexp"
 	"strings"
 	"unicode/utf16"
@@ -94,6 +95,10 @@ func (in UpdateInput) normalize() (UpdateInput, error) {
 // Return value is the company name, so the caller can construct the complete
 // legacy company response (applications + full vacancy drawer) after commit.
 func (r Repository) Update(ctx context.Context, user string, id int64, input UpdateInput) (string, error) {
+	return dbretry.Run(ctx, func() (string, error) { return r.updateOnce(ctx, user, id, input) })
+}
+
+func (r Repository) updateOnce(ctx context.Context, user string, id int64, input UpdateInput) (string, error) {
 	if r.DB == nil || strings.TrimSpace(user) == "" || id < 1 {
 		return "", ErrInvalidInput
 	}

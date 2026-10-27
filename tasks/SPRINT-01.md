@@ -1343,3 +1343,18 @@
 - **Зависимости:** GO-100-C-P, GO-100-B-S.
 - **Критерии:** actual SQL source comparison, round-trip, read-only validation, counter high-water, late rollback/retry, concurrent preserve writer и signed admin HTTP на guarded disposable MariaDB. Schema bootstrap остаётся D.
 - **Результат:** не реализовано.
+
+### [ ] GO-102. CAS отклика и перенос вакансии при взаимной блокировке (часть GO-031)
+
+- **Приоритет:** Критический, только sprint1.1.
+- **Зависимости:** принятые application CAS GO-063 и vacancy owner move GO-089; disposable fixture/rollback.
+- **Границы:** До реализации разделить остаток GO-031: GO-102 update/owner-move deadlocks → GO-103 mixed create/delete/restore. Источник SQLite сериализует writers; MariaDB встречные App→Vacancy и Vacancy→App locks требуют безопасного восстановления.
+- **Критерии:** настоящий InnoDB deadlock в обоих порядках барьеров; целая транзакция повторяется только для подтверждённого1213 (victim rolled back), повторно проверяет исходную CAS. Не повторять неизвестный COMMIT/network/timeout или произвольную SQL ошибку; bounded context/attempts. Сохранить поля/оба user/history/task/FK и успешную семантику после retry. Required SQL/HTTP targets без skips и весь прежний regression.
+- **Результат:** план зафиксирован до реализации; proof ожидается.
+
+### [ ] GO-103. Отклики: mixed create/delete/restore и owner-link gate (часть GO-031)
+
+- **Приоритет:** Критический, только sprint1.1.
+- **Зависимости:** GO-102, GO-088…090, принятый v39 restore/generation gate.
+- **Критерии:** реальные concurrent application create/replay/delete против vacancy owner/delete и trusted synthetic restore, согласованные FK/receipt/generation и отсутствие потери другого владельца/history. Проверить оба порядка и поздний rollback; unknown COMMIT не считать безопасно повторимым. Только guarded GitHub disposable CI; без real DB/backup/providers.
+- **Результат:** не реализовано; полная GO-031 остаётся открытой до этой приёмки.
