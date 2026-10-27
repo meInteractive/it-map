@@ -1,6 +1,6 @@
 # Спринт 1.1 — функциональная миграция Go
 
-**Текущий активный спринт.** Релиз и переключение ещё не выполнены. `GO-001…GO-028` сохраняют исходную нумерацию работ `1.1.01…1.1.28`. `GO-029…GO-096` — выделенные узкие задачи, не подменяющие критерии крупных пунктов. Ни один коммит сам по себе не доказывает полную приёмку на MariaDB.
+**Текущий активный спринт.** Релиз и переключение ещё не выполнены. `GO-001…GO-028` сохраняют исходную нумерацию работ `1.1.01…1.1.28`. `GO-029…GO-101` — выделенные узкие задачи, не подменяющие критерии крупных пунктов. Ни один коммит сам по себе не доказывает полную приёмку на MariaDB.
 
 **Актуальный статус на 26.10.2026:** `[x]` — завершён именно указанный результат с доказательствами; `[ ]` — остаются критерии. Для больших GO-001…028 дополнительно отмечены проверенные части, чтобы не путать «код существует», «прошёл synthetic CI» и «принят внешний staging/релиз». Исторические v12–v21 ниже не являются текущим статусом: впоследствии прошли Go vet/race/tagged build, web, MariaDB schema/rollback/locking, авторизованный API и 14 browser-сценариев. [Актуальная контрольная точка](STACK.md), [инструкция запуска](../docs/deployment/README.md).
 
@@ -1237,3 +1237,40 @@
 - **Причина:** После пользовательского merge #45–48 только #45 попал в main1b137ea; #46–48 объединились в прежние родительские feature-ветки. Main tree точно равен GO-091/35f6f74: resume/settings/v39 код в default branch отсутствует.
 - **Критерии:** сохранить проверенную вершину f8c0edc и ancestry GO-091/092/093/094; присоединить актуальный main без изменения runtime source; отдельный PR непосредственно в main. CI и manifest проходят; задача доставки закрывается после фактической проверки ancestry/tree main, а не по MERGED старых PR.
 - **Результат:** codex/GO-096-stack-checkpoint → main, merge b03434e сохраняет tree679373460f7f21e73d93bcbd50757ffe3c58e3ae от проверенного f8c0edc. Public40395542183 и MariaDB40395542226 для исходной вершины pass; финальная порция меняет только task/plan/checkpoint/manifest. Принят на [PR #49](https://github.com/meInteractive/it-map/pull/49), checkpoint7628adf: Public40397110316 и MariaDB40397110258 pass. После merge origin/main293f9b7 содержит 7628adf и весь стек; ancestry и точное равенство tree подтверждены.
+
+### [ ] GO-097. Source-backed план восстановления v39 (часть GO-042)
+
+- **Приоритет:** Критический.
+- **Зависимости:** GO-094/095, source prepareBackupRestore/restoreBackup.
+- **Критерии:** pure v39 validation → сохранные данные, source scheduler defaults/disabled/cloud-owner reset, выключенные Apify/paid/account cache, точные warnings; parent-first tables/reverse delete и source-stable role hierarchy order/cycle rejection. Differential oracle исполняет unchanged legacy plan/restore на DB spies без SQL/файлов/провайдеров. Uploaded metadata SQL не используется.
+- **Границы:** не запускает SQL/DDL/HTTP и не принимает GO-042 целиком. Исторические layouts не приняты.
+- **Результат:** PrepareV39Restore реализует source safety transforms, UTF16/object-spread semantics, source stable role/table ordering, warnings и сохранение catalog/counters. Required interop выполняет unchanged prepareBackupRestore/restoreBackup на metadata DB spies: 28 synthetic plans, SQL не исполняется. Local race/tagged/vet/build/web/actionlint/source/history pass; positive CI ожидается.
+
+### [ ] GO-098. Транзакционный restore v39 и generation на MariaDB (часть GO-042)
+
+- **Приоритет:** Критический.
+- **Зависимости:** GO-097, подготовленная synthetic schema и safe counter preflight.
+- **Критерии:** bounded replacement прикладных rows, FK/triggers/value verification до COMMIT; generation rotate в той же TX и сохранение operational/receipt/spend rows. MariaDB implicit DDL commit не выдавать за transactional rollback; ID high-water не понижать. Только required disposable CI: успех/late rollback/retry/round-trip/counters. Реальные DB/backup не подключать.
+- **Результат:** не реализовано.
+
+### [ ] GO-099. Restore crash, concurrent receipts и HTTP v39 (часть GO-042)
+
+- **Приоритет:** Критический.
+- **Зависимости:** GO-098 и existing receipt/generation gates.
+- **Критерии:** writer kill/disconnect до COMMIT сохраняет business/generation; fresh retry; actual signed admin validate/restore/body limits/private response, error rollback; old contexts/AI-generation не могут записать старый результат после restore, concurrent create/restore сериализованы. Required SQL/HTTP/процессные gates без skips; точные пределы crash proof фиксировать.
+- **Результат:** не реализовано.
+
+### [ ] GO-100. Совместимость restore v14–38 и bootstrap (часть GO-042)
+
+- **Приоритет:** Критический для полной backward compatibility.
+- **Зависимости:** принятый v39 restore GO-097/098/099, source compatibility layouts и trusted migration/preflight.
+- **Критерии:** source-backed historical validation/transforms/preserve-vs-clear/warnings/role mapping, downgrade поля, scheduler/Apify safe defaults; MariaDB schema preparation отдельно от atomic data replacement без ложного обещания DDL rollback. Только synthetic fixtures/CI, без реальных данных. Не закрывать полную GO-042 по одному v39 round-trip.
+- **Результат:** не реализовано.
+
+### [ ] GO-101. MariaDB counter preflight перед restore TX (часть GO-042/098)
+
+- **Приоритет:** Критический prerequisite GO-098.
+- **Зависимости:** GO-097, prepared trusted schema и isolated disposable CI.
+- **Критерии:** AUTO_INCREMENT только увеличивается до безопасной границы incoming/current/max IDs, в том числе при concurrent allocation/rollback. Исключить race read→ALTER и implicit commit бизнес-транзакции: отдельная preflight/session/table fencing, bounded locks и cleanup после cancel/fault. Не менять business rows/generation, SQL не строить из uploaded metadata. Required live MariaDB gates только в отдельной disposable job; понижать counters ради cleanup нельзя.
+- **Границы:** ещё не transactional restore или HTTP. GO-098/099 зависят от этого proof; реальных DB/DDL не выполнять.
+- **Результат:** не реализовано.

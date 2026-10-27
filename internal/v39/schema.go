@@ -13,6 +13,23 @@ var document []byte
 //go:embed default_catalog.json
 var defaultCatalog []byte
 
+//go:embed restore_policy.json
+var restorePolicy []byte
+
+type RestoreRules struct {
+	SchedulerDefaults json.RawMessage `json:"schedulerDefaults"`
+	SupportedSources  []string        `json:"supportedSources"`
+	Warnings          []string        `json:"warnings"`
+}
+
+func RestorePolicy() RestoreRules {
+	var rules RestoreRules
+	if err := json.Unmarshal(restorePolicy, &rules); err != nil {
+		panic("invalid trusted restore policy")
+	}
+	return rules
+}
+
 // DefaultCatalog matches normalizeCatalog(DATA) when no stored catalog exists.
 func DefaultCatalog() json.RawMessage { return append(json.RawMessage(nil), defaultCatalog...) }
 
