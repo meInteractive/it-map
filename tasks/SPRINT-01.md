@@ -1266,7 +1266,7 @@
 - **Зависимости:** принятый v39 restore GO-097/098/099, source compatibility layouts и trusted migration/preflight.
 - **Критерии:** source-backed historical validation/transforms/preserve-vs-clear/warnings/role mapping, downgrade поля, scheduler/Apify safe defaults; MariaDB schema preparation отдельно от atomic data replacement без ложного обещания DDL rollback. Только synthetic fixtures/CI, без реальных данных. Не закрывать полную GO-042 по одному v39 round-trip.
 - **Декомпозиция до реализации:** стабильные дочерние ID GO-100-A…D сохраняют исходный GO-100 и не занимают зарезервированные номера спринта 1.2. A — source-backed validation v16–38; B — plan/preserve/transforms/SQL v16–38; C — v14–15 catalog/legacy layout/normalization; D — trusted MariaDB bootstrap отдельно от data TX. Ни одна часть сама по себе не закрывает GO-100/042.
-- **Результат:** не реализовано.
+- **Результат:** частично: GO-100-A historical signed validation принят; plan/SQL v16–38, legacy14–15 и trusted bootstrap остаются GO-100-B/C/D. Runtime restore пока v39.
 
 ### [x] GO-101. MariaDB counter preflight перед restore TX (часть GO-042/098)
 
@@ -1276,12 +1276,12 @@
 - **Границы:** ещё не transactional restore или HTTP. GO-098/099 зависят от этого proof; реальных DB/DDL не выполнять.
 - **Результат:** OpenV39RestoreSession валидирует v39/полную prepared schema, удерживает отдельное соединение и restore advisory ownership. Counter LOCK→metadata/MAX→ALTER→UNLOCK выполняется до data TX; Close не делает UNLOCK будущей TX. Добавлена отдельная disposable CI job и actual lock/DDL/concurrent writer/late fault/cancel/ownership/high-water gates, включая exact max-safe ID. Business/generation unchanged и no-lowering проверяются; Принят на [PR #52](https://github.com/meInteractive/it-map/pull/52), code8a3f334/tree335cbc2bbb2e69de1f290373c6092b07498136cc: Public40415955237 и MariaDB40415955239 pass. Отдельная counter job121898215347 проверила семь live SQL scenarios zero skips, включая nonempty rows; весь прежний SQL/API/browser suite pass. Base PR52=main, ancestry включает #51. Runtime data restore не подключён.
 
-### [ ] GO-100-A. Source-backed validation форматов v16–38
+### [x] GO-100-A. Source-backed validation форматов v16–38
 
 - **Приоритет:** Критический prerequisite GO-100.
 - **Зависимости:** GO-094 current validator и unchanged validateFullBackup.
 - **Критерии:** точные version/table/column gates, optional old layouts cover letters/prompt models, manifest/integrity/scalars/row cap/FK/catalog; required differential source oracle для всех версий 16–38 и негативных границ. Не менять current v39 export/HTTP restore, не запускать SQL/DDL.
-- **Результат:** ValidateModernBackup принимает signed v16–39 с exact versioned table/column/FK gates и optional old letters/prompt-model layouts. ValidateV39 остаётся strict-current; HTTP restore не расширен. Required differential oracle исполняет unchanged validateFullBackup: 416 synthetic vectors, все 24 версии, позитивные/негативные границы. Local race/unit/interop/tagged/vet/build/web/actionlint pass; CI и PR proof ожидают публикации.
+- **Результат:** ValidateModernBackup принимает signed v16–39 с exact versioned table/column/FK gates и optional old letters/prompt-model layouts. ValidateV39 остаётся strict-current; HTTP restore не расширен. Required differential oracle исполняет unchanged validateFullBackup: 416 synthetic vectors, все 24 версии, позитивные/негативные границы. Принято на [PR #56](https://github.com/meInteractive/it-map/pull/56), code92fff43206bc3a92fb004b4a466b270db2ace81f/treeed1a42514117d9f03f4cad02f10c3bf80908deee: Public40469083705 и MariaDB40469083582 полностью pass, required416-case oracle и весь прежний v39/SQL/API/browser regression успешны. Local race/unit/interop/tagged/vet/build/web/actionlint/source/history/manifest pass.
 
 ### [ ] GO-100-B. Historical plan и MariaDB restore v16–38
 

@@ -138,6 +138,6 @@ SQL0062 снимает прежний предел количества вака
 
 ### GO-100-A: проверка исторических signed formats
 
-`ValidateModernBackup` проверяет форматы v16–39 без доступа к БД: состав таблиц и столбцов зависит от версии, включая optional старые cover-letter/prompt-model layouts, ранние Firecrawl/scheduler поля и поздний agency FK. Manifest, integrity, scalar/row limits, typed FK и raw catalog проверяются с исходной семантикой. Required unchanged JS oracle содержит 416 synthetic vectors для всех 24 версий.
+`ValidateModernBackup` проверяет форматы v16–39 без доступа к БД: состав таблиц и столбцов зависит от версии, включая optional старые cover-letter/prompt-model layouts, ранние Firecrawl/scheduler поля и поздний agency FK. Manifest, integrity, scalar/row limits, typed FK и raw catalog проверяются с исходной семантикой. Required unchanged JS oracle содержит 416 synthetic vectors для всех 24 версий; #56/code92fff43 прошёл Public40469083705 и MariaDB40469083582, включая весь прежний v39/SQL/API/browser regression.
 
 Это отдельная pure-валидация, ещё не план historical restore: она не добавляет отсутствующие разделы/defaults, не читает preserve rows и не пишет SQL. `ValidateV39`, runtime validate/restore и export сохраняют текущий v39 контракт. GO-100-B (v16–38 plan/SQL), C (v14–15) и D (trusted bootstrap) ещё открыты; полная GO-042 не принята.
