@@ -24,6 +24,7 @@ type mutationFault struct {
 	fired            bool
 	writes, commits  int
 	queries          int
+	deadlocks        int
 	entered, release chan struct{}
 }
 type mutationFaultConnector struct {
@@ -66,6 +67,7 @@ func (c *mutationFaultConn) QueryContext(ctx context.Context, q string, args []d
 	}
 	rows, e := c.Conn.(driver.QueryerContext).QueryContext(ctx, q, args)
 	if e != nil {
+		c.fault.observeError(e)
 		return rows, e
 	}
 	if e = c.fault.queryEvent(ctx, q); e != nil {
@@ -106,6 +108,7 @@ type mutationFaultStmt struct {
 func (s *mutationFaultStmt) QueryContext(ctx context.Context, args []driver.NamedValue) (driver.Rows, error) {
 	rows, e := s.Stmt.(driver.StmtQueryContext).QueryContext(ctx, args)
 	if e != nil {
+		s.fault.observeError(e)
 		return rows, e
 	}
 	if e = s.fault.queryEvent(ctx, s.query); e != nil {
@@ -148,6 +151,7 @@ func (f *mutationFault) queryEvent(ctx context.Context, q string) error {
 func (s *mutationFaultStmt) ExecContext(ctx context.Context, args []driver.NamedValue) (driver.Result, error) {
 	result, err := s.Stmt.(driver.StmtExecContext).ExecContext(ctx, args)
 	if err != nil {
+		s.fault.observeError(err)
 		return result, err
 	}
 	s.fault.mu.Lock()
@@ -196,4 +200,14 @@ func openMutationFaultPool(t *testing.T, prefix string) (*mutationFault, *sql.DB
 	t.Cleanup(func() { db.Close() })
 
 	return fault, db
+}
+
+// Count actual server-selected victims; test barriers must not fabricate 1213.
+func (f *mutationFault) observeError(err error) {
+	var e *mysql.MySQLError
+	if errors.As(err, &e) && e.Number == 1213 {
+		f.mu.Lock()
+		f.deadlocks++
+		f.mu.Unlock()
+	}
 }
