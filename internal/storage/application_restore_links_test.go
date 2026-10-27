@@ -80,8 +80,28 @@ func TestMariaDBApplicationRestoreLinkDisposable(t *testing.T) {
 				workApps.DB = db
 				restorer := backup.Repository{DB: db}
 				restored, application := make(chan appLinkOutcome, 1), make(chan appLinkOutcome, 1)
+				restoreStarted, applicationStarted, restoreJoined, applicationJoined := false, false, false, false
+				t.Cleanup(func() {
+					release()
+					if restoreStarted && !restoreJoined {
+						select {
+						case <-restored:
+						case <-time.After(8 * time.Second):
+							t.Error("restore actor did not stop before fixture cleanup")
+						}
+					}
+					if applicationStarted && !applicationJoined {
+						select {
+						case <-application:
+						case <-time.After(8 * time.Second):
+							t.Error("application actor did not stop before fixture cleanup")
+						}
+					}
+				})
+
 				startRestore := func() { go func() { _, e := restorer.RestoreV39(f.ctx, body); restored <- appLinkOutcome{err: e} }() }
 				startApplication := func() {
+					applicationStarted = true
 					go func() {
 						if operation == "replay" {
 							out, e := workApps.CreateWithReceipt(f.ctx, "Demo", input)
@@ -110,11 +130,15 @@ func TestMariaDBApplicationRestoreLinkDisposable(t *testing.T) {
 					if operation == "replay" {
 						appLinkWait(t, f.ctx, f.db, "SELECT generation FROM app_runtime_generation WHERE id=1 FOR UPDATE")
 					} else {
-						appLinkWait(t, f.ctx, f.db, "DELETE FROM `company_application_status_history`", "DELETE FROM `company_applications`")
+						// Counter preflight obtains table WRITE locks before the data TX.
+						appLinkWait(t, f.ctx, f.db, "LOCK TABLES `company_application_status_history` WRITE", "LOCK TABLES `company_applications` WRITE", "DELETE FROM `company_application_status_history`", "DELETE FROM `company_applications`")
 					}
 				}
 				release()
-				r, a := appLinkDone(t, restored), appLinkDone(t, application)
+				r := appLinkDone(t, restored)
+				restoreJoined = true
+				a := appLinkDone(t, application)
+				applicationJoined = true
 				if r.err != nil {
 					t.Fatalf("linked synthetic restore failed: %T", r.err)
 				}
