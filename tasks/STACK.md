@@ -306,3 +306,5 @@ GO-098 / [#53](https://github.com/meInteractive/it-map/pull/53): de99bfe/tree3fc
 | GO-099 crash/HTTP/late-result fence; включает #53 | codex/GO-099-v39-restore-http-crash | main | [#54](https://github.com/meInteractive/it-map/pull/54) | 1b12301/treef1dbd7388f3ceaa8afb7fc1e83afdcda4d918d1b: Public40464855878/MariaDB40464855875 pass; required crash/concurrency/HTTP/late-result job122057707630 zero skips |
 
 #54 направлен прямо в main и включает #53: одного merge #54 достаточно для доставки обеих порций. Финишный checkpoint меняет только docs/status/manifest; runtime/tests совпадают с 1b12301. GO-100 historical/bootstrap и полный GO-042 остаются открытыми. Полная AI/provider orchestration не принимается по одному generation boundary.
+
+Уточнение GO-053 по поручению пользователя: `codex/GO-053-ubuntu-20-deploy-docs`, база main15c2ac8. Добавлен условный Focal runbook и исправлен выбор Python transient worker на выбранный sys.executable. Проверка на реальном Ubuntu20/MariaDB/systemd не выполнялась; CI/unit и источники фиксируются в PR.

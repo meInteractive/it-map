@@ -3,7 +3,7 @@
 Инструкция для текущего **ограниченного Go-приложения**, а не подтверждение завершения миграции. Код хранится в [meInteractive/it-map](https://github.com/meInteractive/it-map). Go обслуживает API и собранный React; Node.js нужен при сборке, отдельный Node-сервер при работе Go не нужен.
 
 1. [Локальный запуск и переменные окружения](LOCAL.md).
-2. [Свой сервер без Docker: MariaDB, systemd, HTTPS](SERVER.md) — основной вариант.
+2. [Свой сервер без Docker: MariaDB, systemd, HTTPS](SERVER.md) — основной вариант; [отличия Ubuntu 20.04 LTS](UBUNTU-20.md).
 3. [Вариант с Docker](DOCKER.md) — Linux, тот же Go-код и локальная MariaDB.
 4. [Две ветки, выбор dev-релиза, обновление и откат](RELEASES.md).
 5. [Установка приёмника](RECEIVER.md) и [включение GitHub Actions](ACTIONS.md).
@@ -20,16 +20,16 @@
 
 | Компонент | Минимум для этой инструкции | Рекомендуется / подтверждено |
 | --- | --- | --- |
-| ОС сервера | Linux с systemd; контейнерный вариант требует Linux host networking | Ubuntu 24.04 LTS; Debian требует проверки пакетов/путей на выбранной версии |
+| ОС сервера | Linux с systemd; контейнерный вариант требует Linux host networking | Ubuntu 24.04 LTS; Ubuntu 20.04 LTS — условный вариант по [UBUNTU-20.md](UBUNTU-20.md) |
 | Go при сборке | 1.23 согласно go.mod; проверена 1.23.12 | 1.27.3, принята для проекта и проверена в облачной среде; поддерживаемый security patch |
 | Node.js при сборке | 24 (`package.json: engines`) | актуальный patch ветки 24; локально проверена 24.19.0 |
 | npm при сборке | 11 для поддерживаемого здесь окружения | 11.9.0; `npm ci`, lockfile не пересоздавать |
 | MariaDB | 10.11; схема использует MariaDB collation/JSON/триггеры | 10.11 с актуальными исправлениями; CI подтвердил 10.11.19. MySQL не считается заменой |
-| Nginx | 1.24 для приведённого шаблона | поддерживаемый пакет ОС с security updates; TLS 1.2/1.3 |
-| systemd | 255 для точного набора параметров шаблона | пакет Ubuntu 24.04; для иной ОС проверить unit через systemd-analyze |
-| Git | 2.43 для приведённых команд | поддерживаемый пакет ОС |
+| Nginx | 1.18 для использованных директив; ранее syntax проверен на 1.24 | поддерживаемый пакет ОС с security updates; TLS 1.2/1.3 |
+| systemd | 247+ для ProtectProc; 245 с адаптацией unit | Ubuntu 24.04 — штатный 255; для Focal см. [UBUNTU-20.md](UBUNTU-20.md) |
+| Git | на runtime не нужен при доставке готового артефакта | Git 2.43 проверен; checkout/build выполняет CI |
 | curl, CA certificates, OpenSSL | поддерживаемые пакеты ОС | HTTPS-проверки, генерация секретов; TLS verification не отключать |
-| Python | 3.10+ только для вспомогательных проверок/smoke | пакет ОС, 3.12 в Ubuntu 24.04 |
+| Python | код приёмника 3.10+; выбирать поддерживаемую ветку | 3.12 с security patch, штатный в 24.04; на Focal отдельная установка |
 | Docker (необязательно) | Engine 24+ с BuildKit для Dockerfile | поддерживаемый Engine; локальный демон 28.4.0. Compose не требуется |
 | Chromium / Playwright (только e2e) | версия Chromium, установленная закреплённым Playwright | `npm ci`, затем `npx playwright install --with-deps --only-shell chromium`; Playwright 1.64.1 |
 

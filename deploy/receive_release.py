@@ -92,7 +92,7 @@ class Systemd:
         result = subprocess.run([
             '/usr/bin/systemd-run', '--quiet', '--collect', '--unit', unit,
             '--property=Type=exec', '--property=RuntimeMaxSec=300',
-            '--property=UMask=0077', '/usr/bin/python3', '-I',
+            '--property=UMask=0077', sys.executable, '-I',
             '/usr/local/libexec/itmap-receive.py', '--slot', self.slot, '--apply'],
             timeout=20, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         if result.returncode:

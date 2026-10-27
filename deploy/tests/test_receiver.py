@@ -60,6 +60,21 @@ class Service:
         self.calls.append(('stop',))
 
 
+class SystemdInterpreterTests(unittest.TestCase):
+    def test_worker_keeps_selected_python_on_focal(self):
+        # Entry may use an isolated supported Python while /usr/bin/python3 is
+        # Focal's 3.8. The detached worker must keep the selected interpreter.
+        selected = '/opt/itmap-python/bin/python3.12'
+        with patch.object(r.sys, 'executable', selected), patch.object(r.subprocess, 'run') as run:
+            run.return_value.returncode = 0
+            r.Systemd('dev').launch(7)
+        command = run.call_args.args[0]
+        self.assertEqual(command[command.index(selected):],
+                         [selected, '-I', '/usr/local/libexec/itmap-receive.py', '--slot', 'dev', '--apply'])
+        self.assertIn('itmap-release-dev-7.service', command)
+        self.assertNotIn('/usr/bin/python3', command)
+
+
 class ReceiverTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
