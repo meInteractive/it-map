@@ -165,3 +165,5 @@ B-S принят на #58/code5b91bc5: Public40479135218 и MariaDB40479135520 �
 Старые версии не гарантировали integrity, manifest, исходную дату и counters. Неизвестные legacy metadata не исполняются и не переносятся в доверенные поля плана; они не становятся signed v16 через подмену версии. Required unchanged JS oracle сравнивает 1468 синтетических случаев (469 приняты), включая все обязательные столбцы/typed FK, optional audit, UTF16 и source diagnostics. Native TypeError текста движка не фиксируется, отказ всё равно должен быть безопасным 400.
 
 Это pure validator, без SQL и без расширения runtime validate/restore v16–39. C-P должен отдельно перенести source normalizeCatalog/plan, omitted calendar/audit preserve и truthful warnings; C-S — доказать запись на disposable MariaDB. Ни GO-100-C, ни полная GO-042 по одному валидатору не принимаются.
+
+C-V принята на #59/code6710498: Public40482915844/MariaDB40482915965 полностью pass, required legacy1468 и весь прежний source/SQL/API/browser regression успешны. Только pure validation; source catalog normalization/legacy plan и SQL приёмка остаются C-P/C-S.
