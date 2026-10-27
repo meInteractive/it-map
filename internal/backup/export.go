@@ -35,7 +35,13 @@ type sqlTable struct {
 var migrationNames = []string{"d1_migrations", "__drizzle_migrations", "__appgarden_migrations"}
 
 func quote(name string) string { return "`" + strings.ReplaceAll(name, "`", "``") + "`" }
-func inventory(ctx context.Context, tx *sql.Tx) (map[string]sqlTable, error) {
+
+type metadataReader interface {
+	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
+	QueryRowContext(context.Context, string, ...any) *sql.Row
+}
+
+func inventory(ctx context.Context, tx metadataReader) (map[string]sqlTable, error) {
 	result := map[string]sqlTable{}
 	rows, err := tx.QueryContext(ctx, `SELECT TABLE_NAME,COALESCE(ENGINE,''),TABLE_TYPE FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() ORDER BY TABLE_NAME`)
 	if err != nil {
