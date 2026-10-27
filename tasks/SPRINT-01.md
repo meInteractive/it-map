@@ -266,7 +266,7 @@
 ### [ ] GO-014. Задачи, каналы и контакты
 
 - **Приоритет:** Критический.
-- **Критическая часть:** [x] Чтение задач и каналов есть, task list подтверждён synthetic CI. [x] SQL/API и desktop/mobile create/reschedule/complete/reopen/filters без Calendar, owner isolation/rollback/concurrency — GO-033/068…071. [ ] CRUD каналов/контактов GO-034.
+- **Критическая часть:** [x] Чтение задач и каналов есть, task list подтверждён synthetic CI. [x] SQL/API и desktop/mobile create/reschedule/complete/reopen/filters без Calendar, owner isolation/rollback/concurrency — GO-033/068…071. [x] CRUD каналов/контактов GO-034, принят #62…64.
 - **Средняя часть:** [x] UI round-trip задач GO-071. [ ] UI источников; календарная интеграция отдельной GO-015.
 - **Низкая часть:** [ ] Внешний вид задач/контактов/календарных меток.
 
@@ -277,7 +277,7 @@
 - **Компоненты:** `internal/tasks`, `internal/channels`, `server/repositories/contacts.js`.
 - **Критерии готовности:** Все операции задачи/канала/контакта работают в Go и UI.
 - **Как проверить:** Синтетические API parity + MariaDB интеграция.
-- **Известные ограничения:** есть чтение задач/каналов, создание/перенос срока без подключённого календаря и completed; полные SQL write/CRUD каналов/контактов и calendar sync ещё не приняты.
+- **Известные ограничения:** есть чтение задач/каналов, создание/перенос срока без подключённого календаря и completed; channel/contact SQL/API CRUD принят GO-034/#62…64; UI источников и calendar sync остаются отдельной приёмкой.
 - **Результат:** 6eb34db/09db3a4/b07aa9b/3cb467c/88fe9f0; task reads подтверждены PR #1/#8/#9. Create/reschedule без calendar существуют в Go, их live write, канал/контакт CRUD и sync ещё не приняты.
 
 
@@ -595,19 +595,19 @@
 - **Результат:** GO-068 / #26 d5e820d исправил 10 JS-normalization расхождений; GO-069 / #27 c9f89ec подтвердил SQL write/Calendar guards/rollback; GO-070 / #28 a9f7f95 — HTTP/ошибки/даты/два concurrent edits и 34 JS cases; GO-071 / #29 179bce8 — реальный desktop/mobile create/reload/reschedule/complete/reopen/isolation. Все code SHA прошли обязательные public/MariaDB/API/старые 14 browser/native CI, оба новых UI проекта без skips/flaky. Подробные доказательства — docs/GO_TASK_WRITES.md и STACK.md. Parent GO-014 остаётся открыт для GO-034.
 
 
-### [ ] GO-034. Каналы и контакты: CRUD
+### [x] GO-034. Каналы и контакты: CRUD
 
 - **Приоритет:** Критический.
 
-- **Статус:** [ ] — не принят целиком.
+- **Статус:** [x] — SQL/API scope принят.
 - **Цель:** Довести источники и контактную часть CRM.
 - **Что реализовать:** Создать/изменить/удалить каналы и контакты с проверкой ссылок.
 - **Зависимости:** Schema/auth и read-контракты GO-014; не весь родительский CRUD, который эта задача и реализует.
-- **Компоненты:** `internal/channels`, `internal/crm`.
+- **Компоненты:** `internal/channels`, `internal/contacts`.
 - **Критерии готовности:** Без потери ссылок/контактов.
 - **Как проверить:** API + DB integration.
-- **Известные ограничения:** В Go список каналов и pure normalization GO-072; административный SQL/HTTP CRUD ещё не включён. План: GO-072 contract → GO-073 channel SQL/HTTP → GO-074 contacts → GO-075 disposable integration.
-- **Результат:** исходный read-код b07aa9b; нормализация GO-072 добавляется отдельной проверяемой порцией. Полная GO-034 открыта до CRUD/ссылок/контактов/DB integration.
+- **Известные ограничения:** Channel input остаётся принятой typed UI/RFC3339 границей GO-072; полный произвольный JS coercion/WHATWG канального ввода не заявлен. UI источников и Calendar остаются отдельными частями GO-014/015, без подключения реальных providers.
+- **Результат:** GO-072/073/074/075, [#62](https://github.com/meInteractive/it-map/pull/62)/[#63](https://github.com/meInteractive/it-map/pull/63)/[#64](https://github.com/meInteractive/it-map/pull/64): channel/contact CRUD, FK-safe sole-source delete, shared contacts/slots, транзакции, rollback/real editor races и авторизованный HTTP приняты на synthetic MariaDB. Public40529879529/MariaDB40529879394 fully pass; семь совместных required targets без skips до старых API/browser/native gates.
 
 ### [ ] GO-035. Календарь: OAuth-соединение
 
@@ -1052,27 +1052,26 @@
 - **Проверки:** Go vet/race/build/tagged/minimum Go 1.23, 43 application/34 task/55 channel oracle vectors, web build/source/history/schema/fixtures/actionlint/manifest и required CI точного SHA. SQL/HTTP/ссылки — GO-073…075, GO-034 открыта.
 - **Результат:** реализация в codex/GO-072-channel-input от проверенной вершины #29. Локально vet/race/обе сборки/tagged/Go 1.23 channels, все три JS oracle, web build/source/history/schema/actionlint успешны. [PR #30](https://github.com/meInteractive/it-map/pull/30), code `b89ee88`: [Go/web/security/JS contract](https://github.com/meInteractive/it-map/actions/runs/40292417590) и [MariaDB/task SQL+HTTP/2 task browser + 14 readonly/API/native](https://github.com/meInteractive/it-map/actions/runs/40292417772) успешны. GO-072 завершён только в указанном pure typed-input scope; GO-073…075/полная GO-034 открыты.
 
-### [ ] GO-073. Channel CRUD с защитой vacancy sources (часть GO-034)
+### [x] GO-073. Channel CRUD с защитой vacancy sources (часть GO-034)
 
 - **Приоритет:** Критический, спринт 1.1; GO-032 средний.
 - **Зависимости:** GO-072 input contract, auth/admin, existing channel/catalog/schema/read repositories.
 - **Критерии:** admin POST/PUT/DELETE и same-origin/JSON/errors по legacy, независимость от company/agency sources и duplicate username/name, FK-safe delete/409 для единственного источника channel vacancy. Транзакции/блокировки/rollback и сохранённые связи; полный GO-034 не закрывать до GO-075.
-- **Результат:** не реализовано.
+- **Результат:** [PR #62](https://github.com/meInteractive/it-map/pull/62), code `d457a59f8b9685c571e2d375b513cbe9c2f7e3a8`, tree `52497e6fe0ce92df8a3780c013a6db0e190710f1`: [Public40526046586](https://github.com/meInteractive/it-map/actions/runs/40526046586) и [MariaDB40526046600](https://github.com/meInteractive/it-map/actions/runs/40526046600) успешны целиком. Required channel CRUD/races/HTTP targets выполнены без skips в отдельном blank-schema контейнере; 17 unchanged source CRUD операций, NOCASE/LOWER и catalog projection gates. Проверены поздние write/readback/unlock faults, FK cleanup, concurrent duplicates/partial PUT/two deletes/owner changes/new links. Старый profile read-only probe сохранён; все прежние SQL/restore/API/browser gates успешны. Локальные vet/race/build/web/source/history/schema/actionlint/manifest и 4 pre-connect refusals pass. Граница typed UI/RFC3339 из GO-072 сохранена; произвольные coercions/полный WHATWG не заявлены. Контакты GO-074 и общая GO-034/075 открыты.
 
-### [ ] GO-074. Hiring contacts CRUD с лимитом позиций (часть GO-034)
+### [x] GO-074. Hiring contacts CRUD с лимитом позиций (часть GO-034)
 
 - **Приоритет:** Критический, спринт 1.1; GO-032 средний.
 - **Зависимости:** auth/admin/catalog/company_crm, existing hiring_contacts schema и legacy contacts.js contract.
 - **Критерии:** GET для сессии, admin POST/PUT/DELETE, три уникальные позиции организации, валидация полей/ссылок, isolation/transaction/ошибки, существующие контакты не теряются. Полная приёмка SQL/API — GO-075.
-- **Результат:** не реализовано.
+- **Результат:** [PR #63](https://github.com/meInteractive/it-map/pull/63), code `f911ef9fef8fad4eaca7a199ac00402b34ef9337`, tree `e8ad3952b45dcdc2849109dd2b05ef21bc8e9aee`: [Public40528713883](https://github.com/meInteractive/it-map/actions/runs/40528713883)/[MariaDB40528713300](https://github.com/meInteractive/it-map/actions/runs/40528713300) fully pass. Required297 unchanged JS validator cases,21 SQLite CRUD/read операций, три contact SQL/race/HTTP targets без skips; actual anchor/write/readback rollback, FK/slots, concurrency и owner discovery retry. Go1.23.12/vet/race/tagged/build/web/source/history/schema/actionlint/manifest и четыре pre-connect guards pass. Старый channel/profile/restore/API/browser regression успешен; совместная GO-075 принята следующей порцией.
 
-### [ ] GO-075. Disposable MariaDB/API приёмка каналов и контактов (часть GO-034)
+### [x] GO-075. Disposable MariaDB/API приёмка каналов и контактов (часть GO-034)
 
 - **Приоритет:** Критический, спринт 1.1; GO-032 средний.
 - **Зависимости:** GO-073/074, только guarded GitHub disposable fixture.
 - **Критерии:** реальные SQL и авторизованный HTTP CRUD, duplicates/лимиты/linked sole-source delete/rollback/concurrent edits; cleanup восстанавливает все исходные fixtures и generation. Именованные pass/no-skip targets перед прежними API/browser/native gates. Локальные MariaDB/production/real data запрещены; до успеха полная GO-034 открыта.
-- **Результат:** не реализовано.
-
+- **Результат:** [PR #64](https://github.com/meInteractive/it-map/pull/64), code `3e5386291020ecf41582df79bc10db6ff217aff1`, tree `a043a86411206c2c9ab43a4aac67bd64cdf7390e`: [Public40529879529](https://github.com/meInteractive/it-map/actions/runs/40529879529)/[MariaDB40529879394](https://github.com/meInteractive/it-map/actions/runs/40529879394) полностью успешны. Joint job122279457069 требует pass всех семи channel/contact CRUD/race/HTTP/shared API parents без skips; реальный UpdateManual против Channel.Delete проверен в обоих порядках, CRM/contacts/FK сохранены, cleanup и generation неизменны. Старые SQL/restore/profile/API/browser/native gates выполнены после joint dependency. Локально combined tags/vet/race/обе сборки/source/actionlint/manifest и четыре pre-connect refusals pass; local positive MariaDB не запускалась. GO-034 закрыта в этом SQL/API scope; UI источников GO-014 и Calendar отдельны.
 
 ### [x] GO-076. Сохранить проверенный стек перед работой над парсером
 
@@ -1335,6 +1334,7 @@
 - **Source boundary:** normalizeCatalog пересчитывает company rating и сортирует компании по score/localeCompare(ru); agencies сохраняют порядок входного массива и нормализуют свои поля/provided rank, без отдельного recalculateAgencySalaryRanges/Rating GO-032. app_catalog строится из normalized catalog, исходный catalog сохраняется для HTTP summary. Оригинальный ordered input нужен до normalization: JSON.stringify превращает overflow Number в NULL раньше, чем source Number/fallback, поэтому нельзя нормализовать через заранее перекодированный raw catalog. omitted calendar сохраняется всегда, audit — только при отсутствии в файле. Весь clock/default/normalization завершается до SQL COMMIT.
 - **Порция полей до полного plan:** отдельно перенести company rating/WLB/salary/source defaults и agency field normalization, source UTF16/coercion/rounding/object-spread. Порядок каталога/rank и полный legacy plan не принимать по entity-only proof. golang.org/x/text v0.23.0/collate (Unicode6.2/CLDR23) в отдельном внешнем probe расходится с Node24 localeCompare(ru): 1338 из3969 synthetic pairs, включая кириллицу/латиницу и новые символы; в проект зависимость не добавляется. Совместимый locale comparator остаётся prerequisite полного C-P, C-S/D до него не включать.
 - **Проверенная часть:** [x] Entity field normalization/source705. [ ] Совместимый порядок полного каталога/rank, legacy plan/preserve/warnings.
+- **Вопрос контракта:** prototype source-derived ICU78/Unicode17 keys совпали на60k random pairs, расширенный корпус418748 дал8 canonical-equivalence отличий Node; детали и конкретное предложение — [LEGACY_COLLATION_COMPATIBILITY.md](../docs/LEGACY_COLLATION_COMPATIBILITY.md). До пользовательского выбора canonical order vs точный FCD/rollback parity C-P остаётся открытой; runtime не менялся.
 - **Результат:** поля приняты на [PR #60](https://github.com/meInteractive/it-map/pull/60), code4ce126bd683a58dac3f0e58bcc411ba22547075e/treeba7791349cf3cf75b2de0e4741a16407515dfd7a. Public40507165590 и MariaDB40507165592 fully pass: required705-case unchanged JS (700 accepted), все старые source и SQL/API/browser/counter/crash/historical restore gates успешны. Local race/vet/unit/tagged/build/web/actionlint/source/history/manifest pass. Точная сериализация/ownership проверены для одной сущности; locale sorting/полный legacy plan/runtime и весь C-P остаются открытыми.
 
 ### [ ] GO-100-C-S. SQL/HTTP restore v14–15

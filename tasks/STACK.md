@@ -337,3 +337,15 @@ GO-100-C-V / [#59](https://github.com/meInteractive/it-map/pull/59), code6710498
 GO-100-C-P / codex/GO-100-c-p-legacy-plan начинается от проверенного mainde22204 после #59. Самостоятельная порция: entity field normalization + required705 unchanged JS vectors, без locale sorting/полного legacy plan/runtime writes. Полная C-P остаётся открытой; source-compatible Russian collation — оставшийся prerequisite C-S/D. Node и x/text в runtime не добавляются. Proof будет записан по фактическому CI SHA.
 
 GO-100-C-P/fields / [#60](https://github.com/meInteractive/it-map/pull/60), code4ce126bd683a58dac3f0e58bcc411ba22547075e/treeba7791349cf3cf75b2de0e4741a16407515dfd7a: Public40507165590/MariaDB40507165592 success. Required705-case exact JS serialization/ownership, старые source67/416/216/28/1468 и все disposable SQL/API/browser/counter/crash/historical restore gates pass. Checkpoint меняет только план/tasks/docs/manifest, runtime/tests остаются4ce126b. Полная C-P открыта до source-compatible locale order и legacy plan; runtime всё ещё16–39. PR60 → main, после user merge сверить ancestry/tree.
+
+GO-100-C-P / codex/GO-100-c-p-locale-plan начинается от принятого main35dba9f/tree6affb28a4b8d0229b5faef1899a367f4eb4eeb41 после #60 (ancestry/tree проверены). Docs-only предложение Unicode tie-order: фактические8/418748 source differences, без runtime comparator. Вопрос передан на решение пользователя по AGENTS; пока доступна независимая critical GO-073. Не считать прототип принятым C-P.
+
+GO-073 / codex/GO-073-channel-crud: база docs-only e0cc834 (#61), runtime база verified main35dba9f. Самостоятельный channel SQL/HTTP CRUD, Node SQLite :memory: oracle и отдельный disposable CI. Полная GO-034/075 остаётся открытой; PR и positive CI proof будут записаны после фактической проверки.
+
+GO-073 / [#62](https://github.com/meInteractive/it-map/pull/62), code d457a59f8b9685c571e2d375b513cbe9c2f7e3a8/tree52497e6fe0ce92df8a3780c013a6db0e190710f1: Public40526046586/MariaDB40526046600 pass, source + три required channel targets без skips и весь regression успешен. Checkpoint меняет только docs/status/manifest. GO-074 стартует от проверенного #62, GO-034/075 ещё открыты.
+
+GO-074 / codex/GO-074-hiring-contacts от #62/6c731c8 (runtime d457a59 принят двумя CI). Source297 validation +21 CRUD/read cases, owner-slot transactional SQL/HTTP и отдельный disposable contact-writes job. Positive proof/PR пока ожидаются; GO-075 остаётся отдельно.
+
+GO-075 / codex/GO-075-channel-contact-gate от #63/f911ef9: совместный source SQL/HTTP gate и реальные vacancy editor/channel delete races. Семь required родителей без skips должны завершиться до mariadb-schema/API/browser/native job; PR/positive proof ожидаются.
+
+GO-074/#63/f911ef9: Public40528713883/MariaDB40528713300 fully pass. GO-075/#64/3e53862: Public40529879529/MariaDB40529879394 fully pass; joint seven parents без skips и весь старый regression. Checkpoint меняет только docs/status/manifest. Leaf #64 →main включает ancestry #61/#62/#63; одного пользовательского merge64 достаточно. Docs-only #61 по-прежнему не разрешает runtime comparator. GO-031 продолжается независимой software порцией.
