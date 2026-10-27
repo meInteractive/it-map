@@ -1251,7 +1251,7 @@
 - **Приоритет:** Критический.
 - **Зависимости:** GO-097, подготовленная synthetic schema и safe counter preflight.
 - **Критерии:** bounded replacement прикладных rows, FK/triggers/value verification до COMMIT; generation rotate в той же TX; operational rows не импортируются, receipt/spend сохраняются, зависимые classification leases могут удаляться исходным FK CASCADE. MariaDB implicit DDL commit не выдавать за transactional rollback; ID high-water не понижать. Только required disposable CI: успех/late rollback/retry/round-trip/counters. Реальные DB/backup не подключать.
-- **Результат:** не реализовано.
+- **Результат:** реализовано RestoreV39 для prepared schema: scalar preflight без потерь, explicit zero IDs, counter DDL до data TX, generation lock/rotate, полная замена 52 таблиц, exact multiset/FK verification. Runtime POST ещё guarded. Source oracle выполняет unchanged JS restore/export: 49 synthetic rows, Unicode/NUL, source safety transforms, PK/FK/hierarchy/high-water. Отдельная required disposable restore job проверяет atomic success/round-trip/operational preservation и late fault/PK/CHECK/composite FK/trigger rollback; SQL CI ещё не выполнен, задача остаётся открытой.
 
 ### [ ] GO-099. Restore crash, concurrent receipts и HTTP v39 (часть GO-042)
 

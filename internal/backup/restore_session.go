@@ -24,13 +24,15 @@ var ErrRestoreBusy = errors.New("another restore owns this database")
 // A later restore must finish its data TX before closing the session; Close
 // never issues UNLOCK TABLES, which could implicitly commit that future TX.
 type RestoreSession struct {
-	conn     *sql.Conn
-	plan     *RestorePlan
-	lock     string
-	owned    bool
-	done     chan struct{}
-	once     sync.Once
-	closeErr error
+	conn        *sql.Conn
+	plan        *RestorePlan
+	lock        string
+	owned       bool
+	sqlMode     string
+	modeChanged bool
+	done        chan struct{}
+	once        sync.Once
+	closeErr    error
 }
 
 func (s *RestoreSession) Close() error {
@@ -44,6 +46,14 @@ func (s *RestoreSession) Close() error {
 				s.closeErr = errors.New("cannot release restore ownership")
 				discardRestoreConnection(s.conn)
 			}
+		}
+		if s.modeChanged {
+			cleanup, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			if _, e := s.conn.ExecContext(cleanup, "SET SESSION sql_mode=?", s.sqlMode); e != nil {
+				s.closeErr = errors.Join(s.closeErr, errors.New("cannot reset restore SQL mode"))
+				discardRestoreConnection(s.conn)
+			}
+			cancel()
 		}
 		if e := s.conn.Close(); e != nil && !errors.Is(e, sql.ErrConnDone) {
 			s.closeErr = errors.Join(s.closeErr, e)
@@ -163,6 +173,9 @@ func (r Repository) OpenV39RestoreSession(ctx context.Context, data []byte) (_ *
 	if err != nil {
 		return nil, err
 	}
+	if err = validateRestoreScalars(plan); err != nil {
+		return nil, err
+	}
 	targets, err := restoreCounterTargets(plan)
 	if err != nil {
 		return nil, err
@@ -198,18 +211,8 @@ func (r Repository) OpenV39RestoreSession(ctx context.Context, data []byte) (_ *
 		return nil, ErrRestoreBusy
 	}
 	s.owned = true
-	actual, err := inventory(ctx, conn)
-	if err != nil {
+	if _, err = completeRestoreInventory(ctx, conn); err != nil {
 		return nil, err
-	}
-	trusted := v39.Trusted()
-	if err = validateInventory(actual, trusted); err != nil {
-		return nil, err
-	}
-	for _, t := range append(trusted.Tables, trusted.OperationalTables...) {
-		if _, exists := actual[t.Name]; !exists {
-			return nil, invalid("Сначала подготовьте полную доверенную схему базы.")
-		}
 	}
 	for _, target := range targets {
 		if target.next > 1 {
@@ -217,6 +220,15 @@ func (r Repository) OpenV39RestoreSession(ctx context.Context, data []byte) (_ *
 				return nil, err
 			}
 		}
+	}
+	// Explicit zero IDs are legal in SQLite and must not allocate a new ID.
+	// Preserve the original session setting when this dedicated handle closes.
+	if err = conn.QueryRowContext(ctx, "SELECT @@sql_mode").Scan(&s.sqlMode); err != nil {
+		return nil, err
+	}
+	s.modeChanged = true
+	if _, err = conn.ExecContext(ctx, "SET SESSION sql_mode=?", s.sqlMode+",NO_AUTO_VALUE_ON_ZERO"); err != nil {
+		return nil, err
 	}
 	if err = ctx.Err(); err != nil {
 		return nil, err
