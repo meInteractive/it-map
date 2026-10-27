@@ -308,3 +308,5 @@ GO-098 / [#53](https://github.com/meInteractive/it-map/pull/53): de99bfe/tree3fc
 #54 направлен прямо в main и включает #53: одного merge #54 достаточно для доставки обеих порций. Финишный checkpoint меняет только docs/status/manifest; runtime/tests совпадают с 1b12301. GO-100 historical/bootstrap и полный GO-042 остаются открытыми. Полная AI/provider orchestration не принимается по одному generation boundary.
 
 Уточнение GO-053 по поручению пользователя: `codex/GO-053-ubuntu-20-deploy-docs`, база main15c2ac8. Добавлен условный Focal runbook и исправлен выбор Python transient worker на выбранный sys.executable. Проверка на реальном Ubuntu20/MariaDB/systemd не выполнялась; CI/unit и источники фиксируются в PR.
+
+GO-100-A: `codex/GO-100-historical-validation` от проверенного main15c2ac8, затем ff опубликованного GO-053 Ubuntu20/#55/5a7aba1. Required source416-case v16–39 validator и strict v39 regression реализованы без SQL/runtime расширения. Сохранена отдельная docs-порция #55; её ancestry входит в будущий PR GO-100-A.

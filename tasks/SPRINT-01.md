@@ -1265,6 +1265,7 @@
 - **Приоритет:** Критический для полной backward compatibility.
 - **Зависимости:** принятый v39 restore GO-097/098/099, source compatibility layouts и trusted migration/preflight.
 - **Критерии:** source-backed historical validation/transforms/preserve-vs-clear/warnings/role mapping, downgrade поля, scheduler/Apify safe defaults; MariaDB schema preparation отдельно от atomic data replacement без ложного обещания DDL rollback. Только synthetic fixtures/CI, без реальных данных. Не закрывать полную GO-042 по одному v39 round-trip.
+- **Декомпозиция до реализации:** стабильные дочерние ID GO-100-A…D сохраняют исходный GO-100 и не занимают зарезервированные номера спринта 1.2. A — source-backed validation v16–38; B — plan/preserve/transforms/SQL v16–38; C — v14–15 catalog/legacy layout/normalization; D — trusted MariaDB bootstrap отдельно от data TX. Ни одна часть сама по себе не закрывает GO-100/042.
 - **Результат:** не реализовано.
 
 ### [x] GO-101. MariaDB counter preflight перед restore TX (часть GO-042/098)
@@ -1274,3 +1275,31 @@
 - **Критерии:** AUTO_INCREMENT только увеличивается до безопасной границы incoming/current/max IDs, в том числе при concurrent allocation/rollback. Исключить race read→ALTER и implicit commit бизнес-транзакции: отдельная preflight/session/table fencing, bounded locks и cleanup после cancel/fault. Не менять business rows/generation, SQL не строить из uploaded metadata. Required live MariaDB gates только в отдельной disposable job; понижать counters ради cleanup нельзя.
 - **Границы:** ещё не transactional restore или HTTP. GO-098/099 зависят от этого proof; реальных DB/DDL не выполнять.
 - **Результат:** OpenV39RestoreSession валидирует v39/полную prepared schema, удерживает отдельное соединение и restore advisory ownership. Counter LOCK→metadata/MAX→ALTER→UNLOCK выполняется до data TX; Close не делает UNLOCK будущей TX. Добавлена отдельная disposable CI job и actual lock/DDL/concurrent writer/late fault/cancel/ownership/high-water gates, включая exact max-safe ID. Business/generation unchanged и no-lowering проверяются; Принят на [PR #52](https://github.com/meInteractive/it-map/pull/52), code8a3f334/tree335cbc2bbb2e69de1f290373c6092b07498136cc: Public40415955237 и MariaDB40415955239 pass. Отдельная counter job121898215347 проверила семь live SQL scenarios zero skips, включая nonempty rows; весь прежний SQL/API/browser suite pass. Base PR52=main, ancestry включает #51. Runtime data restore не подключён.
+
+### [ ] GO-100-A. Source-backed validation форматов v16–38
+
+- **Приоритет:** Критический prerequisite GO-100.
+- **Зависимости:** GO-094 current validator и unchanged validateFullBackup.
+- **Критерии:** точные version/table/column gates, optional old layouts cover letters/prompt models, manifest/integrity/scalars/row cap/FK/catalog; required differential source oracle для всех версий 16–38 и негативных границ. Не менять current v39 export/HTTP restore, не запускать SQL/DDL.
+- **Результат:** ValidateModernBackup принимает signed v16–39 с exact versioned table/column/FK gates и optional old letters/prompt-model layouts. ValidateV39 остаётся strict-current; HTTP restore не расширен. Required differential oracle исполняет unchanged validateFullBackup: 416 synthetic vectors, все 24 версии, позитивные/негативные границы. Local race/unit/interop/tagged/vet/build/web/actionlint pass; CI и PR proof ожидают публикации.
+
+### [ ] GO-100-B. Historical plan и MariaDB restore v16–38
+
+- **Приоритет:** Критический.
+- **Зависимости:** GO-100-A, GO-097/098/099.
+- **Критерии:** source preserve-vs-clear, defaults/warnings и role mapping; destination state считывается согласованно, preserve rows не теряют конкурентные writes между planning и replacement; old counters/high-water; required disposable SQL success/rollback/round-trip/HTTP для границ версий.
+- **Результат:** не реализовано.
+
+### [ ] GO-100-C. Legacy v14–15 validation и restore
+
+- **Приоритет:** Критический для полной совместимости.
+- **Зависимости:** GO-100-B и source legacy catalog/normalization contracts.
+- **Критерии:** старые storage/required columns/catalog/AI/reviews/agency checks, source normalization и truthful warnings при отсутствии integrity/date/counters; preserve omitted sections; synthetic differential и disposable SQL proof.
+- **Результат:** не реализовано.
+
+### [ ] GO-100-D. Trusted MariaDB bootstrap перед restore
+
+- **Приоритет:** Критический для новой базы.
+- **Зависимости:** GO-100-B/C, trusted baseline/schema и проверенный DDL preflight.
+- **Критерии:** доверенный версионированный DDL без uploaded SQL; полный schema/inventory check и отсутствие fallible post-commit normalization; implicit DDL commit отделён от atomic data TX, failure/retry доказаны на synthetic disposable DB. Без миграционного фреймворка и применения к реальным БД.
+- **Результат:** не реализовано.
