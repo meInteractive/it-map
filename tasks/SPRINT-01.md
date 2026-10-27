@@ -1266,7 +1266,7 @@
 - **Зависимости:** принятый v39 restore GO-097/098/099, source compatibility layouts и trusted migration/preflight.
 - **Критерии:** source-backed historical validation/transforms/preserve-vs-clear/warnings/role mapping, downgrade поля, scheduler/Apify safe defaults; MariaDB schema preparation отдельно от atomic data replacement без ложного обещания DDL rollback. Только synthetic fixtures/CI, без реальных данных. Не закрывать полную GO-042 по одному v39 round-trip.
 - **Декомпозиция до реализации:** стабильные дочерние ID GO-100-A…D сохраняют исходный GO-100 и не занимают зарезервированные номера спринта 1.2. A — source-backed validation v16–38; B — plan/preserve/transforms/SQL v16–38; C — v14–15 catalog/legacy layout/normalization; D — trusted MariaDB bootstrap отдельно от data TX. Ни одна часть сама по себе не закрывает GO-100/042.
-- **Результат:** частично: GO-100-A historical signed validation принят; plan/SQL v16–38, legacy14–15 и trusted bootstrap остаются GO-100-B/C/D. Runtime restore пока v39.
+- **Результат:** частично: GO-100-A и B historical signed validation/plan/SQL v16–38 приняты. Runtime принимает signed v16–39 на prepared schema; legacy14–15 и trusted bootstrap остаются GO-100-C/D.
 
 ### [x] GO-101. MariaDB counter preflight перед restore TX (часть GO-042/098)
 
@@ -1283,13 +1283,13 @@
 - **Критерии:** точные version/table/column gates, optional old layouts cover letters/prompt models, manifest/integrity/scalars/row cap/FK/catalog; required differential source oracle для всех версий 16–38 и негативных границ. Не менять current v39 export/HTTP restore, не запускать SQL/DDL.
 - **Результат:** ValidateModernBackup принимает signed v16–39 с exact versioned table/column/FK gates и optional old letters/prompt-model layouts. ValidateV39 остаётся strict-current; HTTP restore не расширен. Required differential oracle исполняет unchanged validateFullBackup: 416 synthetic vectors, все 24 версии, позитивные/негативные границы. Принято на [PR #56](https://github.com/meInteractive/it-map/pull/56), code92fff43206bc3a92fb004b4a466b270db2ace81f/treeed1a42514117d9f03f4cad02f10c3bf80908deee: Public40469083705 и MariaDB40469083582 полностью pass, required416-case oracle и весь прежний v39/SQL/API/browser regression успешны. Local race/unit/interop/tagged/vet/build/web/actionlint/source/history/manifest pass.
 
-### [ ] GO-100-B. Historical plan и MariaDB restore v16–38
+### [x] GO-100-B. Historical plan и MariaDB restore v16–38
 
 - **Приоритет:** Критический.
 - **Зависимости:** GO-100-A, GO-097/098/099.
 - **Критерии:** source preserve-vs-clear, defaults/warnings и role mapping; destination state считывается согласованно, preserve rows не теряют конкурентные writes между planning и replacement; old counters/high-water; required disposable SQL success/rollback/round-trip/HTTP для границ версий.
 - **Декомпозиция до реализации:** GO-100-B-P — pure modern historical plan и source oracle; GO-100-B-S — safe counter/data TX, preserved destination snapshot и SQL/HTTP proof. Родитель B открыт до обеих частей.
-- **Результат:** не реализовано.
+- **Результат:** B-P/#57 и B-S/#58 приняты: source modern plan и SQL/HTTP signed v16–39 на prepared schema с initialized generation. Preserved rows читаются после generation lock под row/gap locks; all23 old versions source SQL/round-trip/counters, late rollback/retry, concurrent profiles и signed HTTP прошли required disposable CI без skips. Точные SHA/proof — в дочерних результатах ниже. C/D и полная GO-100/042 открыты.
 
 ### [ ] GO-100-C. Legacy v14–15 validation и restore
 
@@ -1312,9 +1312,9 @@
 - **Критерии:** exact tables/defaults/warnings/preserve-vs-clear/immutable-token filtering; stable-key classification mapping и legacy single-role migration с Unicode/ambiguity semantics; caller-owned input/state не меняется, метаданные SQL не выполняются. Required source differential gates по всем версиям и границам, без SQL/providers.
 - **Результат:** PrepareModernRestore переносит source defaults/preserve/clear/warnings, stable-key prompts и legacy role mapping, UTF16/full Unicode lower-case/ambiguity, immutable-token history filtering. Caller snapshot копируется с canonical scalar identity. Source policy содержит только публичные defaults/warnings/Unicode metadata, без рабочих строк; required oracle выполняет unchanged JS plan/restore на metadata spies — 216 случаев, все 24 версии. Принято на [PR #57](https://github.com/meInteractive/it-map/pull/57), codea73f05e168c8b6c2ab15eeb2c4d07d7e1fcc4eef/treebbeff7db9db42a01f7abfb7325193cc175a7a38b: Public40476626861 и MariaDB40476626918 полностью pass, required216/416/67/28 source gates и весь предыдущий SQL/API/browser regression успешны. В #57 historical SQL/HTTP ещё не подключён.
 
-### [ ] GO-100-B-S. SQL/HTTP historical restore v16–38
+### [x] GO-100-B-S. SQL/HTTP historical restore v16–38
 
 - **Приоритет:** Критический.
 - **Зависимости:** GO-100-B-P, GO-098/099/101.
 - **Критерии:** counter DDL до data TX; generation lock первым, актуальные preserve rows под row/range locks до replacement; оба порядка concurrent preserve writer/restore не теряют данные; все version boundaries, counters, late rollback/retry/round-trip/admin HTTP в required disposable MariaDB CI без skips. Без реальных DB/keys/backups и bootstrap.
-- **Результат:** generic ValidateRestore/Restore и admin HTTP принимают signed v16–39 на prepared schema; strict V39 wrappers сохранены. Read-only validation не готовит counters; финальный plan перечитывает preserve rows с FOR UPDATE после generation lock в data TX. 23 version roundtrips, late rollback/retry, два порядка concurrent profile save и signed HTTP реализованы в отдельной required disposable CI job. Local checks pass; live SQL/HTTP gates ещё ожидают CI, задача открыта.
+- **Результат:** generic ValidateRestore/Restore и admin HTTP принимают signed v16–39 на prepared schema; strict V39 wrappers сохранены. Read-only validation не готовит counters; финальный plan перечитывает preserve rows с FOR UPDATE после generation lock в data TX. 23 version roundtrips, late rollback/retry, два порядка concurrent profile save и signed HTTP реализованы в отдельной required disposable CI job. Принято на [PR #58](https://github.com/meInteractive/it-map/pull/58), code5b91bc59bcedb8483153d439b7657d0605cdc7b7/treea31507461cb47ade37bb80908d6bd3a3c094b36e: Public40479135218 и MariaDB40479135520 полностью pass. Required historical job122104725668 проверила все23 версии16–38, source comparison/v39 round-trip/high-water, late DELETE/INSERT/generation faults/retry, оба порядка concurrent profile save и signed HTTP; zero skips. Весь прежний v39/counter/crash/SQL/API/browser regression pass. Local race/unit/tagged/vet/build/web/actionlint/source/history/manifest и четыре pre-connect guards pass.
