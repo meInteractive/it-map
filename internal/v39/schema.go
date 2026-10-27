@@ -16,6 +16,13 @@ var defaultCatalog []byte
 //go:embed historical_policy.json
 var historicalPolicy []byte
 
+//go:embed catalog_policy.json
+var catalogPolicy []byte
+
+// CatalogPolicy contains public source defaults/options and synthetic embedded
+// examples only. Runtime catalog records never populate this document.
+func CatalogPolicy() json.RawMessage { return append(json.RawMessage(nil), catalogPolicy...) }
+
 // HistoricalPolicy contains source role templates, warnings and Unicode metadata.
 func HistoricalPolicy() json.RawMessage { return append(json.RawMessage(nil), historicalPolicy...) }
 
