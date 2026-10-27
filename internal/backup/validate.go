@@ -125,7 +125,13 @@ func validCatalog(v *jsonValue) bool {
 // ValidateV39 handles the current export layout only. Historical v14–38 import
 // transformations, destination planning and restore are not accepted here.
 // Uploaded metadata.schema is never executed or used as trusted structure.
-func ValidateV39(data []byte) (*Payload, error) {
+func ValidateV39(data []byte) (*Payload, error) { return validateVersioned(data, 39, 39) }
+
+// ValidateModernBackup verifies signed v16–39 documents without destination
+// reads or writes. Historical restore planning and v14–15 remain separate gates.
+func ValidateModernBackup(data []byte) (*Payload, error) { return validateVersioned(data, 16, 39) }
+
+func validateVersioned(data []byte, minimum, maximum int) (*Payload, error) {
 	if len(data) > MaxBytes {
 		return nil, &InputError{Status: 413, Message: "Файл бэкапа больше допустимых 25 МБ."}
 	}
@@ -135,14 +141,19 @@ func ValidateV39(data []byte) (*Payload, error) {
 	}
 	// Read exact property names. encoding/json struct matching is case-insensitive
 	// and would let an unrelated "Format" or "Name" override the real field.
-	if textField(root, "format") != Format || root.field("version") == nil || root.field("version").kind != 'f' || root.field("version").number != Version {
-		return nil, invalid("Поддерживается формат бэкапа v39.")
+	nodeVersion := root.field("version")
+	if textField(root, "format") != Format || nodeVersion == nil || nodeVersion.kind != 'f' || nodeVersion.number != math.Trunc(nodeVersion.number) || nodeVersion.number < float64(minimum) || nodeVersion.number > float64(maximum) {
+		if minimum == 39 && maximum == 39 {
+			return nil, invalid("Поддерживается формат бэкапа v39.")
+		}
+		return nil, invalid("Поддерживаются signed-бэкапы v16–39.")
 	}
+	version := int(nodeVersion.number)
 	integrity := root.field("integrity")
 	if textField(integrity, "algorithm") != "SHA-256" || textField(integrity, "digest") != digest(root) {
 		return nil, invalid("Контрольная сумма не совпадает. Файл изменён или повреждён.")
 	}
-	p := Payload{Format: Format, Version: Version, CreatedAt: rawValue(root.field("createdAt")), Catalog: rawValue(root.field("catalog")), Manifest: rawValue(root.field("manifest"))}
+	p := Payload{Format: Format, Version: float64(version), CreatedAt: rawValue(root.field("createdAt")), Catalog: rawValue(root.field("catalog")), Manifest: rawValue(root.field("manifest"))}
 	p.Integrity.Algorithm, p.Integrity.Digest = "SHA-256", textField(integrity, "digest")
 	tableNodes := root.field("storage").field("tables")
 	if tableNodes == nil || tableNodes.kind != '[' {
@@ -202,9 +213,11 @@ func ValidateV39(data []byte) (*Payload, error) {
 	trusted := v39.Trusted()
 	definitions := map[string]v39.Table{}
 	for _, d := range trusted.Tables {
-		definitions[d.Name] = d
+		if tableSince[d.Name] <= version {
+			definitions[d.Name] = d
+		}
 	}
-	if len(p.Storage.Tables) != MaxTables {
+	if len(p.Storage.Tables) != len(definitions) {
 		return nil, invalid("В бэкапе отсутствуют таблицы или присутствуют неизвестные разделы.")
 	}
 	byName := map[string]Table{}
@@ -215,7 +228,7 @@ func ValidateV39(data []byte) (*Payload, error) {
 		if _, duplicate := byName[t.Name]; !known || duplicate {
 			return nil, invalid("В бэкапе отсутствуют таблицы или присутствуют неизвестные разделы.")
 		}
-		names, e := checkColumns(t, d)
+		names, e := checkColumns(t, historicalDefinition(d, version, t))
 		if e != nil {
 			return nil, e
 		}
@@ -264,6 +277,9 @@ func ValidateV39(data []byte) (*Payload, error) {
 	}
 	for _, d := range trusted.Tables {
 		for _, fk := range d.ForeignKeys {
+			if version < 38 && fk.From == "agency_id" && (d.Name == "vacancy_candidates" || d.Name == "vacancy_source_parsing") {
+				continue
+			}
 			parents := map[string]bool{}
 			for _, r := range byName[fk.Table].Rows {
 				parents[string(r[fk.To])] = true

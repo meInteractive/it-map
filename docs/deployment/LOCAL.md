@@ -18,7 +18,7 @@ npm run build:web
 CGO_ENABLED=0 go build -mod=readonly -tags mariadb -o /tmp/itmap ./cmd/itmap
 ```
 
-`<...>` в командах — место для подстановки, не готовый shell-синтаксис. Сборка создаёт `/tmp/itmap` и `dist/web/`; они не коммитятся. `-tags mariadb` обязателен для запуска с БД. Обычная Go-сборка без тега подходит только для режима без MariaDB. CGO_ENABLED=0 исключает зависимость артефакта от версии glibc сборочной машины (важно для Actions runner новее Ubuntu 24.04). Архитектура бинарника должна совпадать с сервером; для Linux/amd64 можно явно задать `CGO_ENABLED=0 GOOS=linux GOARCH=amd64`, для ARM64 — `GOARCH=arm64`.
+`<...>` в командах — место для подстановки, не готовый shell-синтаксис. Сборка создаёт `/tmp/itmap` и `dist/web/`; они не коммитятся. `-tags mariadb` обязателен для запуска с БД. Обычная Go-сборка без тега подходит только для режима без MariaDB. CGO_ENABLED=0 исключает зависимость артефакта от версии glibc сборочной машины (важно для доставки с нового Actions runner на Ubuntu 20.04 или 24.04). Архитектура бинарника должна совпадать с сервером; для Linux/amd64 можно явно задать `CGO_ENABLED=0 GOOS=linux GOARCH=amd64`, для ARM64 — `GOARCH=arm64`.
 
 ## Шаблон .env
 

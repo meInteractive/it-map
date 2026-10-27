@@ -1,6 +1,6 @@
 # GO-056: серверный приёмник native-релиза
 
-`deploy/receive_release.py` — root-owned программа Python 3.10+ для Ubuntu/systemd. Не HTTP-сервис. Отдельный SSH-ключ каждого контура имеет только forced command в этот приёмник. Бинарник исполняется существующей службой `itmap@main`/`itmap@dev` от разных непривилегированных runtime-пользователей; приёмник не читает DB_PASSWORD/SESSION_SECRET, не выполняет SQL и не меняет Nginx/DNS.
+`deploy/receive_release.py` — root-owned программа Python 3.10+ для Ubuntu/systemd. Для Ubuntu 20.04 со штатным Python 3.8 нужен отдельный поддерживаемый Python (рекомендуется 3.12): [порядок и замены путей](UBUNTU-20.md). Не HTTP-сервис. Отдельный SSH-ключ каждого контура имеет только forced command в этот приёмник. Бинарник исполняется существующей службой `itmap@main`/`itmap@dev` от разных непривилегированных runtime-пользователей; приёмник не читает DB_PASSWORD/SESSION_SECRET, не выполняет SQL и не меняет Nginx/DNS.
 
 ## Установка администратором на подготовленном сервере
 
@@ -27,7 +27,7 @@ restrict,command="sudo -n /usr/bin/python3 -I /usr/local/libexec/itmap-receive.p
 itmap-deploy-dev ALL=(root) NOPASSWD: /usr/bin/python3 -I /usr/local/libexec/itmap-receive.py --slot dev
 ```
 
-Для main отдельные пользователь/ключ/строки с main. Не использовать wildcard аргументов, общий root SSH, sudo sh или произвольный systemctl. Forced command игнорирует присланную SSH-команду, протокол поступает через stdin. Ключ dev не позволяет передать `--slot main` или `--apply`. Home/.ssh/authorized_keys не должны быть доступны runtime-пользователям; не выдавайте дополнительные интерактивные ключи этим deploy-аккаунтам. `-I` исключает подмену Python-модулей через PYTHONPATH/current directory. `restrict` запрещает PTY/forwarding/agent/X11. Key host SSH надо проверить независимо.
+Для main отдельные пользователь/ключ/строки с main. Не использовать wildcard аргументов, общий root SSH, sudo sh или произвольный systemctl. Forced command игнорирует присланную SSH-команду, протокол поступает через stdin. Ключ dev не позволяет передать `--slot main` или `--apply`. Home/.ssh/authorized_keys не должны быть доступны runtime-пользователям; не выдавайте дополнительные интерактивные ключи этим deploy-аккаунтам. `-I` исключает подмену Python-модулей через PYTHONPATH/current directory. `restrict` запрещает PTY/forwarding/agent/X11. Key host SSH надо проверить независимо. На Ubuntu 20.04 замените `/usr/bin/python3` **в обеих строках** на фактический абсолютный путь поддерживаемого Python, например `/opt/itmap-python/bin/python3.12`. Каталог и интерпретатор принадлежат root, без записи deploy/runtime-пользователям. Worker запускается тем же `sys.executable`; смена пути только в authorized_keys без соответствующей записи sudoers не сработает.
 
 ## Протокол
 

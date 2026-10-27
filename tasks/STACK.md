@@ -306,3 +306,14 @@ GO-098 / [#53](https://github.com/meInteractive/it-map/pull/53): de99bfe/tree3fc
 | GO-099 crash/HTTP/late-result fence; включает #53 | codex/GO-099-v39-restore-http-crash | main | [#54](https://github.com/meInteractive/it-map/pull/54) | 1b12301/treef1dbd7388f3ceaa8afb7fc1e83afdcda4d918d1b: Public40464855878/MariaDB40464855875 pass; required crash/concurrency/HTTP/late-result job122057707630 zero skips |
 
 #54 направлен прямо в main и включает #53: одного merge #54 достаточно для доставки обеих порций. Финишный checkpoint меняет только docs/status/manifest; runtime/tests совпадают с 1b12301. GO-100 historical/bootstrap и полный GO-042 остаются открытыми. Полная AI/provider orchestration не принимается по одному generation boundary.
+
+Уточнение GO-053 по поручению пользователя: `codex/GO-053-ubuntu-20-deploy-docs`, база main15c2ac8. Добавлен условный Focal runbook и исправлен выбор Python transient worker на выбранный sys.executable. Проверка на реальном Ubuntu20/MariaDB/systemd не выполнялась; CI/unit и источники фиксируются в PR.
+
+GO-100-A: `codex/GO-100-historical-validation` от проверенного main15c2ac8, затем ff опубликованного GO-053 Ubuntu20/#55/5a7aba1. Required source416-case v16–39 validator и strict v39 regression реализованы без SQL/runtime расширения. Сохранена отдельная docs-порция #55; её ancestry входит в будущий PR GO-100-A.
+
+| Продолжение | Ветка | База | PR | Proof |
+| --- | --- | --- | --- | --- |
+| GO-053 Ubuntu20 | codex/GO-053-ubuntu-20-deploy-docs | main | [#55](https://github.com/meInteractive/it-map/pull/55) | 5a7aba1: Public40468557418/MariaDB40468557597 pass; 26 receiver tests, docs links/unit syntax |
+| GO-100-A validation v16–38; включает #55 | codex/GO-100-historical-validation | main | [#56](https://github.com/meInteractive/it-map/pull/56) | 92fff43/treeed1a42514117d9f03f4cad02f10c3bf80908deee: Public40469083705/MariaDB40469083582 pass; required416-case source oracle и весь старый SQL/API/browser regression |
+
+#56 напрямую в main и включает #55: достаточно merge #56 для доставки обеих порций. Финишный checkpoint меняет только docs/status/manifest; code/tests совпадают с проверенным 92fff43. GO-100-B/C/D и полная GO-042 остаются открытыми. Реальный Ubuntu20 не проверен.
