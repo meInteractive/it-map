@@ -1343,3 +1343,18 @@
 - **Зависимости:** GO-100-C-P, GO-100-B-S.
 - **Критерии:** actual SQL source comparison, round-trip, read-only validation, counter high-water, late rollback/retry, concurrent preserve writer и signed admin HTTP на guarded disposable MariaDB. Schema bootstrap остаётся D.
 - **Результат:** не реализовано.
+
+### [x] GO-102. CAS отклика и перенос вакансии при взаимной блокировке (часть GO-031)
+
+- **Приоритет:** Критический, только sprint1.1.
+- **Зависимости:** принятые application CAS GO-063 и vacancy owner move GO-089; disposable fixture/rollback.
+- **Границы:** До реализации разделить остаток GO-031: GO-102 update/owner-move deadlocks → GO-103 mixed create/delete/restore. Источник SQLite сериализует writers; MariaDB встречные App→Vacancy и Vacancy→App locks требуют безопасного восстановления.
+- **Критерии:** настоящий InnoDB deadlock в обоих порядках барьеров; целая транзакция повторяется только для подтверждённого1213 (victim rolled back), повторно проверяет исходную CAS. Не повторять неизвестный COMMIT/network/timeout или произвольную SQL ошибку; bounded context/attempts. Сохранить поля/оба user/history/task/FK и успешную семантику после retry. Required SQL/HTTP targets без skips и весь прежний regression.
+- **Результат:** [PR #65](https://github.com/meInteractive/it-map/pull/65), code `1c10e7b0efe90a3fe7d8214dd58a4b3d329beb9d`, tree `cfcc17a95c91a13aec0c86c9f280389e01a5a456`: [Public40583144187](https://github.com/meInteractive/it-map/actions/runs/40583144187)/[MariaDB40583144491](https://github.com/meInteractive/it-map/actions/runs/40583144491) fully pass. Required actual SQL/HTTP deadlock targets прошли оба порядка барьеров без skips; серверный1213 зафиксирован observer, success/CAS, оба user/owner/FK/task/history и healthy retry сохранены. Pure retry boundary, cancellation и no unknown-COMMIT retry; local vet/race/tagged/обе сборки/Go1.23.12/web/source/history/schema/actionlint/manifest и4 pre-connect refusals pass. Весь прежний source/SQL/restore/channel/contact/API/browser/native regression успешен. Полная GO-031 остаётся открытой до GO-103.
+
+### [ ] GO-103. Отклики: mixed create/delete/restore и owner-link gate (часть GO-031)
+
+- **Приоритет:** Критический, только sprint1.1.
+- **Зависимости:** GO-102, GO-088…090, принятый v39 restore/generation gate.
+- **Критерии:** реальные concurrent application create/replay/delete против vacancy owner/delete и trusted synthetic restore, согласованные FK/receipt/generation и отсутствие потери другого владельца/history. Проверить оба порядка и поздний rollback; unknown COMMIT не считать безопасно повторимым. Только guarded GitHub disposable CI; без real DB/backup/providers.
+- **Результат:** не реализовано; полная GO-031 остаётся открытой до этой приёмки.

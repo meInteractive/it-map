@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"itmap/internal/dbretry"
 	"regexp"
 	"strings"
 	"time"
@@ -74,6 +75,10 @@ func ValidateRevision(revision string) error {
 // endpoint until a reviewed unique constraint can be restored in MariaDB.
 // Editing agency vacancies is guarded until agency salary projection is ported.
 func (r Repository) UpdateManual(ctx context.Context, user string, id int64, req UpdateRequest) ([]CompanyVacancy, error) {
+	return dbretry.Run(ctx, func() ([]CompanyVacancy, error) { return r.updateManualOnce(ctx, user, id, req) })
+}
+
+func (r Repository) updateManualOnce(ctx context.Context, user string, id int64, req UpdateRequest) ([]CompanyVacancy, error) {
 	if r.DB == nil || strings.TrimSpace(user) == "" || id <= 0 {
 		return nil, errors.New("vacancy update unavailable")
 	}
