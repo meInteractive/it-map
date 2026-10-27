@@ -248,7 +248,7 @@
 ### [ ] GO-013. Отклики, idempotency и история
 
 - **Приоритет:** Критический.
-- **Критическая часть:** [x] Синтетическое чтение/join/history/user isolation проверены. [x] JS→Go нормализация/хеш (GO-055, PR #12). [x] Sequential receipts/10-limit (GO-058), concurrent create (GO-060), mid-write rollback/fresh connection (GO-061), writer kill/restart (GO-062), single-record revision/CAS/history (GO-063). [x] Авторизованный HTTP write/replay/update/error/delete (GO-065). [x] Company shortcut/ordinary-create race (GO-066), channel shortcut/update-delete/replay-delete (GO-067). [ ] Межмодульная смена vacancy/owner и остальные SQL-сценарии GO-031/GO-012.
+- **Критическая часть:** [x] Синтетическое чтение/join/history/user isolation проверены. [x] JS→Go нормализация/хеш (GO-055, PR #12). [x] Sequential receipts/10-limit (GO-058), concurrent create (GO-060), mid-write rollback/fresh connection (GO-061), writer kill/restart (GO-062), single-record revision/CAS/history (GO-063). [x] Авторизованный HTTP write/replay/update/error/delete (GO-065). [x] Company shortcut/ordinary-create race (GO-066), channel shortcut/update-delete/replay-delete (GO-067). [x] Межмодульная смена vacancy/owner, delete/detach и trusted restore/generation — GO-031/102/103.
 - **Средняя часть:** [ ] Функциональный UI create/edit/delete/shortcut после SQL gates.
 - **Низкая часть:** [ ] Косметика форм/истории/анимаций отклика.
 
@@ -260,7 +260,7 @@
 - **Критерии готовности:** До 10 откликов; version/CAS и повторный запрос/сбой без дублей на MariaDB.
 - **Как проверить:** go race/unit, real MariaDB, browser/HTTP round trip.
 - **Известные ограничения:** Go-код реализован, staging с настоящей БД не подтверждён.
-- **Результат:** unit/SQL mocks и synthetic reads подтверждены; GO-055 / #12 — нормализация/hash. GO-058 / #15, GO-060 / #18, GO-061 / #19, GO-062 / #20, GO-063 / #21 подтвердили узкие реальные MariaDB write/receipt/concurrency/rollback/restart/CAS части. Полная GO-013 остаётся открытой: контролируемый HTTP write/replay, shortcut/смешанные операции и функциональный UI round-trip ещё не приняты.
+- **Результат:** unit/SQL mocks и synthetic reads подтверждены; GO-055 / #12 — нормализация/hash. GO-058 / #15, GO-060 / #18, GO-061 / #19, GO-062 / #20, GO-063 / #21 подтвердили узкие реальные MariaDB write/receipt/concurrency/rollback/restart/CAS части. Критические SQL/API части дополнены GO-065…067/102/103 и приняты; полная GO-013 остаётся открытой для функционального UI round-trip.
 
 
 ### [ ] GO-014. Задачи, каналы и контакты
@@ -551,20 +551,19 @@
 - **Результат:** 5b44e54/e0c4ef9: synthetic catalog SQL/API/browser подтверждены PR #1/#8/#9. Задача сравнения на согласованном снимке открыта и заблокирована отсутствием снимка.
 
 
-### [ ] GO-031. Отклики: интеграция идемпотентных квитанций
+### [x] GO-031. Отклики: интеграция идемпотентных квитанций
 
 - **Приоритет:** Критический.
 
-- **Статус:** [ ] — не принят целиком.
+- **Статус:** [x] — synthetic MariaDB/SQL/API gate принят.
 - **Цель:** Проверить повтор запросов с реальной MariaDB.
 - **Что реализовать:** Проверить race/rollback/receipt/revision и удалённые отклики.
 - **Зависимости:** Готовая synthetic schema/DSN часть GO-005 и существующий create/receipt-код GO-013; полная приёмка родительского эпика не требуется для его тестирования.
 - **Компоненты:** `internal/applications`.
 - **Критерии готовности:** Ни одного дубля при concurrent/retry/restart.
 - **Как проверить:** Go integration + controlled HTTP replay.
-- **Известные ограничения:** GO-058 подтвердил sequential receipts, GO-060 — concurrent ordinary create, GO-061 — mid-write rollback/fresh connection, GO-062 — kill/restart writer, GO-063 — same-record revision/CAS/history. GO-065 подтвердил HTTPS create/replay/update/error/delete и post-commit HTTP 503/retry, GO-066 — company shortcut/ordinary-create race, GO-067 — channel shortcut/update-delete/replay-delete. Межмодульная смена vacancy/owner и concurrent restore/import этими тестами не подтверждены; авария MariaDB/хоста и неизвестный сетевой COMMIT не моделировались.
-- **Результат:** GO-058/060…063 и GO-065…067 подтвердили перечисленные SQL/HTTP части обязательными CI на точных code SHA. Восемь именованных write targets выполняются без skips после readonly suite и до API/14 browser/native smoke. GO-064 / #22 возвращает в main результат прежнего закрытого стека без автоматического merge. Полная GO-031 остаётся открытой для межмодульной смены vacancy/owner и остальных операций по зависимостям GO-012/013; независимые критические GO-033/034 могут продолжаться. GO-032 имеет средний приоритет.
-
+- **Известные ограничения:** Приёмка на реальной MariaDB10.11 в изолированном GitHub CI, без private snapshot/production/providers. Host/DB crash и неизвестный network COMMIT не моделировались; неизвестный COMMIT не повторяется автоматически. Functional UI и пересчёт агентств GO-032 остаются отдельными частями.
+- **Результат:** GO-058/060…063/065…067 подтвердили receipts/limits/concurrent create/mid-write rollback/restart/CAS/history/HTTPS/shortcut/mixed writes. GO-102/#65/#66 добавил actual deadlock/CAS recovery, GO-103/[#67](https://github.com/meInteractive/it-map/pull/67) — create/delete/owner/vacancy detach/linked restore/generation/private HTTP. Code93834b8: Public40597722262/MariaDB40597721853 fully pass, пять новых required parents без skips перед прежними API/browser/native gates. Durable identity/history/оба user/tasks/FK и safe rollback/replay приняты; полный product/UI GO-013 этим gate не закрывается.
 
 ### [ ] GO-032. Вакансии: завершить операции агентств
 
@@ -1352,9 +1351,9 @@
 - **Критерии:** настоящий InnoDB deadlock в обоих порядках барьеров; целая транзакция повторяется только для подтверждённого1213 (victim rolled back), повторно проверяет исходную CAS. Не повторять неизвестный COMMIT/network/timeout или произвольную SQL ошибку; bounded context/attempts. Сохранить поля/оба user/history/task/FK и успешную семантику после retry. Required SQL/HTTP targets без skips и весь прежний regression.
 - **Результат:** [PR #65](https://github.com/meInteractive/it-map/pull/65), code `1c10e7b0efe90a3fe7d8214dd58a4b3d329beb9d`, tree `cfcc17a95c91a13aec0c86c9f280389e01a5a456`: [Public40583144187](https://github.com/meInteractive/it-map/actions/runs/40583144187)/[MariaDB40583144491](https://github.com/meInteractive/it-map/actions/runs/40583144491) fully pass. Required actual SQL/HTTP deadlock targets прошли оба порядка барьеров без skips; серверный1213 зафиксирован observer, success/CAS, оба user/owner/FK/task/history и healthy retry сохранены. Pure retry boundary, cancellation и no unknown-COMMIT retry; local vet/race/tagged/обе сборки/Go1.23.12/web/source/history/schema/actionlint/manifest и4 pre-connect refusals pass. Весь прежний source/SQL/restore/channel/contact/API/browser/native regression успешен. Полная GO-031 остаётся открытой до GO-103.
 
-### [ ] GO-103. Отклики: mixed create/delete/restore и owner-link gate (часть GO-031)
+### [x] GO-103. Отклики: mixed create/delete/restore и owner-link gate (часть GO-031)
 
 - **Приоритет:** Критический, только sprint1.1.
 - **Зависимости:** GO-102, GO-088…090, принятый v39 restore/generation gate.
 - **Критерии:** реальные concurrent application create/replay/delete против vacancy owner/delete и trusted synthetic restore, согласованные FK/receipt/generation и отсутствие потери другого владельца/history. Проверить оба порядка и поздний rollback; unknown COMMIT не считать безопасно повторимым. Только guarded GitHub disposable CI; без real DB/backup/providers.
-- **Ход работы:** пять required SQL/HTTP parents в отдельном seeded disposable CI: owner move/create, archived hard detach/create, late receipt rollback/replay, owned application deletion, linked restore/replay/delete в обоих порядках. Trusted export остаётся в памяти; raw nonce guard до собственного restore и cleanup возвращает исходные rows/generation. Runtime не менялся; positive proof ожидается, полная GO-031 открыта.
+- **Результат:** [PR #67](https://github.com/meInteractive/it-map/pull/67), code `93834b8625d1819ca5614869ad663a6161e9b789`, tree `0585fe2068b9b785ccaf3dbc8697bf5e705953e2`: [Public40597722262](https://github.com/meInteractive/it-map/actions/runs/40597722262)/[MariaDB40597721853](https://github.com/meInteractive/it-map/actions/runs/40597721853) fully pass. Job122517783731 требует пять named SQL/HTTP parents без skips: create/move/hard detach, actual delete/owner races, late receipt rollback, linked restore/replay/delete в обоих порядках и private HTTPS. Data snapshot/оба user/history/tasks/FK, исходная generation при cleanup и old-context/receipt fence доказаны. В delete-first restore наблюдается counter `LOCK TABLES` до data TX, actors join до cleanup. Runtime не менялся. Локальные vet/combined-tag vet/race/tagged/обе сборки/Go1.23.12/web/source/history/schema/actionlint/manifest и4 pre-connect refusals pass; весь старый regression успешен. GO-031 закрыта в SQL/API scope; реальная БД/backup/providers не использовались.
