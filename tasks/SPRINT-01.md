@@ -1246,19 +1246,19 @@
 - **Границы:** не запускает SQL/DDL/HTTP и не принимает GO-042 целиком. Исторические layouts не приняты.
 - **Результат:** PrepareV39Restore реализует source safety transforms, UTF16/object-spread semantics, source stable role/table ordering, warnings и сохранение catalog/counters. Required interop выполняет unchanged prepareBackupRestore/restoreBackup на metadata DB spies: 28 synthetic plans, SQL не исполняется. Local race/tagged/vet/build/web/actionlint/source/history pass; Принят на [PR #51](https://github.com/meInteractive/it-map/pull/51), coded6d7847/treef570947ea108392a5e9a2ef20c3910abbb25ad3b: Public40412684211 и MariaDB40412684193 pass, required 28-case oracle и весь прежний SQL/API/browser regression успешны.
 
-### [ ] GO-098. Транзакционный restore v39 и generation на MariaDB (часть GO-042)
+### [x] GO-098. Транзакционный restore v39 и generation на MariaDB (часть GO-042)
 
 - **Приоритет:** Критический.
 - **Зависимости:** GO-097, подготовленная synthetic schema и safe counter preflight.
 - **Критерии:** bounded replacement прикладных rows, FK/triggers/value verification до COMMIT; generation rotate в той же TX; operational rows не импортируются, receipt/spend сохраняются, зависимые classification leases могут удаляться исходным FK CASCADE. MariaDB implicit DDL commit не выдавать за transactional rollback; ID high-water не понижать. Только required disposable CI: успех/late rollback/retry/round-trip/counters. Реальные DB/backup не подключать.
-- **Результат:** реализовано RestoreV39 для prepared schema: scalar preflight без потерь, explicit zero IDs, counter DDL до data TX, generation lock/rotate, полная замена 52 таблиц, exact multiset/FK verification. Runtime POST ещё guarded. Source oracle выполняет unchanged JS restore/export: 49 synthetic rows, Unicode/NUL, source safety transforms, PK/FK/hierarchy/high-water. Отдельная required disposable restore job проверяет atomic success/round-trip/operational preservation и late fault/PK/CHECK/composite FK/trigger rollback; SQL CI ещё не выполнен, задача остаётся открытой.
+- **Результат:** реализовано RestoreV39 для prepared schema: scalar preflight без потерь, explicit zero IDs, counter DDL до data TX, generation lock/rotate, полная замена 52 таблиц, exact multiset/FK verification. Runtime POST ещё guarded. Source oracle выполняет unchanged JS restore/export: 49 synthetic rows, Unicode/NUL, source safety transforms, PK/FK/hierarchy/high-water. Отдельная required disposable restore job проверяет atomic success/round-trip/operational preservation и late fault/PK/CHECK/composite FK/trigger rollback; Принято на [PR #53](https://github.com/meInteractive/it-map/pull/53), de99bfe/tree3fc9a98c610e6d84b8a6fb8d188e7fcd68d3ef15: Public40462975460 и MariaDB40462975508 pass. Required restore job122051645870: source49-row round-trip, operational/high-water и late fault/PK/CHECK/composite FK/trigger rollback/retry, ноль skips; counter и весь старый SQL/API/browser regression pass.
 
 ### [ ] GO-099. Restore crash, concurrent receipts и HTTP v39 (часть GO-042)
 
 - **Приоритет:** Критический.
 - **Зависимости:** GO-098 и existing receipt/generation gates.
 - **Критерии:** writer kill/disconnect до COMMIT сохраняет business/generation; fresh retry; actual signed admin validate/restore/body limits/private response, error rollback; old contexts/AI-generation не могут записать старый результат после restore, concurrent create/restore сериализованы. Required SQL/HTTP/процессные gates без skips; точные пределы crash proof фиксировать.
-- **Результат:** не реализовано.
+- **Результат:** runtime admin POST validate/restore подключены к prepared-schema v39 ядру; validate read-only, body actual/declared cap и source private/no-store summary/error status. Процессный SIGKILL barrier до COMMIT, fresh process retry, оба порядка generation lock/create и старые signed intent/receipt/scheduler fences реализованы в отдельной required disposable CI job. SQL/процессные gates ещё не выполнены, задача остаётся открытой. Это не crash сервера/хоста и не приёмка ещё не реализованных AI result mutations/провайдеров.
 
 ### [ ] GO-100. Совместимость restore v14–38 и bootstrap (часть GO-042)
 

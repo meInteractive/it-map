@@ -127,3 +127,9 @@ SQL0062 снимает прежний предел количества вака
 `backup.Repository.RestoreV39` использует validated source plan и отдельный counter preflight, затем заменяет 52 прикладные таблицы в одной Repeatable Read TX. Первой блокируется generation, служебные receipt/spend не импортируются и сохраняются; старые classification leases удаляются исходным FK CASCADE. Все scalar значения проверяются на представимость до DDL, а восстановленные строки сравниваются как точные multisets до generation rotate/COMMIT; FK/CHECK и исходные триггеры остаются включены. Explicit zero IDs сохраняются через временный session SQL mode с возвратом настройки при Close. Новые таблицы/SQL из metadata не создаются.
 
 Это ядро ещё не подключено к runtime POST. SQL-приёмка требует отдельной disposable job; crash/receipts/HTTP относятся к GO-099, исторические версии/bootstrap — к GO-100. После rollback допустимы только поднятые counter high-water/gaps, без частично восстановленных бизнес-данных или смены generation.
+
+### GO-099: admin HTTP v39 и границы crash proof
+
+`POST /api/backup/validate` строит проверенный план и читает подготовленную схему без DDL/ID/generation writes. `POST /api/backup` выполняет атомарный restore. Обе операции требуют подписанную admin session; cross-origin — 403, declared/actual stream свыше 25 MiB — 413, invalid input и SQL restore failure — 400 (как source, SQL details скрыты), отсутствие настроенного хранилища — 503. Ответы JSON/private/no-store; исходные summary/warnings сохранены. `/api/backup` GET продолжает безопасный export.
+
+Процессный тест останавливает отдельный Go writer непосредственно перед COMMIT, принудительно завершает его SIGKILL и повторяет операцию новым процессом. Это проверка client process/socket loss, **не** аварии MariaDB, ОС или физического носителя. Конкурентные receipt/create и scheduler mutations проверяют существующий generation fence. Проверки ещё ожидают CI; historical v14–38/bootstrap остаются открытыми.
