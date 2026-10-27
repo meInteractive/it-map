@@ -41,6 +41,8 @@ type Column struct {
 	PrimaryKey   bool    `json:"primaryKey"`
 }
 type ForeignKey struct {
+	ID    int    `json:"id"`
+	Seq   int    `json:"seq"`
 	Table string `json:"table"`
 	From  string `json:"from"`
 	To    string `json:"to"`

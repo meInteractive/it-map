@@ -121,3 +121,9 @@ Firecrawl в версии30: firecrawl_settings и vacancy_source_parsing вхо
 Настройки общего выбора источников (16.10.2026) хранятся внутри прежнего scheduler_json: sourceIds и intervalDays. Backup остаётся35, состав SQL-таблиц/столбцов прежний. При чтении/restore старых35 без sourceIds берутся типы ранее auto_enabled источников; до35 список пустой. Restore сохраняет выбор, но всегда выключает выполнение и сбрасывает облачную привязку.
 
 SQL0062 снимает прежний предел количества вакансий на организацию, не меняя layout backup35. При восстановлении используется актуальный доверенный DDL без ограничивающего триггера; старый `company_vacancies_max_10` удаляется до загрузки строк. Старый backup не возвращает ограничение.
+
+### GO-098: транзакционное ядро v39 на подготовленной MariaDB
+
+`backup.Repository.RestoreV39` использует validated source plan и отдельный counter preflight, затем заменяет 52 прикладные таблицы в одной Repeatable Read TX. Первой блокируется generation, служебные receipt/spend не импортируются и сохраняются; старые classification leases удаляются исходным FK CASCADE. Все scalar значения проверяются на представимость до DDL, а восстановленные строки сравниваются как точные multisets до generation rotate/COMMIT; FK/CHECK и исходные триггеры остаются включены. Explicit zero IDs сохраняются через временный session SQL mode с возвратом настройки при Close. Новые таблицы/SQL из metadata не создаются.
+
+Это ядро ещё не подключено к runtime POST. SQL-приёмка требует отдельной disposable job; crash/receipts/HTTP относятся к GO-099, исторические версии/bootstrap — к GO-100. После rollback допустимы только поднятые counter high-water/gaps, без частично восстановленных бизнес-данных или смены generation.
