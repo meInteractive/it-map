@@ -328,3 +328,6 @@ GO-100-B-P / [#57](https://github.com/meInteractive/it-map/pull/57), a73f05e/tre
 | GO-100-B-S SQL/HTTP; включает #57 | codex/GO-100-b-historical-sql | main | [#58](https://github.com/meInteractive/it-map/pull/58) | 5b91bc5/treea31507461cb47ade37bb80908d6bd3a3c094b36e: Public40479135218/MariaDB40479135520 pass; required historical job122104725668 zero skips |
 
 #58 прямо в main и включает #57: одного merge #58 достаточно для доставки GO-100-B. Финишный checkpoint меняет только docs/status/manifest; runtime/tests совпадают с проверенным5b91bc5. C v14–15 и D bootstrap остаются открытыми. Реальных данных/DB/providers/deploy не было.
+
+
+Проверено после пользовательского merge #58: main5efe1cb содержит db2d3f4, tree76537012cc9f2399f69d6749950816bddf74f002 совпадает; финальные Public40480722656/MariaDB40480722680 success. GO-100-C-V / codex/GO-100-c-v-legacy-validation → main: pure unsigned v14–15 validation и required unchanged JS differential; runtime/sql/counters не расширяются. C до реализации разделён на C-V → C-P → C-S, родитель открыт. Local/CI proof будет добавлен по фактическому SHA.
