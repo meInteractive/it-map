@@ -341,3 +341,5 @@ GO-100-C-P/fields / [#60](https://github.com/meInteractive/it-map/pull/60), code
 GO-100-C-P / codex/GO-100-c-p-locale-plan начинается от принятого main35dba9f/tree6affb28a4b8d0229b5faef1899a367f4eb4eeb41 после #60 (ancestry/tree проверены). Docs-only предложение Unicode tie-order: фактические8/418748 source differences, без runtime comparator. Вопрос передан на решение пользователя по AGENTS; пока доступна независимая critical GO-073. Не считать прототип принятым C-P.
 
 GO-073 / codex/GO-073-channel-crud: база docs-only e0cc834 (#61), runtime база verified main35dba9f. Самостоятельный channel SQL/HTTP CRUD, Node SQLite :memory: oracle и отдельный disposable CI. Полная GO-034/075 остаётся открытой; PR и positive CI proof будут записаны после фактической проверки.
+
+GO-073 / [#62](https://github.com/meInteractive/it-map/pull/62), code d457a59f8b9685c571e2d375b513cbe9c2f7e3a8/tree52497e6fe0ce92df8a3780c013a6db0e190710f1: Public40526046586/MariaDB40526046600 pass, source + три required channel targets без skips и весь regression успешен. Checkpoint меняет только docs/status/manifest. GO-074 стартует от проверенного #62, GO-034/075 ещё открыты.
