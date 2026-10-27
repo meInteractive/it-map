@@ -719,7 +719,7 @@
 - **Критерии готовности:** Round-trip и crash-safe restore подтверждены.
 - **Как проверить:** Restore staging + integrity checks.
 - **Известные ограничения:** Не запускать на production без согласования.
-- **Результат:** не завершено; коммита или PR нет.
+- **Результат:** частично принято: source v39 plan/counters/SQL/generation/crash/HTTP GO-097/098/099/101, signed historical v16–38 GO-100-A/B и unsigned pure validation v14–15 GO-100-C-V ([#59](https://github.com/meInteractive/it-map/pull/59)). Legacy normalization/SQL C-P/C-S и trusted bootstrap D остаются открытыми; весь GO-042 не принят. Точные SHA/CI — в дочерних результатах.
 
 ### [ ] GO-043. Firecrawl: адаптеры страниц
 
@@ -1266,7 +1266,7 @@
 - **Зависимости:** принятый v39 restore GO-097/098/099, source compatibility layouts и trusted migration/preflight.
 - **Критерии:** source-backed historical validation/transforms/preserve-vs-clear/warnings/role mapping, downgrade поля, scheduler/Apify safe defaults; MariaDB schema preparation отдельно от atomic data replacement без ложного обещания DDL rollback. Только synthetic fixtures/CI, без реальных данных. Не закрывать полную GO-042 по одному v39 round-trip.
 - **Декомпозиция до реализации:** стабильные дочерние ID GO-100-A…D сохраняют исходный GO-100 и не занимают зарезервированные номера спринта 1.2. A — source-backed validation v16–38; B — plan/preserve/transforms/SQL v16–38; C — v14–15 catalog/legacy layout/normalization; D — trusted MariaDB bootstrap отдельно от data TX. Ни одна часть сама по себе не закрывает GO-100/042.
-- **Результат:** частично: GO-100-A и B historical signed validation/plan/SQL v16–38 приняты. Runtime принимает signed v16–39 на prepared schema; legacy14–15 и trusted bootstrap остаются GO-100-C/D.
+- **Результат:** частично: GO-100-A/B historical signed validation/plan/SQL v16–38 и GO-100-C-V pure unsigned validation v14–15 приняты. Runtime принимает signed v16–39 на prepared schema; legacy14–15 normalization/plan/SQL и trusted bootstrap остаются GO-100-C-P/C-S/D.
 
 ### [x] GO-101. MariaDB counter preflight перед restore TX (часть GO-042/098)
 
@@ -1296,7 +1296,8 @@
 - **Приоритет:** Критический для полной совместимости.
 - **Зависимости:** GO-100-B и source legacy catalog/normalization contracts.
 - **Критерии:** старые storage/required columns/catalog/AI/reviews/agency checks, source normalization и truthful warnings при отсутствии integrity/date/counters; preserve omitted sections; synthetic differential и disposable SQL proof.
-- **Результат:** не реализовано.
+- **Декомпозиция до реализации:** GO-100-C-V — pure legacy validator и unchanged JS differential; C-P — source catalog normalization/legacy plan/preserve/warnings; C-S — prepared-schema SQL/HTTP/rollback/concurrency proof. Runtime v14–15 включается только после C-P/C-S. Родитель C остаётся открыт до всех частей.
+- **Результат:** C-V / #59 принята: pure unsigned validation v14–15, required1468-case unchanged JS differential. Runtime остаётся signed v16–39; source normalization/plan C-P и SQL/HTTP C-S открыты, весь C не принят.
 
 ### [ ] GO-100-D. Trusted MariaDB bootstrap перед restore
 
@@ -1318,3 +1319,25 @@
 - **Зависимости:** GO-100-B-P, GO-098/099/101.
 - **Критерии:** counter DDL до data TX; generation lock первым, актуальные preserve rows под row/range locks до replacement; оба порядка concurrent preserve writer/restore не теряют данные; все version boundaries, counters, late rollback/retry/round-trip/admin HTTP в required disposable MariaDB CI без skips. Без реальных DB/keys/backups и bootstrap.
 - **Результат:** generic ValidateRestore/Restore и admin HTTP принимают signed v16–39 на prepared schema; strict V39 wrappers сохранены. Read-only validation не готовит counters; финальный plan перечитывает preserve rows с FOR UPDATE после generation lock в data TX. 23 version roundtrips, late rollback/retry, два порядка concurrent profile save и signed HTTP реализованы в отдельной required disposable CI job. Принято на [PR #58](https://github.com/meInteractive/it-map/pull/58), code5b91bc59bcedb8483153d439b7657d0605cdc7b7/treea31507461cb47ade37bb80908d6bd3a3c094b36e: Public40479135218 и MariaDB40479135520 полностью pass. Required historical job122104725668 проверила все23 версии16–38, source comparison/v39 round-trip/high-water, late DELETE/INSERT/generation faults/retry, оба порядка concurrent profile save и signed HTTP; zero skips. Весь прежний v39/counter/crash/SQL/API/browser regression pass. Local race/unit/tagged/vet/build/web/actionlint/source/history/manifest и четыре pre-connect guards pass.
+
+### [x] GO-100-C-V. Pure validation форматов v14–15
+
+- **Приоритет:** Критический prerequisite GO-100-C.
+- **Зависимости:** GO-100-B, unchanged validateBackupPayload/validateFullBackup.
+- **Критерии:** legacy required tables/columns, catalog AI/reviews/agency numeric checks, UTF16/JS coercion, scalar/row budget и typed FK; differential positive/negative cases для обеих версий без SQL/network/пользовательских файлов. Strict modern/v39 guards и runtime не расширять.
+- **Результат:** принят на [PR #59](https://github.com/meInteractive/it-map/pull/59), code67104989929d9b2f0705e2a65b331c0d4710c60d/treed03b051ed713d7e0207f55614b35d4aacac4bd2a: Public40482915844 и MariaDB40482915965 полностью pass. Required1468-case unchanged JS oracle (469 accepted), все старые source67/416/216/28 и SQL/API/browser gates успешны. Local race/unit/tagged/vet/build/web/actionlint/source/history/manifest pass. Pure ValidateLegacyBackup не расширяет runtime/SQL; C-P/C-S и полная GO-100/042 открыты.
+
+### [ ] GO-100-C-P. Source normalization и pure legacy plan v14–15
+
+- **Приоритет:** Критический prerequisite GO-100-C.
+- **Зависимости:** GO-100-C-V и source normalizeCatalog/prepareBackupRestore.
+- **Критерии:** нормализация каталога/рейтингов/порядка, omitted calendar/audit preserve, truthful warnings и clock fallback без uploaded metadata/counter trust; unchanged source differential. SQL не выполняется.
+- **Source boundary:** normalizeCatalog пересчитывает company rating и сортирует компании по score/localeCompare(ru); agencies сохраняют порядок входного массива и нормализуют свои поля/provided rank, без отдельного recalculateAgencySalaryRanges/Rating GO-032. app_catalog строится из normalized catalog, исходный catalog сохраняется для HTTP summary. Оригинальный ordered input нужен до normalization: JSON.stringify превращает overflow Number в NULL раньше, чем source Number/fallback, поэтому нельзя нормализовать через заранее перекодированный raw catalog. omitted calendar сохраняется всегда, audit — только при отсутствии в файле. Весь clock/default/normalization завершается до SQL COMMIT.
+- **Результат:** source boundary исследован; реализация/проверки остаются открытыми.
+
+### [ ] GO-100-C-S. SQL/HTTP restore v14–15
+
+- **Приоритет:** Критический для GO-100-C.
+- **Зависимости:** GO-100-C-P, GO-100-B-S.
+- **Критерии:** actual SQL source comparison, round-trip, read-only validation, counter high-water, late rollback/retry, concurrent preserve writer и signed admin HTTP на guarded disposable MariaDB. Schema bootstrap остаётся D.
+- **Результат:** не реализовано.

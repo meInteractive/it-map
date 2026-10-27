@@ -157,3 +157,13 @@ Generic `Repository.ValidateRestore` / `Restore` подключены к пре�
 Расширенный план (входные и сохраняемые строки) ограничен 200000 строками и 25 MiB row JSON; слишком большой combined plan отвергается без частичного восстановления, rollback может оставить безопасные counter gaps. Это дополнительная явная граница безопасного Go restore, а не обещание импорта произвольного объёма current state. Все physical values/FK проверяются до COMMIT.
 
 B-S принят на #58/code5b91bc5: Public40479135218 и MariaDB40479135520 полностью pass. Required historical job122104725668 выполнила каждую версию16–38, source SQL comparison/round-trip/counters, late faults/retry, оба порядка profile save/restore и actual signed admin HTTP; zero skips, весь прежний regression успешен. Настоящая MariaDB локально не запускалась, source oracle использует только SQLite :memory:. V14–15 и schema bootstrap остаются C/D, полный GO-100/042 не принят.
+
+### GO-100-C-V: pure validation unsigned v14–15
+
+`ValidateLegacyBackup` проверяет отдельный старый контракт: обязательные таблицы/столбцы, catalog AI/reviews/agency ratings, точный scalar layout, typed FK и лимиты строк/входных bytes. v14 допускает отсутствие AI-полей компании; v15 требует оба поля. Длины текста считаются в UTF16, числовые оценки агентств используют исходные JS coercion и half-step tolerance; normalizing/recalculation здесь нет. Входные scalars и catalog остаются неизменными.
+
+Старые версии не гарантировали integrity, manifest, исходную дату и counters. Неизвестные legacy metadata не исполняются и не переносятся в доверенные поля плана; они не становятся signed v16 через подмену версии. Required unchanged JS oracle сравнивает 1468 синтетических случаев (469 приняты), включая все обязательные столбцы/typed FK, optional audit, UTF16 и source diagnostics. Native TypeError текста движка не фиксируется, отказ всё равно должен быть безопасным 400.
+
+Это pure validator, без SQL и без расширения runtime validate/restore v16–39. C-P должен отдельно перенести source normalizeCatalog/plan, omitted calendar/audit preserve и truthful warnings; C-S — доказать запись на disposable MariaDB. Ни GO-100-C, ни полная GO-042 по одному валидатору не принимаются.
+
+C-V принята на #59/code6710498: Public40482915844/MariaDB40482915965 полностью pass, required legacy1468 и весь прежний source/SQL/API/browser regression успешны. Только pure validation; source catalog normalization/legacy plan и SQL приёмка остаются C-P/C-S.
