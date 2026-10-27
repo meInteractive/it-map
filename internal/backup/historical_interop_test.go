@@ -50,6 +50,9 @@ func TestLegacyHistoricalFormat(t *testing.T) {
 			if (currentErr == nil) != (v.OK && v.Version == 39) {
 				t.Fatal("v39-only guard widened")
 			}
+			if v.Version != 39 && currentErr.Error() != "Поддерживается формат бэкапа v39." {
+				t.Fatal("current HTTP version error changed")
+			}
 		})
 	}
 	if e = cmd.Wait(); e != nil {

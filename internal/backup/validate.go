@@ -143,7 +143,10 @@ func validateVersioned(data []byte, minimum, maximum int) (*Payload, error) {
 	// and would let an unrelated "Format" or "Name" override the real field.
 	nodeVersion := root.field("version")
 	if textField(root, "format") != Format || nodeVersion == nil || nodeVersion.kind != 'f' || nodeVersion.number != math.Trunc(nodeVersion.number) || nodeVersion.number < float64(minimum) || nodeVersion.number > float64(maximum) {
-		return nil, invalid("Неподдерживаемая версия полного бэкапа.")
+		if minimum == 39 && maximum == 39 {
+			return nil, invalid("Поддерживается формат бэкапа v39.")
+		}
+		return nil, invalid("Поддерживаются signed-бэкапы v16–39.")
 	}
 	version := int(nodeVersion.number)
 	integrity := root.field("integrity")
