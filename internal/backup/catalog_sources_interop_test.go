@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"os/exec"
 	"reflect"
+	"slices"
 	"sort"
 	"testing"
 )
@@ -17,9 +18,10 @@ func TestLegacyStoredCatalogSources(t *testing.T) {
 	}
 	var f struct {
 		CatalogCases []struct {
-			Name, Data string
-			OK         bool
-			Expected   []string
+			Name, Data    string
+			OK            bool
+			Expected      []string
+			ExpectedNames []string
 		}
 	}
 	if json.Unmarshal(out, &f) != nil {
@@ -33,6 +35,10 @@ func TestLegacyStoredCatalogSources(t *testing.T) {
 			data := []byte(v.Data)
 			before := string(data)
 			urls, e := StoredCatalogSourceURLs(data)
+			names, namesError := StoredCatalogNames(data)
+			if (namesError == nil) != v.OK {
+				t.Fatal("catalog name decision differs")
+			}
 			if (e == nil) != v.OK {
 				t.Fatalf("stored catalog decision differs: %v", e)
 			}
@@ -41,6 +47,12 @@ func TestLegacyStoredCatalogSources(t *testing.T) {
 			}
 			if !v.OK {
 				return
+			}
+			sort.Strings(names)
+			sort.Strings(v.ExpectedNames)
+			names = slices.Compact(names)
+			if !reflect.DeepEqual(names, v.ExpectedNames) {
+				t.Fatal("catalog name set differs")
 			}
 			sort.Strings(urls)
 			sort.Strings(v.Expected)

@@ -5,7 +5,7 @@ package backup
 // neither full catalog order nor legacy restore is enabled by this projection.
 // Like readAppCatalog(...,{persistRatings:false}), malformed/missing catalog
 // falls back to public DATA. Nothing is persisted and URLs are never fetched.
-func StoredCatalogSourceURLs(data []byte) ([]string, error) {
+func storedCatalogEntities(data []byte) ([]*jsonValue, error) {
 	root, e := orderedJSON(data)
 	valid := e == nil
 	companies := root.field("companies")
@@ -24,18 +24,13 @@ func StoredCatalogSourceURLs(data []byte) ([]string, error) {
 		root = catalogObject()
 		root.set("companies", catalogPolicy().field("embeddedCompanies"))
 	}
-	urls := []string{}
-	appendSources := func(entity *jsonValue) {
-		for _, m := range entity.field("vacancySources").members {
-			urls = append(urls, stringFromUnits(m.value.text))
-		}
-	}
+	entities := []*jsonValue{}
 	for _, company := range root.field("companies").items {
 		entity, e := normalizeLegacyCompanyFields(company, 0)
 		if e != nil {
 			return nil, e
 		}
-		appendSources(entity)
+		entities = append(entities, entity)
 	}
 	if agencies := root.field("agencies"); agencies != nil && agencies.kind == '[' {
 		for _, agency := range agencies.items {
@@ -47,8 +42,35 @@ func StoredCatalogSourceURLs(data []byte) ([]string, error) {
 			if e != nil {
 				return nil, e
 			}
-			appendSources(entity)
+			entities = append(entities, entity)
+		}
+	}
+	return entities, nil
+}
+
+func StoredCatalogSourceURLs(data []byte) ([]string, error) {
+	entities, e := storedCatalogEntities(data)
+	if e != nil {
+		return nil, e
+	}
+	urls := []string{}
+	for _, entity := range entities {
+		for _, m := range entity.field("vacancySources").members {
+			urls = append(urls, stringFromUnits(m.value.text))
 		}
 	}
 	return urls, nil
+}
+
+// StoredCatalogNames projects exact source names without order/rank or writes.
+func StoredCatalogNames(data []byte) ([]string, error) {
+	entities, e := storedCatalogEntities(data)
+	if e != nil {
+		return nil, e
+	}
+	names := []string{}
+	for _, entity := range entities {
+		names = append(names, stringFromUnits(entity.field("name").text))
+	}
+	return names, nil
 }

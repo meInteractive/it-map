@@ -40,6 +40,7 @@ type Options struct {
 	Compact              CompactCatalog
 	Channels             ChannelLister
 	ChannelWrites        ChannelWriter
+	Contacts             HiringContactStore
 	Roles                RoleReader
 	Vacancies            VacancyLister
 	VacancyDetails       VacancyDetailer
@@ -132,6 +133,8 @@ func NewHandlerWithOptions(logger *slog.Logger, opts Options) http.Handler {
 				mux.HandleFunc("GET "+path+"/{id}", compactDetailHandler(opts.Auth, opts.Compact, entry.kind, true))
 			}
 		}
+		mux.HandleFunc("/api/hiring-contacts", ContactCollectionHandler(opts.Auth, opts.Contacts))
+		mux.HandleFunc("/api/hiring-contacts/{id}", ContactItemHandler(opts.Auth, opts.Contacts))
 		mux.HandleFunc("/api/channels", ChannelCollectionHandler(opts.Auth, opts.Channels, opts.ChannelWrites))
 		mux.HandleFunc("/api/channels/{id}", ChannelItemHandler(opts.Auth, opts.ChannelWrites))
 		if opts.Tasks != nil {

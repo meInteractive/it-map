@@ -606,7 +606,7 @@
 - **Компоненты:** `internal/channels`, `internal/crm`.
 - **Критерии готовности:** Без потери ссылок/контактов.
 - **Как проверить:** API + DB integration.
-- **Известные ограничения:** В Go список каналов и pure normalization GO-072; административный SQL/HTTP CRUD ещё не включён. План: GO-072 contract → GO-073 channel SQL/HTTP → GO-074 contacts → GO-075 disposable integration.
+- **Известные ограничения:** Channel SQL/HTTP GO-073 принят #62; contacts SQL/HTTP GO-074 реализован и ожидает positive CI. Полная GO-034 открыта до GO-075 общей disposable integration.
 - **Результат:** исходный read-код b07aa9b; нормализация GO-072 добавляется отдельной проверяемой порцией. Полная GO-034 открыта до CRUD/ссылок/контактов/DB integration.
 
 ### [ ] GO-035. Календарь: OAuth-соединение
@@ -1064,7 +1064,7 @@
 - **Приоритет:** Критический, спринт 1.1; GO-032 средний.
 - **Зависимости:** auth/admin/catalog/company_crm, existing hiring_contacts schema и legacy contacts.js contract.
 - **Критерии:** GET для сессии, admin POST/PUT/DELETE, три уникальные позиции организации, валидация полей/ссылок, isolation/transaction/ошибки, существующие контакты не теряются. Полная приёмка SQL/API — GO-075.
-- **Результат:** не реализовано.
+- **Ход работы:** SQL/HTTP реализация с owner→contact locks и source replacement PUT; required297 validator vectors и21 SQLite :memory: CRUD/read сценарий. Отдельный guarded contact-writes CI проверяет rollback/anchor/readback, три уникальные позиции, FK, конкурентные create/move/delete и owner discovery retry. Positive MariaDB proof ещё ожидается; GO-074/075 открыты.
 
 ### [ ] GO-075. Disposable MariaDB/API приёмка каналов и контактов (часть GO-034)
 

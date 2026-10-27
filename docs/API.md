@@ -257,6 +257,8 @@ ChannelInput: name (обязательно, ≤160), url или username пуб�
 
 Go GO-073 реализует этот CRUD в принятой GO-072 границе typed UI: текстовые поля и RFC3339-даты, JSON до16KiB. PUT сохраняет omitted/null поля; пустая строка очищает дату, comment сохраняет пробелы. Дубли имени сравниваются по исходному SQLite ASCII LOWER, список — по ASCII NOCASE; кириллический регистр не сворачивается. POST отвечает `{ok,channelId,channels}`, PUT — `{ok,channels}`. Readback входит в транзакцию. Удаление последнего источника канальной вакансии возвращает409; новые связи и параллельные удаления защищены блокировками. Контакты GO-074 и общая приёмка GO-075 пока открыты. SQL/HTTP/rollback/concurrent source proof принят в required guarded CI #62 (code d457a59); локальная MariaDB не использовалась.
 
+Go GO-074 реализует `/api/hiring-contacts` (GET для сессии, POST админ/201) и `/api/hiring-contacts/:id` (PUT/DELETE админ), same-origin и JSON до32KiB. GET проверяет company/agency каталог и возвращает `{companyName,limit:3,contacts}`; записи общие для организации. POST/PUT/DELETE возвращают `{ok,contacts}` в порядке позиции. PUT сохраняет только omitted/null `position`; остальные поля обязательны или очищаются, `companyName` не переносит контакт. Дубли позиции и превышение трёх контактов возвращают400 с исходными сообщениями; неизвестный owner/ID —404. Все записи/readback атомарны. Положительная MariaDB-приёмка и общая GO-075 пока открыты.
+
 ## Импорт, экспорт и бэкап
 
 | Метод | Тело / параметры | Ответ |

@@ -343,3 +343,5 @@ GO-100-C-P / codex/GO-100-c-p-locale-plan начинается от принят
 GO-073 / codex/GO-073-channel-crud: база docs-only e0cc834 (#61), runtime база verified main35dba9f. Самостоятельный channel SQL/HTTP CRUD, Node SQLite :memory: oracle и отдельный disposable CI. Полная GO-034/075 остаётся открытой; PR и positive CI proof будут записаны после фактической проверки.
 
 GO-073 / [#62](https://github.com/meInteractive/it-map/pull/62), code d457a59f8b9685c571e2d375b513cbe9c2f7e3a8/tree52497e6fe0ce92df8a3780c013a6db0e190710f1: Public40526046586/MariaDB40526046600 pass, source + три required channel targets без skips и весь regression успешен. Checkpoint меняет только docs/status/manifest. GO-074 стартует от проверенного #62, GO-034/075 ещё открыты.
+
+GO-074 / codex/GO-074-hiring-contacts от #62/6c731c8 (runtime d457a59 принят двумя CI). Source297 validation +21 CRUD/read cases, owner-slot transactional SQL/HTTP и отдельный disposable contact-writes job. Positive proof/PR пока ожидаются; GO-075 остаётся отдельно.

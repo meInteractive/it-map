@@ -40,7 +40,7 @@ assert.equal(sqlite.prepare('SELECT COUNT(*) n FROM vacancy_telegram_sources').g
 const orderNames=['канал','Канал','a','A\0long','A\0xx','z','Ёлка','ёлка','😀','Я','я','B'];
 for(const [i,name]of orderNames.entries())sqlite.prepare('INSERT INTO telegram_channels(id,name,url,normalized_username,username)VALUES(?,?,?,?,?)').run(100+i,name,`https://t.me/ci_order_${i}`,`ci_order_${i}`,'');
 const ordered=await readTelegramChannels(db);
-const catalogCases=[];async function sourceCase(name,data){sqlite.prepare('UPDATE app_catalog SET data_json=? WHERE id=1').run(data);let expected=[],ok=true;try{const c=await readAppCatalog(db,{persistRatings:false});expected=[...c.companies,...c.agencies].flatMap(e=>Object.values(e.vacancySources));}catch{ok=false}catalogCases.push({name,data,ok,expected});}
+const catalogCases=[];async function sourceCase(name,data){sqlite.prepare('UPDATE app_catalog SET data_json=? WHERE id=1').run(data);let expected=[],expectedNames=[],ok=true;try{const c=await readAppCatalog(db,{persistRatings:false});expectedNames=[...new Set([...c.companies,...c.agencies].map(e=>e.name))];expected=[...c.companies,...c.agencies].flatMap(e=>Object.values(e.vacancySources));}catch{ok=false}catalogCases.push({name,data,ok,expected,expectedNames});}
 await sourceCase('typed company and agency sources',JSON.stringify(catalog));
 for(const value of ['', 'not JSON','null','{}','{"companies":{}}','{"companies":[{"name":" "}]}'])await sourceCase('invalid catalog fallback '+value,value);
 await sourceCase('known public defaults',JSON.stringify({companies:[{name:'Авито'},{name:'МегаФон'}]}));
