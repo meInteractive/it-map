@@ -1,4 +1,4 @@
-//go:build mariadb && (crmwrites || vacancywrites || vacancycreates || vacancyedits || vacancydeletes || profilewrites)
+//go:build mariadb && (crmwrites || vacancywrites || vacancycreates || vacancyedits || vacancydeletes || profilewrites || channelwrites)
 
 package storage
 
@@ -18,10 +18,12 @@ import (
 var errMutationFault = errors.New("CI_LATE_WRITE_DETAILS_NOT_PUBLIC")
 
 type mutationFault struct {
-	mu              sync.Mutex
-	prefix          string
-	fired           bool
-	writes, commits int
+	mu               sync.Mutex
+	prefix           string
+	fired            bool
+	writes, commits  int
+	queries          int
+	entered, release chan struct{}
 }
 type mutationFaultConnector struct {
 	driver.Connector
@@ -56,7 +58,20 @@ func (c *mutationFaultConn) PrepareContext(ctx context.Context, q string) (drive
 	return &mutationFaultStmt{Stmt: s, query: q, fault: c.fault}, nil
 }
 func (c *mutationFaultConn) QueryContext(ctx context.Context, q string, args []driver.NamedValue) (driver.Rows, error) {
-	return c.Conn.(driver.QueryerContext).QueryContext(ctx, q, args)
+	if strings.HasPrefix(c.fault.prefix, "BEFORE:") && strings.HasPrefix(q, strings.TrimPrefix(c.fault.prefix, "BEFORE:")) {
+		if e := c.fault.queryEvent(ctx, q); e != nil {
+			return nil, e
+		}
+	}
+	rows, e := c.Conn.(driver.QueryerContext).QueryContext(ctx, q, args)
+	if e != nil {
+		return rows, e
+	}
+	if e = c.fault.queryEvent(ctx, q); e != nil {
+		rows.Close()
+		return nil, e
+	}
+	return rows, nil
 }
 func (c *mutationFaultConn) BeginTx(ctx context.Context, opts driver.TxOptions) (driver.Tx, error) {
 	tx, e := c.Conn.(driver.ConnBeginTx).BeginTx(ctx, opts)
@@ -88,7 +103,41 @@ type mutationFaultStmt struct {
 }
 
 func (s *mutationFaultStmt) QueryContext(ctx context.Context, args []driver.NamedValue) (driver.Rows, error) {
-	return s.Stmt.(driver.StmtQueryContext).QueryContext(ctx, args)
+	rows, e := s.Stmt.(driver.StmtQueryContext).QueryContext(ctx, args)
+	if e != nil {
+		return rows, e
+	}
+	if e = s.fault.queryEvent(ctx, s.query); e != nil {
+		rows.Close()
+		return nil, e
+	}
+	return rows, nil
+}
+
+func (f *mutationFault) queryEvent(ctx context.Context, q string) error {
+	prefix := strings.TrimPrefix(f.prefix, "BEFORE:")
+	if !strings.HasPrefix(q, prefix) {
+		return nil
+	}
+	f.mu.Lock()
+	f.queries++
+	if f.fired {
+		f.mu.Unlock()
+		return nil
+	}
+	f.fired = true
+	entered, release := f.entered, f.release
+	f.mu.Unlock()
+	if entered == nil {
+		return errMutationFault
+	}
+	close(entered)
+	select {
+	case <-release:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 func (s *mutationFaultStmt) ExecContext(ctx context.Context, args []driver.NamedValue) (driver.Result, error) {
 	result, err := s.Stmt.(driver.StmtExecContext).ExecContext(ctx, args)
@@ -96,14 +145,25 @@ func (s *mutationFaultStmt) ExecContext(ctx context.Context, args []driver.Named
 		return result, err
 	}
 	s.fault.mu.Lock()
-	defer s.fault.mu.Unlock()
 	if strings.HasPrefix(s.query, s.fault.prefix) {
 		s.fault.writes++
 		if !s.fault.fired {
 			s.fault.fired = true
+			entered, release := s.fault.entered, s.fault.release
+			s.fault.mu.Unlock()
+			if entered != nil {
+				close(entered)
+				select {
+				case <-release:
+					return result, nil
+				case <-ctx.Done():
+					return nil, ctx.Err()
+				}
+			}
 			return nil, errMutationFault
 		}
 	}
+	s.fault.mu.Unlock()
 	return result, nil
 }
 

@@ -1057,7 +1057,7 @@
 - **Приоритет:** Критический, спринт 1.1; GO-032 средний.
 - **Зависимости:** GO-072 input contract, auth/admin, existing channel/catalog/schema/read repositories.
 - **Критерии:** admin POST/PUT/DELETE и same-origin/JSON/errors по legacy, независимость от company/agency sources и duplicate username/name, FK-safe delete/409 для единственного источника channel vacancy. Транзакции/блокировки/rollback и сохранённые связи; полный GO-034 не закрывать до GO-075.
-- **Результат:** не реализовано.
+- **Ход работы:** SQL/HTTP реализация и source oracle готовы к проверке: 17 unchanged JS CRUD операций, 12 NOCASE имён/400 LOWER пар и 12 catalog source cases. Отдельный guarded disposable CI job проверяет запись, FK, откаты поздних ошибок/readback, освобождение lock и конкурентные delete/partial PUT. Положительная MariaDB-приёмка ещё не выполнена; задача открыта.
 
 ### [ ] GO-074. Hiring contacts CRUD с лимитом позиций (часть GO-034)
 
