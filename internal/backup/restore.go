@@ -18,10 +18,11 @@ import (
 // RestoreResult is returned only after the data and generation commit together.
 // Operational rows are never imported. Existing FK cascades remain enabled.
 type RestoreResult struct {
-	Generation string
-	Rows       int
-	Warnings   []string
-	Catalog    json.RawMessage
+	Generation    string
+	SourceVersion int
+	Rows          int
+	Warnings      []string
+	Catalog       json.RawMessage
 }
 
 // restoreScalar forbids implicit MariaDB conversion or UTF16 replacement before
@@ -71,8 +72,22 @@ func validateRestoreScalars(plan *RestorePlan) error {
 	for _, t := range v39.Trusted().Tables {
 		definitions[t.Name] = t
 	}
+	rows, bytes := 0, 0
 	for _, t := range plan.Tables {
+		rows += len(t.Rows)
+		if rows > MaxRows {
+			return invalid("В плане восстановления слишком много записей.")
+		}
 		for _, row := range t.Rows {
+			raw, e := json.Marshal(row)
+			if e != nil {
+				return e
+			}
+			bytes += len(raw)
+			if bytes > MaxBytes {
+				return &InputError{Status: 413, Message: "План восстановления превышает 25 МБ."}
+			}
+
 			for _, c := range definitions[t.Name].Columns {
 				if _, e := restoreScalar(row[c.Name], c); e != nil {
 					return e
@@ -229,6 +244,12 @@ func (r Repository) RestoreV39(ctx context.Context, data []byte) (RestoreResult,
 		return RestoreResult{}, e
 	}
 	defer session.Close()
+	return applyRestore(ctx, session, nil)
+}
+
+type restoreReplan func(context.Context, *sql.Tx, map[string]sqlTable) (*RestorePlan, error)
+
+func applyRestore(ctx context.Context, session *RestoreSession, replan restoreReplan) (RestoreResult, error) {
 	tx, e := session.conn.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelRepeatableRead})
 	if e != nil {
 		return RestoreResult{}, e
@@ -260,6 +281,16 @@ func (r Repository) RestoreV39(ctx context.Context, data []byte) (RestoreResult,
 		return RestoreResult{}, e
 	}
 	plan := session.plan
+	if replan != nil {
+		plan, e = replan(ctx, tx, actual)
+		if e != nil {
+			return RestoreResult{}, e
+		}
+		if e = validateRestoreScalars(plan); e != nil {
+			return RestoreResult{}, e
+		}
+	}
+
 	for _, name := range plan.DeleteOrder {
 		if name == "vacancy_roles" {
 			if _, e = tx.ExecContext(ctx, "UPDATE `vacancy_roles` SET `parent_id`=NULL"); e != nil {
@@ -310,5 +341,5 @@ func (r Repository) RestoreV39(ctx context.Context, data []byte) (RestoreResult,
 	if e = tx.Commit(); e != nil {
 		return RestoreResult{}, e
 	}
-	return RestoreResult{Generation: generation, Rows: plan.Rows, Warnings: plan.Warnings, Catalog: plan.Catalog}, nil
+	return RestoreResult{SourceVersion: plan.SourceVersion, Generation: generation, Rows: plan.Rows, Warnings: plan.Warnings, Catalog: plan.Catalog}, nil
 }

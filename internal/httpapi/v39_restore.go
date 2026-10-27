@@ -11,8 +11,8 @@ import (
 )
 
 type BackupRestorer interface {
-	ValidateV39Restore(context.Context, []byte) (backup.RestoreValidation, error)
-	RestoreV39(context.Context, []byte) (backup.RestoreResult, error)
+	ValidateRestore(context.Context, []byte) (backup.RestoreValidation, error)
+	Restore(context.Context, []byte) (backup.RestoreResult, error)
 }
 
 func backupRestoreError(w http.ResponseWriter, e error) {
@@ -51,7 +51,7 @@ func BackupRestoreHandler(manager *auth.Manager, store BackupRestorer, validate 
 			return
 		}
 		if validate {
-			result, e := store.ValidateV39Restore(ctx, data)
+			result, e := store.ValidateRestore(ctx, data)
 			if e != nil {
 				backupRestoreError(w, e)
 				return
@@ -59,13 +59,13 @@ func BackupRestoreHandler(manager *auth.Manager, store BackupRestorer, validate 
 			jsonReply(w, 200, map[string]any{"ok": true, "tables": result.Tables, "rows": result.Rows, "warnings": result.Warnings})
 			return
 		}
-		result, e := store.RestoreV39(ctx, data)
+		result, e := store.Restore(ctx, data)
 		if e != nil {
 			backupRestoreError(w, e)
 			return
 		}
 		// Preserve source summary including its optional loose agencies.length value.
 		companies, agencies := backup.RestoreCatalogCounts(result.Catalog)
-		jsonReply(w, 200, map[string]any{"ok": true, "sourceVersion": 39, "version": 39, "companies": companies, "agencies": agencies, "tables": 52, "rows": result.Rows, "warnings": result.Warnings})
+		jsonReply(w, 200, map[string]any{"ok": true, "sourceVersion": result.SourceVersion, "version": 39, "companies": companies, "agencies": agencies, "tables": 52, "rows": result.Rows, "warnings": result.Warnings})
 	})
 }

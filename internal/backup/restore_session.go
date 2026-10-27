@@ -167,12 +167,16 @@ func advanceRestoreCounter(ctx context.Context, conn *sql.Conn, target counterTa
 // OpenV39RestoreSession validates the signed v39 file and a complete prepared
 // schema, exclusively claims restore ownership, then conservatively raises ID
 // counters outside any data TX. Failures can leave only safe counter gaps.
-// Business rows/generation are untouched. Runtime HTTP is not wired to it yet.
+// Business rows/generation are untouched. Strict v39 callers retain their gate.
 func (r Repository) OpenV39RestoreSession(ctx context.Context, data []byte) (_ *RestoreSession, err error) {
 	plan, err := PrepareV39Restore(data)
 	if err != nil {
 		return nil, err
 	}
+	return r.openRestorePlan(ctx, plan)
+}
+
+func (r Repository) openRestorePlan(ctx context.Context, plan *RestorePlan) (_ *RestoreSession, err error) {
 	if err = validateRestoreScalars(plan); err != nil {
 		return nil, err
 	}

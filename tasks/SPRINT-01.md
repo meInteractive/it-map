@@ -1305,16 +1305,16 @@
 - **Критерии:** доверенный версионированный DDL без uploaded SQL; полный schema/inventory check и отсутствие fallible post-commit normalization; implicit DDL commit отделён от atomic data TX, failure/retry доказаны на synthetic disposable DB. Без миграционного фреймворка и применения к реальным БД.
 - **Результат:** не реализовано.
 
-### [ ] GO-100-B-P. Pure historical restore plan v16–38
+### [x] GO-100-B-P. Pure historical restore plan v16–38
 
 - **Приоритет:** Критический prerequisite GO-100-B.
 - **Зависимости:** GO-100-A, GO-097, unchanged prepareBackupRestore/restoreBackup.
 - **Критерии:** exact tables/defaults/warnings/preserve-vs-clear/immutable-token filtering; stable-key classification mapping и legacy single-role migration с Unicode/ambiguity semantics; caller-owned input/state не меняется, метаданные SQL не выполняются. Required source differential gates по всем версиям и границам, без SQL/providers.
-- **Результат:** PrepareModernRestore переносит source defaults/preserve/clear/warnings, stable-key prompts и legacy role mapping, UTF16/full Unicode lower-case/ambiguity, immutable-token history filtering. Caller snapshot копируется с canonical scalar identity. Source policy содержит только публичные defaults/warnings/Unicode metadata, без рабочих строк; required oracle выполняет unchanged JS plan/restore на metadata spies — 216 случаев, все 24 версии. Local race/unit/interop/vet/tagged/build/web/actionlint/source/history pass; CI/PR proof ожидаются. Runtime historical SQL/HTTP ещё не подключён.
+- **Результат:** PrepareModernRestore переносит source defaults/preserve/clear/warnings, stable-key prompts и legacy role mapping, UTF16/full Unicode lower-case/ambiguity, immutable-token history filtering. Caller snapshot копируется с canonical scalar identity. Source policy содержит только публичные defaults/warnings/Unicode metadata, без рабочих строк; required oracle выполняет unchanged JS plan/restore на metadata spies — 216 случаев, все 24 версии. Принято на [PR #57](https://github.com/meInteractive/it-map/pull/57), codea73f05e168c8b6c2ab15eeb2c4d07d7e1fcc4eef/treebbeff7db9db42a01f7abfb7325193cc175a7a38b: Public40476626861 и MariaDB40476626918 полностью pass, required216/416/67/28 source gates и весь предыдущий SQL/API/browser regression успешны. В #57 historical SQL/HTTP ещё не подключён.
 
 ### [ ] GO-100-B-S. SQL/HTTP historical restore v16–38
 
 - **Приоритет:** Критический.
 - **Зависимости:** GO-100-B-P, GO-098/099/101.
 - **Критерии:** counter DDL до data TX; generation lock первым, актуальные preserve rows под row/range locks до replacement; оба порядка concurrent preserve writer/restore не теряют данные; все version boundaries, counters, late rollback/retry/round-trip/admin HTTP в required disposable MariaDB CI без skips. Без реальных DB/keys/backups и bootstrap.
-- **Результат:** не реализовано.
+- **Результат:** generic ValidateRestore/Restore и admin HTTP принимают signed v16–39 на prepared schema; strict V39 wrappers сохранены. Read-only validation не готовит counters; финальный plan перечитывает preserve rows с FOR UPDATE после generation lock в data TX. 23 version roundtrips, late rollback/retry, два порядка concurrent profile save и signed HTTP реализованы в отдельной required disposable CI job. Local checks pass; live SQL/HTTP gates ещё ожидают CI, задача открыта.

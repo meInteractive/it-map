@@ -319,3 +319,5 @@ GO-100-A: `codex/GO-100-historical-validation` от проверенного mai
 #56 напрямую в main и включает #55: достаточно merge #56 для доставки обеих порций. Финишный checkpoint меняет только docs/status/manifest; code/tests совпадают с проверенным 92fff43. GO-100-B/C/D и полная GO-042 остаются открытыми. Реальный Ubuntu20 не проверен.
 
 GO-100-B-P: `codex/GO-100-b-historical-plan`, база проверенный mainaf78f20 после пользовательского merge #55/#56. Pure source plan/Unicode policy и 216-case oracle без SQL; existing416/67/28 и local checks pass, PR/CI ожидают публикации.
+
+GO-100-B-P / [#57](https://github.com/meInteractive/it-map/pull/57), a73f05e/treebbeff7db9db42a01f7abfb7325193cc175a7a38b: Public40476626861/MariaDB40476626918 fully pass. GO-100-B-S `codex/GO-100-b-historical-sql` начинается от этой проверенной вершины: generic SQL/HTTP v16–39, required separate historical job; live positive gates ожидаются.
