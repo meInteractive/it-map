@@ -17,6 +17,7 @@ import (
 	"itmap/internal/catalog"
 	"itmap/internal/channels"
 	"itmap/internal/config"
+	"itmap/internal/contacts"
 	"itmap/internal/crm"
 	"itmap/internal/httpapi"
 	"itmap/internal/profiles"
@@ -39,6 +40,7 @@ func httpHandler(logger *slog.Logger, db *sql.DB, manager *auth.Manager) http.Ha
 		opts.Compact = repo
 		opts.Channels = channels.Repository{DB: db}
 		opts.ChannelWrites = channels.Repository{DB: db, CatalogSources: backup.StoredCatalogSourceURLs}
+		opts.Contacts = contacts.Repository{DB: db, CatalogNames: backup.StoredCatalogNames}
 		opts.Roles = roles.Repository{DB: db}
 		opts.Vacancies = vacancies.Repository{DB: db}
 		opts.VacancyDetails = vacancies.Repository{DB: db}

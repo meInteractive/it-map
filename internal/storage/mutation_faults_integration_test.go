@@ -1,4 +1,4 @@
-//go:build mariadb && (crmwrites || vacancywrites || vacancycreates || vacancyedits || vacancydeletes || profilewrites || channelwrites)
+//go:build mariadb && (crmwrites || vacancywrites || vacancycreates || vacancyedits || vacancydeletes || profilewrites || channelwrites || contactwrites)
 
 package storage
 
@@ -20,6 +20,7 @@ var errMutationFault = errors.New("CI_LATE_WRITE_DETAILS_NOT_PUBLIC")
 type mutationFault struct {
 	mu               sync.Mutex
 	prefix           string
+	suffix           string
 	fired            bool
 	writes, commits  int
 	queries          int
@@ -121,7 +122,7 @@ func (f *mutationFault) queryEvent(ctx context.Context, q string) error {
 		return nil
 	}
 	prefix := strings.TrimPrefix(f.prefix, "BEFORE:")
-	if !strings.HasPrefix(q, prefix) {
+	if !strings.HasPrefix(q, prefix) || (f.suffix != "" && !strings.HasSuffix(q, f.suffix)) {
 		return nil
 	}
 	f.mu.Lock()

@@ -65,7 +65,7 @@ func channelWriteError(w http.ResponseWriter, err error, fallback string) {
 		jsonReply(w, 400, map[string]string{"error": fallback})
 	}
 }
-func channelAdmin(m *auth.Manager, w http.ResponseWriter, r *http.Request) bool {
+func legacyAdminWrite(m *auth.Manager, w http.ResponseWriter, r *http.Request) bool {
 	u, ok := sessionFromRequest(m, r)
 	if !ok {
 		jsonReply(w, 401, map[string]string{"error": "Требуется авторизация."})
@@ -99,7 +99,7 @@ func ChannelCollectionHandler(m *auth.Manager, lister ChannelLister, writer Chan
 			channelUnavailable(w)
 			return
 		}
-		if !channelAdmin(m, w, r) {
+		if !legacyAdminWrite(m, w, r) {
 			return
 		}
 		input, e := parseChannelInput(w, r)
@@ -138,7 +138,7 @@ func ChannelItemHandler(m *auth.Manager, writer ChannelWriter) http.HandlerFunc 
 			jsonReply(w, 405, map[string]string{"error": "Метод не поддерживается."})
 			return
 		}
-		if !channelAdmin(m, w, r) {
+		if !legacyAdminWrite(m, w, r) {
 			return
 		}
 		text := r.PathValue("id")

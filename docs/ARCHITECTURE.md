@@ -22,7 +22,7 @@
 | `internal/storage` | `database/sql`, driver/pool, baseline 72 таблиц / 606 полей, SQL-интеграционные проверки | driver через `-tags mariadb`; synthetic CI не заменяет согласованный реальный снимок |
 | `internal/httpapi` | `net/http` ServeMux, middleware, условная регистрация доступных маршрутов, SPA и health | полный legacy API ещё не перенесён; readiness остаётся закрытым |
 | `internal/auth` | вход, signed cookie, роли и сессии | браузерные CI-сценарии не заменяют целевой домен/TLS |
-| `internal/catalog`, `crm`, `channels`, `roles` | каталог, CRM-чтение/флаги, каналы и роли; channel SQL/HTTP CRUD с source oracle | channel SQL/HTTP принят #62; контакты и общая GO-075 пока открыты |
+| `internal/catalog`, `crm`, `channels`, `roles` | каталог, CRM-чтение/флаги, каналы и роли; channel SQL/HTTP CRUD с source oracle | channel SQL/HTTP принят #62; contacts SQL/HTTP реализован, positive CI и общая GO-075 пока открыты |
 | `internal/vacancies` | чтение, создание/изменение/удаление, роли и пользовательское состояние | полный write/CAS/FK gate и операции агентств не приняты целиком |
 | `internal/applications` | отклики, статусы/история, receipts, версии, one-click создание | SQL/HTTP/concurrency части проверены; межмодульные сценарии открыты |
 | `internal/tasks` | создание/срок/завершение/reopen/фильтры без Calendar sync | поддерживаемый API проверен SQL/HTTP/desktop-mobile; полный Calendar sync открыт |
