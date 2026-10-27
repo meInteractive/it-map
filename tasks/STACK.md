@@ -299,3 +299,10 @@ GO-101 / #52 принят на code8a3f334abed1d8706386a15096beebf3f3bf3894/tree
 GO-098: ветка `codex/GO-098-v39-transactional-restore` от проверенного main0319c24 после пользовательского merge #52. Prepared-schema restore + generation data TX, source49-row oracle, отдельная disposable MariaDB job. Локальные race/unit/tagged/vet/build/web проходят; положительные SQL проверки только в CI, PR/результаты будут зафиксированы после публикации.
 
 GO-098 / [#53](https://github.com/meInteractive/it-map/pull/53): de99bfe/tree3fc9a98c610e6d84b8a6fb8d188e7fcd68d3ef15, Public40462975460 и MariaDB40462975508 полностью pass. GO-099 `codex/GO-099-v39-restore-http-crash` начинается от этой проверенной вершины; отдельная disposable crash/concurrency/HTTP job, PR и SQL proof ожидают публикации.
+
+| Текущая порция | Ветка | База | PR | Proof |
+| --- | --- | --- | --- | --- |
+| GO-098 atomic v39/generation | codex/GO-098-v39-transactional-restore | main | [#53](https://github.com/meInteractive/it-map/pull/53) | de99bfe: Public40462975460/MariaDB40462975508 pass |
+| GO-099 crash/HTTP/late-result fence; включает #53 | codex/GO-099-v39-restore-http-crash | main | [#54](https://github.com/meInteractive/it-map/pull/54) | 1b12301/treef1dbd7388f3ceaa8afb7fc1e83afdcda4d918d1b: Public40464855878/MariaDB40464855875 pass; required crash/concurrency/HTTP/late-result job122057707630 zero skips |
+
+#54 направлен прямо в main и включает #53: одного merge #54 достаточно для доставки обеих порций. Финишный checkpoint меняет только docs/status/manifest; runtime/tests совпадают с 1b12301. GO-100 historical/bootstrap и полный GO-042 остаются открытыми. Полная AI/provider orchestration не принимается по одному generation boundary.
