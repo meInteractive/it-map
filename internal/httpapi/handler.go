@@ -39,6 +39,7 @@ type Options struct {
 	Catalog              CatalogSearcher
 	Compact              CompactCatalog
 	Channels             ChannelLister
+	ChannelWrites        ChannelWriter
 	Roles                RoleReader
 	Vacancies            VacancyLister
 	VacancyDetails       VacancyDetailer
@@ -131,9 +132,8 @@ func NewHandlerWithOptions(logger *slog.Logger, opts Options) http.Handler {
 				mux.HandleFunc("GET "+path+"/{id}", compactDetailHandler(opts.Auth, opts.Compact, entry.kind, true))
 			}
 		}
-		if opts.Channels != nil {
-			mux.HandleFunc("GET /api/channels", ChannelListHandler(opts.Auth, opts.Channels))
-		}
+		mux.HandleFunc("/api/channels", ChannelCollectionHandler(opts.Auth, opts.Channels, opts.ChannelWrites))
+		mux.HandleFunc("/api/channels/{id}", ChannelItemHandler(opts.Auth, opts.ChannelWrites))
 		if opts.Tasks != nil {
 			mux.HandleFunc("GET /api/tasks", TaskListHandler(opts.Auth, opts.Tasks))
 		}

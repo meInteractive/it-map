@@ -1052,12 +1052,12 @@
 - **Проверки:** Go vet/race/build/tagged/minimum Go 1.23, 43 application/34 task/55 channel oracle vectors, web build/source/history/schema/fixtures/actionlint/manifest и required CI точного SHA. SQL/HTTP/ссылки — GO-073…075, GO-034 открыта.
 - **Результат:** реализация в codex/GO-072-channel-input от проверенной вершины #29. Локально vet/race/обе сборки/tagged/Go 1.23 channels, все три JS oracle, web build/source/history/schema/actionlint успешны. [PR #30](https://github.com/meInteractive/it-map/pull/30), code `b89ee88`: [Go/web/security/JS contract](https://github.com/meInteractive/it-map/actions/runs/40292417590) и [MariaDB/task SQL+HTTP/2 task browser + 14 readonly/API/native](https://github.com/meInteractive/it-map/actions/runs/40292417772) успешны. GO-072 завершён только в указанном pure typed-input scope; GO-073…075/полная GO-034 открыты.
 
-### [ ] GO-073. Channel CRUD с защитой vacancy sources (часть GO-034)
+### [x] GO-073. Channel CRUD с защитой vacancy sources (часть GO-034)
 
 - **Приоритет:** Критический, спринт 1.1; GO-032 средний.
 - **Зависимости:** GO-072 input contract, auth/admin, existing channel/catalog/schema/read repositories.
 - **Критерии:** admin POST/PUT/DELETE и same-origin/JSON/errors по legacy, независимость от company/agency sources и duplicate username/name, FK-safe delete/409 для единственного источника channel vacancy. Транзакции/блокировки/rollback и сохранённые связи; полный GO-034 не закрывать до GO-075.
-- **Результат:** не реализовано.
+- **Результат:** [PR #62](https://github.com/meInteractive/it-map/pull/62), code `d457a59f8b9685c571e2d375b513cbe9c2f7e3a8`, tree `52497e6fe0ce92df8a3780c013a6db0e190710f1`: [Public40526046586](https://github.com/meInteractive/it-map/actions/runs/40526046586) и [MariaDB40526046600](https://github.com/meInteractive/it-map/actions/runs/40526046600) успешны целиком. Required channel CRUD/races/HTTP targets выполнены без skips в отдельном blank-schema контейнере; 17 unchanged source CRUD операций, NOCASE/LOWER и catalog projection gates. Проверены поздние write/readback/unlock faults, FK cleanup, concurrent duplicates/partial PUT/two deletes/owner changes/new links. Старый profile read-only probe сохранён; все прежние SQL/restore/API/browser gates успешны. Локальные vet/race/build/web/source/history/schema/actionlint/manifest и 4 pre-connect refusals pass. Граница typed UI/RFC3339 из GO-072 сохранена; произвольные coercions/полный WHATWG не заявлены. Контакты GO-074 и общая GO-034/075 открыты.
 
 ### [ ] GO-074. Hiring contacts CRUD с лимитом позиций (часть GO-034)
 
