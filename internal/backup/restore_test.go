@@ -48,3 +48,14 @@ func TestRestoreRowComparisonPreservesScalarBoundaries(t *testing.T) {
 		t.Fatal("equal Unicode/numeric scalar representations differ")
 	}
 }
+
+func TestRestoreCatalogCountsMatchLooseSourceLength(t *testing.T) {
+	for _, tc := range []struct{ agencies, want string }{
+		{`[]`, `0`}, {`[{},{}]`, `2`}, {`"😀"`, `2`}, {`{"length":7}`, `7`}, {`{"length":"CI"}`, `"CI"`}, {`{"length":false}`, `0`}, {`{"length":{}}`, `{}`}, {`7`, `0`}, {`null`, `0`},
+	} {
+		companies, n := RestoreCatalogCounts([]byte(`{"companies":[{"name":"CI"}],"agencies":` + tc.agencies + `}`))
+		if companies != 1 || string(n) != tc.want {
+			t.Fatalf("source length for %s: %d %s", tc.agencies, companies, n)
+		}
+	}
+}
