@@ -42,7 +42,7 @@ func BackupRestoreHandler(manager *auth.Manager, store BackupRestorer, validate 
 			jsonReply(w, 503, map[string]string{"error": "Хранилище данных пока не подключено."})
 			return
 		}
-		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Minute)
+		ctx, cancel := context.WithTimeout(r.Context(), 45*time.Second)
 		defer cancel()
 		r = r.WithContext(ctx)
 		data, e := backup.ReadRequest(r.Body, r.ContentLength)
