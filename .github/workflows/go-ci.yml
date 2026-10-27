@@ -59,6 +59,8 @@ jobs:
         run: go test -race -tags legacyinterop ./internal/backup -run '^TestLegacyHistoricalFormat$' -count=1
       - name: Verify unsigned v14-15 validation with unchanged legacy JS and zero SQL
         run: go test -race -tags legacyinterop ./internal/backup -run '^TestLegacyUnsignedFormat$' -count=1
+      - name: Verify legacy catalog entity fields with unchanged JS and zero SQL
+        run: go test -race -tags legacyinterop ./internal/backup -run '^TestLegacyCatalogEntities$' -count=1
       - name: Verify historical v16-38 plans and Unicode policy with unchanged legacy JS
         run: go test -race -tags legacyinterop ./internal/backup -run '^TestLegacyHistoricalPlan$' -count=1
       - name: Verify Go v39 restore plan with unchanged legacy JS and zero SQL

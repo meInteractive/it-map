@@ -167,3 +167,11 @@ B-S принят на #58/code5b91bc5: Public40479135218 и MariaDB40479135520 �
 Это pure validator, без SQL и без расширения runtime validate/restore v16–39. C-P должен отдельно перенести source normalizeCatalog/plan, omitted calendar/audit preserve и truthful warnings; C-S — доказать запись на disposable MariaDB. Ни GO-100-C, ни полная GO-042 по одному валидатору не принимаются.
 
 C-V принята на #59/code6710498: Public40482915844/MariaDB40482915965 полностью pass, required legacy1468 и весь прежний source/SQL/API/browser regression успешны. Только pure validation; source catalog normalization/legacy plan и SQL приёмка остаются C-P/C-S.
+
+### GO-100-C-P: нормализация полей до полного legacy plan
+
+Private entity helpers переносят company rating/WLB/salary/default sources и agency choices/score/revenue/reviews/UTF16 guide slicing. Исходный ordered input сохраняется до арифметики: overflow Number, отсутствующее поле, NULL и пустая строка не взаимозаменяемы. Source Math.round, object spread, точные UTF16 names/default lookup и inherited plain-object application defaults проверяются отдельно. Public catalog policy содержит только уже опубликованные options/default URLs и synthetic reference companies из src/data.json; source gate проверяет drift.
+
+Required unchanged JS oracle сравнивает 705 случаев (700 приняты), по одной сущности, включая source отказ при throwing coercion. Company rank передаётся helper явно; сортировка и выбор rank этим oracle **не проверяются**. Внешний probe x/text collate v0.23.0 не совпал с Node24 localeCompare(ru), библиотека в проект не добавлена. Нет нового runtime/SQL/API или Node runtime dependency. Совместимая сортировка полного каталога и legacy restore plan/preserve/warnings остаются открытой частью C-P; C-S/D и весь GO-042 не принимаются по entity-only proof.
+
+Entity fields приняты на #60/code4ce126b: Public40507165590 и MariaDB40507165592 полностью pass, required705 и весь прежний regression успешны. Source сравнения выполнены на Node24.19/ICU78.3/CLDR48/Unicode17. Порядок компаний/rank и full legacy plan остаются непроверенными и не подключены к runtime.
