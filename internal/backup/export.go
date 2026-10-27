@@ -183,6 +183,10 @@ func encodeScalarText(s string) json.RawMessage {
 type exportBudget struct{ bytes, rows int }
 
 func readRows(ctx context.Context, tx *sql.Tx, t sqlTable, names []string, budget *exportBudget, application bool) ([]json.RawMessage, int64, error) {
+	return readRowsMode(ctx, tx, t, names, budget, application, false)
+}
+
+func readRowsMode(ctx context.Context, tx *sql.Tx, t sqlTable, names []string, budget *exportBudget, application, locking bool) ([]json.RawMessage, int64, error) {
 	columns := map[string]sqlColumn{}
 	for _, c := range t.Columns {
 		columns[c.Name] = c
@@ -191,7 +195,11 @@ func readRows(ctx context.Context, tx *sql.Tx, t sqlTable, names []string, budge
 	for i, n := range names {
 		quoted[i] = quote(n)
 	}
-	rows, err := tx.QueryContext(ctx, "SELECT "+strings.Join(quoted, ",")+" FROM "+quote(t.Name))
+	query := "SELECT " + strings.Join(quoted, ",") + " FROM " + quote(t.Name)
+	if locking {
+		query += " FOR UPDATE"
+	}
+	rows, err := tx.QueryContext(ctx, query)
 	if err != nil {
 		return nil, 0, err
 	}

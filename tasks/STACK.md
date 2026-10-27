@@ -319,3 +319,12 @@ GO-100-A: `codex/GO-100-historical-validation` от проверенного mai
 #56 напрямую в main и включает #55: достаточно merge #56 для доставки обеих порций. Финишный checkpoint меняет только docs/status/manifest; code/tests совпадают с проверенным 92fff43. GO-100-B/C/D и полная GO-042 остаются открытыми. Реальный Ubuntu20 не проверен.
 
 GO-100-B-P: `codex/GO-100-b-historical-plan`, база проверенный mainaf78f20 после пользовательского merge #55/#56. Pure source plan/Unicode policy и 216-case oracle без SQL; existing416/67/28 и local checks pass, PR/CI ожидают публикации.
+
+GO-100-B-P / [#57](https://github.com/meInteractive/it-map/pull/57), a73f05e/treebbeff7db9db42a01f7abfb7325193cc175a7a38b: Public40476626861/MariaDB40476626918 fully pass. GO-100-B-S `codex/GO-100-b-historical-sql` начинается от этой проверенной вершины: generic SQL/HTTP v16–39, required separate historical job; live positive gates ожидаются.
+
+| Продолжение | Ветка | База | PR | Proof |
+| --- | --- | --- | --- | --- |
+| GO-100-B-P pure plan | codex/GO-100-b-historical-plan | main | [#57](https://github.com/meInteractive/it-map/pull/57) | a73f05e: Public40476626861/MariaDB40476626918 pass; source216/416/67/28 + прежний SQL/API/browser |
+| GO-100-B-S SQL/HTTP; включает #57 | codex/GO-100-b-historical-sql | main | [#58](https://github.com/meInteractive/it-map/pull/58) | 5b91bc5/treea31507461cb47ade37bb80908d6bd3a3c094b36e: Public40479135218/MariaDB40479135520 pass; required historical job122104725668 zero skips |
+
+#58 прямо в main и включает #57: одного merge #58 достаточно для доставки GO-100-B. Финишный checkpoint меняет только docs/status/manifest; runtime/tests совпадают с проверенным5b91bc5. C v14–15 и D bootstrap остаются открытыми. Реальных данных/DB/providers/deploy не было.

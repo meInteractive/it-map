@@ -19,15 +19,15 @@ type restoreProbe struct {
 	body  []byte
 }
 
-func (p *restoreProbe) ValidateV39Restore(_ context.Context, b []byte) (backup.RestoreValidation, error) {
+func (p *restoreProbe) ValidateRestore(_ context.Context, b []byte) (backup.RestoreValidation, error) {
 	p.calls++
 	p.body = b
 	return backup.RestoreValidation{Tables: 52, Rows: 7, Warnings: []string{"CI source warning"}}, p.err
 }
-func (p *restoreProbe) RestoreV39(_ context.Context, b []byte) (backup.RestoreResult, error) {
+func (p *restoreProbe) Restore(_ context.Context, b []byte) (backup.RestoreResult, error) {
 	p.calls++
 	p.body = b
-	return backup.RestoreResult{Rows: 7, Warnings: []string{"CI source warning"}, Catalog: []byte(`{"companies":[{"name":"CI"}],"agencies":[]}`)}, p.err
+	return backup.RestoreResult{SourceVersion: 39, Rows: 7, Warnings: []string{"CI source warning"}, Catalog: []byte(`{"companies":[{"name":"CI"}],"agencies":[]}`)}, p.err
 }
 
 type brokenRestoreBody struct{}
