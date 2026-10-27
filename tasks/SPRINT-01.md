@@ -1357,4 +1357,4 @@
 - **Приоритет:** Критический, только sprint1.1.
 - **Зависимости:** GO-102, GO-088…090, принятый v39 restore/generation gate.
 - **Критерии:** реальные concurrent application create/replay/delete против vacancy owner/delete и trusted synthetic restore, согласованные FK/receipt/generation и отсутствие потери другого владельца/history. Проверить оба порядка и поздний rollback; unknown COMMIT не считать безопасно повторимым. Только guarded GitHub disposable CI; без real DB/backup/providers.
-- **Результат:** не реализовано; полная GO-031 остаётся открытой до этой приёмки.
+- **Ход работы:** пять required SQL/HTTP parents в отдельном seeded disposable CI: owner move/create, archived hard detach/create, late receipt rollback/replay, owned application deletion, linked restore/replay/delete в обоих порядках. Trusted export остаётся в памяти; raw nonce guard до собственного restore и cleanup возвращает исходные rows/generation. Runtime не менялся; positive proof ожидается, полная GO-031 открыта.
