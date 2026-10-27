@@ -24,14 +24,18 @@ type channelHTTP struct {
 	cookies map[string]*http.Cookie
 }
 
-func openChannelHTTP(t *testing.T, f *channelFixture, writer channels.Repository) *channelHTTP {
+func openChannelHTTP(t *testing.T, f *channelFixture, writer channels.Repository, configure ...func(*httpapi.Options)) *channelHTTP {
 	t.Helper()
 	manager, e := auth.NewManager(strings.Repeat("c", 64), map[string]string{"eugene": "CI_CHANNEL_PASSWORD", "demo": "CI_CHANNEL_PASSWORD", "nastya": "CI_CHANNEL_PASSWORD"})
 	if e != nil {
 		t.Fatal("cannot create synthetic channel auth")
 	}
 	h := &channelHTTP{f: f, cookies: map[string]*http.Cookie{}}
-	h.server = httptest.NewTLSServer(httpapi.NewHandlerWithOptions(nil, httpapi.Options{Auth: manager, Channels: f.repo, ChannelWrites: writer}))
+	opts := httpapi.Options{Auth: manager, Channels: f.repo, ChannelWrites: writer}
+	for _, fn := range configure {
+		fn(&opts)
+	}
+	h.server = httptest.NewTLSServer(httpapi.NewHandlerWithOptions(nil, opts))
 	t.Cleanup(h.server.Close)
 	client := h.server.Client()
 	client.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }

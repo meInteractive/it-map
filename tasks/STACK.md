@@ -345,3 +345,5 @@ GO-073 / codex/GO-073-channel-crud: база docs-only e0cc834 (#61), runtime б
 GO-073 / [#62](https://github.com/meInteractive/it-map/pull/62), code d457a59f8b9685c571e2d375b513cbe9c2f7e3a8/tree52497e6fe0ce92df8a3780c013a6db0e190710f1: Public40526046586/MariaDB40526046600 pass, source + три required channel targets без skips и весь regression успешен. Checkpoint меняет только docs/status/manifest. GO-074 стартует от проверенного #62, GO-034/075 ещё открыты.
 
 GO-074 / codex/GO-074-hiring-contacts от #62/6c731c8 (runtime d457a59 принят двумя CI). Source297 validation +21 CRUD/read cases, owner-slot transactional SQL/HTTP и отдельный disposable contact-writes job. Positive proof/PR пока ожидаются; GO-075 остаётся отдельно.
+
+GO-075 / codex/GO-075-channel-contact-gate от #63/f911ef9: совместный source SQL/HTTP gate и реальные vacancy editor/channel delete races. Семь required родителей без skips должны завершиться до mariadb-schema/API/browser/native job; PR/positive proof ожидаются.

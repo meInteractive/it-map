@@ -1071,7 +1071,7 @@
 - **Приоритет:** Критический, спринт 1.1; GO-032 средний.
 - **Зависимости:** GO-073/074, только guarded GitHub disposable fixture.
 - **Критерии:** реальные SQL и авторизованный HTTP CRUD, duplicates/лимиты/linked sole-source delete/rollback/concurrent edits; cleanup восстанавливает все исходные fixtures и generation. Именованные pass/no-skip targets перед прежними API/browser/native gates. Локальные MariaDB/production/real data запрещены; до успеха полная GO-034 открыта.
-- **Результат:** не реализовано.
+- **Ход работы:** отдельный joint acceptance job с семью required pass/no-skip parents и dependency перед прежними API/browser/native gates. Новый live shared API сценарий сохраняет CRM/contacts/vacancy sources; реальные Vacancy.UpdateManual и Channel.Delete проверяются в обоих конкурентных порядках. Positive proof ожидается, GO-034 пока открыта.
 
 
 ### [x] GO-076. Сохранить проверенный стек перед работой над парсером
