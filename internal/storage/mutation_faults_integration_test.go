@@ -115,6 +115,11 @@ func (s *mutationFaultStmt) QueryContext(ctx context.Context, args []driver.Name
 }
 
 func (f *mutationFault) queryEvent(ctx context.Context, q string) error {
+	// Empty prefix is the existing read-only probe: fault on any Exec, but
+	// permit all Query calls without marking a fictitious write.
+	if f.prefix == "" {
+		return nil
+	}
 	prefix := strings.TrimPrefix(f.prefix, "BEFORE:")
 	if !strings.HasPrefix(q, prefix) {
 		return nil
