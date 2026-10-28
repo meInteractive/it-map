@@ -185,3 +185,9 @@ C-P принята на [#68](https://github.com/meInteractive/it-map/pull/68), 
 Для legacy calendar сохраняется всегда; audit — только при отсутствии раздела, явно пустой audit очищает строки. Набор destination reads фиксируется по входному файлу до pure planning; final rows читаются заново под generation и `FOR UPDATE` locks до замены. `/validate` использует read-only snapshot и не резервирует counters/generation. Все normalization/clock/defaults завершаются до COMMIT.
 
 C-S принята на #69/code2297175: Public40653587489/MariaDB40653587455 fully pass. Required job122699204697 выполнил все6 signed/unsigned parents без skips. Проверены unchanged source SQLite :memory: эталон, round-trip v39, rollback/retry и оба порядка concurrent calendar/audit writers. Trusted schema bootstrap D и полная GO-042 не приняты. Реальные backups/DB/keys/providers не используются.
+
+### GO-100-D / GO-310…311: trusted bootstrap отдельно от restore
+
+GO-310/#70 принят на05b8a588: Public40657232349/MariaDB40657232302 fully pass;217 trusted DDL actions и exact full metadata contract72/606/269 index rows/117 CHECK/50 FK/22 triggers. SQL не берётся из загружаемого файла.
+
+GO-311 реализует отдельный offline `itmap schema-init` до HTTP startup. Missing trusted objects создаются только в pristine empty/empty-partial DB под общим restore ownership; изменения и чужие объекты, строки и прошлые ID allocations вызывают отказ. Полная база с текущим поколением проверяется без мутаций. MariaDB DDL commits отделены от generation seed TX и последующего restore data TX; failure не обещает общего DDL rollback. Повтор инспектирует фактический результат даже при unknown prior commit. Начальное поколение генерируется до своей TX, после exact schema check; post-commit normalization нет. Actual bootstrap/CLI/source restore/fault/retry proof ожидается только в отдельном blank disposable CI.

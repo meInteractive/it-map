@@ -1264,7 +1264,7 @@
 - **Зависимости:** принятый v39 restore GO-097/098/099, source compatibility layouts и trusted migration/preflight.
 - **Критерии:** source-backed historical validation/transforms/preserve-vs-clear/warnings/role mapping, downgrade поля, scheduler/Apify safe defaults; MariaDB schema preparation отдельно от atomic data replacement без ложного обещания DDL rollback. Только synthetic fixtures/CI, без реальных данных. Не закрывать полную GO-042 по одному v39 round-trip.
 - **Декомпозиция до реализации:** стабильные дочерние ID GO-100-A…D сохраняют исходный GO-100 и не занимают зарезервированные номера спринта 1.2. A — source-backed validation v16–38; B — plan/preserve/transforms/SQL v16–38; C — v14–15 catalog/legacy layout/normalization; D — trusted MariaDB bootstrap отдельно от data TX. Ни одна часть сама по себе не закрывает GO-100/042.
-- **Результат:** частично: GO-100-A/B historical signed validation/plan/SQL v16–38 и GO-100-C-V pure unsigned validation v14–15 приняты. Runtime принимает signed v16–39 на prepared schema; legacy14–15 normalization/plan приняты GO-100-C-P/#68; SQL GO-100-C-S и trusted bootstrap D остаются открытыми.
+- **Результат:** частично: GO-100-A/B historical signed validation/plan/SQL v16–38 и GO-100-C-V pure unsigned validation v14–15 приняты. Generic runtime принимает v14–39 на prepared schema, A/B/C приняты. Trusted bootstrap D: GO-310 принят, GO-311 ожидает actual SQL proof; полная GO-100/042 ещё открыта.
 
 ### [x] GO-101. MariaDB counter preflight перед restore TX (часть GO-042/098)
 
@@ -1289,13 +1289,13 @@
 - **Декомпозиция до реализации:** GO-100-B-P — pure modern historical plan и source oracle; GO-100-B-S — safe counter/data TX, preserved destination snapshot и SQL/HTTP proof. Родитель B открыт до обеих частей.
 - **Результат:** B-P/#57 и B-S/#58 приняты: source modern plan и SQL/HTTP signed v16–39 на prepared schema с initialized generation. Preserved rows читаются после generation lock под row/gap locks; all23 old versions source SQL/round-trip/counters, late rollback/retry, concurrent profiles и signed HTTP прошли required disposable CI без skips. Точные SHA/proof — в дочерних результатах ниже. C/D и полная GO-100/042 открыты.
 
-### [ ] GO-100-C. Legacy v14–15 validation и restore
+### [x] GO-100-C. Legacy v14–15 validation и restore
 
 - **Приоритет:** Критический для полной совместимости.
 - **Зависимости:** GO-100-B и source legacy catalog/normalization contracts.
 - **Критерии:** старые storage/required columns/catalog/AI/reviews/agency checks, source normalization и truthful warnings при отсутствии integrity/date/counters; preserve omitted sections; synthetic differential и disposable SQL proof.
 - **Декомпозиция до реализации:** GO-100-C-V — pure legacy validator и unchanged JS differential; C-P — source catalog normalization/legacy plan/preserve/warnings; C-S — prepared-schema SQL/HTTP/rollback/concurrency proof. Runtime v14–15 включается только после C-P/C-S. Родитель C остаётся открыт до всех частей.
-- **Результат:** C-V / #59 принята: pure unsigned validation v14–15, required1468-case unchanged JS differential. Runtime остаётся signed v16–39; source normalization/plan C-P и SQL/HTTP C-S открыты, весь C не принят.
+- **Результат:** C-V / #59 принята: pure unsigned validation v14–15, required1468-case unchanged JS differential. C-P/#68 и C-S/#69 приняты по полному CI; generic runtime поддерживает v14–39 на prepared schema. Родитель C закрыт; trusted bootstrap D отдельно.
 
 ### [ ] GO-100-D. Trusted MariaDB bootstrap перед restore
 
@@ -1362,16 +1362,16 @@
 - **Критерии:** реальные concurrent application create/replay/delete против vacancy owner/delete и trusted synthetic restore, согласованные FK/receipt/generation и отсутствие потери другого владельца/history. Проверить оба порядка и поздний rollback; unknown COMMIT не считать безопасно повторимым. Только guarded GitHub disposable CI; без real DB/backup/providers.
 - **Результат:** [PR #67](https://github.com/meInteractive/it-map/pull/67), code `93834b8625d1819ca5614869ad663a6161e9b789`, tree `0585fe2068b9b785ccaf3dbc8697bf5e705953e2`: [Public40597722262](https://github.com/meInteractive/it-map/actions/runs/40597722262)/[MariaDB40597721853](https://github.com/meInteractive/it-map/actions/runs/40597721853) fully pass. Job122517783731 требует пять named SQL/HTTP parents без skips: create/move/hard detach, actual delete/owner races, late receipt rollback, linked restore/replay/delete в обоих порядках и private HTTPS. Data snapshot/оба user/history/tasks/FK, исходная generation при cleanup и old-context/receipt fence доказаны. В delete-first restore наблюдается counter `LOCK TABLES` до data TX, actors join до cleanup. Runtime не менялся. Локальные vet/combined-tag vet/race/tagged/обе сборки/Go1.23.12/web/source/history/schema/actionlint/manifest и4 pre-connect refusals pass; весь старый regression успешен. GO-031 закрыта в SQL/API scope; реальная БД/backup/providers не использовались.
 
-### [ ] GO-310. Доверенный DDL v1 и полный metadata preflight (часть GO-100-D)
+### [x] GO-310. Доверенный DDL v1 и полный metadata preflight (часть GO-100-D)
 
 - **Приоритет:** Критический, только sprint1.1.
 - **Зависимости:** принятая source schema72 tables/606 columns/50FK/22triggers, GO-100-B/C.
 - **Критерии:** reviewable versioned217 DDL actions, проверяемая связь с public schema-only baseline; metadata columns/defaults/generated/index/check/FK/triggers, strict full/partial preflight без uploaded SQL и без изменения строк. Required read-only disposable CI сравнивает manifest со схемой. Нового migration framework нет.
-- **Результат:** не реализовано.
+- **Результат:** [PR #70](https://github.com/meInteractive/it-map/pull/70), code05b8a588719faa36988019343e9aa89ca723c152/tree0ce30544ec3a579116d7fb1417a32a654671a247: Public40657232349/MariaDB40657232302 fully pass. Required job122711129066 подтвердил exact full schema metadata match, весь прежний source/SQL/API/browser/native regression pass. Полные columns/defaults/generated/index/check/FK/current reference schema/triggers; torn composite и changed metadata отвергаются до DDL. Исполнение и row-emptiness guard остаются GO-311.
 
 ### [ ] GO-311. Отдельный schema-init и восстановление новой базы (часть GO-100-D)
 
 - **Приоритет:** Критический, только sprint1.1.
 - **Зависимости:** GO-310 и принятый prepared-schema restore.
 - **Критерии:** явная служебная команда до HTTP startup; DB-scoped ownership, только trusted missing DDL; запрет изменения чужой/несовместимой или populated partial schema. DDL implicit commits отделены от data TX, точная проверка структуры до готовности и generation seed; bounded failure/retry без удаления/перезаписи существующих строк. Actual source restore/round-trip на новой synthetic disposable DB и failures после нескольких DDL шагов. Без real DB/deploy.
-- **Результат:** не реализовано.
+- **Реализация (ожидает CI):** explicit `itmap schema-init`, pristine partial guard включая allocated ID, same restore ownership, full metadata→generation seed. Separate blank disposable job bound workflow nonce в SCHEMATA comment; required4 parents: source14/16/39 new-schema restore/round-trip, late DDL/seed failure/retry и unknown COMMIT, actual CLI, ownership. Все positive SQL только CI.
