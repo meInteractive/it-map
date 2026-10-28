@@ -25,7 +25,7 @@ id_ed25519*
 !server/generated/backup-schema.json
 *snapshot*.json
 *d1-original*
-# Do not ignore all files containing "mariadb": docs/MARIADB.md is tracked.
+# Do not ignore all files containing "mariadb": docs/dev/MARIADB.md is tracked.
 .wrangler/
 .sites-runtime/
 .migration/

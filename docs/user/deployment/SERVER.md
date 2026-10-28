@@ -56,7 +56,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON itmap_dev.* TO 'itmap_app'@'127.0.0.1';
 
 Команда создаёт только missing trusted objects в новой или нетронутой частично созданной базе. Неизвестная/изменённая структура, существующие строки или ранее выделенные ID в partial schema вызывают отказ до DDL. Полная готовая база с поколением проверяется без изменения данных/счётчиков/поколения. DDL-шаги коммитятся MariaDB отдельно: после прерывания повторная команда заново сверяет структуру и продолжает только безопасный остаток; общего rollback DDL нет. После полной проверки структуры создаётся начальное поколение, затем запускают HTTP и отдельно восстанавливают файл через admin API.
 
-Это не migration framework и не разрешение автоматически изменять реальные базы. `db/testdata/empty-schema.sql`, `smoke-catalog.sql`, `read-models.sql` остаются одноразовыми CI-фикстурами; в production их не импортируют. Реальные schema/data/deploy операции агентом не выполнялись. Статус и ограничения — [MARIADB.md](../MARIADB.md), [BACKUP_FORMAT.md](../BACKUP_FORMAT.md).
+Это не migration framework и не разрешение автоматически изменять реальные базы. `db/testdata/empty-schema.sql`, `smoke-catalog.sql`, `read-models.sql` остаются одноразовыми CI-фикстурами; в production их не импортируют. Реальные schema/data/deploy операции агентом не выполнялись. Статус и ограничения — [MARIADB.md](../../dev/MARIADB.md), [BACKUP_FORMAT.md](../BACKUP_FORMAT.md).
 
 ## 3. Конфигурация main и dev
 
@@ -99,7 +99,7 @@ sudo mv -Tf /opt/itmap/dev/current.next /opt/itmap/dev/current
 
 Это пример **первой** установки dev. Перед повторным обновлением сохраните `readlink /opt/itmap/dev/current`, проверьте отсутствие старого current.next и используйте блокировку всего переключения/проверки/отката. Автоматизация должна выполнять этот алгоритм централизованно, не параллельными SSH-командами.
 
-Установите [deploy/itmap@.service.example](../../deploy/itmap@.service.example) как `/etc/systemd/system/itmap@.service`, проверьте и запустите **только после** готовности DB/env/release:
+Установите [deploy/itmap@.service.example](../../../deploy/itmap@.service.example) как `/etc/systemd/system/itmap@.service`, проверьте и запустите **только после** готовности DB/env/release:
 
 ```bash
 sudo systemd-analyze verify /etc/systemd/system/itmap@.service
@@ -117,7 +117,7 @@ Main устанавливается аналогично в свой катал�
 
 ## 5. HTTPS через Nginx
 
-Создайте DNS A/при необходимости AAAA для двух собственных доменов, направленных на сервер. На **новом** сервере установите HTTP-шаблон [nginx-http.conf.example](../../deploy/nginx-http.conf.example) в `/etc/nginx/sites-available/itmap`, замените оба имени и включите сайт symlink в sites-enabled. Если default-site мешает, отключите только стандартный default на новом сервере, не чужой действующий сайт. Создайте `/var/www/letsencrypt`, проверьте `sudo nginx -t`, затем reload.
+Создайте DNS A/при необходимости AAAA для двух собственных доменов, направленных на сервер. На **новом** сервере установите HTTP-шаблон [nginx-http.conf.example](../../../deploy/nginx-http.conf.example) в `/etc/nginx/sites-available/itmap`, замените оба имени и включите сайт symlink в sites-enabled. Если default-site мешает, отключите только стандартный default на новом сервере, не чужой действующий сайт. Создайте `/var/www/letsencrypt`, проверьте `sudo nginx -t`, затем reload.
 
 Получите один SAN-сертификат для обоих доменов (заменить имена и email):
 
@@ -128,7 +128,7 @@ sudo certbot certonly --webroot -w /var/www/letsencrypt \
   --email <EMAIL_АДМИНИСТРАТОРА> --agree-tos
 ```
 
-Замените HTTP-only конфигурацию на [nginx.conf.example](../../deploy/nginx.conf.example) с реальными именами/путями сертификата. Оба TLS-блока в примере используют этот SAN-сертификат. `sudo nginx -t` должен пройти перед reload. Для продления настройте deploy hook `systemctl reload nginx` в `/etc/letsencrypt/renewal-hooks/deploy/`, проверьте `sudo certbot renew --dry-run` и timer Certbot. Сам сертификат, ключ и env-файлы остаются вне Git.
+Замените HTTP-only конфигурацию на [nginx.conf.example](../../../deploy/nginx.conf.example) с реальными именами/путями сертификата. Оба TLS-блока в примере используют этот SAN-сертификат. `sudo nginx -t` должен пройти перед reload. Для продления настройте deploy hook `systemctl reload nginx` в `/etc/letsencrypt/renewal-hooks/deploy/`, проверьте `sudo certbot renew --dry-run` и timer Certbot. Сам сертификат, ключ и env-файлы остаются вне Git.
 
 Proxy должен сохранять исходный `Host`, включая порт при нестандартном внешнем порте: `/auth` сравнивает Origin с Host. Не подменяйте Host на 127.0.0.1 и не включайте общий cache для HTML/API/auth. TLS завершается на Nginx, Go остаётся на HTTP loopback. Шаблон ограничивает тело 2 MiB для текущего ограниченного режима; будущий импорт/restore больших файлов потребует отдельной настройки и реализации API. Не обещайте его работу сейчас.
 

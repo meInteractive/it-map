@@ -30,11 +30,11 @@ Node24.19 / ICU78.3 / CLDR48 / Unicode17 не всегда считает рав
 
 Рассмотренная альтернатива — точный перенос поведения Node, включая эти случаи: продолжить перенос FCD iterator/lookahead/rollback ICU вместо канонической подготовки ключей. Это требует дальнейшей реализации и differential proof; приближённая замена не включается автоматически.
 
-[AGENTS.md](../AGENTS.md) требует согласования несовместимого изменения. Пользователь явно делегировал этот выбор; выбранный канонический порядок и допустимые отличия зафиксированы в [ADR-023](DECISIONS.md). Блокировка решения снята. C-P остаётся открытой до required comparator/plan proof, C-S/D — до своих SQL/bootstrap gates; сам документ не включает runtime.
+[AGENTS.md](../../AGENTS.md) требует согласования несовместимого изменения. Пользователь явно делегировал этот выбор; выбранный канонический порядок и допустимые отличия зафиксированы в [ADR-023](DECISIONS.md). Блокировка решения снята. C-P остаётся открытой до required comparator/plan proof, C-S/D — до своих SQL/bootstrap gates; сам документ не включает runtime.
 
 ## Воспроизводимость исследования
 
-Генератор, таблица, лицензия и required tests перенесены в [internal/rucollation](../internal/rucollation/README.md). Проверка `node scripts/collation/generate.mjs` воспроизводит данные byte-for-byte на закреплённых Node24.19.0/ICU78.3. Расширенный required oracle теперь содержит479072 пары (исходные418748 +324 representative pairs +60000 unrelated random pairs) и восемь явно разрешённых отличий; остальные сравнения должны совпасть с неизменённым Node. Дополнительно170 unchanged legacy plans сравнивают каталог/rank и все52 таблицы, warnings/order/preserve/clock без выполнения SQL. C-P принята на #68/code97bad5d: Public40651564976 и MariaDB40651565061 pass. Подключение SQL/HTTP принимает отдельная C-S.
+Генератор, таблица, лицензия и required tests перенесены в [internal/rucollation](../../internal/rucollation/README.md). Проверка `node scripts/collation/generate.mjs` воспроизводит данные byte-for-byte на закреплённых Node24.19.0/ICU78.3. Расширенный required oracle теперь содержит479072 пары (исходные418748 +324 representative pairs +60000 unrelated random pairs) и восемь явно разрешённых отличий; остальные сравнения должны совпасть с неизменённым Node. Дополнительно170 unchanged legacy plans сравнивают каталог/rank и все52 таблицы, warnings/order/preserve/clock без выполнения SQL. C-P принята на #68/code97bad5d: Public40651564976 и MariaDB40651565061 pass. Подключение SQL/HTTP принимает отдельная C-S.
 
 Минимальный воспроизводитель исходного поведения (Node24):
 

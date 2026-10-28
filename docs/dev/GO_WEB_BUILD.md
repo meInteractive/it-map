@@ -1,6 +1,6 @@
 # Sprint 1.1.06: isolated React SPA build
 
-Актуальные инструкции: [запуск/деплой](deployment/README.md), [подтверждённые browser-проверки](BROWSER_SMOKE.md). Историческое сообщение о недоступной npm-сборке ниже относится к прежней offline-среде; сборка и синтетические desktop/mobile проверки впоследствии прошли. Полная миграция/API parity по-прежнему не завершена.
+Актуальные инструкции: [запуск/деплой](../user/deployment/README.md), [подтверждённые browser-проверки](BROWSER_SMOKE.md). Историческое сообщение о недоступной npm-сборке ниже относится к прежней offline-среде; сборка и синтетические desktop/mobile проверки впоследствии прошли. Полная миграция/API parity по-прежнему не завершена.
 
 The original React application remains in `frontend/` and `shared/`.
 `npm run build:web` uses `vite.web.config.ts` to build it from `web/main.tsx`

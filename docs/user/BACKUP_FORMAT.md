@@ -178,7 +178,7 @@ Entity fields приняты на #60/code4ce126b: Public40507165590 и MariaDB4
 
 ### GO-100-C-P/C-S: unsigned v14–15 и prepared schema
 
-C-P принята на [#68](https://github.com/meInteractive/it-map/pull/68), code97bad5d; Public40651564976/MariaDB40651565061 fully pass. Канонический русский порядок [ADR-023](DECISIONS.md), stable ties, score/rank и поля каталога проверены479072 сравнениями/170 source plans. Оригинальные parsed overflow numbers сохраняются до арифметики/truthiness; текст названий не нормализуется для хранения.
+C-P принята на [#68](https://github.com/meInteractive/it-map/pull/68), code97bad5d; Public40651564976/MariaDB40651565061 fully pass. Канонический русский порядок [ADR-023](https://github.com/meInteractive/it-map/blob/main/docs/dev/DECISIONS.md), stable ties, score/rank и поля каталога проверены479072 сравнениями/170 source plans. Оригинальные parsed overflow numbers сохраняются до арифметики/truthiness; текст названий не нормализуется для хранения.
 
 Реализация C-S расширяет generic `PrepareRestore`/`Repository.ValidateRestore`/`Restore` до v14–39. Strict `ValidateModernBackup`/`PrepareModernRestore` и V39 wrappers сохраняют прежние границы. v14–15 не имеют гарантии integrity: их SQL/schema/migrations/sequences из файла игнорируются. Current/MAX high-water назначения сохраняется; uploaded sequence не резервирует ID. Непредставимые SQL scalar/некорректная нормализация отвергаются до подключения/counter DDL.
 

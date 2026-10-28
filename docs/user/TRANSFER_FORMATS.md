@@ -341,7 +341,7 @@ if (!response.ok) throw new Error(result.error);
 
 Бэкап кода из Git сохраняет исходники, зависимости/lockfile, документацию и миграции. Наличие src/data.json или SQL seed в нём не заменяет копию текущей D1. Для переноса нужны оба вида копий и отдельно настройки среды. История Git включается только если её явно экспортировали; архив исходников сам по себе не полный Git-репозиторий.
 
-Подробная спецификация генерируется из docs/BACKUP_FORMAT.md; не редактируйте вставленный блок отдельно.
+Подробная спецификация генерируется из docs/user/BACKUP_FORMAT.md; не редактируйте вставленный блок отдельно.
 
 <!-- AUTO:BACKUP_DETAILS -->
 ## Техническая спецификация бэкапа v39
@@ -417,6 +417,16 @@ GET /api/backup читает все 52 прикладные таблицы: ка
 
 ## Реализация и проверки
 
+### Состояние Go-переноса
+
+GO-094 переносит текущий v39 в `internal/backup`: проверку состава/manifest/FK/sequences/catalog, SHA-256 по семантике `JSON.stringify`, входной byte cap и форматирование с итоговым лимитом 25 МиБ. `internal/v39/schema.json` — точная копия доверенной структуры старого приложения, без строк таблиц. 67 синтетических differential cases исполняют неизменённые JS digest/validator/request reader и сравнивают результат с Go. Векторы передаются через pipe; файлы пользовательских бэкапов не создаются.
+
+GO-095 добавляет `GET /api/backup` для администратора: все прикладные строки читаются в одной read-only Repeatable Read транзакции, структура сверяется до/после, файл полностью проверяется до отправки. Required disposable SQL/HTTP CI подтверждает полноту и совместимость; текущий статус приёмки — в `tasks/SPRINT-01.md`. GO-098 добавил atomic v39 restore/generation, GO-099 подключает admin POST/validate (подробности и текущие проверки ниже). Signed v16–38 добавлены GO-100-B; v14–15/bootstrap остаются GO-100-C/D, полная GO-019 ещё открыта.
+
+MariaDB `AUTO_INCREMENT` не входит в MVCC-снимок строк. Экспорт сохраняет безопасную верхнюю границу: `next_id-1`, прочитанную после строк, как минимум максимальный ID снимка. В ней могут оставаться промежутки от concurrent/rolled-back allocations; они не понижаются ради сходства со SQLite. `metadata.schema` содержит доверенный логический SQLite DDL из репозитория, а не физический MariaDB dump; фактические columns/engines и два известных invisible generated поля проверяются отдельно. DDL загруженного файла не исполняется. Отсутствующий сохранённый каталог получает source `normalizeCatalog(DATA)` только в файле, без вставки в базу. Исходное JS-поведение и его проверки описаны ниже.
+
+GO-097 добавляет pure `PrepareV39Restore`: source scheduler/Apify safety transforms, warnings и parent-first table/role order проверены 28 сравнениями с неизменённым JS. GO-101 подготавливает counters в отдельной сессии: advisory restore owner, `LOCK TABLES … WRITE`, повторный current/MAX и только увеличение `AUTO_INCREMENT` до начала data TX. MariaDB-проверки подтверждают сохранение write fence после фактического ALTER, cleanup после cancel/fault и сохранность непустых данных/generation. Для этой стадии нужны SELECT/LOCK TABLES/ALTER на prepared schema; реальные права здесь не настраиваются. Ошибка может оставить безопасные ID gaps, но не изменённые прикладные строки. Atomic data replacement и HTTP v39 реализованы GO-098/099; текущая приёмка отражена ниже и в tasks.
+
 Код: `server/backup/index.js`, константы `server/constants.js`, доверенная схема `scripts/backup-schema.mjs` → `server/generated/backup-schema.json`. Генератор исполняет SQL в изолированной SQLite в памяти, без рабочего D1 и seed-данных; нужен Node ≥24.
 
 `test-backup-roundtrip.mjs` проверяет все прикладные таблицы, даты/длинные тексты, raw JSON/ID, совместимость, неполные файлы, checksum, ограничения/FK, авторизацию, потоковые лимиты и откат. `test-backup-miniflare.mjs` проверяет восстановление через локальный D1/workerd, включая оба раздела диагностики. `test-backup-diagnostics.mjs` отдельно сравнивает 30-дневные наблюдения/средние и воронку с пересечением источника/парсера до и после восстановления в пустую базу; проверяет совместимость v38 по immutable token и откат ошибочных наблюдений. `test-cover-letter.mjs`, `test-runtime-generation.mjs`, `test-ai-restore-barrier.mjs` покрывают новые поля и барьеры. Проверки используют синтетические данные, не полный снимок текущей рабочей базы.
@@ -457,6 +467,97 @@ Firecrawl в версии30: firecrawl_settings и vacancy_source_parsing вхо
 Настройки общего выбора источников (16.10.2026) хранятся внутри прежнего scheduler_json: sourceIds и intervalDays. Backup остаётся35, состав SQL-таблиц/столбцов прежний. При чтении/restore старых35 без sourceIds берутся типы ранее auto_enabled источников; до35 список пустой. Restore сохраняет выбор, но всегда выключает выполнение и сбрасывает облачную привязку.
 
 SQL0062 снимает прежний предел количества вакансий на организацию, не меняя layout backup35. При восстановлении используется актуальный доверенный DDL без ограничивающего триггера; старый `company_vacancies_max_10` удаляется до загрузки строк. Старый backup не возвращает ограничение.
+
+### GO-098: транзакционное ядро v39 на подготовленной MariaDB
+
+`backup.Repository.RestoreV39` использует validated source plan и отдельный counter preflight, затем заменяет 52 прикладные таблицы в одной Repeatable Read TX. Первой блокируется generation, служебные receipt/spend не импортируются и сохраняются; старые classification leases удаляются исходным FK CASCADE. Все scalar значения проверяются на представимость до DDL, а восстановленные строки сравниваются как точные multisets до generation rotate/COMMIT; FK/CHECK и исходные триггеры остаются включены. Explicit zero IDs сохраняются через временный session SQL mode с возвратом настройки при Close. Новые таблицы/SQL из metadata не создаются.
+
+Ядро принято на #53/de99bfe по отдельной disposable restore job и полному CI. Runtime POST подключён в GO-099; исторические версии/bootstrap остаются GO-100. После rollback допустимы только поднятые counter high-water/gaps, без частично восстановленных бизнес-данных или смены generation.
+
+### GO-099: admin HTTP v39 и границы crash proof
+
+`POST /api/backup/validate` строит проверенный план и читает подготовленную схему без DDL/ID/generation writes. `POST /api/backup` выполняет атомарный restore. Обе операции требуют подписанную admin session; cross-origin — 403, declared/actual stream свыше 25 MiB — 413, invalid input и SQL restore failure — 400 (как source, SQL details скрыты), отсутствие настроенного хранилища — 503. Ответы JSON/private/no-store; исходные summary/warnings сохранены. `/api/backup` GET продолжает безопасный export.
+
+Процессный тест останавливает отдельный Go writer непосредственно перед COMMIT, принудительно завершает его SIGKILL и повторяет операцию новым процессом. Это проверка client process/socket loss, **не** аварии MariaDB, ОС или физического носителя. Конкурентные receipt/create и scheduler mutations проверяют существующий generation fence. GO-099 принят на #54/1b12301: Public40464855878 и MariaDB40464855875 pass. Отдельная disposable job проверила crash/fresh process, receipts/concurrency, admin HTTP и late-result SQL boundary без skips. На этапе GO-099 historical restore ещё не был принят; v16–38 добавлены GO-100-B ниже, v14–15/bootstrap остаются открытыми.
+
+`storage.WithinGenerationTx` переносит SQL boundary legacy `generationBoundDb.batch`: expected generation фиксируется до внешней работы, после её завершения generation lock и все statements результата выполняются в одной TX. Запоздавший результат отвергается до callback; callback сохраняет ответственность за права/CAS/input/lease guards. Внутри callback нельзя обращаться к провайдеру. Для будущих AI HTTP handlers ErrGenerationChanged соответствует source409/code `restored`; AI/provider orchestration этим barrier proof не принимается. Required source oracle исполняет unchanged wrapper на SQLite :memory:, а disposable SQL gates проверяют stale/fresh/rollback/concurrent restore с синтетическим результатом. HTTP restore ограничен 45 секундами до общего server write deadline.
+
+### GO-100-A: проверка исторических signed formats
+
+`ValidateModernBackup` проверяет форматы v16–39 без доступа к БД: состав таблиц и столбцов зависит от версии, включая optional старые cover-letter/prompt-model layouts, ранние Firecrawl/scheduler поля и поздний agency FK. Manifest, integrity, scalar/row limits, typed FK и raw catalog проверяются с исходной семантикой. Required unchanged JS oracle содержит 416 synthetic vectors для всех 24 версий; #56/code92fff43 прошёл Public40469083705 и MariaDB40469083582, включая весь прежний v39/SQL/API/browser regression.
+
+Это отдельная pure-валидация, ещё не план historical restore: она не добавляет отсутствующие разделы/defaults, не читает preserve rows и не пишет SQL. `ValidateV39` и export сохраняют v39 контракт. Runtime validate/restore расширены до v16–39 в GO-100-B ниже. C (v14–15) и D (trusted bootstrap) остаются открытыми; полная GO-042 не принята.
+
+### GO-100-B-P: исторический план без SQL
+
+`PrepareModernRestore(data, current, now)` переносит source plan v16–39. Отсутствующие в старом файле профили/настройки/промты/история сохраняются по исходным version gates; staging/import/detail storage очищается, role classification remap использует stable key, intake history — immutable candidate token. Старое одиночное поле роли преобразуется с исходными Unicode/whitespace/multi-selection/ambiguity правилами. Scheduler/Apify safety и warnings сохранены.
+
+Публичная source policy хранит шаблоны стандартных ролей, warnings и Unicode metadata Node24; никаких пользовательских строк/ключей. Required oracle исполняет unchanged prepareBackupRestore/restoreBackup на metadata spies: 216 случаев для всех 24 версий, реальный SQL не выполняется. Входные bytes/current snapshot остаются caller-owned и не меняются. Сам pure helper не выполняет SQL: caller обязан заново получить preserve rows под data TX locks; stale pre-validation snapshot использовать нельзя. Runtime GO-100-B-S принят ниже; полный GO-100 остаётся открытым.
+
+### GO-100-B-S: prepared-schema restore signed v16–39
+
+Generic `Repository.ValidateRestore` / `Restore` подключены к прежним admin URL и принимают signed v16–39 на подготовленной схеме с initialized generation id1. Ответ restore сохраняет sourceVersion входного файла и version39 текущего экспорта; авторизация, origin, body cap и private/no-store не меняются. Strict Go V39 wrappers сохранены. Предварительная validation использует read-only согласованный snapshot без counter/DDL/generation writes.
+
+При записи предварительный plan использует только incoming/generated IDs; поднятие AUTO_INCREMENT завершается до data TX. Финальный plan строится заново после generation FOR UPDATE из актуальных source-preserve таблиц, прочитанных в постоянном parent-first порядке через SELECT FOR UPDATE. Row/gap locks удерживаются до replacement/verification/generation rotate/COMMIT; изменения между validate и restore не подменяются старой копией. Остальные operational receipts/spend не импортируются. DDL внутри data TX нет.
+
+Расширенный план (входные и сохраняемые строки) ограничен 200000 строками и 25 MiB row JSON; слишком большой combined plan отвергается без частичного восстановления, rollback может оставить безопасные counter gaps. Это дополнительная явная граница безопасного Go restore, а не обещание импорта произвольного объёма current state. Все physical values/FK проверяются до COMMIT.
+
+B-S принят на #58/code5b91bc5: Public40479135218 и MariaDB40479135520 полностью pass. Required historical job122104725668 выполнила каждую версию16–38, source SQL comparison/round-trip/counters, late faults/retry, оба порядка profile save/restore и actual signed admin HTTP; zero skips, весь прежний regression успешен. Настоящая MariaDB локально не запускалась, source oracle использует только SQLite :memory:. V14–15 и schema bootstrap остаются C/D, полный GO-100/042 не принят.
+
+### GO-100-C-V: pure validation unsigned v14–15
+
+`ValidateLegacyBackup` проверяет отдельный старый контракт: обязательные таблицы/столбцы, catalog AI/reviews/agency ratings, точный scalar layout, typed FK и лимиты строк/входных bytes. v14 допускает отсутствие AI-полей компании; v15 требует оба поля. Длины текста считаются в UTF16, числовые оценки агентств используют исходные JS coercion и half-step tolerance; normalizing/recalculation здесь нет. Входные scalars и catalog остаются неизменными.
+
+Старые версии не гарантировали integrity, manifest, исходную дату и counters. Неизвестные legacy metadata не исполняются и не переносятся в доверенные поля плана; они не становятся signed v16 через подмену версии. Required unchanged JS oracle сравнивает 1468 синтетических случаев (469 приняты), включая все обязательные столбцы/typed FK, optional audit, UTF16 и source diagnostics. Native TypeError текста движка не фиксируется, отказ всё равно должен быть безопасным 400.
+
+Это pure validator, без SQL и без расширения runtime validate/restore v16–39. C-P должен отдельно перенести source normalizeCatalog/plan, omitted calendar/audit preserve и truthful warnings; C-S — доказать запись на disposable MariaDB. Ни GO-100-C, ни полная GO-042 по одному валидатору не принимаются.
+
+C-V принята на #59/code6710498: Public40482915844/MariaDB40482915965 полностью pass, required legacy1468 и весь прежний source/SQL/API/browser regression успешны. Только pure validation; source catalog normalization/legacy plan и SQL приёмка остаются C-P/C-S.
+
+### GO-100-C-P: нормализация полей до полного legacy plan
+
+Private entity helpers переносят company rating/WLB/salary/default sources и agency choices/score/revenue/reviews/UTF16 guide slicing. Исходный ordered input сохраняется до арифметики: overflow Number, отсутствующее поле, NULL и пустая строка не взаимозаменяемы. Source Math.round, object spread, точные UTF16 names/default lookup и inherited plain-object application defaults проверяются отдельно. Public catalog policy содержит только уже опубликованные options/default URLs и synthetic reference companies из src/data.json; source gate проверяет drift.
+
+Required unchanged JS oracle сравнивает 705 случаев (700 приняты), по одной сущности, включая source отказ при throwing coercion. Company rank передаётся helper явно; сортировка и выбор rank этим oracle **не проверяются**. Внешний probe x/text collate v0.23.0 не совпал с Node24 localeCompare(ru), библиотека в проект не добавлена. Нет нового runtime/SQL/API или Node runtime dependency. Совместимая сортировка полного каталога и legacy restore plan/preserve/warnings остаются открытой частью C-P; C-S/D и весь GO-042 не принимаются по entity-only proof.
+
+Entity fields приняты на #60/code4ce126b: Public40507165590 и MariaDB40507165592 полностью pass, required705 и весь прежний regression успешны. Source сравнения выполнены на Node24.19/ICU78.3/CLDR48/Unicode17. Порядок компаний/rank и full legacy plan остаются непроверенными и не подключены к runtime.
+
+### GO-100-C-P/C-S: unsigned v14–15 и prepared schema
+
+C-P принята на [#68](https://github.com/meInteractive/it-map/pull/68), code97bad5d; Public40651564976/MariaDB40651565061 fully pass. Канонический русский порядок [ADR-023](https://github.com/meInteractive/it-map/blob/main/docs/dev/DECISIONS.md), stable ties, score/rank и поля каталога проверены479072 сравнениями/170 source plans. Оригинальные parsed overflow numbers сохраняются до арифметики/truthiness; текст названий не нормализуется для хранения.
+
+Реализация C-S расширяет generic `PrepareRestore`/`Repository.ValidateRestore`/`Restore` до v14–39. Strict `ValidateModernBackup`/`PrepareModernRestore` и V39 wrappers сохраняют прежние границы. v14–15 не имеют гарантии integrity: их SQL/schema/migrations/sequences из файла игнорируются. Current/MAX high-water назначения сохраняется; uploaded sequence не резервирует ID. Непредставимые SQL scalar/некорректная нормализация отвергаются до подключения/counter DDL.
+
+Для legacy calendar сохраняется всегда; audit — только при отсутствии раздела, явно пустой audit очищает строки. Набор destination reads фиксируется по входному файлу до pure planning; final rows читаются заново под generation и `FOR UPDATE` locks до замены. `/validate` использует read-only snapshot и не резервирует counters/generation. Все normalization/clock/defaults завершаются до COMMIT.
+
+C-S принята на #69/code2297175: Public40653587489/MariaDB40653587455 fully pass. Required job122699204697 выполнил все6 signed/unsigned parents без skips. Проверены unchanged source SQLite :memory: эталон, round-trip v39, rollback/retry и оба порядка concurrent calendar/audit writers. Trusted schema bootstrap D и полная GO-042 не приняты. Реальные backups/DB/keys/providers не используются.
+
+### GO-100-D / GO-310…311: trusted bootstrap отдельно от restore
+
+GO-310/#70 принят на05b8a588: Public40657232349/MariaDB40657232302 fully pass;217 trusted DDL actions и exact full metadata contract72/606/269 index rows/117 CHECK/50 FK/22 triggers. SQL не берётся из загружаемого файла.
+
+GO-311 реализует отдельный offline `itmap schema-init` до HTTP startup. Missing trusted objects создаются только в pristine empty/empty-partial DB под общим restore ownership; изменения и чужие объекты, строки и прошлые ID allocations вызывают отказ. Полная база с текущим поколением проверяется без мутаций. MariaDB DDL commits отделены от generation seed TX и последующего restore data TX; failure не обещает общего DDL rollback. Повтор инспектирует фактический результат даже при unknown prior commit. Начальное поколение генерируется до своей TX, после exact schema check; post-commit normalization нет. Actual bootstrap/CLI/source restore/fault/retry proof принят на PR #71/bb2455a: Public40661335744/MariaDB40661335605; четыре required parents без skips, только blank disposable CI.
+
+## Функциональная приёмка интерфейса восстановления (GO-321)
+
+Критический SQL/export/restore/generation/rollback/crash core принят ранее.
+Средняя часть019 проверяет существующие ExportCard/BackupRestore через
+настоящий браузер, Go router и отдельную disposable MariaDB: скачать v39,
+изменить synthetic favorite после снимка, выбрать скачанный файл, получить
+validation preview, отменить confirmation без restore POST, подтвердить restore
+и после reload увидеть восстановленные сохранённые данные.
+
+Required backup-browser-acceptance job запускает6 desktop/mobile сценариев:
+round-trip, malformed/oversize/невалидная структура и пользовательские роли.
+Каждый успешный restore меняет generation; validate и отказ прав его сохраняют.
+Проверяется ровно2 подтверждённых SQL restore и0 skips. Настоящие API responses
+не подменяются. Все browser requests ограничены loopback origin; trace/video/
+screenshots выключены, скачанные/загруженные synthetic backup остаются только
+во временном browser workspace и не публикуются. Живые базы/backup/ключи не
+используются; реальный операторский rehearsal/cutover остаётся отдельным.
+
+Локально допускаются compile/typecheck/discovery и guard refusals. Positive
+SQL/browser proof выполняется только в guarded GitHub CI; до него321 не принята.
 
 <!-- /AUTO:BACKUP_DETAILS -->
 

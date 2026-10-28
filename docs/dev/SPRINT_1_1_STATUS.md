@@ -32,7 +32,7 @@ At this historical checkpoint, only the vacancy flag PUT wrote to the database. 
 
 **Not yet verified:** MariaDB integration (server/driver unavailable locally); React build with downloaded npm dependencies; API compatibility against a running staging site; behavior under live concurrent writes; scheduling, parsing, backup/restore, Google Calendar, most CRM writes and vacancy editing. The vacancy listing is implemented but not yet proven against a live staging MariaDB.
 
-The initial schema conversion did not preserve all original UNIQUE constraints. In particular, the identity name columns remain LONGTEXT without uniqueness. Existing identity mappings in the supplied snapshot are complete, but new company imports need an explicit, tested identity creation and uniqueness migration. See `docs/GO_CATALOG_PORT.md` and `db/identity-preflight.sql`.
+The initial schema conversion did not preserve all original UNIQUE constraints. In particular, the identity name columns remain LONGTEXT without uniqueness. Existing identity mappings in the supplied snapshot are complete, but new company imports need an explicit, tested identity creation and uniqueness migration. See `docs/dev/GO_CATALOG_PORT.md` and `db/identity-preflight.sql`.
 
 ## Next engineering milestones
 
@@ -49,7 +49,7 @@ To run the SQL integration test on an isolated, non-production MariaDB loaded wi
 
 ## Next checkpoint: vacancy drawer and personal flags
 
-`GET /api/vacancies/{id}` and `PUT /api/vacancies/{id}/state` are implemented, with handler/unit tests but **not yet confirmed against live MariaDB**. See `docs/GO_VACANCY_DETAIL_AND_FLAGS.md` and `db/vacancy-state-preflight.sql`. The personal flag writer serializes Go writes with a vacancy row lock and synchronizes pre-existing duplicate user-state rows; an eventual uniqueness/index migration is still needed. The Go editor remains disabled.
+`GET /api/vacancies/{id}` and `PUT /api/vacancies/{id}/state` are implemented, with handler/unit tests but **not yet confirmed against live MariaDB**. See `docs/dev/GO_VACANCY_DETAIL_AND_FLAGS.md` and `db/vacancy-state-preflight.sql`. The personal flag writer serializes Go writes with a vacancy row lock and synchronizes pre-existing duplicate user-state rows; an eventual uniqueness/index migration is still needed. The Go editor remains disabled.
 
 ## Tasks checkpoint
 
@@ -57,7 +57,7 @@ To run the SQL integration test on an isolated, non-production MariaDB loaded wi
 
 ## V5 continuation (2026-10-23)
 
-See `docs/SPRINT_1_1_V5.md` for four new implementation commits covering
+See `docs/dev/SPRINT_1_1_V5.md` for four new implementation commits covering
 application reads, task completion, company favorites/hidden lists and company
 CRM state/history. The production readiness gate remains closed.
 

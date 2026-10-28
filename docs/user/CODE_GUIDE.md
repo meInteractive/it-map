@@ -62,7 +62,7 @@ Sites/Vinext + Vite собирают один Cloudflare Worker с D1 (`DB`). О
 | scripts/prepare-server.mjs, documentation.mjs, backup-schema.mjs | Автоблоки документации и доверенная схема восстановления |
 | scripts/run-framework.mjs, build-verified.sh, vite.config.ts | portable/managed сборка dist/client и dist/server |
 | scripts/validate.mjs, run-tests.mjs, test-*.mjs | Архитектурные, TypeScript, HTTP/React/D1 регрессии |
-| docs/manifest.json, docs/*.md, AGENTS.md | Актуальные руководства, история и инструкции следующему агенту |
+| docs/user/manifest.json, docs/*.md, AGENTS.md | Актуальные руководства, история и инструкции следующему агенту |
 | .openai/hosting.json | Идентичность проекта и bindings, сохранять при обновлении |
 | worker/, scripts/build.mjs | Исторический эталон; текущие npm build/start его не используют |
 
@@ -150,7 +150,7 @@ npm start -- --port 8787
 
 `npm run typecheck` — strict TS. `node scripts/test-documentation.mjs` —8sections/ACL/downloads/Markdown/SQL. `node scripts/test-react.mjs` —16 React-сценариев. `npm run validate` после build проверяет архитектуру/секреты/миграции/форматы, затем запускает TypeScript и 58 root test suites (число на 09.10; runner находит файлы автоматически). Проверки используют синтетические данные; для исторических Git fixtures нужен полный Git checkout, не shallow ZIP без .git.
 
-При доработке меняйте текущий модуль, контракт shared и соответствующие документы. Не редактируйте generated JSON/AUTO-блоки вручную, старые SQL и историю пользовательских ТЗ. Делайте маленькие проверяемые задачи и push refactor/react-typescript с проверкой SHA. [Инструкция сопровождения](MAINTENANCE.md) задаёт быстрый порядок обновления документации и публикации; [журнал](CHANGELOG.md) хранит дату/функциональность/затронутые данные.
+При доработке меняйте текущий модуль, контракт shared и соответствующие документы. Не редактируйте generated JSON/AUTO-блоки вручную, старые SQL и историю пользовательских ТЗ. Делайте маленькие проверяемые задачи и push refactor/react-typescript с проверкой SHA. [Инструкция сопровождения](https://github.com/meInteractive/it-map/blob/main/docs/dev/MAINTENANCE.md) задаёт быстрый порядок обновления документации и публикации; [журнал](CHANGELOG.md) хранит дату/функциональность/затронутые данные.
 
 `integrations/jev.js` проверяет `typesafe/jev-1.13` в каталоге OpenRouter с явным `output_modalities=decisions`: без этого параметра API по умолчанию возвращает только text-модели и скрывает доступную JEV. Затем адаптер отправляет Score через `/api/alpha/decisions`. `runPromptAI` для relevance/openrouterModel=jev возвращает числовую оценку 0–100, нормализуя десять уровней Score; сохраняет фактическую модель в журнале. Бесплатный режим по-прежнему использует текущий рейтинг/fallback. Неподдерживаемая задача, неверная модель/оценка или отсутствие средств возвращает ошибку без переключения. Адаптер запускается только при явном POST расчёта вакансии; сохранение настроек и открытие карточки его не вызывают.
 

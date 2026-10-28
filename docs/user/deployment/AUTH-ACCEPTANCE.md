@@ -26,7 +26,7 @@ Secure cookie по HTTP, чужой Origin403, tampered/signed-expired token401,
 проверяет доставку Secure cookie и полученные атрибуты; browser SameSite
 policy он не моделирует. Внешний браузерный сценарий остаётся отдельным.
 Nginx-шаблон уже передаёт исходный Host вместе с портом через `$http_host`:
-[nginx.conf.example](../../deploy/nginx.conf.example). Ради входа нельзя
+[nginx.conf.example](../../../deploy/nginx.conf.example). Ради входа нельзя
 ослаблять same-origin guard или доверять присланному клиентом X-Forwarded-Host.
 
 ## Сценарий на разрешённом staging-домене

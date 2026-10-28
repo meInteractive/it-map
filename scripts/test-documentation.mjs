@@ -20,7 +20,7 @@ const markdowns=[];
 for(const section of index.sections){
  const response=await request('/api/docs/'+section.id,admin,'GET',dbForbidden);assert.equal(response.status,200);assert.match(response.headers.get('content-type'),/^text\/markdown/);assert.match(response.headers.get('cache-control'),/no-store/);
  const markdown=await response.text();assert.ok(markdown.startsWith('# '));assert.ok(markdown.length>1000);assert.ok(!/\{\{[A-Z_]+\}\}/.test(markdown));markdowns.push(markdown);
- assert.equal(markdown,fs.readFileSync(new URL('../docs/'+section.file,import.meta.url),'utf8'));
+ assert.equal(markdown,fs.readFileSync(new URL('../docs/user/'+section.file,import.meta.url),'utf8'));
  const download=await request('/api/docs/'+section.id+'?download=1',admin);assert.match(download.headers.get('content-disposition'),/^attachment; filename="[A-Z_]+\.md"$/);
  for(const method of ['POST','PUT','DELETE'])assert.equal((await request('/api/docs/'+section.id,admin,method)).status,405);
 }
@@ -33,9 +33,11 @@ const {settingsSections}=await moduleFor('frontend/features/settings/sections.ts
 assert.ok(settingsSections(true).some(([key])=>key==='docs'));
 assert.deepEqual(settingsSections(false).map(([key])=>key),['general','resume']);
 const {Markdown}=await moduleFor('frontend/components/Markdown.tsx');
-for(const markdown of markdowns){const html=render(Markdown,{value:markdown});assert.match(html,/<h1>/);assert.ok(!html.includes('&lt;!-- AUTO:'));assert.ok(!html.includes('<script>'));}
+for(const markdown of markdowns){const html=render(Markdown,{value:markdown});assert.match(html,/<h1>/);assert.ok(!html.includes('&lt;!-- AUTO:'));assert.ok(!html.includes('<script>'));
+ for(const match of html.matchAll(/href="([A-Z_]+\.md)(?:#[^"]*)?"/g))assert.ok(index.sections.some(section=>section.file===match[1]),'Ссылка приложения не соответствует разделу: '+match[1]);
+}
 const rendered=render(Markdown,{value:'# Test\n\n| A | B |\n| --- | --- |\n| 1 | 2 |\n\n```js\n<script>alert(1)</script>\n```\n\n[Bad](javascript:alert)\n<img src=x onerror=alert(1)>'});
 assert.match(rendered,/<table>/);assert.match(rendered,/<pre><code>/);assert.ok(!rendered.includes('<script>'));assert.ok(!rendered.includes('<img '));assert.ok(!rendered.includes('href="javascript:'));
 assert.match(render(Markdown,{value:'[API](API.md)'}),/href="API.md"/);
-const database=markdowns[index.sections.findIndex(s=>s.id==='database')];for(const t of buildBackupSchema(process.cwd()).tables){assert.ok(database.includes('## '+t.name));for(const c of t.columns)assert.ok(database.includes('| '+c.name+' |'))}
+const database=markdowns[index.sections.findIndex(s=>s.id==='database')];for(const t of Object.values(buildBackupSchema(process.cwd())).filter(Array.isArray).flat().filter(t=>Array.isArray(t.columns))){assert.ok(database.includes('## '+t.name));for(const c of t.columns)assert.ok(database.includes('| '+c.name+' |'))}
 console.log('Documentation verified: all 8 sections, admin-only HTML/API/downloads, no DB access, read-only methods, Markdown escaping/tables/code/links and all SQL fields.');
