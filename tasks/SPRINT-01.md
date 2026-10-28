@@ -1392,10 +1392,31 @@
 - **Критерии:** attempt lifecycle/reservation под теми же fences, global day/month ceiling включая old-generation spend/reserve; unknown outcome не бесплатный и не слепой повтор provider POST. Source billing differential, actual concurrent reservation, rollback/process crash/recovery и mock-only owned-job flow. Чтение реальных keys и включение parser остаются отдельными.
 - **Результат:** [PR #73](https://github.com/meInteractive/it-map/pull/73), codebb4be571749a5f01134afb33a12c6505450d688c/tree2c64e8d9dc52ca678469ffa8ba3ff7ba88790257: Public40691942853/MariaDB40691943019 fully pass. Required122828698691 —38 billing source+10 ownership/financial subcases, прежние143 job source+5 ownership тоже pass, zero skips. Actual two connections/global ceiling/release/generation/lease deadline/late rollback/unknown actual COMMIT/recovered panic/SIGKILL доказаны, весь regression pass. Без schema/provider activation.
 
-### [ ] GO-314. Аудит покрытия API текущего React-клиента (часть GO-002)
+### [x] GO-314. Аудит покрытия API текущего React-клиента (часть GO-002)
 
 - **Приоритет:** Критический, только sprint1.1.
 - **Зависимости:** исходный статический legacy inventory, текущие frontend/web и Go routes, подтверждённые API/source/SQL gates; production доступ не нужен.
 - **Цель:** устранить неоднозначность между числом выделенных leaf-задач и открытыми critical частями крупных задач.
 - **Критерии:** воспроизводимый AST inventory всех клиентских transport callsites (включая mutate/download/stream), проверяемая review matrix по семействам с Go handler/test references и явными gaps; динамические/неподтверждённые случаи не считать parity. Проверка stale inventory/reference drift в CI. Полная GO-002/golden и runtime API этой порцией не закрываются и не меняются.
-- **Результат:** воспроизводимый AST audit реализован:61 TS/TSX,129 transport/form/link sites,7 JSX URL bindings,1 download forwarding,26 evidence/gap families. Существование test refs/required SQL targets и source hashes проверяется; три negative drift mutations локально отвергнуты. CI gate добавлен после npm ci; до CI/PR proof узкая GO-314 остаётся открытой. Полный GO-002 не закрывается.
+- **Результат:** [PR #74](https://github.com/meInteractive/it-map/pull/74), codee8694d85f515936924788b4a39e54f4619f56a49/treecdb9c5856122d4625e306d84b09fc0f7cba26d53: Public40696413474/MariaDB40696413830 fully pass. AST audit61 TS/TSX/129 sites/7 bindings/1 forwarding/26 families; source hash/ref/required SQL target checks и3 negative drift mutations pass. Полный GO-002/golden не закрывается.
+
+### [ ] GO-315. Pure normalized list/map/detail каталога (часть GO-009)
+
+- **Приоритет:** Критический, только sprint1.1.
+- **Зависимости:** GO-314 audit, принятый source catalog codec/normalizer/Unicode GO-100-C-P.
+- **Критерии:** unchanged readCompactEntities/readCompanyDetail на synthetic fixtures против pure Go projection; normalization/order/rank/defaults, omitted vs null, user flags, embedded jobs/initialized state, ID/name fallback и сохранение detail без jobs. Не выполнять SQL/provider calls и не активировать новый runtime путь. Переиспользовать принятые field/JSON helpers, не писать второй независимый normalizer. Предшествующие restore/source gates не ломаются.
+- **Результат:** pure PrepareCatalogRead реализован без Repository/HTTP activation;1180 unchanged-source read-set fixtures локально pass. Общие object builders сохраняют Infinity/truthiness до финального DTO stringify, старые entity и170 unsigned restore/source plan gates pass. Full CI ещё ожидается;315 projections →316 search →317 readonly SQL/API.
+
+### [ ] GO-316. Pure source search каталога (часть GO-009)
+
+- **Приоритет:** Критический, только sprint1.1.
+- **Зависимости:** GO-315; общий нормализованный catalog view/codec.
+- **Критерии:** unchanged searchCatalogNames, точные JS lower/coercion/null/пробелы/embedded job-office-revenue-vpnAi поля и alias agencies search; без runtime/SQL activation до317.
+- **Результат:** не реализовано.
+
+### [ ] GO-317. Readonly MariaDB/API parity каталога (часть GO-009)
+
+- **Приоритет:** Критический, только sprint1.1.
+- **Зависимости:** GO-315/316 pure proofs, существующие baseline/identity/read models.
+- **Критерии:** подключить pure normalization/projection/search к Go Repository/HTTP; unchanged source SQLite reference + actual MariaDB readonly account, заранее подготовленные IDs, user isolation/flags/application selection/null/unknown IDs/name/errors и method/role contracts. GET не создаёт identities и не меняет business rows. Только synthetic disposable CI, без private snapshot. Полная GO-009/030 не закрывается синтетикой.
+- **Результат:** не реализовано.

@@ -63,6 +63,8 @@ jobs:
         run: go test -race -tags legacyinterop ./internal/backup -run '^TestLegacyUnsignedFormat$' -count=1
       - name: Verify legacy catalog entity fields with unchanged JS and zero SQL
         run: go test -race -tags legacyinterop ./internal/backup -run '^TestLegacyCatalogEntities$' -count=1
+      - name: Verify pure normalized catalog list map detail against unchanged source
+        run: go test -race -tags legacyinterop ./internal/backup -run '^TestCatalogReadProjectionSource$' -count=1
       - name: Reproduce pinned ICU Russian collation data from public Unicode mappings
         run: node scripts/collation/generate.mjs
       - name: Verify canonical Russian order against pinned Node and accepted exceptions
