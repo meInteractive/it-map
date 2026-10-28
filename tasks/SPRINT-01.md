@@ -759,8 +759,8 @@
 - **Компоненты:** новый Go scheduler.
 - **Критерии готовности:** Никакой потерянной/удвоенной задачи.
 - **Как проверить:** Crash/DB race tests.
-- **Известные ограничения:** Cycle lease/recovery проверен GO-080 на disposable MariaDB; job claim/monetary ledger/full pipeline ещё отсутствуют.
-- **Результат:** GO-080 / #35 d48e4d7 подтвердил global cycle owner/replay/expiry/generation fencing, SQL rollback и SIGKILL recovery с сохранением reserve/result. Job claim/owned mutation facade/durable monetary ledger/provider idempotency и полная GO-045 остаются открытыми.
+- **Известные ограничения:** Cycle lease/recovery GO-080 и job claim/owned mutations GO-312 приняты на disposable MariaDB; monetary ledger GO-313 ещё требует SQL proof. Pipeline/ticks/API относятся к отдельной GO-046.
+- **Результат:** GO-080 / #35 d48e4d7 подтвердил global cycle owner/replay/expiry/generation fencing, SQL rollback и SIGKILL recovery с сохранением reserve/result. GO-312/#72/a2683ba подтвердил source job claim/owned mutation facade/late rollback/expiry/SIGKILL. Monetary attempt ledger/joint proof GO-313 и полная GO-045 ещё открыты; provider activation/ticks отдельно GO-046.
 
 ### [ ] GO-046. Планировщик: этапы, тик, диагностика
 
@@ -1378,16 +1378,16 @@
 
 - **GO-311 proof:** [#71](https://github.com/meInteractive/it-map/pull/71), codebb2455a026f493460f3edfd33f62cc3dba8d7252/treeee44ccf27eab3f385b12ce22c69ad66526f16454, Public40661335744/MariaDB40661335605 fully pass;4 required parents no skips, весь старый regression pass.
 
-### [ ] GO-312. Scheduler job claim и owned mutations (часть GO-045)
+### [x] GO-312. Scheduler job claim и owned mutations (часть GO-045)
 
 - **Приоритет:** Критический, только sprint1.1.
 - **Зависимости:** принятые cycle owner/recovery GO-080, settings model GO-078, существующая schema. До реализации разделить оставшуюся045:312 job claim/lease/fenced mutations →313 atomic reservation/attempt ledger/joint recovery.
 - **Критерии:** source due/type/agency/candidate/HH-page eligibility и порядок, jobId/diagnostic/deferred режимы, atomic claim и lease owner; complete/defer/fail и transactional owned mutation facade с generation/run/job fences. Реальные два соединения, stale owner/run/generation, late rollback и expiry/crash/recovery без потери/двойного claim; unchanged source oracle на SQLite :memory:. Провайдеры/фоновые Go ticks не запускаются.
-- **Результат:** реализованы source claim/opaque lease/owned TX/finish,23 044 JSON и143 unchanged-source fixtures локально pass. SQL tests/CI добавлены; до actual required positive disposable CI task остаётся открытой.
+- **Результат:** [PR #72](https://github.com/meInteractive/it-map/pull/72), codea2683babbdbe2666a3be218f83e06656b6ab36d4/treed76ed8edf0bce85c169586b54961239d30f660f2: Public40672364577/MariaDB40672364682 fully pass. Required job122762089873 —143 source subcases (142 full-row+1 native JSON refusal),5 ownership/concurrency/rollback/SIGKILL cases, zero skips;23044 JSON/1001 BIGINT cases и весь regression pass. GO-045 открыта до313; providers/ticks не включены.
 
 ### [ ] GO-313. Atomic scheduler budget/attempt ledger и joint crash gate (часть GO-045)
 
 - **Приоритет:** Критический, только sprint1.1.
 - **Зависимости:** GO-312, GO-079 upper bounds/московские периоды, существующие scheduler_attempts/provider ledgers.
 - **Критерии:** attempt lifecycle/reservation под теми же fences, global day/month ceiling включая old-generation spend/reserve; unknown outcome не бесплатный и не слепой повтор provider POST. Source billing differential, actual concurrent reservation, rollback/process crash/recovery и mock-only owned-job flow. Чтение реальных keys и включение parser остаются отдельными.
-- **Результат:** не реализовано.
+- **Результат:** library attempt/reserve/settle/joint Finish реализованы;38 unchanged dispatcher+billing fixtures локально pass. Новые SQL parents source/concurrency/generation/late fault/unknown COMMIT/SIGKILL добавлены; до actual disposable SQL CI task остаётся открытой.
