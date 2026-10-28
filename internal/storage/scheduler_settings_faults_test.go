@@ -85,9 +85,37 @@ func (c *settingsConn) QueryContext(ctx context.Context, q string, args []driver
 }
 func (c *settingsConn) ExecContext(ctx context.Context, q string, args []driver.NamedValue) (driver.Result, error) {
 	result, e := c.Conn.(driver.ExecerContext).ExecContext(ctx, q, args)
+	return c.hook.afterExec(q, result, e)
+}
+func (c *settingsConn) PrepareContext(ctx context.Context, q string) (driver.Stmt, error) {
+	stmt, e := c.Conn.(driver.ConnPrepareContext).PrepareContext(ctx, q)
+	if e != nil {
+		return nil, e
+	}
+	return &settingsStmt{Stmt: stmt, query: q, hook: c.hook}, nil
+}
+
+type settingsStmt struct {
+	driver.Stmt
+	query string
+	hook  *settingsHook
+}
+
+func (s *settingsStmt) ExecContext(ctx context.Context, args []driver.NamedValue) (driver.Result, error) {
+	result, e := s.Stmt.(driver.StmtExecContext).ExecContext(ctx, args)
+	return s.hook.afterExec(s.query, result, e)
+}
+func (s *settingsStmt) QueryContext(ctx context.Context, args []driver.NamedValue) (driver.Rows, error) {
+	return s.Stmt.(driver.StmtQueryContext).QueryContext(ctx, args)
+}
+func (h *settingsHook) afterExec(q string, result driver.Result, e error) (driver.Result, error) {
+	// ErrSkip asks database/sql to use a prepared statement; no SQL ran yet.
+	if errors.Is(e, driver.ErrSkip) {
+		return result, e
+	}
 	if strings.HasPrefix(q, "UPDATE firecrawl_settings SET scheduler_json=") {
-		c.hook.updates.Add(1)
-		if e == nil && c.hook.failAfterUpdate && c.hook.fired.CompareAndSwap(false, true) {
+		h.updates.Add(1)
+		if e == nil && h.failAfterUpdate && h.fired.CompareAndSwap(false, true) {
 			return result, errSettingsInjected
 		}
 	}
@@ -147,7 +175,7 @@ func TestMariaDBSchedulerSettingsFaultsDisposable(t *testing.T) {
 		db := settingsFaultPool(f, hook, false)
 		_, e := (parser.SettingsRepository{DB: db}).Save(f.ctx, v.Input, "Eugene")
 		if !errors.Is(e, parser.ErrSettingsStorage) || hook.updates.Load() != 1 || !hook.fired.Load() || len(settingsRowDifferences(before, f.row())) != 0 {
-			t.Fatal("late settings fault escaped rollback")
+			t.Fatalf("late settings fault escaped rollback: storage=%t updates=%d injected=%t changedColumns=%v", errors.Is(e, parser.ErrSettingsStorage), hook.updates.Load(), hook.fired.Load(), settingsRowDifferences(before, f.row()))
 		}
 		fresh, e := (parser.SettingsRepository{DB: f.reader}).Read(f.ctx)
 		if e != nil || strings.Contains(string(fresh), `"revision":8`) {
