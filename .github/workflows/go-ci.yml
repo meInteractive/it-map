@@ -55,6 +55,8 @@ jobs:
         run: go test -race -tags legacyinterop ./internal/legacycrypto -count=1
       - name: Verify scheduler claim billing and exact JSON page keys against SQLite source
         run: go test -race -tags legacyinterop ./internal/parser -run '^TestScheduler(Claim|JSON|Score|Billing)Source$' -count=1
+      - name: Verify stored scheduler settings preservation and public redaction against source
+        run: go test -race -tags legacyinterop ./internal/parser -run '^TestStoredSchedulerSettingsSource$' -count=1
       - name: Verify Go v39 layout integrity and formatting against unchanged legacy JS
         run: go test -race -tags legacyinterop ./internal/backup -run '^TestLegacyV39Contract$' -count=1
       - name: Verify signed historical v16-38 layouts with unchanged legacy JS
