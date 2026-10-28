@@ -76,3 +76,42 @@ Source corpus: 36 HH input/36 HTTP/14 run-state/18 dataset vectors. Исходн
 
 
 GO-081 / [#36](https://github.com/meInteractive/it-map/pull/36), `93babc6`: [public/HTTP+HH source contracts](https://github.com/meInteractive/it-map/actions/runs/40320431546) и [MariaDB/scheduler/task/16 browser/API/native](https://github.com/meInteractive/it-map/actions/runs/40320431536) успешны. Новый Apify adapter принят в указанном mock scope, полные GO-039/023 и рабочий pipeline открыты.
+
+## GO-322: stored scheduler settings без потери private state
+
+Typed public Settings из078 не является storage document: пересериализация
+только этого struct теряла бы unknown stored members и private cloudOwnerId.
+Новый SchedulerSettingsView использует уже принятый ordered ECMAScript JSON
+codec и trusted SchedulerDefaults/SupportedSources из v39.RestorePolicy.
+Используются только исходные значения defaults; restoreScheduler не вызывается,
+его намеренный reset enabled/cloud owner к обычному save не применяется.
+
+Read повторяет schedulerSettings: defaults+saved, отдельный merge priorities,
+legacy sourceIds fallback только при отсутствии own property (null сохраняется),
+favoritesOnly из selected SQL flag. PublicJSON и generic MarshalJSON удаляют
+cloudOwnerId и выводят cloudConnected по исходной truthiness. Этот bool означает
+наличие сохранённого owner ID, не проверку живого облачного подключения.
+
+После существующего parser.ValidateSettingsUpdate gate NextFromValidated
+сохраняет private/unknown fields и сериализует source normalization. StorageJSON
+отделён от public DTO; даже json.Marshal whole view/change безопасен для owner.
+Возвращённые byte slices не меняют owned state, построение change не мутирует
+старую view. FavoritesOnly не записывается в scheduler_json: отдельный SQL flag
+и shared Firecrawl revision будут обновляться в durable write phase.
+
+Required TestStoredSchedulerSettingsSource сравнивает2214 read/validated-save
+frames с неизменёнными strict ESM function bodies. Source queries представлены
+явными read sets, выполнение останавливается перед SQL UPDATE. Проверяются
+fallback absent/null, typed valid updates через078, defaults/priorities,
+private/unknown members, arrays/numeric keys, duplicate stored revision,
+max safe revision, lone UTF16/Infinity и HTML JSON escaping. StorageJSON и
+PublicJSON совпадают с source stringify; generic encoding сравнивается после
+ECMAScript parse/stringify, поскольку Go JSON transport экранирует HTML.
+
+Negative probe без owner redaction реально ломает source gate, затем исходник
+восстановлен; unit проверяет immutability/byte ownership и generic serialization.
+Это pure serialization proof. Никакие Repository/API/SQL/provider calls или
+background parser не активируются. CAS по исходному JSON1 revision (в том числе
+first duplicate против JSON.parse last duplicate), shared favorites revision,
+generation/rollback/concurrent writers, SQL representability и API права
+остаются следующими отдельными проверками GO-021.

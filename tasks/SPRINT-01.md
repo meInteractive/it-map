@@ -353,7 +353,7 @@
 
 - **Приоритет:** Критический.
 - **Критическая часть:** [x] GO-041 export v39/schema validation (GO-094/095). [x] GO-042 restore/generation/round-trip/crash и trusted schema-init, только synthetic disposable DB; после критического CRM-ядра и необходимой схемы GO-016.
-- **Средняя часть:** [ ] Функциональный операторский/пользовательский запуск restore после безопасной валидации.
+- **Средняя часть:** [x] Функциональный synthetic operator UI export/validate/preview/cancel/confirm/restore/reload — GO-321/#81,6 desktop/mobile actual SQL/browser сценариев. Real rehearsal/cutover отдельно.
 - **Низкая часть:** [ ] Косметика transfer/backup UI; не блокирует библиотечный round-trip.
 
 - **Статус:** [ ] — не принят целиком.
@@ -1442,9 +1442,16 @@
 - **Критерии:** actual TLS termination → private HTTP → Go session flow для3 synthetic ролей: login/redirect/cookie flags, Secure HTTP refusal, cross-Origin, bad/signed-expired token, re-login/logout; без ослабления TLS verify, SQL/providers/реальных credentials. Проверка в required Go race CI и операторская инструкция. Не закрывать external real-domain/proxy/browser medium gate GO-008 по локальной synthetic проверке.
 - **Результат:** actual trusted TLS/public test hostname → loopback HTTP → Go auth,3 роли и полный session/cookie/Origin/expiry/re-login/logout flow проходят-race и Go1.23. Virtual example.com dialer допускает только2 loopback ports; localhost Secure-cookie exception не маскирует HTTP refusal. Runtime/auth/proxy config не менялись. Добавлена операторская инструкция, внешний medium gate остаётся открытым; [PR #80](https://github.com/meInteractive/it-map/pull/80), 5dba544df565ba5da68b4b3ebdd9106e426e9e41/tree4cb3b1d04096d305f55333fbe64b9437ac9ae233: Public40743050421/MariaDB40743050396 fully success,3-role TLS test/old SQL/API/browser/restore/bootstrap regression pass.
 
-### [ ] GO-321. Операторский UI export/validate/restore (средняя часть GO-019)
+### [x] GO-321. Операторский UI export/validate/restore (средняя часть GO-019)
 
 - **Приоритет:** Средний, только sprint1.1.
 - **Зависимости:** принятый backup core041/042/100 и user queue после concrete320; existing BackupRestore/ExportCard React.
 - **Критерии:** actual browser→Go→disposable MariaDB v39 export/upload/validation preview/cancel/confirmed restore/reload, malformed/oversize/validation error/roles; до подтверждения нет restore POST, validate не меняет generation, подтверждённое restore действительно возвращает сохранённые synthetic данные. Desktop/mobile, zero skips, все external requests запрещены, trace/video/screenshots/backup artifacts не публикуются. Parent внешний cutover/реальные данные не разрешены.
-- **Результат:** guarded real browser/Go/MariaDB parent +6 desktop/mobile сценариев реализованы без изменения frontend/backup runtime. Separate required job доказывает actual export/preview/cancel/restore/reload/roles и generation boundaries; пока positive CI не выполнен. Локально compile/typecheck/discovery (6 tests, не исполнение browser), source/Go checks проходят.
+- **Результат:** guarded real browser/Go/MariaDB parent +6 desktop/mobile сценариев реализованы без изменения frontend/backup runtime. Separate required job доказывает actual export/preview/cancel/restore/reload/roles и generation boundaries; [PR #81](https://github.com/meInteractive/it-map/pull/81), code7935f728d2c7742f087b57d786f6bcd092ae034b/tree19b7df1faea738f47e3791c0e02b13eb57aed337: Public40746549514/MariaDB40746548655 fully success. Required123021742469:6 browser scenarios/2 confirmed SQL restores/generation boundaries, zero skips; old regression pass. Локально compile/typecheck/discovery (6 tests, не исполнение browser), source/Go checks проходят.
+
+### [ ] GO-322. Stored scheduler settings и безопасная сериализация (часть GO-021)
+
+- **Приоритет:** Критический внутри выбранной пользователем GO-021, только sprint1.1.
+- **Зависимости:** принятый078 validator/079 budgets, source schedulerSettings/saveSchedulerSettings, trusted source defaults и принятый ECMAScript JSON codec.
+- **Критерии:** pure unchanged-source read/validated-update projection: legacy sourceIds fallback (absent != null), defaults/priorities/favoritesOnly, private cloudOwnerId preservation+public redaction, unknown stored members и JS JSON/scalar/UTF16. Переиспользовать accepted defaults/codec и078 validation, не restore safety reset. Никаких SQL/API/provider calls или parser activation; durable CAS/generation/shared favorites revision и API — следующими отдельными порциями.
+- **Результат:**2214 unchanged-source read/validated-save frames passed-race, reused078 validator/trusted source defaults/accepted ECMAScript codec. Opaque view/change сохраняют cloudOwnerId+unknown storage members, generic JSON redacts owner; mutation ownership unit и redaction-negative probe pass. Runtime/SQL/API не подключены; полная CI приёмка ожидается.
