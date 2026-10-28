@@ -170,3 +170,19 @@ enabled=true сохраняет конфигурацию и не запуска�
 provider client, internal tick, cloud owner binding, run/probe и dashboard в этой
 порции не подключаются; неперенесённые authenticated endpoints остаются503.
 Полная GO-021 требует последующих dashboard/commands/dry-run/scope проверок.
+
+
+GO-325 переносит только schedulerAttemptDetails для явного dashboard SELECT
+read set. PrepareSchedulerAttemptJSON всегда исключает result_json; unknown SQL
+columns отказывают до построения ответа. Наружу попадают лишь прежние selected
+columns и ограниченный outcome: accepted:boolean, до12 положительных уникальных
+safe integer roleIds/filtered, либо superseded:true с разрешённым nextStage/null.
+Код переиспользует ordered ECMAScript codec, включая JSON.parse last duplicate,
+IEEE numbers и Unicode. Некорректный/усечённый result_json просто не даёт outcome,
+как в source; raw result, prompts и произвольный provider payload не возвращаются.
+
+368 actual unchanged function frames и отрицательная проверка удаления redaction
+проверяют pure projection; это не SQL/API gate. Выбор последних50 attempts,
+LEFT JOIN, SQL substr2048 characters, isolation и generation будут проверены в
+следующей dashboard порции326. Передавать SELECT * вместо reviewed columns
+запрещено: safety allowlist намеренно уже общего object-rest source helper.

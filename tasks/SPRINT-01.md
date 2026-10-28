@@ -1456,12 +1456,12 @@
 - **Критерии:** pure unchanged-source read/validated-update projection: legacy sourceIds fallback (absent != null), defaults/priorities/favoritesOnly, private cloudOwnerId preservation+public redaction, unknown stored members и JS JSON/scalar/UTF16. Переиспользовать accepted defaults/codec и078 validation, не restore safety reset. Никаких SQL/API/provider calls или parser activation; durable CAS/generation/shared favorites revision и API — следующими отдельными порциями.
 - **Результат:**2214 unchanged-source read/validated-save frames passed-race, reused078 validator/trusted source defaults/accepted ECMAScript codec. Opaque view/change сохраняют cloudOwnerId+unknown storage members, generic JSON redacts owner; mutation ownership unit и redaction-negative probe pass. [PR #82](https://github.com/meInteractive/it-map/pull/82), 4ac60e3df561826b42dd0d3f8a857bde154593df/tree607fad7ad7b3721e4e64b2f8c6cbe883495b98a7: Public40749561114/MariaDB40749561105 fully success, old SQL/API/browser/restore regression pass. Runtime/SQL/API не подключены.
 
-### [ ] GO-323. Durable settings CAS и shared favorites (часть GO-021)
+### [x] GO-323. Durable settings CAS и shared favorites (часть GO-021)
 
 - **Приоритет:** Критический внутри выбранной GO-021, только sprint1.1.
 - **Зависимости:**078 validation/322 raw preservation, baseline016, generation/known-deadlock boundary.
 - **Критерии:** readonly snapshot/default read, atomic scheduler JSON1 revision CAS (first duplicate != JSON.parse last), shared favorites/Firecrawl revision без потери unrelated/private fields; actual unchanged source SQLite vs guarded MariaDB. First write явным valid JSON вместо испорченного converted DEFAULT, без DDL/GET bootstrap; stale CAS/generation,2 writers/shared favorites, late rollback, unknown COMMIT без blind retry. API/providers/worker activation отдельно; только synthetic disposable CI.
-- **Результат:** SettingsRepository Read/Save, source SQLite oracle42 full-row transitions, required JSON1 CAS2324 comparisons и guarded native42/6/4 source/ownership/fault scenarios реализованы. Локальные Go race/vet/builds/Go1.23/source/CI syntax проходят; positive MariaDB приёмка ожидается. HTTP/providers/worker не подключены.
+- **Результат:** SettingsRepository Read/Save, source SQLite oracle42 full-row transitions, required JSON1 CAS2324 comparisons и guarded native42/6/4 source/ownership/fault scenarios реализованы. Локальные Go race/vet/builds/Go1.23/source/CI syntax проходят; [PR #83](https://github.com/meInteractive/it-map/pull/83), 6609d2d958a492144838b971958b5cec7be21e0f/treeb673ffdf1b8c21873d3d37e12c48613711ec00a3: Public40758482439/MariaDB40758482914 fully success, required123063684381 подтвердил42 source/6 ownership/4 faults без skips и весь old regression pass. HTTP/providers/worker не подключены.
 
 ### [ ] GO-324. Административный PUT настроек scheduler (часть GO-021)
 
@@ -1469,3 +1469,10 @@
 - **Зависимости:**078/322/323 и existing auth/same-origin boundary; SQL323 должен пройти required native gate до приёмки HTTP.
 - **Критерии:** существующий PUT /api/scheduler/settings: session/admin/storage/Origin precedence, ограничение32KiB, source JSON/status/error code, auth-derived owner, сохранность private fields/CAS/rollback через реальный Go→MariaDB; unchanged source router/SQLite сравнение, denial без записи. Неперенесённые dashboard/commands/ticks остаются закрыты; enabled в настройках не запускает worker. Существующая078 строгая duplicate-input policy отмечается отдельно от source JSON.parse.
 - **Результат:** methodless admin handler и cmd wiring реализованы, source router/SQLite70 responses и4 target-only input/CSRF guards добавлены в required native gate. Локальные boundary/race/vet/tagged/Go1.23/build/web/API audit/source/history/actionlint проходят. Positive HTTP/SQL приёмка ожидается; parent021 не закрыт.
+
+### [ ] GO-325. Безопасная проекция истории scheduler attempts (часть GO-021)
+
+- **Приоритет:** Критический внутри выбранной GO-021, только sprint1.1.
+- **Зависимости:** accepted ECMAScript JSON codec, source schedulerAttemptDetails и явный SELECT read set dashboard;324 HTTP settings отдельно.
+- **Критерии:** bounded source outcomes classify_title/assign_roles/import_vacancy без result_json/prompts/provider payloads; actual unchanged function parity для malformed/truncated JSON, strict boolean/safe integer/unique max12 roleIds, superseded/nextStage, unknown types/duplicates/Unicode. Reuse codec, запрет unreviewed SQL columns; pure read-set proof без SQL/API activation. Следующая326 — dashboard SELECT-only snapshot и GET API, отдельно от commands/dry-run.
+- **Результат:** bounded projection на accepted JSON codec, strict selected-column allowlist и required source368 frames реализованы; negative removal of result redaction действительно ломает source comparison. Локальные race/vet/tagged/build/Go1.23/source/API audit/actionlint проходят. Runtime/SQL/API не активируются; полный CI ожидается.
