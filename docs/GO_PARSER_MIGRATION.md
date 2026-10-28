@@ -115,3 +115,34 @@ background parser не активируются. CAS по исходному JSO
 first duplicate против JSON.parse last duplicate), shared favorites revision,
 generation/rollback/concurrent writers, SQL representability и API права
 остаются следующими отдельными проверками GO-021.
+
+GO-323 добавляет SettingsRepository без подключения HTTP или фонового исполнения.
+Read использует SELECT-only repeatable-read snapshot: generation, сохранённый
+JSON и legacy source scope читаются согласованно. Отсутствующий singleton даёт
+defaults, GET не создаёт строки. Save сохраняет исходную generation до попыток,
+блокирует generation и singleton, применяет GO-078 validation и GO-322 raw codec.
+CAS повторяет SQLite JSON1: первая revision, числовое сравнение без приведения
+строк, bool как 0/1; сериализация по-прежнему использует последнюю revision.
+2324 сравнения проверяются непосредственно с pinned SQLite JSON1.
+
+UPDATE меняет только scheduler_json и явно переданный favorites_only. Shared
+Firecrawl revision увеличивается лишь при изменении этого флага; unrelated
+provider fields не читаются в публичный DTO и не перезаписываются. Только
+известный MariaDB deadlock1213 допускает ограниченную повторную транзакцию с
+исходным CAS/generation. Неизвестный результат COMMIT возвращает ошибку без
+повторного UPDATE; следующий read позволяет сверить фактически сохранённое.
+
+В captured MariaDB schema DEFAULT scheduler_json содержит преобразованные
+backticks вместо JSON quotes. Схема и metadata не меняются: первый Save явно
+задаёт valid JSON revision0 внутри той же транзакции. Неуспешный initial save
+откатывает эту строку. Это целевое atomic/read-only поведение; оно не доказывает
+совместимость source lazy bootstrap, который может создать строку до ошибки.
+
+Required disposable CI сравнивает42 перехода actual unchanged source SQLite
+с MariaDB, включая полную строку и SELECT-only read. Ещё6 ownership и4 fault
+cases проверяют двух писателей, shared revision, overflow/rollback, cancellation,
+rotation generation, late SQL failure, actual unknown COMMIT и snapshot race.
+Oracle использует подготовленную схему и не проверяет DDL/bootstrap. Положительная
+SQL приёмка фиксируется отдельно после required CI; локально эти тесты не
+подключаются к БД. Административный HTTP, commands/dry-run и полный pipeline
+по-прежнему требуют отдельных задач GO-021/046.
