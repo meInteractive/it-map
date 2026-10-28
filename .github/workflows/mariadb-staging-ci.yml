@@ -8,7 +8,7 @@ permissions:
   contents: read
 jobs:
   mariadb-schema:
-    needs: channel-contact-acceptance
+    needs: [channel-contact-acceptance, application-link-acceptance]
     runs-on: ubuntu-latest
     # This container database is disposable and has ZERO production credentials.
     services:
@@ -1032,4 +1032,99 @@ jobs:
               assert any(e.get('Test')==target and e.get('Action')=='pass' for e in events), 'required channel/contact target did not pass/run: '+target
           assert not any(e.get('Action')=='skip' for e in events), 'required channel/contact test skipped'
           print('PASS: seven channel/contact SQL, race, HTTP and vacancy integration targets passed with zero skips')
+          PYCODE
+  application-link-acceptance:
+    runs-on: ubuntu-latest
+    # This container database is disposable and has ZERO production credentials.
+    services:
+      mariadb:
+        image: mariadb:10.11
+        ports:
+          - 3306:3306
+        env:
+          MARIADB_ROOT_PASSWORD: ci_only_disposable_root
+          MARIADB_DATABASE: itmap_ci
+          MARIADB_USER: itmap_ci
+          MARIADB_PASSWORD: ci_only_disposable_writer
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Confirm synthetic fixture matches source baseline and has no rows
+        run: |
+          python3 scripts/check-ci-schema.py
+          python3 scripts/check-ci-smoke-seed.py
+          python3 scripts/check-public-repo.py
+      - name: Load empty schema ONLY into disposable CI database
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker exec -i '${{ job.services.mariadb.id }}' mariadb \
+            -u root -pci_only_disposable_root itmap_ci < db/testdata/empty-schema.sql
+          docker exec '${{ job.services.mariadb.id }}' mariadb \
+            -u root -pci_only_disposable_root itmap_ci -e \
+            "CREATE USER 'itmap_readonly_ci'@'%' IDENTIFIED BY 'ci_only_disposable_reader'; GRANT SELECT ON itmap_ci.* TO 'itmap_readonly_ci'@'%';"
+      - name: Bind disposable database to this CI run
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Generate a new run-only marker. No real data, credentials or dumps.
+          # The original schema requires a 36-character generation UUID.
+          disposable_generation="$(python3 -c 'import uuid; print(uuid.uuid4())')"
+          echo "ITMAP_TEST_DISPOSABLE_GENERATION=$disposable_generation" >> "$GITHUB_ENV"
+          docker exec '${{ job.services.mariadb.id }}' mariadb \
+            -u root -pci_only_disposable_root itmap_ci -e \
+            "INSERT INTO app_runtime_generation(id, generation) VALUES(1, '$disposable_generation')"
+      - name: Verify imported foreign keys and triggers exist in MariaDB
+        shell: bash
+        run: |
+          set -euo pipefail
+          fk_count="$(docker exec '${{ job.services.mariadb.id }}' mariadb \
+            -u root -pci_only_disposable_root --batch --skip-column-names itmap_ci -e \
+            "SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = 'itmap_ci' AND CONSTRAINT_TYPE = 'FOREIGN KEY'")"
+          trigger_count="$(docker exec '${{ job.services.mariadb.id }}' mariadb \
+            -u root -pci_only_disposable_root --batch --skip-column-names itmap_ci -e \
+            "SELECT COUNT(*) FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = 'itmap_ci'")"
+          [[ "$fk_count" == 50 ]] || { echo "Expected 50 foreign keys, found $fk_count" >&2; exit 1; }
+          [[ "$trigger_count" == 22 ]] || { echo "Expected 22 triggers, found $trigger_count" >&2; exit 1; }
+      - name: Seed only the reviewed synthetic catalog and read models
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker exec -i '${{ job.services.mariadb.id }}' mariadb \
+            -u root -pci_only_disposable_root itmap_ci < db/testdata/smoke-catalog.sql
+          docker exec -i '${{ job.services.mariadb.id }}' mariadb \
+            -u root -pci_only_disposable_root itmap_ci < db/testdata/read-models.sql
+      - name: Verify locked MariaDB driver dependencies without modifying manifests
+        shell: bash
+        run: |
+          set -euo pipefail
+          git ls-files --error-unmatch go.sum >/dev/null
+          go mod download
+          go mod verify
+          go mod tidy -diff
+          git diff --exit-code -- go.mod go.sum
+      - name: Verify application owner delete restore links ONLY in disposable CI
+        env:
+          ITMAP_REQUIRE_MARIADB_INTEGRATION: '1'
+          ITMAP_TEST_MARIADB_WRITE_DSN: 'itmap_ci:ci_only_disposable_writer@tcp(127.0.0.1:3306)/itmap_ci?parseTime=true&clientFoundRows=true&collation=utf8mb4_bin'
+        run: |
+          set -euo pipefail
+          result_file="$(mktemp)"
+          trap 'rm -f "$result_file"' EXIT
+          go test -race -tags mariadb,vacancycreates,vacancyedits,vacancydeletes,v39restore,restorehttp,applicationlinks ./internal/storage -run '^TestMariaDBApplication(OwnerLink|VacancyDelete|RestoreLink|LinksHTTP|DeleteOwnerRace)Disposable$' -count=1 -json | tee "$result_file"
+          python3 - "$result_file" <<'PYCODE'
+          import json,sys
+          events=[json.loads(line) for line in open(sys.argv[1],encoding='utf8')]
+          for target in ['TestMariaDBApplicationOwnerLinkDisposable','TestMariaDBApplicationVacancyDeleteDisposable','TestMariaDBApplicationRestoreLinkDisposable','TestMariaDBApplicationLinksHTTPDisposable','TestMariaDBApplicationDeleteOwnerRaceDisposable']:
+              assert any(e.get('Test')==target and e.get('Action')=='pass' for e in events), 'required application link target did not pass/run: '+target
+          assert not any(e.get('Action')=='skip' for e in events), 'required application link test skipped'
+          print('PASS: mixed application owner, vacancy delete, restore generation and private HTTP passed with zero skips')
           PYCODE
