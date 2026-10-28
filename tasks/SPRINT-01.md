@@ -1407,16 +1407,16 @@
 - **Критерии:** unchanged readCompactEntities/readCompanyDetail на synthetic fixtures против pure Go projection; normalization/order/rank/defaults, omitted vs null, user flags, embedded jobs/initialized state, ID/name fallback и сохранение detail без jobs. Не выполнять SQL/provider calls и не активировать новый runtime путь. Переиспользовать принятые field/JSON helpers, не писать второй независимый normalizer. Предшествующие restore/source gates не ломаются.
 - **Результат:** [PR #75](https://github.com/meInteractive/it-map/pull/75), code76bd7d9f998a6c6bb8c8827657bf685aede40079/tree545b08b6295f51899665d002f758ba93a575b78a: Public40704508982/MariaDB40704508987 fully pass.1180 unchanged-source read-set frames, numeric-key negative probe, old entity/170 unsigned plans и весь SQL/API/browser/restore/bootstrap regression успешны. No Repository/HTTP activation;316 search →317 readonly SQL/API отдельно.
 
-### [ ] GO-316. Pure source search каталога (часть GO-009)
+### [x] GO-316. Pure source search каталога (часть GO-009)
 
 - **Приоритет:** Критический, только sprint1.1.
 - **Зависимости:** GO-315; общий нормализованный catalog view/codec.
 - **Критерии:** unchanged searchCatalogNames, точные JS lower/coercion/null/пробелы/embedded job-office-revenue-vpnAi поля и alias agencies search; без runtime/SQL activation до317.
-- **Результат:** pure PrepareCatalogSearch реализован без runtime/SQL activation;2551 unchanged searchCatalogNames fixtures сравнивают exact JSON/error boundary, включая UTF16/full lower/final sigma/field coercion/Infinity/numeric own keys. Source gate ещё проходит полную приёмку CI.
+- **Результат:** pure PrepareCatalogSearch реализован без runtime/SQL activation;2551 unchanged searchCatalogNames fixtures сравнивают exact JSON/error boundary, включая UTF16/full lower/final sigma/field coercion/Infinity/numeric own keys. [PR #76](https://github.com/meInteractive/it-map/pull/76), code0876f4da5c7c611a99fbc16c78fa47b819c8436b/tree9e3f0d7b12f72b29bd786f8296743dd421402f44: Public40708192883/MariaDB40708192913 fully success, весь regression pass.
 
 ### [ ] GO-317. Readonly MariaDB/API parity каталога (часть GO-009)
 
 - **Приоритет:** Критический, только sprint1.1.
 - **Зависимости:** GO-315/316 pure proofs, существующие baseline/identity/read models.
 - **Критерии:** подключить pure normalization/projection/search к Go Repository/HTTP; unchanged source SQLite reference + actual MariaDB readonly account, заранее подготовленные IDs, user isolation/flags/application selection/null/unknown IDs/name/errors и method/role contracts. GET не создаёт identities и не меняет business rows. Только synthetic disposable CI, без private snapshot. Полная GO-009/030 не закрывается синтетикой.
-- **Результат:** не реализовано.
+- **Результат:** runtime315/316 подключён через RawMessage DTO и readonly snapshots; новый source SQLite/router oracle2592 responses/12 frames, SELECT-only grant/full72-table immutability/error/duplicate/missing-ID и actual concurrent snapshot tests. Локальные Go/source gates проходят; positive MariaDB только в required disposable CI, полная приёмка ожидается.

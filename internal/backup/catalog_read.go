@@ -29,13 +29,13 @@ type CatalogReadState struct {
 	Initialized  []string                 `json:"initialized"`
 }
 type CatalogReadOptions struct {
-	EntityType   string `json:"entityType"`
-	View         string `json:"view"`
-	ID           int64  `json:"id"`
-	Name         string `json:"name"`
-	Favorite     bool   `json:"favorite"`
-	Hidden       bool   `json:"hidden"`
-	VacancyCount int64  `json:"vacancyCount"`
+	EntityType   string  `json:"entityType"`
+	View         string  `json:"view"`
+	ID           float64 `json:"id"`
+	Name         string  `json:"name"`
+	Favorite     bool    `json:"favorite"`
+	Hidden       bool    `json:"hidden"`
+	VacancyCount int64   `json:"vacancyCount"`
 }
 
 func validReadCatalog(root *jsonValue) bool {
@@ -115,7 +115,7 @@ func PrepareCatalogRead(data []byte, state CatalogReadState, options CatalogRead
 		name := options.Name
 		if options.ID != 0 {
 			for _, s := range state.Identities {
-				if s.EntityType == options.EntityType && s.ID == options.ID && s.Name != "" {
+				if s.EntityType == options.EntityType && float64(s.ID) == options.ID && s.Name != "" {
 					name = s.Name
 					break
 				}
