@@ -100,3 +100,45 @@ func TestLegacyUnsignedPlan(t *testing.T) {
 		t.Fatalf("missing historical plans: %d", count)
 	}
 }
+
+// Actual unchanged source SQL executes only on synthetic SQLite :memory:.
+// MariaDB acceptance is a separate guarded CI job, never a local database.
+func TestLegacyUnsignedSQLPlan(t *testing.T) {
+	for _, version := range []string{"14", "15"} {
+		for _, audit := range []string{"omitted", "empty", "replace"} {
+			t.Run(version+" "+audit, func(t *testing.T) {
+				out, e := exec.Command("node", "../../scripts/check-historical-sql.mjs", "--version", version, "--audit", audit, "--stdio").Output()
+				if e != nil {
+					t.Fatal(e)
+				}
+				var v struct {
+					Initial, Body string
+					Expected      []Table
+					Warnings      []string
+					Rows          int
+				}
+				if e = json.Unmarshal(out, &v); e != nil {
+					t.Fatal(e)
+				}
+				initial, e := ValidateV39([]byte(v.Initial))
+				if e != nil {
+					t.Fatal(e)
+				}
+				plan, e := PrepareLegacyRestore([]byte(v.Body), initial.Storage.Tables, time.Date(2026, 10, 28, 0, 0, 0, 0, time.UTC))
+				if e != nil {
+					t.Fatal(e)
+				}
+				if plan.Rows != v.Rows || !reflect.DeepEqual(plan.Warnings, v.Warnings) || len(plan.Sequences) != 0 {
+					t.Fatal("unsigned SQL source summary differs")
+				}
+				for _, want := range v.Expected {
+					for _, got := range plan.Tables {
+						if want.Name == got.Name && !reflect.DeepEqual(got.Rows, want.Rows) {
+							t.Fatalf("source SQL rows differ in %s", got.Name)
+						}
+					}
+				}
+			})
+		}
+	}
+}

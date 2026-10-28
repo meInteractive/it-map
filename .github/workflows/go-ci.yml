@@ -66,7 +66,7 @@ jobs:
       - name: Verify canonical Russian order against pinned Node and accepted exceptions
         run: go test -race -tags legacyinterop ./internal/rucollation -run '^TestRussianCollationSource$' -count=1
       - name: Verify pure unsigned v14-15 plans preserve omissions without enabling runtime
-        run: go test -race -tags legacyinterop ./internal/backup -run '^TestLegacyUnsignedPlan$' -count=1
+        run: go test -race -tags legacyinterop ./internal/backup -run '^TestLegacyUnsigned(Plan|SQLPlan)$' -count=1
       - name: Verify hiring contact validation against unchanged legacy JS
         run: go test -race -tags legacyinterop ./internal/contacts -run '^TestLegacyContactInput$' -count=1
       - name: Verify channel order and duplicate checks against unchanged SQLite source

@@ -34,22 +34,9 @@ func TestLegacyCanonicalStableCatalog(t *testing.T) {
 		}
 	}
 }
-func TestLegacyPlanDoesNotEnableRuntime(t *testing.T) {
+func TestLegacyPlanKeepsStrictModernBoundary(t *testing.T) {
 	for _, version := range []int{14, 15} {
-		tables := []Table{}
-		for _, d := range v39.Trusted().Tables {
-			if tableSince[d.Name] != 0 || d.Name == "app_catalog" || d.Name == "google_calendar_connection" || d.Name == "vacancy_audit_runs" {
-				continue
-			}
-			cols := []json.RawMessage{}
-			for _, c := range d.Columns {
-				b, _ := json.Marshal(map[string]string{"name": c.Name})
-				cols = append(cols, b)
-			}
-			tables = append(tables, Table{Name: d.Name, Columns: cols, Rows: []map[string]json.RawMessage{}})
-		}
-		root := map[string]any{"format": Format, "version": version, "catalog": map[string]any{"companies": []any{}, "agencies": []any{}}, "storage": map[string]any{"tables": tables}, "metadata": map[string]any{"sequences": []any{map[string]any{"name": "company_vacancies", "seq": 9000}}, "schema": []string{"CI NOT SQL"}}}
-		data, _ := json.Marshal(root)
+		data := emptyLegacyInput(t, version)
 		before := append([]byte(nil), data...)
 		plan, e := PrepareLegacyRestore(data, nil, time.Date(2026, 10, 27, 8, 0, 0, 0, time.UTC))
 		if e != nil {
@@ -64,11 +51,33 @@ func TestLegacyPlanDoesNotEnableRuntime(t *testing.T) {
 		if _, e = PrepareV39Restore(data); e == nil {
 			t.Fatal("v39 planner accepted legacy")
 		}
-		if _, e = (Repository{}).ValidateRestore(context.Background(), data); e == nil || ErrorStatus(e) != 400 {
-			t.Fatal("runtime validation reached SQL", e)
+		if _, e = (Repository{}).ValidateRestore(context.Background(), data); e == nil || ErrorStatus(e) == 400 {
+			t.Fatal("valid legacy validation did not reach storage boundary", e)
 		}
-		if _, e = (Repository{}).Restore(context.Background(), data); e == nil || ErrorStatus(e) != 400 {
-			t.Fatal("runtime restore reached SQL", e)
+		if _, e = (Repository{}).Restore(context.Background(), data); e == nil || ErrorStatus(e) == 400 {
+			t.Fatal("valid legacy restore did not reach storage boundary", e)
 		}
 	}
+}
+
+func emptyLegacyInput(t *testing.T, version int) []byte {
+	t.Helper()
+	tables := []Table{}
+	for _, d := range v39.Trusted().Tables {
+		if tableSince[d.Name] != 0 || d.Name == "app_catalog" || d.Name == "google_calendar_connection" || d.Name == "vacancy_audit_runs" {
+			continue
+		}
+		cols := []json.RawMessage{}
+		for _, c := range d.Columns {
+			b, _ := json.Marshal(map[string]string{"name": c.Name})
+			cols = append(cols, b)
+		}
+		tables = append(tables, Table{Name: d.Name, Columns: cols, Rows: []map[string]json.RawMessage{}})
+	}
+	root := map[string]any{"format": Format, "version": version, "catalog": map[string]any{"companies": []any{}, "agencies": []any{}}, "storage": map[string]any{"tables": tables}, "metadata": map[string]any{"sequences": []any{map[string]any{"name": "company_vacancies", "seq": 9000}}, "schema": []string{"CI NOT SQL"}}}
+	data, e := json.Marshal(root)
+	if e != nil {
+		t.Fatal(e)
+	}
+	return data
 }

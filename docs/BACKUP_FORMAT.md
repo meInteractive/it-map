@@ -175,3 +175,13 @@ Private entity helpers переносят company rating/WLB/salary/default sour
 Required unchanged JS oracle сравнивает 705 случаев (700 приняты), по одной сущности, включая source отказ при throwing coercion. Company rank передаётся helper явно; сортировка и выбор rank этим oracle **не проверяются**. Внешний probe x/text collate v0.23.0 не совпал с Node24 localeCompare(ru), библиотека в проект не добавлена. Нет нового runtime/SQL/API или Node runtime dependency. Совместимая сортировка полного каталога и legacy restore plan/preserve/warnings остаются открытой частью C-P; C-S/D и весь GO-042 не принимаются по entity-only proof.
 
 Entity fields приняты на #60/code4ce126b: Public40507165590 и MariaDB40507165592 полностью pass, required705 и весь прежний regression успешны. Source сравнения выполнены на Node24.19/ICU78.3/CLDR48/Unicode17. Порядок компаний/rank и full legacy plan остаются непроверенными и не подключены к runtime.
+
+### GO-100-C-P/C-S: unsigned v14–15 и prepared schema
+
+C-P принята на [#68](https://github.com/meInteractive/it-map/pull/68), code97bad5d; Public40651564976/MariaDB40651565061 fully pass. Канонический русский порядок [ADR-023](DECISIONS.md), stable ties, score/rank и поля каталога проверены479072 сравнениями/170 source plans. Оригинальные parsed overflow numbers сохраняются до арифметики/truthiness; текст названий не нормализуется для хранения.
+
+Реализация C-S расширяет generic `PrepareRestore`/`Repository.ValidateRestore`/`Restore` до v14–39. Strict `ValidateModernBackup`/`PrepareModernRestore` и V39 wrappers сохраняют прежние границы. v14–15 не имеют гарантии integrity: их SQL/schema/migrations/sequences из файла игнорируются. Current/MAX high-water назначения сохраняется; uploaded sequence не резервирует ID. Непредставимые SQL scalar/некорректная нормализация отвергаются до подключения/counter DDL.
+
+Для legacy calendar сохраняется всегда; audit — только при отсутствии раздела, явно пустой audit очищает строки. Набор destination reads фиксируется по входному файлу до pure planning; final rows читаются заново под generation и `FOR UPDATE` locks до замены. `/validate` использует read-only snapshot и не резервирует counters/generation. Все normalization/clock/defaults завершаются до COMMIT.
+
+C-S пока ожидает actual disposable SQL/HTTP/race CI: unchanged source SQLite :memory: эталон, round-trip v39, rollback/retry и оба порядка concurrent calendar/audit writers. Trusted schema bootstrap D и полная GO-042 не приняты. Реальные backups/DB/keys/providers не используются.

@@ -8,7 +8,7 @@ permissions:
   contents: read
 jobs:
   mariadb-schema:
-    needs: [channel-contact-acceptance, application-link-acceptance]
+    needs: [channel-contact-acceptance, application-link-acceptance, historical-restore]
     runs-on: ubuntu-latest
     # This container database is disposable and has ZERO production credentials.
     services:
@@ -705,7 +705,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 24.19.0
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
@@ -755,7 +755,7 @@ jobs:
           go mod verify
           go mod tidy -diff
           git diff --exit-code -- go.mod go.sum
-      - name: Verify historical v16-38 restore and preserve races ONLY in disposable CI
+      - name: Verify full historical v14-38 restore and preserve races ONLY in disposable CI
         env:
           ITMAP_REQUIRE_MARIADB_INTEGRATION: '1'
           ITMAP_TEST_MARIADB_WRITE_DSN: 'itmap_ci:ci_only_disposable_writer@tcp(127.0.0.1:3306)/itmap_ci?parseTime=true&clientFoundRows=true&collation=utf8mb4_bin'
@@ -763,11 +763,11 @@ jobs:
           set -euo pipefail
           result_file="$(mktemp)"
           trap 'rm -f "$result_file"' EXIT
-          go test -race -tags mariadb,v39restore,historicalrestore ./internal/storage -run '^TestMariaDBHistorical(Restore|PreserveRace|HTTP)Disposable$' -count=1 -json | tee "$result_file"
+          go test -race -tags mariadb,v39restore,historicalrestore,unsignedrestore ./internal/storage -run '^TestMariaDB(Historical|Unsigned)(Restore|PreserveRace|HTTP)Disposable$' -count=1 -json | tee "$result_file"
           python3 - "$result_file" <<'PYCODE'
           import json,sys
           events=[json.loads(line) for line in open(sys.argv[1],encoding='utf8')]
-          for target in ['TestMariaDBHistoricalRestoreDisposable','TestMariaDBHistoricalPreserveRaceDisposable','TestMariaDBHistoricalHTTPDisposable']:
+          for target in ['TestMariaDBHistoricalRestoreDisposable','TestMariaDBHistoricalPreserveRaceDisposable','TestMariaDBHistoricalHTTPDisposable','TestMariaDBUnsignedRestoreDisposable','TestMariaDBUnsignedPreserveRaceDisposable','TestMariaDBUnsignedHTTPDisposable']:
               assert any(e.get('Test')==target and e.get('Action')=='pass' for e in events), 'required historical target did not pass/run: '+target
           assert not any(e.get('Action')=='skip' for e in events), 'required restore test skipped'
           print('PASS: historical restore, preserve races and signed HTTP ran with zero skips')
