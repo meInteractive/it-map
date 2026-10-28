@@ -271,8 +271,8 @@
     {
       "id": "scheduler",
       "implementation": "partial",
-      "level": "PUT settings HTTP + stored settings/lease/attempt SQL core; required CI pending",
-      "gap": "Dashboard/queue/run/probe/cloud-owner/issues/funnel и stage wiring GO-046 ещё отсутствуют; PUT не запускает worker. Strict duplicate/Sec-Fetch input policies проверяются отдельно от source parity.",
+      "level": "PUT settings принят; GET dashboard/readonly SQL/история — required CI pending",
+      "gap": "Queue/run/probe/cloud-owner/issues/funnel и stage wiring GO-046 ещё отсутствуют; API конфигурации/чтения не запускают worker. Duplicate/Sec-Fetch input policies отдельно от source parity.",
       "evidence": [
         {
           "file": "internal/storage/scheduler_jobs_integration_test.go",
@@ -299,6 +299,20 @@
         {
           "file": "internal/storage/scheduler_settings_http_integration_test.go",
           "symbol": "TestMariaDBSchedulerSettingsHTTPGuardsDisposable",
+          "required": true
+        },
+        {
+          "file": "internal/httpapi/scheduler_dashboard_routes_test.go",
+          "symbol": "TestSchedulerDashboardAccess"
+        },
+        {
+          "file": "internal/storage/scheduler_dashboard_integration_test.go",
+          "symbol": "TestMariaDBSchedulerDashboardSourceDisposable",
+          "required": true
+        },
+        {
+          "file": "internal/storage/scheduler_dashboard_faults_test.go",
+          "symbol": "TestMariaDBSchedulerDashboardSnapshotDisposable",
           "required": true
         }
       ]
@@ -498,7 +512,7 @@
   ],
   "sourceHashes": {
     "frontend/api/client.ts": "4aa67ca55e0940c44fb74b6ab68fe876d294d2b56d15b83bc1686b95519e06a7",
-    "internal/httpapi/handler.go": "f563641809bf7f0f3ab0a2a3707da03e903068a8ef03487457e1590982884ccd",
+    "internal/httpapi/handler.go": "c82ee65c4335873f335aabf16cee44eaae0c4ff03a9bc1b0302cce794d5d726b",
     "server/routes/index.js": "6134004f682975cb51ea13cd2ec4de8e85a5957deff6a5392fbad3fd70ccb1e4"
   },
   "clientExports": [

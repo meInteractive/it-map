@@ -23,6 +23,7 @@ var errSettingsInjected = errors.New("CI_SETTINGS_FAULT_DETAILS_NOT_PUBLIC")
 
 type settingsHook struct {
 	pauseBegin, failAfterUpdate, unknownCommit bool
+	failQuery                                  bool
 	query                                      string
 	entered, release                           chan struct{}
 	fired                                      atomic.Bool
@@ -77,6 +78,12 @@ func (c *settingsConn) BeginTx(ctx context.Context, opts driver.TxOptions) (driv
 }
 func (c *settingsConn) QueryContext(ctx context.Context, q string, args []driver.NamedValue) (driver.Rows, error) {
 	if c.hook.query != "" && strings.HasPrefix(q, c.hook.query) {
+		if c.hook.failQuery {
+			if c.hook.fired.CompareAndSwap(false, true) {
+				return nil, errSettingsInjected
+			}
+			return c.Conn.(driver.QueryerContext).QueryContext(ctx, q, args)
+		}
 		if e := c.hook.pause(ctx); e != nil {
 			return nil, e
 		}

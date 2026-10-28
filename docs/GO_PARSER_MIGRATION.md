@@ -186,3 +186,46 @@ IEEE numbers и Unicode. Некорректный/усечённый result_json
 LEFT JOIN, SQL substr2048 characters, isolation и generation будут проверены в
 следующей dashboard порции326. Передавать SELECT * вместо reviewed columns
 запрещено: safety allowlist намеренно уже общего object-rest source helper.
+
+
+GO-326 подключает GET /api/scheduler к SELECT-only repeatable-read снимку.
+Generation, settings, current-generation counts/20 runs, последние50 global
+attempts с явным LEFT JOIN, statistics и расходы читаются согласованно. История
+attempts и денежные агрегаты не ограничиваются текущим generation; перенос или
+restore не скрывает прежние расходы. SQL substr2048 characters применяется до
+GO-325 projection; result_json/private cloud owner в ответ не попадают.
+
+Роутер сохраняет admin/session/storage права и отсутствие GET-body parsing;
+неподдерживаемый метод проходит общий32KiB body gate перед405. Новые worker,
+provider client, cloud binding, probe/run/queue/диагностика не подключаются.
+Расписание и cloudStatus — проекция сохранённых сигналов, а не обещание живого
+облачного подключения. Время берётся один раз на запрос: московские сутки/месяц,
+75 минут и округление до часа проверяются по source Date.now fixtures.
+
+SQLite SUM отличается от MariaDB: integer overflow, real/text affinity, числовой
+префикс и компенсированная сумма влияют на статистику и финансовое представление.
+Read-only расчёт переиспользует SQLite AtoF из принятого JSON1 gate и перенос
+public-domain sumStep/Kahan–Babuška–Neumaier из SQLite3.53.3 src/func.c:
+https://github.com/sqlite/sqlite/blob/version-3.53.3/src/func.c
+260 actual SQLite sequences проверяют типы, NUL/whitespace, int64 boundaries,
+переход к real после overflow, cancellation и Infinity/NaN. Денежная запись и
+budget reservation GO-313 не меняются. Положительный reserve остаётся учтённым;
+NULL cost использует reserve, NULL credits сохраняется какNULL.
+
+Source SQL без полного ORDER BY не обещает порядок строк с одинаковым timestamp;
+новый ID tie-break для history не вводится. Pure sum proof использует явный
+порядок прочитанных значений. Для расходов поток идёт по started_at/type, а группы
+выдаются в исходном бинарном порядке type. Полный согласованный private snapshot
+по-прежнему относится к GO-030, не подменяется этими синтетическими проверками.
+
+Required native gate сравнивает36 состояний unchanged router/SQLite и144 Go→
+MariaDB HTTP responses, включая20/50 limits, old-generation spend, first duplicate,
+числовые строки/bool, большой integer/Infinity и compensated credits. Node SQLite
+int64 явно преобразуется в JS Number, как read values D1; source код не меняется.
+Driver-specific ERR_SQLITE_ERROR не принимается за переносимый API-код: integer
+SUM overflow проверяется отдельным target/native refusal, а не подменённым JSON
+source ответом. Дополнительные5 native cases проверяют missing singleton без
+INSERT, actual concurrent generation snapshot, поздний SELECT fault без частичного
+DTO, cancellation и integer overflow. Перед/после GET сравнивается содержимое
+всех72 таблиц; reader также обязан получить1142 при пробе UPDATE с пустым WHERE.
+Положительная SQL приёмка326 фиксируется после CI. Пока parent021 остаётся открыт.
