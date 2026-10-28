@@ -82,6 +82,22 @@ func TestMariaDBSchedulerJobSourceDisposable(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	t.Cleanup(cancel)
 	f.ctx = ctx
+	// Source vectors include exact due/deferred/hour boundaries. Pin only this
+	// guarded fixture's SQL session clock, so seeding latency cannot turn a +1ms
+	// future job into due work. The ownership/crash parent uses real clocks and
+	// separate actual connections. Production has no injected clock or SET SQL.
+	f.db.SetMaxOpenConns(1)
+	f.exec("SET timestamp=1800000000")
+	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if _, e := f.db.ExecContext(ctx, "SET timestamp=0"); e != nil {
+			t.Error("cannot restore synthetic source session clock")
+		}
+	})
+	if schedulerClock(t, f.db) != 1800000000000 {
+		t.Fatal("source clock was not pinned exactly")
+	}
 	for _, table := range []string{"apify_runs", "vacancy_discovery_runs"} {
 		if f.count("SELECT COUNT(*) FROM "+table) != 0 {
 			t.Fatal("source fixture requires empty owned auxiliary tables")
