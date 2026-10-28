@@ -23,7 +23,7 @@ func (p *roleProbe) Read(_ context.Context) (roles.Catalog, error) {
 	if p.fail {
 		return roles.Catalog{}, errors.New("sensitive SQL details")
 	}
-	return roles.Build([]roles.Role{{ID: 1, StableKey: "it", Name: "IT Manager"}, {ID: 2, StableKey: "head", Name: "Руководитель", ParentID: ptr(1)}})
+	return roles.Build([]roles.Role{{ID: 1, StableKey: "it", Name: "IT Manager", ChildCount: 1}, {ID: 2, StableKey: "head", Name: "Руководитель", ParentID: ptr(1)}})
 }
 func ptr(n int64) *int64 { return &n }
 func TestVacancyRoleRoutes(t *testing.T) {

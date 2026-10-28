@@ -7,7 +7,9 @@ import (
 	"errors"
 	"fmt"
 	"sort"
-	"strings"
+	"unicode/utf16"
+
+	"itmap/internal/rucollation"
 )
 
 type Role struct {
@@ -77,6 +79,7 @@ func Build(raw []Role) (Catalog, error) {
 	result := Catalog{Roles: make([]Role, 0, len(raw)), Tree: []Node{}, Roots: []Role{}, Leaves: []Role{}}
 	byID := make(map[int64]*Role, len(raw))
 	children := map[int64][]int64{}
+	keys := map[int64]rucollation.Key{}
 	var order []int64
 	for _, input := range raw {
 		if input.ID < 1 {
@@ -89,6 +92,7 @@ func Build(raw []Role) (Catalog, error) {
 		input.DescendantIDs = []int64{}
 		value := input
 		byID[input.ID] = &value
+		keys[input.ID] = rucollation.Keys(utf16.Encode([]rune(input.Name)))
 		order = append(order, input.ID)
 	}
 	for _, id := range order {
@@ -108,8 +112,8 @@ func Build(raw []Role) (Catalog, error) {
 			if left.SortOrder != right.SortOrder {
 				return left.SortOrder < right.SortOrder
 			}
-			if left.Name != right.Name {
-				return strings.ToLower(left.Name) < strings.ToLower(right.Name)
+			if cmp := rucollation.Compare(keys[left.ID], keys[right.ID]); cmp != 0 {
+				return cmp < 0
 			}
 			return left.ID < right.ID
 		})
@@ -161,8 +165,6 @@ func Build(raw []Role) (Catalog, error) {
 		v := byID[id]
 		v.Path = pathFor(id)
 		v.DescendantIDs = descendants(id)
-		v.ChildCount = int64(len(children[id]))
-		v.IsLeaf = v.ChildCount == 0
 	}
 	var nest func(int64) []Node
 	nest = func(id int64) []Node {

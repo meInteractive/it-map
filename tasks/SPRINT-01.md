@@ -178,7 +178,7 @@
 ### [ ] GO-009. Каталог компаний, агентств и карта
 
 - **Приоритет:** Критический.
-- **Критическая часть:** [x] SQL/API каталога и ID подтверждены synthetic smoke; карточки/список — GO-051. [ ] JS→Go search/filter/detail/map JSON parity, отсутствующие/null записи и user flags. [ ] GO-030 на разрешённом снимке.
+- **Критическая часть:** [x] SQL/API каталога и ID подтверждены synthetic smoke; карточки/список — GO-051. [x] Normalized JS→Go search/list/detail/map JSON/null/user flags:315/316 pure +317 actual source SQLite/router vs SELECT-only MariaDB,2592 responses. [ ] GO-030 на разрешённом снимке.
 - **Средняя часть:** [ ] Функциональная карта/ресурсы/реальные фильтры в браузере.
 - **Низкая часть:** [ ] Подписи/размеры маркеров и идеальная вёрстка карты.
 
@@ -190,7 +190,7 @@
 - **Критерии готовности:** Сопоставимые ответы из реальной MariaDB, карты и список работают.
 - **Как проверить:** JSON parity, MariaDB интеграция, браузерный smoke.
 - **Известные ограничения:** Go-роуты и тесты есть, staging нет.
-- **Результат:** Существующий код 895d3ee/5b44e54/e0c4ef9 и synthetic CI PR #1/#9; browser list/detail GO-051. Полный JS→Go search/map/filter и согласованный снимок ещё не приняты.
+- **Результат:** Существующий код 895d3ee/5b44e54/e0c4ef9 и synthetic CI PR #1/#9; browser list/detail GO-051. Normalized search/list/map/detail/source/user flags приняты315–317 на synthetic disposable MariaDB; согласованный snapshot030 и функциональные browser map/filter части остаются открытыми.
 
 
 ### [ ] GO-010. CRM компаний и пользовательские списки
@@ -1414,12 +1414,12 @@
 - **Критерии:** unchanged searchCatalogNames, точные JS lower/coercion/null/пробелы/embedded job-office-revenue-vpnAi поля и alias agencies search; без runtime/SQL activation до317.
 - **Результат:** pure PrepareCatalogSearch реализован без runtime/SQL activation;2551 unchanged searchCatalogNames fixtures сравнивают exact JSON/error boundary, включая UTF16/full lower/final sigma/field coercion/Infinity/numeric own keys. [PR #76](https://github.com/meInteractive/it-map/pull/76), code0876f4da5c7c611a99fbc16c78fa47b819c8436b/tree9e3f0d7b12f72b29bd786f8296743dd421402f44: Public40708192883/MariaDB40708192913 fully success, весь regression pass.
 
-### [ ] GO-317. Readonly MariaDB/API parity каталога (часть GO-009)
+### [x] GO-317. Readonly MariaDB/API parity каталога (часть GO-009)
 
 - **Приоритет:** Критический, только sprint1.1.
 - **Зависимости:** GO-315/316 pure proofs, существующие baseline/identity/read models.
 - **Критерии:** подключить pure normalization/projection/search к Go Repository/HTTP; unchanged source SQLite reference + actual MariaDB readonly account, заранее подготовленные IDs, user isolation/flags/application selection/null/unknown IDs/name/errors и method/role contracts. GET не создаёт identities и не меняет business rows. Только synthetic disposable CI, без private snapshot. Полная GO-009/030 не закрывается синтетикой.
-- **Результат:** runtime315/316 подключён через RawMessage DTO и readonly snapshots; новый source SQLite/router oracle2592 responses/12 frames, SELECT-only grant/full72-table immutability/error/duplicate/missing-ID и actual concurrent snapshot tests. Локальные Go/source gates проходят; positive MariaDB только в required disposable CI, полная приёмка ожидается.
+- **Результат:** runtime315/316 подключён через RawMessage DTO и readonly snapshots; новый source SQLite/router oracle2592 responses/12 frames, SELECT-only grant/full72-table immutability/error/duplicate/missing-ID и actual concurrent snapshot tests. [PR #77](https://github.com/meInteractive/it-map/pull/77), code40a026f5eb32f4d6c1e3d4c31123c73ee2076f4a/treec3a5bce39bac859bceddaebd32749ee0a13a79d1: Public40711808887/MariaDB40711808823 fully success. Required122898776673 подтвердил все3 parent tests/12 source frames/2592 HTTP responses, UNIQUE1062, missing-ID/private errors/actual snapshot, all72-table immutability и zero skips; весь old regression pass.
 
 ### [ ] GO-318. Source publication dates и периоды вакансий (часть GO-011)
 
@@ -1433,4 +1433,4 @@
 - **Приоритет:** Критический, только sprint1.1.
 - **Зависимости:** существующий role schema/read model, source vacancy-roles.js, принятый Unicode ADR-023.
 - **Критерии:** unchanged source readVacancyRoles на synthetic read-set fixtures, точный flat order/tree/roots/leaves/path/descendants; исходная Russian collation + accepted canonical policy/stable ID tie. Повреждённые graph/IDs fail closed без recursion crash. SQL/API role/filter integration отдельно.
-- **Результат:** не реализовано.
+- **Результат:** source readVacancyRoles164 read-set frames; до correction129 mismatches, после exact DTO match -race. Русский порядок/ID tie используют принятый ADR-023, SQL childCount не перезаписывается. Corrupt graph guards сохранены; SQL/API filter integration не заявляется. Required source CI добавлен, полная приёмка ожидается.

@@ -21,7 +21,7 @@
       "id": "catalog",
       "implementation": "partial",
       "level": "Source pure normalization/search + required readonly SQL/HTTP acceptance",
-      "gap": "GO-030: согласованный snapshot и полная GO-009 остаются открытыми; synthetic SQL/HTTP gate GO-317 проходит приёмку.",
+      "gap": "GO-030: согласованный snapshot и полная GO-009 остаются открытыми; synthetic SQL/HTTP gate GO-317 принят.",
       "evidence": [
         {
           "file": "internal/httpapi/compact_routes_test.go",
@@ -101,7 +101,7 @@
       "id": "vacancies",
       "implementation": "partial",
       "level": "Required CRUD/flags SQL+HTTP; Go read projections",
-      "gap": "GO-011: period/role descendants/source/date/null parity; прочие отрицательные GET filters. Это не закрывает GO-032 agency часть.",
+      "gap": "GO-011: actual source SQL/API role/source/date/null joins и отрицательные GET filters остаются; pure date/role source proofs318/319 отдельно. GO-032 agency часть не закрыта.",
       "evidence": [
         {
           "file": "internal/storage/vacancy_create_http_test.go",
@@ -125,6 +125,14 @@
         },
         {
           "file": "internal/vacancies/list_test.go"
+        },
+        {
+          "file": "internal/vacancies/period_interop_test.go",
+          "symbol": "TestPublicationPeriodSource"
+        },
+        {
+          "file": "internal/roles/roles_interop_test.go",
+          "symbol": "TestRoleCatalogSource"
         }
       ]
     },
