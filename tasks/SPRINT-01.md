@@ -1400,19 +1400,19 @@
 - **Критерии:** воспроизводимый AST inventory всех клиентских transport callsites (включая mutate/download/stream), проверяемая review matrix по семействам с Go handler/test references и явными gaps; динамические/неподтверждённые случаи не считать parity. Проверка stale inventory/reference drift в CI. Полная GO-002/golden и runtime API этой порцией не закрываются и не меняются.
 - **Результат:** [PR #74](https://github.com/meInteractive/it-map/pull/74), codee8694d85f515936924788b4a39e54f4619f56a49/treecdb9c5856122d4625e306d84b09fc0f7cba26d53: Public40696413474/MariaDB40696413830 fully pass. AST audit61 TS/TSX/129 sites/7 bindings/1 forwarding/26 families; source hash/ref/required SQL target checks и3 negative drift mutations pass. Полный GO-002/golden не закрывается.
 
-### [ ] GO-315. Pure normalized list/map/detail каталога (часть GO-009)
+### [x] GO-315. Pure normalized list/map/detail каталога (часть GO-009)
 
 - **Приоритет:** Критический, только sprint1.1.
 - **Зависимости:** GO-314 audit, принятый source catalog codec/normalizer/Unicode GO-100-C-P.
 - **Критерии:** unchanged readCompactEntities/readCompanyDetail на synthetic fixtures против pure Go projection; normalization/order/rank/defaults, omitted vs null, user flags, embedded jobs/initialized state, ID/name fallback и сохранение detail без jobs. Не выполнять SQL/provider calls и не активировать новый runtime путь. Переиспользовать принятые field/JSON helpers, не писать второй независимый normalizer. Предшествующие restore/source gates не ломаются.
-- **Результат:** pure PrepareCatalogRead реализован без Repository/HTTP activation;1180 unchanged-source read-set fixtures локально pass. Общие object builders сохраняют Infinity/truthiness до финального DTO stringify, старые entity и170 unsigned restore/source plan gates pass. Full CI ещё ожидается;315 projections →316 search →317 readonly SQL/API.
+- **Результат:** [PR #75](https://github.com/meInteractive/it-map/pull/75), code76bd7d9f998a6c6bb8c8827657bf685aede40079/tree545b08b6295f51899665d002f758ba93a575b78a: Public40704508982/MariaDB40704508987 fully pass.1180 unchanged-source read-set frames, numeric-key negative probe, old entity/170 unsigned plans и весь SQL/API/browser/restore/bootstrap regression успешны. No Repository/HTTP activation;316 search →317 readonly SQL/API отдельно.
 
 ### [ ] GO-316. Pure source search каталога (часть GO-009)
 
 - **Приоритет:** Критический, только sprint1.1.
 - **Зависимости:** GO-315; общий нормализованный catalog view/codec.
 - **Критерии:** unchanged searchCatalogNames, точные JS lower/coercion/null/пробелы/embedded job-office-revenue-vpnAi поля и alias agencies search; без runtime/SQL activation до317.
-- **Результат:** не реализовано.
+- **Результат:** pure PrepareCatalogSearch реализован без runtime/SQL activation;2551 unchanged searchCatalogNames fixtures сравнивают exact JSON/error boundary, включая UTF16/full lower/final sigma/field coercion/Infinity/numeric own keys. Source gate ещё проходит полную приёмку CI.
 
 ### [ ] GO-317. Readonly MariaDB/API parity каталога (часть GO-009)
 
