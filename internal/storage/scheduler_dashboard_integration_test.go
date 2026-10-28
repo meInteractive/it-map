@@ -33,6 +33,38 @@ type dashboardSQLFrame struct {
 	}
 }
 
+// ORDER BY started_at DESC не задаёт порядок внутри одинакового timestamp.
+// Сравниваем полные записи каждой такой группы; между группами порядок строгий.
+func comparableDashboardHistory(t *testing.T, value any) {
+	t.Helper()
+	root, ok := value.(map[string]any)
+	if !ok {
+		t.Fatal("Ответ dashboard не является объектом")
+	}
+	for _, key := range []string{"runs", "attempts"} {
+		rows, ok := root[key].([]any)
+		if !ok {
+			continue // Ответ об отказе в доступе не содержит историю.
+		}
+		for start := 0; start < len(rows); {
+			row := rows[start].(map[string]any)
+			at := row["started_at"].(float64)
+			if start > 0 && rows[start-1].(map[string]any)["started_at"].(float64) < at {
+				t.Fatal("История не отсортирована по убыванию времени")
+			}
+			end := start + 1
+			for end < len(rows) && rows[end].(map[string]any)["started_at"].(float64) == at {
+				end++
+			}
+			group := rows[start:end]
+			sort.Slice(group, func(i, j int) bool {
+				return group[i].(map[string]any)["id"].(string) < group[j].(map[string]any)["id"].(string)
+			})
+			start = end
+		}
+	}
+}
+
 func dashboardFixture(t *testing.T) *settingsSQLFixture {
 	t.Helper()
 	f := openSettingsSQL(t)
@@ -176,8 +208,13 @@ func TestMariaDBSchedulerDashboardSourceDisposable(t *testing.T) {
 				w := httptest.NewRecorder()
 				handler.ServeHTTP(w, r)
 				var actual, expected any
-				if w.Code != c.Status || json.Unmarshal(w.Body.Bytes(), &actual) != nil || json.Unmarshal([]byte(c.Body), &expected) != nil || !reflect.DeepEqual(actual, expected) {
+				if w.Code != c.Status || json.Unmarshal(w.Body.Bytes(), &actual) != nil || json.Unmarshal([]byte(c.Body), &expected) != nil {
 					t.Fatalf("source dashboard HTTP differs for %s: %d/%d", c.User, w.Code, c.Status)
+				}
+				comparableDashboardHistory(t, actual)
+				comparableDashboardHistory(t, expected)
+				if !reflect.DeepEqual(actual, expected) {
+					t.Fatalf("Поля dashboard отличаются от исходного ответа: %v", settingsRowDifferences(actual.(map[string]any), expected.(map[string]any)))
 				}
 				if strings.Contains(w.Body.String(), "CI_PRIVATE") || strings.Contains(w.Body.String(), "result_json") {
 					t.Fatal("dashboard exposed private result/owner")
