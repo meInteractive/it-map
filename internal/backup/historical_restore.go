@@ -68,7 +68,7 @@ func (r Repository) ValidateRestore(ctx context.Context, data []byte) (RestoreVa
 	if e != nil {
 		return RestoreValidation{}, e
 	}
-	initial, e := prepareModernPayload(p, nil, time.Now())
+	initial, e := prepareHistoricalPayload(p, nil, time.Now())
 	if e != nil {
 		return RestoreValidation{}, e
 	}

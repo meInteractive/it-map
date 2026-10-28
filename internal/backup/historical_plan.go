@@ -15,9 +15,9 @@ func PrepareModernRestore(data []byte, current []Table, now time.Time) (*Restore
 	if e != nil {
 		return nil, e
 	}
-	return prepareModernPayload(payload, current, now)
+	return prepareHistoricalPayload(payload, current, now)
 }
-func prepareModernPayload(payload *Payload, current []Table, now time.Time) (*RestorePlan, error) {
+func prepareHistoricalPayload(payload *Payload, current []Table, now time.Time) (*RestorePlan, error) {
 	version := int(payload.Version)
 	tables := payload.Storage.Tables
 	// Payload owns its rows, while destination state is copied before transforms.
@@ -57,6 +57,21 @@ func prepareModernPayload(payload *Payload, current []Table, now time.Time) (*Re
 		appendRows(name, rows)
 	}
 	empty := func(name string) { appendRows(name, []map[string]json.RawMessage{}) }
+	if version < 16 {
+		// Calendar was never exported. An explicitly supplied audit section,
+		// including empty rows, replaces the destination instead of preserving it.
+		for _, name := range []string{"google_calendar_connection", "vacancy_audit_runs"} {
+			if get(name) == nil {
+				preserve(name)
+			}
+		}
+		catalog, e := normalizeLegacyCatalogValue(payload.legacyCatalog)
+		if e != nil {
+			return nil, e
+		}
+		date := historicalDate(payload, now)
+		appendRows("app_catalog", []map[string]json.RawMessage{{"id": json.RawMessage("1"), "data_json": rawString(string(catalog)), "updated_at": date}})
+	}
 	for i := range tables {
 		t := &tables[i]
 		switch {
@@ -96,11 +111,7 @@ func prepareModernPayload(payload *Payload, current []Table, now time.Time) (*Re
 		}
 	}
 	if version < 27 {
-		date := payload.CreatedAt
-		v, _ := orderedJSON(date)
-		if !jsonTruthy(v) {
-			date = rawString(now.UTC().Format("2006-01-02T15:04:05.000Z"))
-		}
+		date := historicalDate(payload, now)
 		roles, assignments := migratedLegacyRoles(get("company_vacancies").Rows, date)
 		appendRows("vacancy_roles", roles)
 		appendRows("vacancy_role_assignments", assignments)
@@ -224,5 +235,20 @@ func prepareModernPayload(payload *Payload, current []Table, now time.Time) (*Re
 		return nil, e
 	}
 	plan.Warnings = append([]string(nil), historicalPolicy().Warnings[version]...)
+	if version < 16 {
+		plan.Warnings = append([]string{"Старый формат: исходная дата каталога, счётчики ID и служебные метаданные не сохранены. Разделы, отсутствовавшие в старом экспорте, сохраняются в текущей базе. Полноту строк старого файла нельзя подтвердить контрольной суммой."}, historicalPolicy().Warnings[16]...)
+	}
 	return plan, nil
+}
+
+// Preserve source truthiness before stringify, including legacy overflow dates.
+func historicalDate(payload *Payload, now time.Time) json.RawMessage {
+	value, _ := orderedJSON(payload.CreatedAt)
+	if payload.Version < 16 {
+		value = payload.legacyCreatedAt
+	}
+	if jsonTruthy(value) {
+		return rawValue(value)
+	}
+	return rawString(now.UTC().Format("2006-01-02T15:04:05.000Z"))
 }

@@ -66,7 +66,7 @@ func ValidateLegacyBackup(data []byte) (*Payload, error) {
 			return nil, invalid("Старый бэкап неполон: отсутствуют обязательные таблицы. Восстановление отменено.")
 		}
 	}
-	p := &Payload{Format: Format, Version: version.number, CreatedAt: rawValue(root.field("createdAt")), Catalog: rawValue(root.field("catalog"))}
+	p := &Payload{legacyCatalog: root.field("catalog"), legacyCreatedAt: root.field("createdAt"), Format: Format, Version: version.number, CreatedAt: rawValue(root.field("createdAt")), Catalog: rawValue(root.field("catalog"))}
 	p.Storage.Tables = make([]Table, 0, len(nodes.items))
 	byTable := map[string]Table{}
 	for _, node := range nodes.items {
