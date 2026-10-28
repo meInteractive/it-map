@@ -2,6 +2,13 @@ import { readFile } from 'node:fs/promises';
 import type { Page, Locator } from '@playwright/test';
 import { test, expect } from '../browser/fixtures.js';
 
+async function openGeneral(page: Page, activate: (target: Locator) => Promise<void>) {
+  await activate(page.getByRole('button', { name: 'Настройки', exact: true }));
+  await activate(page.getByRole('button', { name: 'Общие', exact: true }));
+  await expect(page.locator('.app')).toHaveAttribute('data-section', 'settings');
+  await expect(page.getByRole('heading', { name: 'Настройки · Общие', exact: true })).toBeVisible();
+}
+
 async function login(page: Page, activate: (target: Locator) => Promise<void>, account = 'eugene') {
   const password = process.env.ITMAP_SMOKE_PASSWORD;
   if (!password || process.env.ITMAP_BACKUP_BROWSER_WRITES !== '1') throw new Error('Guarded synthetic backup credentials required.');
@@ -10,7 +17,8 @@ async function login(page: Page, activate: (target: Locator) => Promise<void>, a
   await page.getByLabel('Пароль', { exact: true }).fill(password);
   await activate(page.getByRole('button', { name: 'Открыть карту', exact: true }));
   await expect(page.getByRole('navigation', { name: 'Основные разделы' })).toBeVisible();
-  await activate(page.getByRole('button', { name: 'Настройки', exact: true }));
+  await expect(page.locator('.app')).toHaveAttribute('data-admin', String(account === 'eugene'));
+  await openGeneral(page, activate);
 }
 const restoreCard = (page: Page) => page.locator('article').filter({ has: page.getByRole('heading', { name: 'Восстановить из бэкапа', exact: true }) });
 
@@ -48,7 +56,7 @@ test('Бэкап: скачать, проверить, отменить и вос
   expect((await restored).status()).toBe(200);
   await reloaded;
   await expect(page.getByRole('navigation', { name: 'Основные разделы' })).toBeVisible();
-  await activate(page.getByRole('button', { name: 'Настройки', exact: true }));
+  await openGeneral(page, activate);
   await expect(restoreCard(page).getByRole('button', { name: 'Восстановить данные', exact: true })).toBeDisabled();
   expect(posts).toBe(1);
   const favorites = await page.request.get('/api/crm/favorites');

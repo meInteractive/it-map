@@ -454,3 +454,5 @@ GO-321 implementation: отдельный fresh-schema/nonce/loopback/expected72
 GO-320/#80/5dba544df565ba5da68b4b3ebdd9106e426e9e41/tree4cb3b1d04096d305f55333fbe64b9437ac9ae233 принята: Public40743050421/MariaDB40743050396 fully success, new3-role TLS protocol proof и весь old regression pass. Parent008 external live medium gate остаётся открытым.
 
 GO-321 local checks: TS strict check/selective config и6 Playwright test discovery pass (не browser execution), default/tagged race/vet/builds/Go1.23 compile и web build pass, source/schema/smoke/actionlint/API audit/history pass.4 remote/root/schema/missing nonce pre-connect refusals pass. Positive MariaDB/browser только CI.
+
+GO-321 initialeaeb8708f80084da6ef90bf4c8a4db10cf7eab61/treeb467536d87d0081c0dfacf21829e6b391c022d1a, PR #81: first required browser job123016494194 не принят — fixture нажимал Settings menu trigger, но не выбирал General.2 nonadmin scenarios прошли HTTP403;4 admin scenarios timeout до backup controls. Исправляется только тестовая навигация, добавляются явные settings/general/data-admin assertions, product не меняется.
