@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -66,6 +67,13 @@ func httpHandler(logger *slog.Logger, db *sql.DB, manager *auth.Manager) http.Ha
 }
 
 func main() {
+	if len(os.Args) > 1 {
+		if os.Args[1] == "schema-init" {
+			os.Exit(schemaInitCommand(context.Background(), os.Args[2:], os.Getenv("DB_PASSWORD"), os.Stdout, os.Stderr))
+		}
+		fmt.Fprintln(os.Stderr, "unknown command; use schema-init --help or run without arguments for HTTP")
+		os.Exit(2)
+	}
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	cfg, err := config.Load()
 	if err != nil {

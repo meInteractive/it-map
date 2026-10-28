@@ -72,19 +72,13 @@ func Load() (Config, error) {
 
 // Validate is kept separate from Load so tests do not mutate global env state.
 func (cfg Config) Validate() error {
-	switch cfg.Environment {
-	case "development", "test":
-	case "staging":
-		// A test domain must never expose the new application with auth or
-		// database disabled due to missing/misspelled environment settings.
-		if !cfg.DBEnabled || !cfg.AuthEnabled {
-			return errors.New("staging requires DB_ENABLED=true and AUTH_ENABLED=true")
-		}
-	case "production":
-		return errors.New("production is explicitly disabled until sprint 1.1 has passed acceptance")
-	default:
-		return fmt.Errorf("invalid APP_ENV value %q", cfg.Environment)
+	if e := ValidateEnvironment(cfg.Environment); e != nil {
+		return e
 	}
+	if cfg.Environment == "staging" && (!cfg.DBEnabled || !cfg.AuthEnabled) {
+		return errors.New("staging requires DB_ENABLED=true and AUTH_ENABLED=true")
+	}
+
 	host, port, err := net.SplitHostPort(cfg.HTTPAddr)
 	if err != nil || host == "" || port == "" {
 		return errors.New("HTTP_ADDR must be a host:port address")
@@ -110,4 +104,17 @@ func (cfg Config) Validate() error {
 		return errors.New("DB_HOST must be localhost for this deployment")
 	}
 	return nil
+}
+
+// ValidateEnvironment preserves the migration's production block for explicit
+// administrative commands without requiring HTTP/auth credentials for them.
+func ValidateEnvironment(environment string) error {
+	switch environment {
+	case "development", "test", "staging":
+		return nil
+	case "production":
+		return errors.New("production is explicitly disabled until sprint 1.1 has passed acceptance")
+	default:
+		return fmt.Errorf("invalid APP_ENV value %q", environment)
+	}
 }

@@ -8,7 +8,7 @@ permissions:
   contents: read
 jobs:
   mariadb-schema:
-    needs: [channel-contact-acceptance, application-link-acceptance, historical-restore]
+    needs: [channel-contact-acceptance, application-link-acceptance, historical-restore, schema-bootstrap]
     runs-on: ubuntu-latest
     # This container database is disposable and has ZERO production credentials.
     services:
@@ -684,6 +684,70 @@ jobs:
               assert any(e.get('Test')==target and e.get('Action')=='pass' for e in events), 'required restore target did not pass/run: '+target
           assert not any(e.get('Action')=='skip' for e in events), 'required restore test skipped'
           print('PASS: atomic v39 restore ran in separate disposable CI with zero skips')
+          PYCODE
+  schema-bootstrap:
+    runs-on: ubuntu-latest
+    # This container database is disposable and has ZERO production credentials.
+    services:
+      mariadb:
+        image: mariadb:10.11
+        ports:
+          - 3306:3306
+        env:
+          MARIADB_ROOT_PASSWORD: ci_only_disposable_root
+          MARIADB_DATABASE: itmap_ci
+          MARIADB_USER: itmap_ci
+          MARIADB_PASSWORD: ci_only_disposable_writer
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.19.0
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Confirm synthetic fixture matches source baseline and has no rows
+        run: |
+          python3 scripts/check-ci-schema.py
+          python3 scripts/check-ci-smoke-seed.py
+          python3 scripts/check-public-repo.py
+      - name: Bind the BLANK disposable database to this CI run
+        shell: bash
+        run: |
+          set -euo pipefail
+          disposable_generation="$(python3 -c 'import uuid; print(uuid.uuid4())')"
+          echo "ITMAP_TEST_DISPOSABLE_GENERATION=$disposable_generation" >> "$GITHUB_ENV"
+          docker exec '${{ job.services.mariadb.id }}' mariadb \
+            -u root -pci_only_disposable_root itmap_ci -e \
+            "ALTER DATABASE itmap_ci COMMENT '$disposable_generation'"
+      - name: Verify locked MariaDB driver dependencies without modifying manifests
+        shell: bash
+        run: |
+          set -euo pipefail
+          git ls-files --error-unmatch go.sum >/dev/null
+          go mod download
+          go mod verify
+          go mod tidy -diff
+          git diff --exit-code -- go.mod go.sum
+      - name: Verify schema init failure retry ownership CLI and restore ONLY in disposable CI
+        env:
+          ITMAP_REQUIRE_MARIADB_INTEGRATION: '1'
+          ITMAP_TEST_MARIADB_WRITE_DSN: 'itmap_ci:ci_only_disposable_writer@tcp(127.0.0.1:3306)/itmap_ci?parseTime=true&clientFoundRows=true&collation=utf8mb4_bin'
+        run: |
+          set -euo pipefail
+          result_file="$(mktemp)"
+          trap 'rm -f "$result_file"' EXIT
+          go test -race -tags mariadb,v39restore,historicalrestore,schemainit ./internal/storage -run '^TestMariaDBSchemaInit(Retry|CLI|Ownership)?Disposable$' -count=1 -json | tee "$result_file"
+          python3 - "$result_file" <<'PYCODE'
+          import json,sys
+          events=[json.loads(line) for line in open(sys.argv[1],encoding='utf8')]
+          for target in ['TestMariaDBSchemaInitDisposable','TestMariaDBSchemaInitRetryDisposable','TestMariaDBSchemaInitCLIDisposable','TestMariaDBSchemaInitOwnershipDisposable']:
+              assert any(e.get('Test')==target and e.get('Action')=='pass' for e in events), 'required schema init target did not pass/run: '+target
+          assert not any(e.get('Action')=='skip' for e in events), 'required schema initialization skipped'
+          print('PASS: explicit schema init source restore failure retry ownership and actual CLI ran without skips')
           PYCODE
   historical-restore:
     runs-on: ubuntu-latest
