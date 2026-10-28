@@ -239,7 +239,7 @@
       "id": "backup",
       "implementation": "partial",
       "level": "Source v14–39 + required SQL/admin HTTP/round-trip/bootstrap",
-      "gap": "Операторский UI/реальные backup/deploy; synthetic proof не подменяет внешний restore rehearsal.",
+      "gap": "Операторский UI/реальные backup/deploy; synthetic proof не подменяет внешний restore rehearsal. UI export/validate/confirm/restore browser gate321 проходит приёмку.",
       "evidence": [
         {
           "file": "internal/storage/v39_export_http_test.go",
@@ -259,6 +259,11 @@
         {
           "file": "internal/storage/schema_init_integration_test.go",
           "symbol": "TestMariaDBSchemaInitDisposable",
+          "required": true
+        },
+        {
+          "file": "internal/storage/restore_browser_integration_test.go",
+          "symbol": "TestMariaDBBackupBrowserDisposable",
           "required": true
         }
       ]
