@@ -335,8 +335,25 @@ jobs:
           PYCODE
       - uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: '24.19.0'
           cache: npm
+      - name: Verify scheduler jobs against unchanged source and real ownership ONLY in disposable CI
+        env:
+          ITMAP_REQUIRE_MARIADB_INTEGRATION: '1'
+          ITMAP_TEST_MARIADB_WRITE_DSN: 'itmap_ci:ci_only_disposable_writer@tcp(127.0.0.1:3306)/itmap_ci?parseTime=true&clientFoundRows=true&collation=utf8mb4_bin'
+        run: |
+          set -euo pipefail
+          result_file="$(mktemp)"
+          trap 'rm -f "$result_file"' EXIT
+          go test -race -tags mariadb,schedulerwrites ./internal/storage -run '^TestMariaDBSchedulerJob(Source|Ownership)Disposable$' -count=1 -json | tee "$result_file"
+          python3 - "$result_file" <<'PYCODE'
+          import json,sys
+          events=[json.loads(line) for line in open(sys.argv[1],encoding='utf8')]
+          for target in ['TestMariaDBSchedulerJobSourceDisposable','TestMariaDBSchedulerJobOwnershipDisposable']:
+              assert any(e.get('Test')==target and e.get('Action')=='pass' for e in events), f'required scheduler job parent did not pass/run: {target}'
+          assert not any(e.get('Action')=='skip' for e in events), 'required scheduler job gate skipped'
+          print('PASS: source row differential/concurrent claim/stale fences/late rollback/SIGKILL recovery ran with zero skips')
+          PYCODE
       - name: Verify v39 export snapshot and admin download ONLY in disposable CI
         env:
           ITMAP_REQUIRE_MARIADB_INTEGRATION: '1'
