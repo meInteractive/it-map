@@ -1314,6 +1314,25 @@ jobs:
           print('PASS: source billing/global ceiling/concurrent reservation/unknown COMMIT/joint rollback/SIGKILL recovery ran with zero skips')
           PYCODE
 
+      - name: Verify durable scheduler settings and shared favorites ONLY in disposable CI
+        env:
+          ITMAP_REQUIRE_MARIADB_INTEGRATION: '1'
+          ITMAP_TEST_MARIADB_DSN: 'itmap_readonly_ci:ci_only_disposable_reader@tcp(127.0.0.1:3306)/itmap_ci?parseTime=true&collation=utf8mb4_bin'
+          ITMAP_TEST_MARIADB_WRITE_DSN: 'itmap_ci:ci_only_disposable_writer@tcp(127.0.0.1:3306)/itmap_ci?parseTime=true&clientFoundRows=true&collation=utf8mb4_bin'
+        run: |
+          set -euo pipefail
+          go test -race -tags mariadb,schedulerwrites,schedulersettings ./internal/storage -run '^TestMariaDBSchedulerSettings.*Disposable$' -count=1 -json | tee "$RUNNER_TEMP/scheduler-settings.jsonl"
+          python3 - "$RUNNER_TEMP/scheduler-settings.jsonl" <<'PYTEST'
+          import json,sys
+          events=[json.loads(line) for line in open(sys.argv[1]) if line.startswith('{')]
+          assert not any(e.get('Action')=='skip' for e in events), 'settings acceptance must have zero skips'
+          for target in ['TestMariaDBSchedulerSettingsSourceDisposable','TestMariaDBSchedulerSettingsOwnershipDisposable','TestMariaDBSchedulerSettingsFaultsDisposable']:
+              assert any(e.get('Test')==target and e.get('Action')=='pass' for e in events), f'required settings parent did not pass/run: {target}'
+          for target,count in [('TestMariaDBSchedulerSettingsSourceDisposable/',42),('TestMariaDBSchedulerSettingsOwnershipDisposable/',6),('TestMariaDBSchedulerSettingsFaultsDisposable/',4)]:
+              assert len([e for e in events if e.get('Action')=='pass' and e.get('Test','').startswith(target)])==count, 'missing settings subcases: '+target
+          print('PASS: source42 full-row transitions/JSON1 CAS/shared favorites/concurrent writers/generation/late rollback/unknown COMMIT/snapshot; zero skips')
+          PYTEST
+
   catalog-read-acceptance:
     runs-on: ubuntu-latest
     # This container database is disposable and has ZERO production credentials.
