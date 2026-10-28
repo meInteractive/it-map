@@ -269,28 +269,42 @@ func TestMariaDBCatalogReadFailuresDisposable(t *testing.T) {
 	f.seed(v)
 	h, tokens := catalogHandler(t, f.reader)
 	for _, tc := range []struct {
-		name, sql string
-		args      []any
+		name, query string
+		sqlError    uint16
+		status      int
 	}{
-		{"corrupt catalog", "UPDATE app_catalog SET data_json='not JSON' WHERE id=1", nil},
-		{"duplicate identity", "INSERT INTO company_identity(id,company_name) VALUES(99,'CI A')", nil},
-		{"duplicate personal state", "INSERT INTO company_user_state(user_name,company_name) VALUES('Eugene','CI A')", nil},
+		{"corrupt catalog", "UPDATE app_catalog SET data_json='not JSON' WHERE id=1", 0, 503},
+		{"duplicate identity refused", "INSERT INTO company_identity(id,company_name) VALUES(99,'CI A')", 1062, 200},
+		{"duplicate personal state refused", "INSERT INTO company_user_state(user_name,company_name) VALUES('Eugene','CI A')", 1062, 200},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f.seed(v)
-			if _, e := f.writer.ExecContext(f.ctx, tc.sql, tc.args...); e != nil {
-				t.Fatal("synthetic corruption setup failed")
-			}
 			before := f.snapshot()
+			_, e := f.writer.ExecContext(f.ctx, tc.query)
+			if tc.sqlError == 0 {
+				if e != nil {
+					t.Fatal("synthetic corruption setup failed")
+				}
+			} else {
+				me, ok := e.(*mysql.MySQLError)
+				if !ok || me.Number != tc.sqlError {
+					t.Fatal("existing uniqueness constraint did not reject duplicate")
+				}
+				if f.snapshot() != before {
+					t.Fatal("refused duplicate changed data")
+				}
+			}
+			before = f.snapshot()
 			w := catalogRequest(h, tokens, "GET", "/api/companies/list", "Eugene")
-			if w.Code != 503 || strings.Contains(w.Body.String(), "SQL") {
+			if w.Code != tc.status || strings.Contains(w.Body.String(), "SQL") {
 				t.Fatalf("unsafe storage response %d %s", w.Code, w.Body.String())
 			}
 			if f.snapshot() != before {
-				t.Fatal("failed read wrote data")
+				t.Fatal("read after corruption/duplicate changed data")
 			}
 		})
 	}
+
 	f.seed(v)
 	// A missing migrated identity is represented as null, never lazily recreated
 	// by GET. Source comparisons above deliberately use fully prepared identities.
@@ -339,5 +353,5 @@ func TestMariaDBCatalogReadFailuresDisposable(t *testing.T) {
 	if w := catalogRequest(h, tokens, "GET", "/api/companies/list", "Eugene"); w.Code != 503 {
 		t.Fatal("unconfigured DB did not fail closed")
 	}
-	t.Log("PASS: corruption, target-only duplicate ambiguity, cancellation and storage errors stay private")
+	t.Log("PASS: corruption, existing UNIQUE constraints, missing identity, cancellation and storage errors passed")
 }

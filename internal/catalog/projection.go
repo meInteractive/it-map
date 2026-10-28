@@ -2,8 +2,8 @@ package catalog
 
 // Compact catalog projections preserve the v316 response shape while avoiding
 // the legacy GET-time INSERT OR IGNORE writes. IDs must come from an already
-// migrated identity table: MariaDB's initial D1 conversion does not enforce
-// uniqueness of the LONGTEXT identity names.
+// migrated identity table. The reviewed MariaDB baseline preserves exact
+// LONGTEXT name uniqueness using native UNIQUE HASH indexes.
 
 import (
 	"context"
