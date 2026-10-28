@@ -30,9 +30,14 @@ func ParsePeriod(v string) (Period, error) {
 }
 
 // PublicationDate accepts a valid YYYY-MM-DD prefix (the legacy created_at
-// column may contain a timestamp). Invalid calendar dates are rejected.
+// column may contain a timestamp). Match source ECMAScript trim and Date.UTC's
+// 0..99 year remapping: those four-digit years fail its subsequent year check.
 func PublicationDate(raw string) (time.Time, bool) {
-	s := strings.TrimSpace(raw)
+	s := strings.TrimFunc(raw, func(r rune) bool {
+		return r >= 0x9 && r <= 0xd || r == 0x20 || r == 0xa0 || r == 0x1680 ||
+			r >= 0x2000 && r <= 0x200a || r == 0x2028 || r == 0x2029 ||
+			r == 0x202f || r == 0x205f || r == 0x3000 || r == 0xfeff
+	})
 	if len(s) < 10 {
 		return time.Time{}, false
 	}
@@ -49,7 +54,7 @@ func PublicationDate(raw string) (time.Time, bool) {
 		}
 	}
 	d, err := time.Parse("2006-01-02", s)
-	return d, err == nil && d.Format("2006-01-02") == s
+	return d, err == nil && d.Year() >= 100 && d.Format("2006-01-02") == s
 }
 
 type Dates struct{ PublishedAt, LoadedAt, CreatedAt string }

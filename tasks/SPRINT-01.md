@@ -49,7 +49,7 @@
 ### [ ] GO-002. Полная матрица API и эталонных сценариев
 
 - **Приоритет:** Критический.
-- **Критическая часть:** [x] Статический реестр API/форматов есть. [ ] Исполняемые JS→Go golden по записи/правам/ошибкам/null/дате. [x] Нормализация и hash создания отклика — GO-055 / PR #12. [ ] Матрица покрытия всех используемых методов с ссылками на тесты.
+- **Критическая часть:** [x] Статический реестр API/форматов есть. [ ] Исполняемые JS→Go golden по записи/правам/ошибкам/null/дате. [x] Нормализация и hash создания отклика — GO-055 / PR #12. [x] AST матрица текущих frontend transport callsites с test/SQL references и явными gaps — GO-314/#74; полный исполняемый golden отдельно.
 - **Средняя часть:** [ ] Функциональные сценарии оставшихся экранов по готовности API.
 - **Низкая часть:** [ ] Визуальные эталоны/pixel-perfect сравнения.
 
@@ -1420,3 +1420,17 @@
 - **Зависимости:** GO-315/316 pure proofs, существующие baseline/identity/read models.
 - **Критерии:** подключить pure normalization/projection/search к Go Repository/HTTP; unchanged source SQLite reference + actual MariaDB readonly account, заранее подготовленные IDs, user isolation/flags/application selection/null/unknown IDs/name/errors и method/role contracts. GET не создаёт identities и не меняет business rows. Только synthetic disposable CI, без private snapshot. Полная GO-009/030 не закрывается синтетикой.
 - **Результат:** runtime315/316 подключён через RawMessage DTO и readonly snapshots; новый source SQLite/router oracle2592 responses/12 frames, SELECT-only grant/full72-table immutability/error/duplicate/missing-ID и actual concurrent snapshot tests. Локальные Go/source gates проходят; positive MariaDB только в required disposable CI, полная приёмка ожидается.
+
+### [ ] GO-318. Source publication dates и периоды вакансий (часть GO-011)
+
+- **Приоритет:** Критический, только sprint1.1.
+- **Зависимости:** существующий Go period predicate, shared/publication-period.ts; SQL activation не требуется.
+- **Критерии:** неизменённый TypeScript oracle для typed DB text/null dates: ECMAScript trim/prefix/calendar validity/fallback, Moscow day/inclusive week/month clamp/archive/all. Meaningful negative probe, required source CI; существующие SQL/API gates не ломаются. Полная GO-011/roles/source filters отдельно.
+- **Результат:** unchanged shared TypeScript oracle27375 frames; до correction569 mismatches, после source/default/tagged race/vet/builds/Go1.23/API-audit/source/history/actionlint pass. Исправлены Date.UTC years0–99 и точный ECMAScript trim (FEFF/0085). Required source CI добавлен, полная приёмка ожидается; SQL/full GO-011 не закрыты.
+
+### [ ] GO-319. Source роль/дерево/потомки вакансий (часть GO-011)
+
+- **Приоритет:** Критический, только sprint1.1.
+- **Зависимости:** существующий role schema/read model, source vacancy-roles.js, принятый Unicode ADR-023.
+- **Критерии:** unchanged source readVacancyRoles на synthetic read-set fixtures, точный flat order/tree/roots/leaves/path/descendants; исходная Russian collation + accepted canonical policy/stable ID tie. Повреждённые graph/IDs fail closed без recursion crash. SQL/API role/filter integration отдельно.
+- **Результат:** не реализовано.
