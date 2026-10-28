@@ -1,0 +1,2200 @@
+{
+  "scope": "Current frontend/web direct transport sites and reviewed JSX/download bindings; no runtime/golden coverage inferred",
+  "typescript": "5.9.3",
+  "files": 61,
+  "transportModule": "frontend/api/client.ts",
+  "sites": [
+    {
+      "id": "be54e9adfe9f6137",
+      "file": "frontend/Application.tsx",
+      "line": 31,
+      "call": "form",
+      "method": "POST",
+      "methodExpression": "POST",
+      "urlExpression": "\"/auth\"",
+      "literalFragments": [
+        "/auth"
+      ],
+      "families": [
+        "session"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "073edb066dcc58ad",
+      "file": "frontend/Application.tsx",
+      "line": 65,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/session'",
+      "literalFragments": [
+        "/api/session"
+      ],
+      "families": [
+        "session"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "0524b7a331011a04",
+      "file": "frontend/features/applications/ApplicationConflict.tsx",
+      "line": 59,
+      "call": "request",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/applications/' + base.id",
+      "literalFragments": [
+        "/api/applications/"
+      ],
+      "families": [
+        "applications"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "b1e282f4628a4715",
+      "file": "frontend/features/applications/Applications.tsx",
+      "line": 34,
+      "call": "mutate",
+      "method": "DYNAMIC",
+      "methodExpression": "base ? 'PUT' : 'POST'",
+      "urlExpression": "base ? '/api/applications/' + base.id : '/api/applications/create'",
+      "literalFragments": [
+        "/api/applications/",
+        "/api/applications/create"
+      ],
+      "families": [
+        "applications"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "64aa30be5ee9c306",
+      "file": "frontend/features/applications/Applications.tsx",
+      "line": 104,
+      "call": "mutate",
+      "method": "DELETE",
+      "methodExpression": "'DELETE'",
+      "urlExpression": "'/api/applications/' + record.id",
+      "literalFragments": [
+        "/api/applications/"
+      ],
+      "families": [
+        "applications"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "9a6930d78ebc4508",
+      "file": "frontend/features/applications/Applications.tsx",
+      "line": 136,
+      "call": "mutate",
+      "method": "PUT",
+      "methodExpression": "'PUT'",
+      "urlExpression": "'/api/applications/' + record.id",
+      "literalFragments": [
+        "/api/applications/"
+      ],
+      "families": [
+        "applications"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "d8a0e318e518dd82",
+      "file": "frontend/features/applications/Applications.tsx",
+      "line": 174,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/applications?company=' + encodeURIComponent(companyName)",
+      "literalFragments": [
+        "/api/applications?company="
+      ],
+      "families": [
+        "applications"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "e40516acc87fa58c",
+      "file": "frontend/features/applications/Applications.tsx",
+      "line": 177,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/crm/applications'",
+      "literalFragments": [
+        "/api/crm/applications"
+      ],
+      "families": [
+        "applications"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "c22c0b5fe2e73d95",
+      "file": "frontend/features/applications/useCreationIntent.ts",
+      "line": 17,
+      "call": "request",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/applications/create-context'",
+      "literalFragments": [
+        "/api/applications/create-context"
+      ],
+      "families": [
+        "applications"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "00a57c8f59f98e08",
+      "file": "frontend/features/channels/Channels.tsx",
+      "line": 14,
+      "call": "mutate",
+      "method": "POST",
+      "methodExpression": "'POST'",
+      "urlExpression": "'/api/channels'",
+      "literalFragments": [
+        "/api/channels"
+      ],
+      "families": [
+        "channels"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "a0bdff8fae83831a",
+      "file": "frontend/features/channels/Channels.tsx",
+      "line": 31,
+      "call": "mutate",
+      "method": "DELETE",
+      "methodExpression": "'DELETE'",
+      "urlExpression": "'/api/channels/' + channel.id",
+      "literalFragments": [
+        "/api/channels/"
+      ],
+      "families": [
+        "channels"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "b161490a751af4ac",
+      "file": "frontend/features/channels/Channels.tsx",
+      "line": 41,
+      "call": "mutate",
+      "method": "PUT",
+      "methodExpression": "'PUT'",
+      "urlExpression": "'/api/channels/' + channel.id",
+      "literalFragments": [
+        "/api/channels/"
+      ],
+      "families": [
+        "channels"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "e1b8ec5ffd594f08",
+      "file": "frontend/features/channels/Channels.tsx",
+      "line": 69,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/channels'",
+      "literalFragments": [
+        "/api/channels"
+      ],
+      "families": [
+        "channels"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "69be0eb8e7f8d019",
+      "file": "frontend/features/channels/Channels.tsx",
+      "line": 70,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/vacancies?channel=' + id",
+      "literalFragments": [
+        "/api/vacancies?channel="
+      ],
+      "families": [
+        "vacancies"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "3870f43a53481d18",
+      "file": "frontend/features/companies/CompanyDrawer.tsx",
+      "line": 25,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/crm?company=' + encodeURIComponent(name)",
+      "literalFragments": [
+        "/api/crm?company="
+      ],
+      "families": [
+        "crm"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "ba20940e918d3319",
+      "file": "frontend/features/companies/CompanyDrawer.tsx",
+      "line": 33,
+      "call": "mutate",
+      "method": "PUT",
+      "methodExpression": "'PUT'",
+      "urlExpression": "'/api/crm'",
+      "literalFragments": [
+        "/api/crm"
+      ],
+      "families": [
+        "crm"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "3a13fd3d39d94a06",
+      "file": "frontend/features/companies/CompanyDrawer.tsx",
+      "line": 139,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/' + (type === 'agency' ? 'agencies' : 'companies') + '/detail?name=' + encodeURIComponent(name)",
+      "literalFragments": [
+        "/api/"
+      ],
+      "families": [
+        "dynamic"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "693a4e41e3758ddf",
+      "file": "frontend/features/companies/CompanyDrawer.tsx",
+      "line": 141,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "!type && q.error && 'status' in q.error && q.error.status === 404 ? '/api/agencies/detail?name=' + encodeURIComponent(name) : null",
+      "literalFragments": [
+        "/api/agencies/detail?name="
+      ],
+      "families": [
+        "catalog"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "1db4d2eb57ff54dd",
+      "file": "frontend/features/companies/CompanyDrawer.tsx",
+      "line": 144,
+      "call": "mutate",
+      "method": "PUT",
+      "methodExpression": "'PUT'",
+      "urlExpression": "'/api/crm/' + (key === 'hidden' ? 'hidden-company' : 'favorite')",
+      "literalFragments": [
+        "/api/crm/"
+      ],
+      "families": [
+        "crm"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "3b05cfaa7a4b4fda",
+      "file": "frontend/features/companies/CompanyList.tsx",
+      "line": 21,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "type === 'channel' ? '/api/channels' : type === 'agency' ? '/api/agencies/list' : '/api/companies/list'",
+      "literalFragments": [
+        "/api/channels",
+        "/api/agencies/list",
+        "/api/companies/list"
+      ],
+      "families": [
+        "catalog",
+        "channels"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "5a5375b643bbf0ad",
+      "file": "frontend/features/companies/Contacts.tsx",
+      "line": 54,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/hiring-contacts?company=' + encodeURIComponent(companyName)",
+      "literalFragments": [
+        "/api/hiring-contacts?company="
+      ],
+      "families": [
+        "hiring-contacts"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "f7a04fbd9e078cf0",
+      "file": "frontend/features/companies/Contacts.tsx",
+      "line": 58,
+      "call": "mutate",
+      "method": "DELETE",
+      "methodExpression": "'DELETE'",
+      "urlExpression": "'/api/hiring-contacts/' + c.id",
+      "literalFragments": [
+        "/api/hiring-contacts/"
+      ],
+      "families": [
+        "hiring-contacts"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "64470ba87cff5312",
+      "file": "frontend/features/companies/Contacts.tsx",
+      "line": 62,
+      "call": "mutate",
+      "method": "DYNAMIC",
+      "methodExpression": "editor.id ? 'PUT' : 'POST'",
+      "urlExpression": "'/api/hiring-contacts' + (editor.id ? '/' + editor.id : '')",
+      "literalFragments": [
+        "/api/hiring-contacts"
+      ],
+      "families": [
+        "hiring-contacts"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "d51c33f8e5f656ba",
+      "file": "frontend/features/map/Map.tsx",
+      "line": 30,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/companies/map'",
+      "literalFragments": [
+        "/api/companies/map"
+      ],
+      "families": [
+        "catalog"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "489fe06c5acb3c6a",
+      "file": "frontend/features/map/MapSearch.tsx",
+      "line": 42,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "!dismissed && term && term === search\n        ? '/api/companies/search?q=' + encodeURIComponent(search) : null",
+      "literalFragments": [
+        "/api/companies/search?q="
+      ],
+      "families": [
+        "catalog"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "a700cef598cd7540",
+      "file": "frontend/features/settings/Apify.tsx",
+      "line": 12,
+      "call": "mutate",
+      "method": "PUT",
+      "methodExpression": "'PUT'",
+      "urlExpression": "'/api/apify/key'",
+      "literalFragments": [
+        "/api/apify/key"
+      ],
+      "families": [
+        "apify"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "e119cd8c11236b90",
+      "file": "frontend/features/settings/Apify.tsx",
+      "line": 12,
+      "call": "mutate",
+      "method": "POST",
+      "methodExpression": "'POST'",
+      "urlExpression": "'/api/apify/check'",
+      "literalFragments": [
+        "/api/apify/check"
+      ],
+      "families": [
+        "apify"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "5a327ec1abad41b8",
+      "file": "frontend/features/settings/Apify.tsx",
+      "line": 18,
+      "call": "mutate",
+      "method": "PUT",
+      "methodExpression": "'PUT'",
+      "urlExpression": "'/api/apify/settings'",
+      "literalFragments": [
+        "/api/apify/settings"
+      ],
+      "families": [
+        "apify"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "681ccd135d8a836a",
+      "file": "frontend/features/settings/Apify.tsx",
+      "line": 22,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/apify/usage'",
+      "literalFragments": [
+        "/api/apify/usage"
+      ],
+      "families": [
+        "apify"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "97a6926cc087d3be",
+      "file": "frontend/features/settings/Apify.tsx",
+      "line": 25,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/apify/settings'",
+      "literalFragments": [
+        "/api/apify/settings"
+      ],
+      "families": [
+        "apify"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "7596bc34fb2dca2c",
+      "file": "frontend/features/settings/CandidateClassification.tsx",
+      "line": 8,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/classification/jobs'",
+      "literalFragments": [
+        "/api/classification/jobs"
+      ],
+      "families": [
+        "classification"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "ef642c13896a33a6",
+      "file": "frontend/features/settings/CandidateClassification.tsx",
+      "line": 8,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/firecrawl/sources'",
+      "literalFragments": [
+        "/api/firecrawl/sources"
+      ],
+      "families": [
+        "firecrawl"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "b6e59606e787c6b0",
+      "file": "frontend/features/settings/CandidateClassification.tsx",
+      "line": 20,
+      "call": "mutate",
+      "method": "POST",
+      "methodExpression": "'POST'",
+      "urlExpression": "'/api/classification/jobs'",
+      "literalFragments": [
+        "/api/classification/jobs"
+      ],
+      "families": [
+        "classification"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "eb2dc20db0f5fb77",
+      "file": "frontend/features/settings/CandidateClassification.tsx",
+      "line": 22,
+      "call": "mutate",
+      "method": "POST",
+      "methodExpression": "'POST'",
+      "urlExpression": "'/api/classification/jobs/'+job.id+'/resume'",
+      "literalFragments": [
+        "/api/classification/jobs/"
+      ],
+      "families": [
+        "classification"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "1a4cdcb91e79a1a4",
+      "file": "frontend/features/settings/Classification.tsx",
+      "line": 23,
+      "call": "mutate",
+      "method": "PUT",
+      "methodExpression": "'PUT'",
+      "urlExpression": "'/api/classification/prompts/'+initial.roleId",
+      "literalFragments": [
+        "/api/classification/prompts/"
+      ],
+      "families": [
+        "classification"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "2a25aa9f8dcd45a0",
+      "file": "frontend/features/settings/Classification.tsx",
+      "line": 29,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/classification/settings'",
+      "literalFragments": [
+        "/api/classification/settings"
+      ],
+      "families": [
+        "classification"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "4555aacd79ce3e68",
+      "file": "frontend/features/settings/Classification.tsx",
+      "line": 34,
+      "call": "mutate",
+      "method": "PUT",
+      "methodExpression": "'PUT'",
+      "urlExpression": "'/api/classification/roles/'+role.roleId",
+      "literalFragments": [
+        "/api/classification/roles/"
+      ],
+      "families": [
+        "classification"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "2a25aa9f8dcd45a0-2",
+      "file": "frontend/features/settings/Classification.tsx",
+      "line": 38,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/classification/settings'",
+      "literalFragments": [
+        "/api/classification/settings"
+      ],
+      "families": [
+        "classification"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "cd15aa359895c579",
+      "file": "frontend/features/settings/Classification.tsx",
+      "line": 50,
+      "call": "mutate",
+      "method": "POST",
+      "methodExpression": "'POST'",
+      "urlExpression": "'/api/classification/test'",
+      "literalFragments": [
+        "/api/classification/test"
+      ],
+      "families": [
+        "classification"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "3752d56d9db1e327",
+      "file": "frontend/features/settings/Documentation.tsx",
+      "line": 16,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/docs'",
+      "literalFragments": [
+        "/api/docs"
+      ],
+      "families": [
+        "docs"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "72a7fe2d7686ec82",
+      "file": "frontend/features/settings/Documentation.tsx",
+      "line": 18,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "manifest.data ? '/api/docs/' + section : null",
+      "literalFragments": [
+        "/api/docs/"
+      ],
+      "families": [
+        "docs"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "870c0b8e97cced9f",
+      "file": "frontend/features/settings/Documentation.tsx",
+      "line": 29,
+      "call": "link",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/docs/' + section + '?download=1'",
+      "literalFragments": [
+        "/api/docs/"
+      ],
+      "families": [
+        "docs"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "ef5a601382b193d6",
+      "file": "frontend/features/settings/Firecrawl.tsx",
+      "line": 12,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/firecrawl/settings'",
+      "literalFragments": [
+        "/api/firecrawl/settings"
+      ],
+      "families": [
+        "firecrawl"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "c6ec562c5310b769",
+      "file": "frontend/features/settings/Firecrawl.tsx",
+      "line": 14,
+      "call": "mutate",
+      "method": "PUT",
+      "methodExpression": "'PUT'",
+      "urlExpression": "'/api/firecrawl/key'",
+      "literalFragments": [
+        "/api/firecrawl/key"
+      ],
+      "families": [
+        "firecrawl"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "a392a7d8b75dff5a",
+      "file": "frontend/features/settings/Firecrawl.tsx",
+      "line": 14,
+      "call": "mutate",
+      "method": "POST",
+      "methodExpression": "'POST'",
+      "urlExpression": "'/api/firecrawl/check'",
+      "literalFragments": [
+        "/api/firecrawl/check"
+      ],
+      "families": [
+        "firecrawl"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "7104c96eb3ab4e15",
+      "file": "frontend/features/settings/Firecrawl.tsx",
+      "line": 20,
+      "call": "mutate",
+      "method": "PUT",
+      "methodExpression": "'PUT'",
+      "urlExpression": "'/api/firecrawl/mode'",
+      "literalFragments": [
+        "/api/firecrawl/mode"
+      ],
+      "families": [
+        "firecrawl"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "d60571794bc9550e",
+      "file": "frontend/features/settings/Firecrawl.tsx",
+      "line": 25,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/firecrawl/usage?mode='+mode",
+      "literalFragments": [
+        "/api/firecrawl/usage?mode="
+      ],
+      "families": [
+        "firecrawl"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "fab5d3db70d5fd2b",
+      "file": "frontend/features/settings/Firecrawl.tsx",
+      "line": 28,
+      "call": "mutate",
+      "method": "POST",
+      "methodExpression": "'POST'",
+      "urlExpression": "'/api/firecrawl/usage/refresh'",
+      "literalFragments": [
+        "/api/firecrawl/usage/refresh"
+      ],
+      "families": [
+        "firecrawl"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "cee933ffeb9e8391",
+      "file": "frontend/features/settings/Firecrawl.tsx",
+      "line": 33,
+      "call": "mutate",
+      "method": "PUT",
+      "methodExpression": "'PUT'",
+      "urlExpression": "'/api/firecrawl/settings'",
+      "literalFragments": [
+        "/api/firecrawl/settings"
+      ],
+      "families": [
+        "firecrawl"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "ef5a601382b193d6-2",
+      "file": "frontend/features/settings/Firecrawl.tsx",
+      "line": 36,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/firecrawl/settings'",
+      "literalFragments": [
+        "/api/firecrawl/settings"
+      ],
+      "families": [
+        "firecrawl"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "e807c7e69af4bf78",
+      "file": "frontend/features/settings/Firecrawl.tsx",
+      "line": 39,
+      "call": "mutate",
+      "method": "PUT",
+      "methodExpression": "'PUT'",
+      "urlExpression": "'/api/firecrawl/'+(source.agencyId?'agency-sources/'+source.agencyId:'sources/'+source.companyId)+'/'+source.sourceId",
+      "literalFragments": [
+        "/api/firecrawl/"
+      ],
+      "families": [
+        "firecrawl"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "3b4feade0d08f8f6",
+      "file": "frontend/features/settings/Firecrawl.tsx",
+      "line": 45,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/firecrawl/pending?'+(source.agencyId?'agencyId='+source.agencyId:'companyId='+source.companyId)+'&sourceId='+source.sourceId",
+      "literalFragments": [
+        "/api/firecrawl/pending?"
+      ],
+      "families": [
+        "firecrawl"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "4a3022fe5a95ab19",
+      "file": "frontend/features/settings/Firecrawl.tsx",
+      "line": 47,
+      "call": "request",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/firecrawl/runs/'+run.runId",
+      "literalFragments": [
+        "/api/firecrawl/runs/"
+      ],
+      "families": [
+        "firecrawl"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "7f57af15acf71057",
+      "file": "frontend/features/settings/Firecrawl.tsx",
+      "line": 47,
+      "call": "mutate",
+      "method": "POST",
+      "methodExpression": "'POST'",
+      "urlExpression": "'/api/firecrawl/test'",
+      "literalFragments": [
+        "/api/firecrawl/test"
+      ],
+      "families": [
+        "firecrawl"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "368fb224786723a7",
+      "file": "frontend/features/settings/Firecrawl.tsx",
+      "line": 47,
+      "call": "mutate",
+      "method": "POST",
+      "methodExpression": "'POST'",
+      "urlExpression": "'/api/firecrawl/runs/'+result.runId+'/resume'",
+      "literalFragments": [
+        "/api/firecrawl/runs/"
+      ],
+      "families": [
+        "firecrawl"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "22769b7c89d328f4",
+      "file": "frontend/features/settings/Firecrawl.tsx",
+      "line": 47,
+      "call": "mutate",
+      "method": "POST",
+      "methodExpression": "'POST'",
+      "urlExpression": "'/api/firecrawl/runs/'+result.runId+'/save'",
+      "literalFragments": [
+        "/api/firecrawl/runs/"
+      ],
+      "families": [
+        "firecrawl"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "dd379cb2333a99e2",
+      "file": "frontend/features/settings/Firecrawl.tsx",
+      "line": 50,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/firecrawl/sources'+(agencyId?'?agencyId='+agencyId:companyId?'?companyId='+companyId:'')",
+      "literalFragments": [
+        "/api/firecrawl/sources"
+      ],
+      "families": [
+        "firecrawl"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "ef5a601382b193d6-3",
+      "file": "frontend/features/settings/Firecrawl.tsx",
+      "line": 50,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/firecrawl/settings'",
+      "literalFragments": [
+        "/api/firecrawl/settings"
+      ],
+      "families": [
+        "firecrawl"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "59850f804d40ceb9",
+      "file": "frontend/features/settings/Firecrawl.tsx",
+      "line": 50,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/apify/settings'",
+      "literalFragments": [
+        "/api/apify/settings"
+      ],
+      "families": [
+        "apify"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "ef5a601382b193d6-4",
+      "file": "frontend/features/settings/Firecrawl.tsx",
+      "line": 55,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/firecrawl/settings'",
+      "literalFragments": [
+        "/api/firecrawl/settings"
+      ],
+      "families": [
+        "firecrawl"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "f1897c83981ffdd2",
+      "file": "frontend/features/settings/OpenAI.tsx",
+      "line": 9,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/openai'",
+      "literalFragments": [
+        "/api/openai"
+      ],
+      "families": [
+        "openai"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "a2ed9ae926a05df1",
+      "file": "frontend/features/settings/OpenAI.tsx",
+      "line": 13,
+      "call": "mutate",
+      "method": "POST",
+      "methodExpression": "'POST'",
+      "urlExpression": "'/api/openai/'+name",
+      "literalFragments": [
+        "/api/openai/"
+      ],
+      "families": [
+        "openai"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "e37f0f9be436b76a",
+      "file": "frontend/features/settings/OpenAI.tsx",
+      "line": 17,
+      "call": "mutate",
+      "method": "PUT",
+      "methodExpression": "'PUT'",
+      "urlExpression": "'/api/openai/key'",
+      "literalFragments": [
+        "/api/openai/key"
+      ],
+      "families": [
+        "openai"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "0717c6b5d29c106b",
+      "file": "frontend/features/settings/OpenRouter.tsx",
+      "line": 33,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/openrouter'",
+      "literalFragments": [
+        "/api/openrouter"
+      ],
+      "families": [
+        "openrouter"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "ba57098b819e04a5",
+      "file": "frontend/features/settings/OpenRouter.tsx",
+      "line": 34,
+      "call": "mutate",
+      "method": "POST",
+      "methodExpression": "'POST'",
+      "urlExpression": "'/api/openrouter/' + name",
+      "literalFragments": [
+        "/api/openrouter/"
+      ],
+      "families": [
+        "openrouter"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "c65274930b64a151",
+      "file": "frontend/features/settings/OpenRouter.tsx",
+      "line": 57,
+      "call": "mutate",
+      "method": "PUT",
+      "methodExpression": "'PUT'",
+      "urlExpression": "'/api/openrouter/key'",
+      "literalFragments": [
+        "/api/openrouter/key"
+      ],
+      "families": [
+        "openrouter"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "bfe3f5bcca644f68",
+      "file": "frontend/features/settings/ParserFunnel.tsx",
+      "line": 37,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/scheduler/funnel?sourceId='+encodeURIComponent(sourceId)+'&parser='+encodeURIComponent(parser)",
+      "literalFragments": [
+        "/api/scheduler/funnel?sourceId="
+      ],
+      "families": [
+        "scheduler"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "75529e05bf679188",
+      "file": "frontend/features/settings/Profile.tsx",
+      "line": 24,
+      "call": "mutate",
+      "method": "PUT",
+      "methodExpression": "'PUT'",
+      "urlExpression": "url",
+      "literalFragments": [],
+      "families": [
+        "dynamic"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "c790d4fb5de69484",
+      "file": "frontend/features/settings/Profile.tsx",
+      "line": 33,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/profile/resume'",
+      "literalFragments": [
+        "/api/profile/resume"
+      ],
+      "families": [
+        "profile"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "34ee6deb8ebf2d2a",
+      "file": "frontend/features/settings/Profile.tsx",
+      "line": 34,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/profile/prompt-models'",
+      "literalFragments": [
+        "/api/profile/prompt-models"
+      ],
+      "families": [
+        "profile"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "40a12987fdc5ee54",
+      "file": "frontend/features/settings/Profile.tsx",
+      "line": 34,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/profile/prompts'",
+      "literalFragments": [
+        "/api/profile/prompts"
+      ],
+      "families": [
+        "profile"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "da15e1196de6293a",
+      "file": "frontend/features/settings/PromptModel.tsx",
+      "line": 12,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "provider==='openai'?'/api/openai':null",
+      "literalFragments": [
+        "/api/openai"
+      ],
+      "families": [
+        "openai"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "738bee33722b236e",
+      "file": "frontend/features/settings/PromptModel.tsx",
+      "line": 13,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "['relevance','vacancy_role'].includes(initial.kind)&&provider==='openrouter'&&routerModel==='jev'?'/api/openrouter/jev':null",
+      "literalFragments": [
+        "/api/openrouter/jev"
+      ],
+      "families": [
+        "openrouter"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "eba91016d195dca8",
+      "file": "frontend/features/settings/PromptModel.tsx",
+      "line": 21,
+      "call": "mutate",
+      "method": "PUT",
+      "methodExpression": "'PUT'",
+      "urlExpression": "'/api/profile/prompt-models/'+initial.kind",
+      "literalFragments": [
+        "/api/profile/prompt-models/"
+      ],
+      "families": [
+        "profile"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "e34b67541b8c2dc3",
+      "file": "frontend/features/settings/Roles.tsx",
+      "line": 9,
+      "call": "mutate",
+      "method": "POST",
+      "methodExpression": "'POST'",
+      "urlExpression": "'/api/vacancy-roles'",
+      "literalFragments": [
+        "/api/vacancy-roles"
+      ],
+      "families": [
+        "vacancy-roles"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "230d1a97f528f806",
+      "file": "frontend/features/settings/Roles.tsx",
+      "line": 10,
+      "call": "mutate",
+      "method": "PUT",
+      "methodExpression": "'PUT'",
+      "urlExpression": "'/api/vacancy-roles/'+role.id",
+      "literalFragments": [
+        "/api/vacancy-roles/"
+      ],
+      "families": [
+        "vacancy-roles"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "280bcbdaa20cba21",
+      "file": "frontend/features/settings/Roles.tsx",
+      "line": 11,
+      "call": "mutate",
+      "method": "DELETE",
+      "methodExpression": "'DELETE'",
+      "urlExpression": "'/api/vacancy-roles/'+role.id",
+      "literalFragments": [
+        "/api/vacancy-roles/"
+      ],
+      "families": [
+        "vacancy-roles"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "230d1a97f528f806-2",
+      "file": "frontend/features/settings/Roles.tsx",
+      "line": 14,
+      "call": "mutate",
+      "method": "PUT",
+      "methodExpression": "'PUT'",
+      "urlExpression": "'/api/vacancy-roles/'+role.id",
+      "literalFragments": [
+        "/api/vacancy-roles/"
+      ],
+      "families": [
+        "vacancy-roles"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "230d1a97f528f806-3",
+      "file": "frontend/features/settings/Roles.tsx",
+      "line": 14,
+      "call": "mutate",
+      "method": "PUT",
+      "methodExpression": "'PUT'",
+      "urlExpression": "'/api/vacancy-roles/'+role.id",
+      "literalFragments": [
+        "/api/vacancy-roles/"
+      ],
+      "families": [
+        "vacancy-roles"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "230d1a97f528f806-4",
+      "file": "frontend/features/settings/Roles.tsx",
+      "line": 15,
+      "call": "mutate",
+      "method": "PUT",
+      "methodExpression": "'PUT'",
+      "urlExpression": "'/api/vacancy-roles/'+role.id",
+      "literalFragments": [
+        "/api/vacancy-roles/"
+      ],
+      "families": [
+        "vacancy-roles"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "d43623f8594be453",
+      "file": "frontend/features/settings/Roles.tsx",
+      "line": 20,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/vacancy-roles'",
+      "literalFragments": [
+        "/api/vacancy-roles"
+      ],
+      "families": [
+        "vacancy-roles"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "e34b67541b8c2dc3-2",
+      "file": "frontend/features/settings/Roles.tsx",
+      "line": 23,
+      "call": "mutate",
+      "method": "POST",
+      "methodExpression": "'POST'",
+      "urlExpression": "'/api/vacancy-roles'",
+      "literalFragments": [
+        "/api/vacancy-roles"
+      ],
+      "families": [
+        "vacancy-roles"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "ab313e001aa9f9bc",
+      "file": "frontend/features/settings/Scheduler.tsx",
+      "line": 24,
+      "call": "mutate",
+      "method": "PUT",
+      "methodExpression": "'PUT'",
+      "urlExpression": "'/api/scheduler/settings'",
+      "literalFragments": [
+        "/api/scheduler/settings"
+      ],
+      "families": [
+        "scheduler"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "ab313e001aa9f9bc-2",
+      "file": "frontend/features/settings/Scheduler.tsx",
+      "line": 32,
+      "call": "mutate",
+      "method": "PUT",
+      "methodExpression": "'PUT'",
+      "urlExpression": "'/api/scheduler/settings'",
+      "literalFragments": [
+        "/api/scheduler/settings"
+      ],
+      "families": [
+        "scheduler"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "f2ce3fed5be3c776",
+      "file": "frontend/features/settings/Scheduler.tsx",
+      "line": 45,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/scheduler/queue?'+query",
+      "literalFragments": [
+        "/api/scheduler/queue?"
+      ],
+      "families": [
+        "scheduler"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "68c3e8b7ba26363a",
+      "file": "frontend/features/settings/Scheduler.tsx",
+      "line": 46,
+      "call": "mutate",
+      "method": "POST",
+      "methodExpression": "'POST'",
+      "urlExpression": "'/api/scheduler/jobs/'+j.id+'/'+(j.status==='pending'?'cancel':'retry')",
+      "literalFragments": [
+        "/api/scheduler/jobs/"
+      ],
+      "families": [
+        "scheduler"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "e64433429e4391ad",
+      "file": "frontend/features/settings/Scheduler.tsx",
+      "line": 51,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/scheduler'",
+      "literalFragments": [
+        "/api/scheduler"
+      ],
+      "families": [
+        "scheduler"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "4b60146604c370b2",
+      "file": "frontend/features/settings/Scheduler.tsx",
+      "line": 51,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/scheduler/issues'",
+      "literalFragments": [
+        "/api/scheduler/issues"
+      ],
+      "families": [
+        "scheduler"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "ab313e001aa9f9bc-3",
+      "file": "frontend/features/settings/Scheduler.tsx",
+      "line": 61,
+      "call": "mutate",
+      "method": "PUT",
+      "methodExpression": "'PUT'",
+      "urlExpression": "'/api/scheduler/settings'",
+      "literalFragments": [
+        "/api/scheduler/settings"
+      ],
+      "families": [
+        "scheduler"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "0f8303a5216fa000",
+      "file": "frontend/features/settings/Scheduler.tsx",
+      "line": 78,
+      "call": "mutate",
+      "method": "POST",
+      "methodExpression": "'POST'",
+      "urlExpression": "'/api/scheduler/cloud-owner'",
+      "literalFragments": [
+        "/api/scheduler/cloud-owner"
+      ],
+      "families": [
+        "scheduler"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "952a1852bfcc4624",
+      "file": "frontend/features/settings/Scheduler.tsx",
+      "line": 78,
+      "call": "mutate",
+      "method": "POST",
+      "methodExpression": "'POST'",
+      "urlExpression": "'/api/scheduler/probe'",
+      "literalFragments": [
+        "/api/scheduler/probe"
+      ],
+      "families": [
+        "scheduler"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "f2ce749fe65c339f",
+      "file": "frontend/features/settings/Settings.tsx",
+      "line": 16,
+      "call": "link",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "\"/logout\"",
+      "literalFragments": [
+        "/logout"
+      ],
+      "families": [
+        "session"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "cc1cf04449384779",
+      "file": "frontend/features/settings/Settings.tsx",
+      "line": 17,
+      "call": "mutate",
+      "method": "POST",
+      "methodExpression": "'POST'",
+      "urlExpression": "'/api/companies/recalculate-rating'",
+      "literalFragments": [
+        "/api/companies/recalculate-rating"
+      ],
+      "families": [
+        "catalog-operations"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "ea7f2e6d0675591f",
+      "file": "frontend/features/settings/Transfer.tsx",
+      "line": 5,
+      "call": "fetch",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "url",
+      "literalFragments": [],
+      "families": [
+        "dynamic"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "ec94f5eac1c74a9a",
+      "file": "frontend/features/settings/Transfer.tsx",
+      "line": 34,
+      "call": "mutate",
+      "method": "POST",
+      "methodExpression": "'POST'",
+      "urlExpression": "'/api/' + (vacancies ? 'vacancies' : 'companies') + '/import'",
+      "literalFragments": [
+        "/api/"
+      ],
+      "families": [
+        "dynamic"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "6738fabbae525f6b",
+      "file": "frontend/features/settings/Transfer.tsx",
+      "line": 44,
+      "call": "mutate",
+      "method": "POST",
+      "methodExpression": "'POST'",
+      "urlExpression": "'/api/backup/validate'",
+      "literalFragments": [
+        "/api/backup/validate"
+      ],
+      "families": [
+        "backup"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "b65ee00cd5254776",
+      "file": "frontend/features/settings/Transfer.tsx",
+      "line": 63,
+      "call": "mutate",
+      "method": "POST",
+      "methodExpression": "'POST'",
+      "urlExpression": "'/api/backup'",
+      "literalFragments": [
+        "/api/backup"
+      ],
+      "families": [
+        "backup"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "48fffdd248a1a3cf",
+      "file": "frontend/features/settings/VacancyDetails.tsx",
+      "line": 12,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/vacancy-details/'+id",
+      "literalFragments": [
+        "/api/vacancy-details/"
+      ],
+      "families": [
+        "vacancy-details"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "b7163515279f061b",
+      "file": "frontend/features/settings/VacancyDetails.tsx",
+      "line": 16,
+      "call": "mutate",
+      "method": "POST",
+      "methodExpression": "'POST'",
+      "urlExpression": "'/api/vacancy-details/jobs'",
+      "literalFragments": [
+        "/api/vacancy-details/jobs"
+      ],
+      "families": [
+        "vacancy-details"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "12e60b7b29331fe4",
+      "file": "frontend/features/settings/VacancyDetails.tsx",
+      "line": 22,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/vacancy-details'",
+      "literalFragments": [
+        "/api/vacancy-details"
+      ],
+      "families": [
+        "vacancy-details"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "b7163515279f061b-2",
+      "file": "frontend/features/settings/VacancyDetails.tsx",
+      "line": 26,
+      "call": "mutate",
+      "method": "POST",
+      "methodExpression": "'POST'",
+      "urlExpression": "'/api/vacancy-details/jobs'",
+      "literalFragments": [
+        "/api/vacancy-details/jobs"
+      ],
+      "families": [
+        "vacancy-details"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "321bb98c485c4293",
+      "file": "frontend/features/settings/VacancyDetails.tsx",
+      "line": 26,
+      "call": "mutate",
+      "method": "POST",
+      "methodExpression": "'POST'",
+      "urlExpression": "'/api/vacancy-details/jobs/'+j.id+'/run'",
+      "literalFragments": [
+        "/api/vacancy-details/jobs/"
+      ],
+      "families": [
+        "vacancy-details"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "455827232212e117",
+      "file": "frontend/features/settings/VacancyImport.tsx",
+      "line": 14,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/vacancy-import'",
+      "literalFragments": [
+        "/api/vacancy-import"
+      ],
+      "families": [
+        "vacancy-import"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "61efb4af877d7b58",
+      "file": "frontend/features/settings/VacancyImport.tsx",
+      "line": 16,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "historyId?'/api/vacancy-import/history/'+historyId:null",
+      "literalFragments": [
+        "/api/vacancy-import/history/"
+      ],
+      "families": [
+        "vacancy-import"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "1c5af4cc9a941de5",
+      "file": "frontend/features/settings/VacancyImport.tsx",
+      "line": 21,
+      "call": "mutate",
+      "method": "POST",
+      "methodExpression": "'POST'",
+      "urlExpression": "'/api/vacancy-import/preview'",
+      "literalFragments": [
+        "/api/vacancy-import/preview"
+      ],
+      "families": [
+        "vacancy-import"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "ba57dfa63f1c7b00",
+      "file": "frontend/features/settings/VacancyImport.tsx",
+      "line": 24,
+      "call": "mutate",
+      "method": "POST",
+      "methodExpression": "'POST'",
+      "urlExpression": "'/api/vacancy-import/roles/'+p.candidateId",
+      "literalFragments": [
+        "/api/vacancy-import/roles/"
+      ],
+      "families": [
+        "vacancy-import"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "b3df92adc7de18fd",
+      "file": "frontend/features/settings/VacancyImport.tsx",
+      "line": 24,
+      "call": "mutate",
+      "method": "POST",
+      "methodExpression": "'POST'",
+      "urlExpression": "'/api/vacancy-import/batches/'+preview.batch.id+'/confirm'",
+      "literalFragments": [
+        "/api/vacancy-import/batches/"
+      ],
+      "families": [
+        "vacancy-import"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "e712be223c879716",
+      "file": "frontend/features/settings/VacancyImport.tsx",
+      "line": 25,
+      "call": "mutate",
+      "method": "POST",
+      "methodExpression": "'POST'",
+      "urlExpression": "'/api/vacancy-import/batches/'+b.id+'/run'",
+      "literalFragments": [
+        "/api/vacancy-import/batches/"
+      ],
+      "families": [
+        "vacancy-import"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "d7c58bb132d61c04",
+      "file": "frontend/features/settings/scheduler-run.ts",
+      "line": 4,
+      "call": "fetch",
+      "method": "POST",
+      "methodExpression": "'POST'",
+      "urlExpression": "'/api/scheduler/run'",
+      "literalFragments": [
+        "/api/scheduler/run"
+      ],
+      "families": [
+        "scheduler"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "762dcaccfedfcc53",
+      "file": "frontend/features/settings/scheduler-run.ts",
+      "line": 23,
+      "call": "fetch",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/scheduler/run?requestId='+encodeURIComponent(requestId)",
+      "literalFragments": [
+        "/api/scheduler/run?requestId="
+      ],
+      "families": [
+        "scheduler"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "dcc34ffe3083584b",
+      "file": "frontend/features/tasks/Tasks.tsx",
+      "line": 17,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/google-calendar/status'",
+      "literalFragments": [
+        "/api/google-calendar/status"
+      ],
+      "families": [
+        "google-calendar"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "00aa3c23548ea9fa",
+      "file": "frontend/features/tasks/Tasks.tsx",
+      "line": 19,
+      "call": "mutate",
+      "method": "POST",
+      "methodExpression": "'POST'",
+      "urlExpression": "'/api/google-calendar/' + name",
+      "literalFragments": [
+        "/api/google-calendar/"
+      ],
+      "families": [
+        "google-calendar"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "aff37da3d6e96a34",
+      "file": "frontend/features/tasks/Tasks.tsx",
+      "line": 34,
+      "call": "mutate",
+      "method": "PUT",
+      "methodExpression": "'PUT'",
+      "urlExpression": "'/api/tasks/' + task.id",
+      "literalFragments": [
+        "/api/tasks/"
+      ],
+      "families": [
+        "tasks"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "aff37da3d6e96a34-2",
+      "file": "frontend/features/tasks/Tasks.tsx",
+      "line": 41,
+      "call": "mutate",
+      "method": "PUT",
+      "methodExpression": "'PUT'",
+      "urlExpression": "'/api/tasks/' + task.id",
+      "literalFragments": [
+        "/api/tasks/"
+      ],
+      "families": [
+        "tasks"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "187877f33d3628a7",
+      "file": "frontend/features/tasks/Tasks.tsx",
+      "line": 45,
+      "call": "mutate",
+      "method": "POST",
+      "methodExpression": "'POST'",
+      "urlExpression": "'/api/tasks'",
+      "literalFragments": [
+        "/api/tasks"
+      ],
+      "families": [
+        "tasks"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "6a60ae3105c61ce5",
+      "file": "frontend/features/tasks/Tasks.tsx",
+      "line": 53,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/tasks' + (params.size ? '?' + params : '')",
+      "literalFragments": [
+        "/api/tasks"
+      ],
+      "families": [
+        "tasks"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "b8ac70e485504fd0",
+      "file": "frontend/features/vacancies/Relevance.tsx",
+      "line": 14,
+      "call": "mutate",
+      "method": "POST",
+      "methodExpression": "'POST'",
+      "urlExpression": "'/api/vacancies/'+id+'/relevance'",
+      "literalFragments": [
+        "/api/vacancies/"
+      ],
+      "families": [
+        "relevance"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "1743cf9de612aaa5",
+      "file": "frontend/features/vacancies/RoleTree.tsx",
+      "line": 28,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/vacancy-roles'",
+      "literalFragments": [
+        "/api/vacancy-roles"
+      ],
+      "families": [
+        "vacancy-roles"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "1743cf9de612aaa5-2",
+      "file": "frontend/features/vacancies/RoleTree.tsx",
+      "line": 36,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/vacancy-roles'",
+      "literalFragments": [
+        "/api/vacancy-roles"
+      ],
+      "families": [
+        "vacancy-roles"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "ed2ea2d8e7f03e6c",
+      "file": "frontend/features/vacancies/Vacancies.tsx",
+      "line": 33,
+      "call": "request",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/applications/create-context'",
+      "literalFragments": [
+        "/api/applications/create-context"
+      ],
+      "families": [
+        "applications"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "ad62ed67af333723",
+      "file": "frontend/features/vacancies/Vacancies.tsx",
+      "line": 42,
+      "call": "mutate",
+      "method": "DYNAMIC",
+      "methodExpression": "method",
+      "urlExpression": "url",
+      "literalFragments": [],
+      "families": [
+        "dynamic"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "4d43454e8fdaf721",
+      "file": "frontend/features/vacancies/Vacancies.tsx",
+      "line": 108,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/vacancies?company=' + encodeURIComponent(companyName)",
+      "literalFragments": [
+        "/api/vacancies?company="
+      ],
+      "families": [
+        "vacancies"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "7f670cfffe2968c2",
+      "file": "frontend/features/vacancies/Vacancies.tsx",
+      "line": 124,
+      "call": "load",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/vacancies/' + id",
+      "literalFragments": [
+        "/api/vacancies/"
+      ],
+      "families": [
+        "vacancies"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "46710beb00567fea",
+      "file": "frontend/features/vacancies/Vacancies.tsx",
+      "line": 160,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/vacancies/list?period='+period",
+      "literalFragments": [
+        "/api/vacancies/list?period="
+      ],
+      "families": [
+        "vacancies"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "67fa201b1c830c84",
+      "file": "frontend/features/vacancies/VacancyConflict.tsx",
+      "line": 19,
+      "call": "request",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/vacancies/' + id",
+      "literalFragments": [
+        "/api/vacancies/"
+      ],
+      "families": [
+        "vacancies"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "9aeba4c3b3b1f639",
+      "file": "frontend/features/vacancies/VacancyDrawer.tsx",
+      "line": 51,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/vacancies/' + id",
+      "literalFragments": [
+        "/api/vacancies/"
+      ],
+      "families": [
+        "vacancies"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "61d62e92de10c50b",
+      "file": "frontend/features/vacancies/VacancyEditor.tsx",
+      "line": 19,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/channels'",
+      "literalFragments": [
+        "/api/channels"
+      ],
+      "families": [
+        "channels"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "3b14a8c440b4d00a",
+      "file": "frontend/features/vacancies/VacancyEditor.tsx",
+      "line": 45,
+      "call": "mutate",
+      "method": "DYNAMIC",
+      "methodExpression": "record ? 'PUT' : 'POST'",
+      "urlExpression": "'/api/vacancies' + (record ? '/' + record.id : '')",
+      "literalFragments": [
+        "/api/vacancies"
+      ],
+      "families": [
+        "vacancies"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "a1679a01d53c8d81",
+      "file": "frontend/features/vacancies/cover-letter.ts",
+      "line": 45,
+      "call": "fetch",
+      "method": "POST",
+      "methodExpression": "'POST'",
+      "urlExpression": "'/api/vacancies/' + id + '/cover-letter' + (regenerate ? '/regenerate' : '')",
+      "literalFragments": [
+        "/api/vacancies/"
+      ],
+      "families": [
+        "cover-letter"
+      ],
+      "dynamicURL": true
+    }
+  ],
+  "bindings": [
+    {
+      "id": "d1292ace96d8234d",
+      "file": "frontend/features/settings/Profile.tsx",
+      "line": 33,
+      "call": "prop:RevisionEditor",
+      "method": "BOUND",
+      "methodExpression": "component transport",
+      "urlExpression": "\"/api/profile/resume\"",
+      "literalFragments": [
+        "/api/profile/resume"
+      ],
+      "families": [
+        "profile"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "f3d91c7483ddece9",
+      "file": "frontend/features/settings/Profile.tsx",
+      "line": 38,
+      "call": "prop:RevisionEditor",
+      "method": "BOUND",
+      "methodExpression": "component transport",
+      "urlExpression": "'/api/profile/prompts/' + kind",
+      "literalFragments": [
+        "/api/profile/prompts/"
+      ],
+      "families": [
+        "profile"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "5df99a8a8f2e6814",
+      "file": "frontend/features/settings/Settings.tsx",
+      "line": 17,
+      "call": "prop:ExportCard",
+      "method": "BOUND",
+      "methodExpression": "component transport",
+      "urlExpression": "\"/api/exports/companies-vacancies\"",
+      "literalFragments": [
+        "/api/exports/companies-vacancies"
+      ],
+      "families": [
+        "exports"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "7a5502c965f45d43",
+      "file": "frontend/features/settings/Settings.tsx",
+      "line": 17,
+      "call": "prop:ExportCard",
+      "method": "BOUND",
+      "methodExpression": "component transport",
+      "urlExpression": "\"/api/exports/companies-reviews\"",
+      "literalFragments": [
+        "/api/exports/companies-reviews"
+      ],
+      "families": [
+        "exports"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "82c60d409664d71c",
+      "file": "frontend/features/settings/Settings.tsx",
+      "line": 17,
+      "call": "prop:ExportCard",
+      "method": "BOUND",
+      "methodExpression": "component transport",
+      "urlExpression": "\"/api/exports/companies\"",
+      "literalFragments": [
+        "/api/exports/companies"
+      ],
+      "families": [
+        "exports"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "b696f4feba993e8b",
+      "file": "frontend/features/settings/Settings.tsx",
+      "line": 17,
+      "call": "prop:ExportCard",
+      "method": "BOUND",
+      "methodExpression": "component transport",
+      "urlExpression": "\"/api/exports/vacancies\"",
+      "literalFragments": [
+        "/api/exports/vacancies"
+      ],
+      "families": [
+        "exports"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "6df3f4ee1d88fa58",
+      "file": "frontend/features/settings/Settings.tsx",
+      "line": 17,
+      "call": "prop:ExportCard",
+      "method": "BOUND",
+      "methodExpression": "component transport",
+      "urlExpression": "\"/api/backup\"",
+      "literalFragments": [
+        "/api/backup"
+      ],
+      "families": [
+        "backup"
+      ],
+      "dynamicURL": false
+    }
+  ],
+  "forwarders": [
+    {
+      "id": "a5da57182842cf7a",
+      "file": "frontend/features/settings/Transfer.tsx",
+      "line": 17,
+      "call": "download argument",
+      "method": "BOUND",
+      "methodExpression": "download forwarding",
+      "urlExpression": "url + (only ? '?unranked=1' : '')",
+      "literalFragments": [],
+      "families": [
+        "dynamic"
+      ],
+      "dynamicURL": true
+    }
+  ]
+}
