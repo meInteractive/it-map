@@ -4,7 +4,7 @@
 
 ## Парсинг агентств (контракт21.10.2026)
 
-GET /api/scheduler.settings содержит agenciesEnabled:boolean, defaultfalse. PUT /api/scheduler/settings дополнен необязательным agenciesEnabled:boolean с прежними admin/Origin/revision CAS; отсутствие поля сохраняет значение, не меняя бюджеты/провайдера/расписания. Switch применяется к manual и automatic parsing stages, но не удаляет историю. Claim не забирает agency pending jobs при OFF; provider results fenced по текущему значению/owner/epoch.
+GET /api/scheduler содержит settings.agenciesEnabled:boolean, defaultfalse. PUT /api/scheduler/settings дополнен необязательным agenciesEnabled:boolean с прежними admin/Origin/revision CAS; отсутствие поля сохраняет значение, не меняя бюджеты/провайдера/расписания. Switch применяется к manual и automatic parsing stages, но не удаляет историю. Claim не забирает agency pending jobs при OFF; provider results fenced по текущему значению/owner/epoch.
 
 GET /api/firecrawl/sources и /pending принимают agencyId вместо companyId (одновременно оба запрещены). Source содержит companyId:number|null, agencyId:number|null, ownerKey:company:<id>|agency:<id>, entityType/ entityId, прежние поля. Для GET /sources при OFF agency source supported=false с объяснением; фильтр избранного прежний. POST /api/firecrawl/test принимает {agencyId,sourceId} либо прежний {companyId,sourceId}. PUT /api/firecrawl/agency-sources/:agencyId/:sourceId принимает тот же enabled/config/sourceUrl/revision, что /sources/:companyId/:sourceId. GET/POST /runs/:UUID/save|resume используют только server-owned run и не принимают новую принадлежность. GET /api/vacancy-candidates и POST /api/classification/jobs дополнены agencyId, чтение истории не требует включения парсинга.
 

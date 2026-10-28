@@ -146,3 +146,27 @@ Oracle использует подготовленную схему и не пр
 SQL приёмка фиксируется отдельно после required CI; локально эти тесты не
 подключаются к БД. Административный HTTP, commands/dry-run и полный pipeline
 по-прежнему требуют отдельных задач GO-021/046.
+
+
+GO-324 подключает только PUT /api/scheduler/settings к SettingsRepository в
+cmd/itmap. Session → admin → storage → Origin проверяются до чтения тела.
+Сохраняются source32KiB byte limit, отсутствие требования Content-Type,
+BOM TextDecoder, error/code/status и auth-derived ownerName. Исходный роутер
+читает JSON до method fallback: malformed/empty/non-object дают generic500,
+oversize413 с code=storage, корректное тело неправильного метода —405.
+Эти необычные ответы сохраняются сознательно; новый GET/settings не вводится.
+
+Required native gate сравнивает70 ответов полного unchanged source router на
+actual SQLite с Go handler/MariaDB: JSON/status, полная shared строка и generation.
+Source schema заранее подготовлена, bootstrap/DDL не принимаются этим gate.
+Отдельные4 target-only negative cases проверяют принятую GO-078 duplicate-input
+policy и прежний Go Sec-Fetch-Site guard (same-site/cross-site):400/403 без записи.
+Они не объявляются source parity: source JSON.parse допускает duplicate keys,
+а Origin-only guard не проверяет Fetch Metadata. Как и прочие Go mutation routes,
+host-preserving proxy boundary не доверяет X-Forwarded headers; внешний HTTPS
+rehearsal остаётся отдельным gate GO-008/320.
+
+enabled=true сохраняет конфигурацию и не запускает обработчик. Scheduler worker,
+provider client, internal tick, cloud owner binding, run/probe и dashboard в этой
+порции не подключаются; неперенесённые authenticated endpoints остаются503.
+Полная GO-021 требует последующих dashboard/commands/dry-run/scope проверок.

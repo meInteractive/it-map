@@ -1,0 +1,51 @@
+// Full unchanged source router + prepared SQLite :memory:. No provider/network.
+import assert from 'node:assert/strict';
+import {spawnSync} from 'node:child_process';
+import {DatabaseSync} from 'node:sqlite';
+import {schema} from './historical-format-support.mjs';
+import {schemaState} from '../server/constants.js';
+import router from '../server/routes/index.js';
+import {createSession} from '../server/auth/session.js';
+globalThis.fetch=()=>{throw new Error('Settings HTTP oracle forbids network');};
+const original=spawnSync(process.execPath,[new URL('./check-scheduler-settings-sql.mjs',import.meta.url).pathname],{encoding:'utf8'});
+assert.equal(original.status,0,'required full-row source oracle failed');
+const sqlCases=original.stdout.trim().split('\n').map(JSON.parse),base=sqlCases[0];
+const valid=JSON.stringify(base.input),cases=sqlCases.map(v=>({fixture:v,name:'SQL '+v.name,user:'Eugene',method:'PUT',body:JSON.stringify(v.input)}));
+const add=(name,patch)=>cases.push({fixture:base,name,user:'Eugene',method:'PUT',body:valid,...patch});
+for(const user of ['Demo','Nastya',''])add('access '+(user||'anonymous'),{user,body:'{'});
+add('storage before Origin',{noDB:true,origin:'https://other.invalid'});
+add('Origin denial',{origin:'https://other.invalid',body:'{'});
+add('Origin same host other port',{origin:'https://example.invalid:8443'});
+add('Origin null',{origin:'null'});
+add('Origin allowed',{origin:'https://example.invalid'});
+add('empty',{body:''});add('malformed',{body:'{'});add('array',{body:'[]'});add('null',{body:'null'});add('boolean',{body:'true'});
+add('trailing JSON',{body:valid+'{}'});add('non JSON whitespace',{body:'\v'+valid});
+add('BOM',{body:'\ufeff'+valid});add('content type ignored',{contentType:'text/plain'});
+add('exact body limit',{body:valid+' '.repeat(32768-Buffer.byteLength(valid))});
+add('stream oversized',{body:valid+' '.repeat(32769-Buffer.byteLength(valid))});
+add('declared oversized',{contentLength:'32769'});
+add('multibyte within limit',{body:JSON.stringify({...base.input,sourceIds:['я'.repeat(16000)]})});
+add('multibyte oversized',{body:JSON.stringify({...base.input,sourceIds:['я'.repeat(16400)]})});
+for(const method of ['POST','PATCH','DELETE','OPTIONS'])add('unsupported '+method,{method,body:'{}'});
+add('GET has no input',{method:'GET',body:''});
+add('invalid unknown owner',{body:JSON.stringify({...base.input,ownerName:'Demo'})});
+const secret='CI_SYNTHETIC_SCHEDULER_HTTP_SECRET_324';
+for(const c of cases){
+ const v=c.fixture,sqlite=new DatabaseSync(':memory:');
+ assert.equal(sqlite.prepare('SELECT sqlite_version() v').get().v,'3.53.3');
+ sqlite.exec('PRAGMA foreign_keys=ON');for(const o of schema.objects)sqlite.exec(o.sql);schemaState.ready=true;
+ const generation='11111111-2222-4333-8444-555555555555';
+ sqlite.prepare('INSERT INTO app_runtime_generation(id,generation) VALUES(1,?)').run(generation);
+ sqlite.prepare("INSERT INTO company_identity(id,company_name) VALUES(1,'CI settings owner')").run();
+ for(const id of v.legacy)sqlite.prepare('INSERT INTO vacancy_source_parsing(company_id,source_id,source_url,auto_enabled) VALUES(1,?,?,1)').run(id,'https://example.invalid/'+id);
+ if(v.raw!==null){const row={id:1,scheduler_json:v.raw,favorites_only:v.favorite,revision:v.initialRevision,...v.unrelated},keys=Object.keys(row);sqlite.prepare(`INSERT INTO firecrawl_settings(${keys.join(',')}) VALUES(${keys.map(()=>'?').join(',')})`).run(...keys.map(k=>row[k]));}
+ const db={prepare(sql){let args=[];return {bind(...a){args=a;return this;},async first(column){const r=sqlite.prepare(sql).get(...args)??null;return column&&r?r[column]:r;},async all(){return {results:sqlite.prepare(sql).all(...args)};},async run(){const s=sqlite.prepare(sql);return s.columns().length?{results:s.all(...args)}:{meta:s.run(...args)};}};},async batch(ss){sqlite.exec('BEGIN');try{const out=[];for(const s of ss)out.push(await s.run());sqlite.exec('COMMIT');return out;}catch(e){sqlite.exec('ROLLBACK');throw e;}}};
+ const headers={};if(c.user)headers.cookie='it_map_session='+await createSession(secret,c.user);
+ if(c.origin)headers.origin=c.origin;if(c.contentType)headers['content-type']=c.contentType;if(c.contentLength)headers['content-length']=c.contentLength;
+ const bytes=Buffer.from(c.body),request=new Request('https://example.invalid/api/scheduler/settings',{method:c.method,headers,...(c.method==='GET'?{}:{body:bytes})});
+ const response=await router.fetch(request,{SESSION_SECRET:secret,SITE_PASSWORD:'CI_UNUSED',DB:c.noDB?undefined:db},{});
+ const body=await response.text(),row=sqlite.prepare('SELECT * FROM firecrawl_settings WHERE id=1').get()??null;
+ assert.equal(sqlite.prepare('SELECT generation FROM app_runtime_generation WHERE id=1').get().generation,generation);
+ process.stdout.write(JSON.stringify({name:c.name,fixture:v,user:c.user,method:c.method,noDB:!!c.noDB,origin:c.origin||'',contentType:c.contentType||'',contentLength:c.contentLength?Number(c.contentLength):-1,requestBody:bytes.toString('base64'),status:response.status,body,row})+'\n');sqlite.close();
+}
+process.stderr.write(`Scheduler settings full source HTTP/SQLite: ${cases.length} responses\n`);

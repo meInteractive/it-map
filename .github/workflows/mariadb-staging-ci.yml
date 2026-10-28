@@ -1326,11 +1326,11 @@ jobs:
           import json,sys
           events=[json.loads(line) for line in open(sys.argv[1]) if line.startswith('{')]
           assert not any(e.get('Action')=='skip' for e in events), 'settings acceptance must have zero skips'
-          for target in ['TestMariaDBSchedulerSettingsSourceDisposable','TestMariaDBSchedulerSettingsOwnershipDisposable','TestMariaDBSchedulerSettingsFaultsDisposable']:
+          for target in ['TestMariaDBSchedulerSettingsSourceDisposable','TestMariaDBSchedulerSettingsOwnershipDisposable','TestMariaDBSchedulerSettingsFaultsDisposable','TestMariaDBSchedulerSettingsHTTPDisposable','TestMariaDBSchedulerSettingsHTTPGuardsDisposable']:
               assert any(e.get('Test')==target and e.get('Action')=='pass' for e in events), f'required settings parent did not pass/run: {target}'
-          for target,count in [('TestMariaDBSchedulerSettingsSourceDisposable/',42),('TestMariaDBSchedulerSettingsOwnershipDisposable/',6),('TestMariaDBSchedulerSettingsFaultsDisposable/',4)]:
+          for target,count in [('TestMariaDBSchedulerSettingsSourceDisposable/',42),('TestMariaDBSchedulerSettingsOwnershipDisposable/',6),('TestMariaDBSchedulerSettingsFaultsDisposable/',4),('TestMariaDBSchedulerSettingsHTTPDisposable/',70),('TestMariaDBSchedulerSettingsHTTPGuardsDisposable/',4)]:
               assert len([e for e in events if e.get('Action')=='pass' and e.get('Test','').startswith(target)])==count, 'missing settings subcases: '+target
-          print('PASS: source42 full-row transitions/JSON1 CAS/shared favorites/concurrent writers/generation/late rollback/unknown COMMIT/snapshot; zero skips')
+          print('PASS: source42 full-row transitions/70 HTTP responses/JSON1 CAS/shared favorites/concurrent writers/generation/late rollback/unknown COMMIT/snapshot; zero skips')
           PYTEST
 
   catalog-read-acceptance:

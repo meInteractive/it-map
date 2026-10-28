@@ -54,7 +54,7 @@ func DefaultSettings() Settings {
 	return Settings{OwnerName: "Eugene", SourceIDs: []string{}, IntervalDays: 7, FavoritesOnly: true, Priorities: map[string]int64{"import_vacancy": 100, "assign_roles": 90, "score_relevance": 85, "extract_vacancy": 80, "fetch_full_text": 70, "classify_title": 60, "scan_source": 20, "diagnostic": 0}}
 }
 
-// readObject also rejects duplicate keys: the unused HTTP boundary is stricter
+// readObject also rejects duplicate keys: the accepted input boundary is stricter
 // than JSON.parse's last-wins behavior. Values remain raw for exact type checks.
 func readObject(data []byte) (map[string]json.RawMessage, error) {
 	if len(data) > 64*1024 {
@@ -122,7 +122,7 @@ func boolean(raw json.RawMessage) (bool, bool) {
 }
 
 // ValidateSettingsUpdate performs no SQL and grants no permission to start work.
-// ExpectedRevision must be used by a future authorized CAS write, not ignored.
+// ExpectedRevision must be used by the authorized CAS write, not ignored.
 // Owner comes from the caller's authenticated context, never the JSON payload.
 func ValidateSettingsUpdate(data []byte, previous Settings, ownerName string) (SettingsUpdate, error) {
 	fail := func(message string) (SettingsUpdate, error) {
