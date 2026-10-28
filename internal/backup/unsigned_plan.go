@@ -31,13 +31,24 @@ func normalizeLegacyCatalog(data json.RawMessage) (json.RawMessage, error) {
 }
 
 func normalizeLegacyCatalogValue(source *jsonValue) (json.RawMessage, error) {
+	out, e := normalizeCatalogObject(source)
+	if e != nil {
+		return nil, e
+	}
+	return rawValue(out), nil
+}
+
+// Keep ordered scalar values alive until the consumer's final stringify. A
+// read projection must not turn an overflowing JSON number into null before
+// its source truthiness/coercion has run.
+func normalizeCatalogObject(source *jsonValue) (*jsonValue, error) {
 	type item struct {
 		entity *jsonValue
 		key    rucollation.Key
 	}
 	companies := make([]item, 0, len(source.field("companies").items))
 	for _, c := range source.field("companies").items {
-		entity, e := normalizeLegacyCompanyFields(c, 0)
+		entity, e := normalizeCatalogCompanyObject(c, 0)
 		if e != nil {
 			return nil, e
 		}
@@ -66,7 +77,7 @@ func normalizeLegacyCatalogValue(source *jsonValue) (json.RawMessage, error) {
 			if name == nil || name.kind != 's' || len(trimUnits(name.text)) == 0 {
 				continue
 			}
-			entity, e := normalizeLegacyAgencyFields(agency)
+			entity, e := normalizeCatalogAgencyObject(agency)
 			if e != nil {
 				return nil, e
 			}
@@ -74,5 +85,5 @@ func normalizeLegacyCatalogValue(source *jsonValue) (json.RawMessage, error) {
 		}
 	}
 	out.set("agencies", agencies)
-	return rawValue(out), nil
+	return out, nil
 }

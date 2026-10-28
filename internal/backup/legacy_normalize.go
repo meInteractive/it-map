@@ -334,6 +334,13 @@ func (n *catalogNormalizer) rating(entity, embedded *jsonValue) *jsonValue {
 // rank is assigned by the caller after canonical stable catalog ordering.
 // These helpers only normalize one entity and never sort or plan writes.
 func normalizeLegacyCompanyFields(entity *jsonValue, rank int) (*jsonValue, error) {
+	out, e := normalizeCatalogCompanyObject(entity, rank)
+	return finishLegacyEntity(out, e)
+}
+
+// Object builders defer stringify until their consumer finishes all source
+// operations. Legacy entity callers retain their existing finished JSON view.
+func normalizeCatalogCompanyObject(entity *jsonValue, rank int) (*jsonValue, error) {
 	if name := entity.field("name"); name == nil || name.kind != 's' {
 		return nil, invalid("Некорректное имя компании в каталоге.")
 	}
@@ -370,7 +377,7 @@ func normalizeLegacyCompanyFields(entity *jsonValue, rank int) (*jsonValue, erro
 	}
 	out.set("entityType", catalogString("company"))
 	out.set("rank", catalogNumber(float64(rank)))
-	return finishLegacyEntity(out, n.err)
+	return out, n.err
 }
 
 func (n *catalogNormalizer) agencyChoice(value, options *jsonValue, many bool) *jsonValue {
@@ -424,6 +431,11 @@ func (n *catalogNormalizer) agencyScore(value *jsonValue, max float64, half, dec
 	return catalogNumber(catalogRound(f))
 }
 func normalizeLegacyAgencyFields(entity *jsonValue) (*jsonValue, error) {
+	out, e := normalizeCatalogAgencyObject(entity)
+	return finishLegacyEntity(out, e)
+}
+
+func normalizeCatalogAgencyObject(entity *jsonValue) (*jsonValue, error) {
 	n := &catalogNormalizer{}
 	out := catalogObject()
 	catalogSpread(out, entity)
@@ -516,5 +528,5 @@ func normalizeLegacyAgencyFields(entity *jsonValue) (*jsonValue, error) {
 		v = &jsonValue{kind: '['}
 	}
 	out.set("jobs", v)
-	return finishLegacyEntity(out, n.err)
+	return out, n.err
 }
