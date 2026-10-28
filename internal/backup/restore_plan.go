@@ -7,7 +7,8 @@ import (
 	"itmap/internal/v39"
 )
 
-// RestorePlan owns parsed scalar data, independent of the signed input bytes.
+// RestorePlan owns parsed data, independent of the input bytes. SQL callers must
+// validate scalar representability before opening the restore session.
 // It is a data plan only: metadata SQL, counters, generation and destination
 // writes are not executed here. INSERT order differs from incoming file order.
 type RestorePlan struct {

@@ -54,6 +54,10 @@ type Sequence struct {
 	Seq  float64 `json:"seq"`
 }
 type Payload struct {
+	// Legacy arithmetic/truthiness precedes JSON.stringify: an overflow Number
+	// must not become null before normalization or the timestamp fallback.
+	legacyCatalog, legacyCreatedAt *jsonValue
+
 	Format    string          `json:"format"`
 	Version   float64         `json:"version"`
 	CreatedAt json.RawMessage `json:"createdAt"`

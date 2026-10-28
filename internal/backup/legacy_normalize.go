@@ -1,7 +1,7 @@
 package backup
 
-// Entity field normalization is separate from locale ordering and full legacy
-// planning. It is not wired to runtime restore until those remaining gates pass.
+// Entity fields are shared by the pure legacy planner and unordered projections.
+// Runtime legacy SQL/HTTP restore still requires the separate GO-100-C-S gate.
 import (
 	"math"
 	"strings"
@@ -331,8 +331,8 @@ func (n *catalogNormalizer) rating(entity, embedded *jsonValue) *jsonValue {
 	return out
 }
 
-// rank is assigned by the future source-compatible catalog order, not inferred
-// here. These helpers only normalize one entity and never sort or plan writes.
+// rank is assigned by the caller after canonical stable catalog ordering.
+// These helpers only normalize one entity and never sort or plan writes.
 func normalizeLegacyCompanyFields(entity *jsonValue, rank int) (*jsonValue, error) {
 	if name := entity.field("name"); name == nil || name.kind != 's' {
 		return nil, invalid("Некорректное имя компании в каталоге.")
