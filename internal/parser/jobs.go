@@ -277,9 +277,9 @@ func (j *JobLease) WithinOwned(ctx context.Context, fn func(*sql.Tx) error) erro
 	}
 	return nil
 }
-func (j *JobLease) Finish(ctx context.Context, options FinishOptions) error {
+func (j *JobLease) prepareFinish(options FinishOptions) (FinishOptions, json.RawMessage, error) {
 	if j == nil {
-		return ErrJobInput
+		return options, nil, ErrJobInput
 	}
 	if options.Status == "" {
 		options.Status = "completed"
@@ -287,10 +287,10 @@ func (j *JobLease) Finish(ctx context.Context, options FinishOptions) error {
 	switch options.Status {
 	case "pending", "running", "completed", "failed", "cancelled":
 	default:
-		return ErrJobInput
+		return options, nil, ErrJobInput
 	}
 	if !utf8.ValidString(options.Code) || !utf8.ValidString(options.Message) {
-		return ErrJobInput
+		return options, nil, ErrJobInput
 	}
 	payload := options.Payload
 	if len(bytes.TrimSpace(payload)) == 0 || bytes.Equal(bytes.TrimSpace(payload), []byte("null")) {
@@ -298,7 +298,14 @@ func (j *JobLease) Finish(ctx context.Context, options FinishOptions) error {
 	}
 	canonical, e := backup.StringifyParsedJSON(payload)
 	if e != nil {
-		return ErrJobInput
+		return options, nil, ErrJobInput
+	}
+	return options, canonical, nil
+}
+func (j *JobLease) Finish(ctx context.Context, options FinishOptions) error {
+	options, canonical, e := j.prepareFinish(options)
+	if e != nil {
+		return e
 	}
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
@@ -307,6 +314,17 @@ func (j *JobLease) Finish(ctx context.Context, options FinishOptions) error {
 		return e
 	}
 	defer tx.Rollback()
+	if e = j.finishLocked(ctx, tx, now, options, canonical); e != nil {
+		return e
+	}
+	if e = tx.Commit(); e != nil {
+		return storageError(ctx)
+	}
+	return nil
+}
+
+// Caller holds generation/run/job locks. The attempt receipt can join this TX.
+func (j *JobLease) finishLocked(ctx context.Context, tx *sql.Tx, now int64, options FinishOptions, canonical json.RawMessage) error {
 	var completed any
 	if options.Status == "completed" || options.Status == "failed" || options.Status == "cancelled" {
 		completed = now
@@ -326,26 +344,35 @@ func (j *JobLease) Finish(ctx context.Context, options FinishOptions) error {
 	if n != 1 {
 		return ErrJobLeaseLost
 	}
-	if e = tx.Commit(); e != nil {
-		return storageError(ctx)
-	}
 	return nil
 }
 
 // Snapshot assertion is useful just before external work but cannot replace
 // WithinOwned for SQL writes. Provider work never belongs inside an SQL TX.
 func (j *JobLease) AssertActive(ctx context.Context) error {
+	_, e := j.remaining(ctx)
+	return e
+}
+func (j *JobLease) remaining(ctx context.Context) (time.Duration, error) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
 	if j == nil || j.owner == "" {
-		return ErrJobInput
+		return 0, ErrJobInput
 	}
-	var active int
+	var remaining int64
 	clock := "CAST(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000 AS SIGNED)"
-	e := j.repo.DB.QueryRowContext(ctx, "SELECT 1 FROM scheduler_jobs j JOIN scheduler_runs r ON r.id=? AND r.generation=j.generation JOIN app_runtime_generation g ON g.id=1 AND g.generation=j.generation WHERE j.id=? AND j.generation=? AND j.locked_by=? AND j.status='running' AND j.locked_until>"+clock+" AND r.status='running' AND r.lease_until>"+clock, j.runID, j.jobID, j.repo.Generation, j.owner).Scan(&active)
+	e := j.repo.DB.QueryRowContext(ctx, "SELECT LEAST(j.locked_until,r.lease_until)-"+clock+" FROM scheduler_jobs j JOIN scheduler_runs r ON r.id=? AND r.generation=j.generation JOIN app_runtime_generation g ON g.id=1 AND g.generation=j.generation WHERE j.id=? AND j.generation=? AND j.locked_by=? AND j.status='running' AND j.locked_until>"+clock+" AND r.status='running' AND r.lease_until>"+clock, j.runID, j.jobID, j.repo.Generation, j.owner).Scan(&remaining)
 	if errors.Is(e, sql.ErrNoRows) {
-		return ErrJobLeaseLost
+		return 0, ErrJobLeaseLost
 	}
 	if e != nil {
-		return storageError(ctx)
+		return 0, storageError(ctx)
 	}
-	return nil
+	if remaining <= 0 {
+		return 0, ErrJobLeaseLost
+	}
+	if remaining > 100000 {
+		remaining = 100000
+	}
+	return time.Duration(remaining) * time.Millisecond, nil
 }
