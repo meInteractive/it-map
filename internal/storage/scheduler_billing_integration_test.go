@@ -249,6 +249,33 @@ func TestMariaDBSchedulerBillingOwnershipDisposable(t *testing.T) {
 		}
 		f.finish(next)
 	})
+	t.Run("recovered adapter panic cannot declare reserve known", func(t *testing.T) {
+		f := f.sub(t)
+		billingReset(f)
+		run, _, a := billingStart(t, f, "CI recovered adapter panic")
+		recovered := false
+		func() {
+			defer func() { recovered = recover() != nil }()
+			_, _ = a.Run(f.ctx, syntheticPaid, func(context.Context) (json.RawMessage, error) { panic("CI synthetic adapter panic") })
+		}()
+		if !recovered || !a.Unknown() || a.Requests() != 1 {
+			t.Fatal("recovered panic lost unresolved outcome")
+		}
+		if _, e := a.Run(f.ctx, syntheticPaid, func(context.Context) (json.RawMessage, error) {
+			t.Error("panic triggered paid replay")
+			return nil, nil
+		}); !errors.Is(e, parser.ErrMoneyUncertain) {
+			t.Fatal("panic outcome replay allowed")
+		}
+		if a.Finish(f.ctx, parser.AttemptFinish{Job: parser.FinishOptions{Status: "pending", Deferred: true}}) != nil {
+			t.Fatal("panic receipt failed")
+		}
+		reserve, cost, _ := billingAmount(t, f, a.ID())
+		if reserve != .26 || cost.Valid {
+			t.Fatal("panic recorded a known cost")
+		}
+		f.finish(run)
+	})
 	t.Run("generation rotation cannot reset global spend", func(t *testing.T) {
 		f := f.sub(t)
 		billingReset(f)

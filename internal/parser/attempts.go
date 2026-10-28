@@ -229,6 +229,10 @@ func (a *Attempt) Run(ctx context.Context, request json.RawMessage, work func(co
 		return nil, e
 	}
 	s.requests.Add(1)
+	// From the durable reservation until a known settlement COMMIT, work may
+	// have happened. Keep this true even if an outer HTTP boundary recovers a
+	// panic from the adapter instead of receiving its normal error return.
+	s.unknown.Store(true)
 	window, e := s.lease.remaining(ctx)
 	if e != nil {
 		s.unknown.Store(true)
@@ -254,6 +258,7 @@ func (a *Attempt) Run(ctx context.Context, request json.RawMessage, work func(co
 		s.unknown.Store(true)
 		return nil, e
 	}
+	s.unknown.Store(false)
 	return response, nil
 }
 
