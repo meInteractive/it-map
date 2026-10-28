@@ -115,9 +115,9 @@ func NewHandlerWithOptions(logger *slog.Logger, opts Options) http.Handler {
 		}
 		mux.HandleFunc("/api/profile/resume", ProfileResumeHandler(opts.Auth, opts.Resumes))
 		if opts.Catalog != nil {
-			mux.HandleFunc("GET /api/companies/search", RequireSession(opts.Auth, CompanySearchHandler(opts.Catalog)))
+			mux.HandleFunc("/api/companies/search", RequireSession(opts.Auth, CompanySearchHandler(opts.Catalog)))
 			// v316 agencies/search is an alias to the company name search.
-			mux.HandleFunc("GET /api/agencies/search", RequireSession(opts.Auth, CompanySearchHandler(opts.Catalog)))
+			mux.HandleFunc("/api/agencies/search", RequireSession(opts.Auth, CompanySearchHandler(opts.Catalog)))
 		}
 		if opts.Compact != nil {
 			for _, entry := range []struct {
@@ -127,10 +127,10 @@ func NewHandlerWithOptions(logger *slog.Logger, opts Options) http.Handler {
 				{"companies", catalog.CompanyType}, {"agencies", catalog.AgencyType},
 			} {
 				path := "/api/" + entry.prefix
-				mux.HandleFunc("GET "+path+"/list", compactListHandler(opts.Auth, opts.Compact, entry.kind, catalog.ListView))
-				mux.HandleFunc("GET "+path+"/map", compactListHandler(opts.Auth, opts.Compact, entry.kind, catalog.MapView))
-				mux.HandleFunc("GET "+path+"/detail", compactDetailHandler(opts.Auth, opts.Compact, entry.kind, false))
-				mux.HandleFunc("GET "+path+"/{id}", compactDetailHandler(opts.Auth, opts.Compact, entry.kind, true))
+				mux.HandleFunc(path+"/list", compactListHandler(opts.Auth, opts.Compact, entry.kind, catalog.ListView))
+				mux.HandleFunc(path+"/map", compactListHandler(opts.Auth, opts.Compact, entry.kind, catalog.MapView))
+				mux.HandleFunc(path+"/detail", compactDetailHandler(opts.Auth, opts.Compact, entry.kind, false))
+				mux.HandleFunc(path+"/{id}", compactDetailHandler(opts.Auth, opts.Compact, entry.kind, true))
 			}
 		}
 		mux.HandleFunc("/api/hiring-contacts", ContactCollectionHandler(opts.Auth, opts.Contacts))

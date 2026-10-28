@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"itmap/internal/backup"
 	"strings"
 )
 
@@ -17,15 +18,15 @@ type Match struct {
 
 type Repository struct{ DB *sql.DB }
 
-func (r Repository) SearchCompanies(ctx context.Context, query string) ([]Match, error) {
+func (r Repository) SearchCompanies(ctx context.Context, query json.RawMessage) (json.RawMessage, error) {
 	if r.DB == nil {
 		return nil, errors.New("catalog database not configured")
 	}
 	var data []byte
-	if err := r.DB.QueryRowContext(ctx, "SELECT data_json FROM app_catalog WHERE id = 1").Scan(&data); err != nil {
+	if err := r.DB.QueryRowContext(ctx, "SELECT data_json FROM app_catalog WHERE id = 1").Scan(&data); err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, err
 	}
-	return MatchesFromJSON(data, query)
+	return backup.PrepareCatalogSearch(data, query)
 }
 
 type office struct {
@@ -52,7 +53,8 @@ type companyCatalog struct {
 	Companies []company `json:"companies"`
 }
 
-// MatchesFromJSON follows searchCatalogNames from the v316 Worker. It searches
+// MatchesFromJSON retains the original approximate Go projection for its unit
+// baseline. Runtime reads use PrepareCatalogSearch instead. This helper searches
 // name, sector, roles, offices, embedded jobs, legal entity, revenue metric and
 // vpnAi text. It does not expose the full companies, resumes or CRM records.
 func MatchesFromJSON(data []byte, query string) ([]Match, error) {

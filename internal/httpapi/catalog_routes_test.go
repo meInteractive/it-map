@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -10,20 +11,21 @@ import (
 	"time"
 
 	"itmap/internal/auth"
-	"itmap/internal/catalog"
 )
 
 type testCatalog struct {
-	query  string
-	broken bool
+	query    string
+	queryRaw json.RawMessage
+	broken   bool
 }
 
-func (c *testCatalog) SearchCompanies(_ context.Context, q string) ([]catalog.Match, error) {
-	c.query = q
+func (c *testCatalog) SearchCompanies(_ context.Context, q json.RawMessage) (json.RawMessage, error) {
+	c.queryRaw = q
+	_ = json.Unmarshal(q, &c.query)
 	if c.broken {
 		return nil, errors.New("private internal SQL error: credentials must never leak")
 	}
-	return []catalog.Match{{Name: "Тестовая компания", Sector: "IT"}}, nil
+	return json.RawMessage(`[{"name":"Тестовая компания","sector":"IT"}]`), nil
 }
 func TestCompanySearchRequiresSessionAndPreservesResponse(t *testing.T) {
 	m, err := auth.NewManager(strings.Repeat("a", 40), map[string]string{"eugene": "pw"})
@@ -57,6 +59,9 @@ func TestCompanySearchRequiresSessionAndPreservesResponse(t *testing.T) {
 	}
 	if w := send(strings.Repeat("x", 300), true); w.Code != 200 || len(fake.query) != 256 {
 		t.Fatalf("limit failed %d, %d", w.Code, len(fake.query))
+	}
+	if w := send(strings.Repeat("x", 255)+"%F0%9F%98%80", true); w.Code != 200 || string(fake.queryRaw) != `"`+strings.Repeat("x", 255)+`\ud83d"` {
+		t.Fatalf("source UTF16 cap lost: %s", fake.queryRaw)
 	}
 	fake.broken = true
 	if w := send("hello", true); w.Code != 503 || strings.Contains(w.Body.String(), "credentials") {

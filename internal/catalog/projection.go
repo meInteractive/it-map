@@ -2,8 +2,8 @@ package catalog
 
 // Compact catalog projections preserve the v316 response shape while avoiding
 // the legacy GET-time INSERT OR IGNORE writes. IDs must come from an already
-// migrated identity table: MariaDB's initial D1 conversion does not enforce
-// uniqueness of the LONGTEXT identity names.
+// migrated identity table. The reviewed MariaDB baseline preserves exact
+// LONGTEXT name uniqueness using native UNIQUE HASH indexes.
 
 import (
 	"context"
@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"itmap/internal/backup"
 	"strings"
 )
 
@@ -31,8 +32,8 @@ const (
 // CompactRepository is intentionally narrow so the HTTP layer cannot perform
 // arbitrary writes or inspect user-private records other than projections.
 type CompactRepository interface {
-	ListEntities(context.Context, string, EntityType, View) ([]map[string]any, error)
-	EntityDetail(context.Context, string, EntityType, int64, string) (map[string]any, error)
+	ListEntities(context.Context, string, EntityType, View) (json.RawMessage, error)
+	EntityDetail(context.Context, string, EntityType, float64, string) (json.RawMessage, error)
 }
 
 var ErrNotFound = errors.New("catalog entity not found")
@@ -190,7 +191,7 @@ func projectDetail(e storedEntity, kind EntityType, id any, favorite, hidden boo
 	return result
 }
 
-func (r Repository) ListEntities(ctx context.Context, user string, kind EntityType, view View) ([]map[string]any, error) {
+func (r Repository) ListEntities(ctx context.Context, user string, kind EntityType, view View) (json.RawMessage, error) {
 	if r.DB == nil {
 		return nil, errors.New("catalog database not configured")
 	}
@@ -206,18 +207,31 @@ func (r Repository) ListEntities(ctx context.Context, user string, kind EntityTy
 	}
 	defer tx.Rollback()
 	var data []byte
-	if err := tx.QueryRowContext(ctx, "SELECT data_json FROM app_catalog WHERE id=1").Scan(&data); err != nil {
-		return nil, err
-	}
-	c, err := parseCatalog(data)
-	if err != nil {
+	if err := tx.QueryRowContext(ctx, "SELECT data_json FROM app_catalog WHERE id=1").Scan(&data); err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, err
 	}
 	state, err := loadCatalogState(ctx, tx, user)
 	if err != nil {
 		return nil, err
 	}
-	result := projectList(c, kind, view, state)
+	selected := backup.CatalogReadState{}
+	for key, identity := range state.Identities {
+		k, n, _ := strings.Cut(key, "\x00")
+		selected.Identities = append(selected.Identities, backup.CatalogReadIdentity{ID: identity.ID, Name: n, EntityType: k, Favorite: identity.Favorite, Hidden: identity.Hidden})
+	}
+	for n := range state.Vacancies {
+		selected.Vacancies = append(selected.Vacancies, n)
+	}
+	for n, a := range state.Applications {
+		selected.Applications = append(selected.Applications, backup.CatalogReadApplication{Name: n, Status: a.Status})
+	}
+	for n := range state.Initialized {
+		selected.Initialized = append(selected.Initialized, n)
+	}
+	result, err := backup.PrepareCatalogRead(data, selected, backup.CatalogReadOptions{EntityType: string(kind), View: string(view)})
+	if err != nil {
+		return nil, err
+	}
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
@@ -244,9 +258,11 @@ func loadCatalogState(ctx context.Context, tx *sql.Tx, user string) (catalogStat
 				break
 			}
 			key := entityKey(source.kind, name)
-			if old, ok := s.Identities[key]; !ok || id < old.ID {
-				s.Identities[key] = entityState{ID: id}
+			if _, exists := s.Identities[key]; exists {
+				err = errors.New("ambiguous catalog identity")
+				break
 			}
+			s.Identities[key] = entityState{ID: id}
 		}
 		if err == nil {
 			err = rows.Err()
@@ -260,12 +276,18 @@ func loadCatalogState(ctx context.Context, tx *sql.Tx, user string) (catalogStat
 	if err != nil {
 		return s, err
 	}
+	seenFlags := map[string]bool{}
 	for rows.Next() {
 		var name string
 		var favorite, hidden int64
 		if err = rows.Scan(&name, &favorite, &hidden); err != nil {
 			break
 		}
+		if seenFlags[name] {
+			err = errors.New("ambiguous catalog personal state")
+			break
+		}
+		seenFlags[name] = true
 		for _, kind := range []EntityType{CompanyType, AgencyType} {
 			key := entityKey(kind, name)
 			if v, ok := s.Identities[key]; ok {
@@ -348,7 +370,7 @@ func loadCatalogState(ctx context.Context, tx *sql.Tx, user string) (catalogStat
 	return s, nil
 }
 
-func (r Repository) EntityDetail(ctx context.Context, user string, kind EntityType, id int64, name string) (map[string]any, error) {
+func (r Repository) EntityDetail(ctx context.Context, user string, kind EntityType, id float64, name string) (json.RawMessage, error) {
 	if r.DB == nil {
 		return nil, errors.New("catalog database not configured")
 	}
@@ -361,49 +383,58 @@ func (r Repository) EntityDetail(ctx context.Context, user string, kind EntityTy
 	}
 	defer tx.Rollback()
 	var data []byte
-	if err = tx.QueryRowContext(ctx, "SELECT data_json FROM app_catalog WHERE id=1").Scan(&data); err != nil {
+	if err = tx.QueryRowContext(ctx, "SELECT data_json FROM app_catalog WHERE id=1").Scan(&data); err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, err
 	}
-	c, err := parseCatalog(data)
+	// Source Number(path) is binary64. Bind its exact integral value, not a
+	// MariaDB DOUBLE comparison that could match a neighbouring BIGINT ID.
+	if id > 0 && id < 9223372036854775808 {
+		query := "SELECT company_name FROM company_identity WHERE id=?"
+		if kind == AgencyType {
+			query = "SELECT agency_name FROM agency_identity WHERE id=?"
+		}
+		var resolved string
+		err = tx.QueryRowContext(ctx, query, int64(id)).Scan(&resolved)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return nil, err
+		}
+		if err == nil && resolved != "" {
+			name = resolved
+		}
+	}
+	var favorite, hidden int64
+	rows, err := tx.QueryContext(ctx, "SELECT favorite,hidden FROM company_user_state WHERE user_name=? AND company_name=?", user, name)
 	if err != nil {
 		return nil, err
 	}
-	var idValue any
-	if id > 0 {
-		var resolved string
-		sqlText := "SELECT company_name FROM company_identity WHERE id=?"
-		if kind == AgencyType {
-			sqlText = "SELECT agency_name FROM agency_identity WHERE id=?"
-		}
-		err = tx.QueryRowContext(ctx, sqlText, id).Scan(&resolved)
-		if err != nil && err != sql.ErrNoRows {
-			return nil, err
-		}
-		if err == nil {
-			name = resolved
-			idValue = id
-		}
-	}
-	var e storedEntity
-	for _, candidate := range c.entities(kind) {
-		if nameOf(candidate) == name {
-			e = candidate
+	countRows := 0
+	for rows.Next() {
+		countRows++
+		if err = rows.Scan(&favorite, &hidden); err != nil {
 			break
 		}
 	}
-	if e == nil {
-		return nil, ErrNotFound
+	if err == nil {
+		err = rows.Err()
 	}
-	var favorite, hidden int64
-	err = tx.QueryRowContext(ctx, "SELECT favorite,hidden FROM company_user_state WHERE user_name=? AND company_name=? LIMIT 1", user, name).Scan(&favorite, &hidden)
-	if err != nil && err != sql.ErrNoRows {
+	rows.Close()
+	if err != nil {
 		return nil, err
+	}
+	if countRows > 1 {
+		return nil, errors.New("ambiguous catalog personal state")
 	}
 	var count int64
 	if err = tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM company_vacancies WHERE company_name=? OR real_company_name=?", name, name).Scan(&count); err != nil {
 		return nil, err
 	}
-	result := projectDetail(e, kind, idValue, favorite != 0, hidden != 0, count)
+	result, err := backup.PrepareCatalogRead(data, backup.CatalogReadState{}, backup.CatalogReadOptions{EntityType: string(kind), View: "detail", ID: id, Name: name, Favorite: favorite != 0, Hidden: hidden != 0, VacancyCount: count})
+	if err != nil {
+		return nil, err
+	}
+	if string(result) == "null" {
+		return nil, ErrNotFound
+	}
 	if err = tx.Commit(); err != nil {
 		return nil, err
 	}

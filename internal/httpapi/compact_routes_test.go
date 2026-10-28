@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -20,11 +21,11 @@ type catalogProbe struct {
 	Kind    catalog.EntityType
 	View    catalog.View
 	Name    string
-	ID      int64
+	ID      float64
 	Failure error
 }
 
-func (p *catalogProbe) ListEntities(_ context.Context, user string, kind catalog.EntityType, view catalog.View) ([]map[string]any, error) {
+func (p *catalogProbe) ListEntities(_ context.Context, user string, kind catalog.EntityType, view catalog.View) (json.RawMessage, error) {
 	p.Calls++
 	p.User = user
 	p.Kind = kind
@@ -32,9 +33,9 @@ func (p *catalogProbe) ListEntities(_ context.Context, user string, kind catalog
 	if p.Failure != nil {
 		return nil, p.Failure
 	}
-	return []map[string]any{{"id": int64(9), "name": "Агентство Т", "favorite": false, "hidden": true}}, nil
+	return json.RawMessage(`[{"favorite":false,"hidden":true,"id":9,"name":"Агентство Т"}]`), nil
 }
-func (p *catalogProbe) EntityDetail(_ context.Context, user string, kind catalog.EntityType, id int64, name string) (map[string]any, error) {
+func (p *catalogProbe) EntityDetail(_ context.Context, user string, kind catalog.EntityType, id float64, name string) (json.RawMessage, error) {
 	p.Calls++
 	p.User = user
 	p.Kind = kind
@@ -43,7 +44,7 @@ func (p *catalogProbe) EntityDetail(_ context.Context, user string, kind catalog
 	if p.Failure != nil {
 		return nil, p.Failure
 	}
-	return map[string]any{"name": "Агентство Т", "vacancyCount": 4}, nil
+	return json.RawMessage(`{"name":"Агентство Т","vacancyCount":4}`), nil
 }
 func TestCompactRoutesAccessAndContract(t *testing.T) {
 	m, err := auth.NewManager(strings.Repeat("k", 64), map[string]string{"eugene": "password", "demo": "demopw"})
@@ -108,8 +109,8 @@ func TestCompactRoutesAccessAndContract(t *testing.T) {
 	if w := send("GET", "/api/agencies/search?q=Hello", true); w.Code != 200 || search.query != "Hello" {
 		t.Fatalf("legacy agency search alias %d", w.Code)
 	}
-	if w := send("POST", "/api/companies/list", true); w.Code == 200 {
-		t.Fatal("POST list unexpectedly succeeded")
+	if w := send("POST", "/api/companies/list", true); w.Code != 405 {
+		t.Fatalf("POST list status/body: %d %s", w.Code, w.Body.String())
 	}
 }
 func TestCompactRoutesFailuresStayPrivate(t *testing.T) {
@@ -138,7 +139,7 @@ func TestCompactRoutesFailuresStayPrivate(t *testing.T) {
 	if w := call("/api/agencies/detail?name=missing"); w.Code != 404 {
 		t.Fatalf("missing detail %d %s", w.Code, w.Body.String())
 	}
-	if w := call("/api/companies/99999999999999999999999999999"); w.Code != 503 {
+	if w := call("/api/companies/99999999999999999999999999999"); w.Code != 404 {
 		t.Fatalf("unexpected huge ID %d", w.Code)
 	}
 }

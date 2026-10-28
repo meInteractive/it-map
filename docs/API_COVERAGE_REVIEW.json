@@ -20,8 +20,8 @@
     {
       "id": "catalog",
       "implementation": "partial",
-      "level": "Go projection/unit + synthetic SQL/browser",
-      "gap": "GO-009: source search/list/map/detail/null/user flags parity; GO-030 согласованный snapshot отдельно.",
+      "level": "Source pure normalization/search + required readonly SQL/HTTP acceptance",
+      "gap": "GO-030: согласованный snapshot и полная GO-009 остаются открытыми; synthetic SQL/HTTP gate GO-317 проходит приёмку.",
       "evidence": [
         {
           "file": "internal/httpapi/compact_routes_test.go",
@@ -37,6 +37,21 @@
         },
         {
           "file": "internal/catalog/projection_test.go"
+        },
+        {
+          "file": "internal/storage/catalog_reads_integration_test.go",
+          "symbol": "TestMariaDBCatalogReadSourceDisposable",
+          "required": true
+        },
+        {
+          "file": "internal/storage/catalog_reads_integration_test.go",
+          "symbol": "TestMariaDBCatalogReadFailuresDisposable",
+          "required": true
+        },
+        {
+          "file": "internal/storage/catalog_read_snapshot_test.go",
+          "symbol": "TestMariaDBCatalogReadSnapshotDisposable",
+          "required": true
         }
       ]
     },
@@ -456,7 +471,7 @@
   ],
   "sourceHashes": {
     "frontend/api/client.ts": "4aa67ca55e0940c44fb74b6ab68fe876d294d2b56d15b83bc1686b95519e06a7",
-    "internal/httpapi/handler.go": "847941242bc83f10692bd83554dc724109af26da11cd7971f483dfaa3ecb6a67",
+    "internal/httpapi/handler.go": "6fbb21318b2e83ab4f823a9ff37714dac239fa3e9ce84b3c1eae46ea8aef5c0b",
     "server/routes/index.js": "6134004f682975cb51ea13cd2ec4de8e85a5957deff6a5392fbad3fd70ccb1e4"
   },
   "clientExports": [
