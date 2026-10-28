@@ -13,3 +13,11 @@ GO-314 выявила разницу: `server/services/catalog-projection.js` в
 Source gate `TestCatalogReadProjectionSource` запускает неизменённые readCompactEntities/readCompanyDetail на1 180 синтетических fixtures. Read-set stubs возвращают явно заданные query results, наблюдают, но не исполняют source INSERT OR IGNORE. Это проверка чистого преобразования, **не actual SQLite/MariaDB/identity-bootstrap proof**. Принимаются source value и source TypeError/SyntaxError boundary для невалидных offices/jobs/JSON. Проверяются normalization/rank/defaults, company/agency list/map/detail, null/omitted, typed/overflow values, prototype names, Unicode, короткие замыкания vacancy/initialized и personal state.
 
 Runtime Repository/HTTP этой порцией не переключаются. Предыдущие restore entity/plan/source gates обязательны после общего object-builder refactor. Source search — GO-316; actual readonly MariaDB/HTTP, user isolation, application winner SQL и error/method contracts — GO-317. GET не будет создавать IDs: source SQL reference получает предварительно подготовленные identity rows, как предполагает существующая миграция.
+
+## GO-316: pure source search
+
+`backup.PrepareCatalogSearch` применяет тот же нормализованный ordered catalog, затем точную формулу searchCatalogNames: name/sector/roles, offices metro+address, embedded job titles, revenue legal/metric, Object.values(vpnAi).join. Пропущенное direct поле превращается в текст undefined, null — в null; Array.join обращается с ними иначе. Числовое переполнение остаётся Infinity до поиска, хотя финальный JSON выводит null. Невалидные offices/jobs и throwing coercions сохраняют исходную error boundary.
+
+Запрос передаётся как JSON string, чтобы сохранить UTF16 units. Используется уже принятый полный Unicode17 lower с final sigma, без нового NFC/NFD/диакритического folding поиска. KMP сравнивает UTF16 units за линейное время и не находит ложный half-unit match в byte encoding. Agencies/search, как в исходнике, ищет компании; агентства не добавляются в результаты.
+
+`TestCatalogSearchSource` сравнивает2551 синтетических результатов/error cases с неизменённым JS searchCatalogNames. Это тоже pure proof с единственным stub чтения app_catalog, без SQL, HTTP или сети. Repository/HTTP activation и alias/error/negative-rights проверяются в GO-317; полная GO-009 остаётся открытой.

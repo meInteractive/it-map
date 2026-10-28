@@ -1,0 +1,18 @@
+// Actual unchanged searchCatalogNames; synthetic data, no SQL or providers.
+import {searchCatalogNames} from '../server/services/catalog-projection.js';
+globalThis.fetch=()=>{throw new Error('Catalog search oracle forbids network');};
+const base=()=>({companies:[{name:'CI ОΣ',sector:'CI Sector',roles:'CI Product',offices:[{metro:'CI Метро',address:'CI Straße'}],jobs:[{title:'CI Backend'}],revenue:{legal:'CI Legal',metric:'CI Metric'},vpnAi:{note:'CI VPN',0:'zero',2:'two'}},{name:'CI missing fields'},{name:'CI agency word',sector:'CI null',roles:null}],agencies:[{name:'CI agency-only',sector:'CI must not search agencies'}]});
+const variants=[],add=(name,mutate)=>{const c=base();mutate(c);variants.push({name,raw:JSON.stringify(c)});};add('base',()=>{});
+for(const field of ['sector','roles'])for(const value of [null,false,0,17,[],[null,'CI array'],{},'İIı ОΣΟΣ ΣΣΣ 😀 \ud800'])add(field+' '+JSON.stringify(value),c=>c.companies[0][field]=value);
+for(const offices of [null,false,0,'',{},[{}],[null],[0,false,'CI'],[{metro:null,address:false}],[{metro:['CI',null],address:{CI:1}}]])add('offices '+JSON.stringify(offices),c=>c.companies[0].offices=offices);
+for(const jobs of [null,false,0,'',{},[{}],[null],[0,false,'CI'],[{title:null}],[{title:[null,'CI array']}],[{title:{CI:1}}],[{title:{toString:5}}]])add('jobs '+JSON.stringify(jobs),c=>c.companies[0].jobs=jobs);
+for(const vpnAi of [null,false,0,17,'','😀',[],[null,'CI value'],{z:'CI last',10:'ten',2:'two',a:null},{value:{CI:1}},{value:{toString:5}}])add('vpnAi '+JSON.stringify(vpnAi),c=>c.companies[0].vpnAi=vpnAi);
+for(const revenue of [null,0,false,'CI',{}, {legal:null,metric:0},{legal:['CI',null],metric:{CI:1}},{legal:{toString:null}}])add('revenue '+JSON.stringify(revenue),c=>c.companies[0].revenue=revenue);
+add('UTF16 unit boundary',c=>c.companies[0].sector='\u0800A');
+add('Unicode names and ties',c=>c.companies=['Я','A','Й','И\u0306','é','e\u0301','CI\ud800','CI�'].map(name=>({name})));
+for(const raw of ['', 'null','{}','{"companies":[]}','CI invalid JSON','{"companies":[{"name":"CI infinity","sector":1e400,"jobs":[{"title":1e400}],"vpnAi":{"n":1e400},"revenue":{"legal":1e400}}]}','{"companies":[{"name":"CI","vpnAi":{"10":"ten","2":"two","2":"last-two","x":"x"}}]}'])variants.push({name:'raw '+raw,raw});
+const queries=['','ci','CI','sector','метро','straße','STRASSE','undefined','null','false','17','[object object]','ci array','ci legal','ci metric','vpn','zero two','two ci last','Infinity','last-two ten','σ','ς','οσ','ος','i\u0307','i','ı','é','e\u0301','😀','\ud800','CI agency-only','never match',' ','  ','\u0085','\uFEFF','\u0000'];
+let count=0;
+for(const v of variants)for(const query of queries){const db={prepare(sql){if(!sql.includes('FROM app_catalog'))throw new Error('Source search unexpectedly performed SQL');return {async first(){return {dataJson:v.raw};}}}};let body='',error=false;try{body=JSON.stringify(await searchCatalogNames(db,query));}catch(e){if(!(e instanceof TypeError)&&!(e instanceof SyntaxError))throw e;error=true;}process.stdout.write(JSON.stringify({name:v.name+' / '+JSON.stringify(query),raw:v.raw,queryJSON:JSON.stringify(query),body,error})+'\n');count++;}
+for(const query of [null,1,false,{},[]]){let error=false;try{await searchCatalogNames({prepare(){return {async first(){return {dataJson:JSON.stringify(base())}}}}},query);}catch(e){if(!(e instanceof TypeError))throw e;error=true;}process.stdout.write(JSON.stringify({name:'non-string query '+JSON.stringify(query),raw:JSON.stringify(base()),queryJSON:JSON.stringify(query),body:'',error})+'\n');count++;}
+process.stderr.write(`Catalog source search fixtures: ${count}; no SQL acceptance\n`);
