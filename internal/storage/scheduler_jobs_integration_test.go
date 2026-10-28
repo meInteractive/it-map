@@ -116,6 +116,7 @@ func TestMariaDBSchedulerJobSourceDisposable(t *testing.T) {
 	}
 	var references []map[string]any
 	var actual [][]map[string]any
+	rejected := 0
 	for _, line := range bytes.Split(bytes.TrimSpace(data), []byte{'\n'}) {
 		var v map[string]any
 		if json.Unmarshal(line, &v) != nil {
@@ -138,6 +139,19 @@ func TestMariaDBSchedulerJobSourceDisposable(t *testing.T) {
 			f.exec("UPDATE firecrawl_settings SET scheduler_json=? WHERE id=1", string(settings))
 			// Seed the source's existing run; this gate tests job operations, not Begin.
 			f.exec("INSERT INTO scheduler_runs(id,generation,`trigger`,started_at,status,lease_until) VALUES('CI_run',?,'manual',?,'running',?)", f.repo.Generation, base-1, base+3600000)
+			if v["mariadbReject"] == "lone_UTF16" {
+				raw := v["jobs"].([]any)[0].(map[string]any)["PayloadRaw"].(string)
+				var valid int
+				if f.db.QueryRowContext(f.ctx, "SELECT JSON_VALID(?)", raw).Scan(&valid) != nil || valid != 0 {
+					t.Fatal("target Unicode representability boundary changed")
+				}
+				_, e := f.db.ExecContext(f.ctx, "INSERT INTO scheduler_jobs(id,generation,dedupe_key,type,payload,priority,run_after,created_at,updated_at) VALUES('CI_unrepresentable',?,'CI_unrepresentable','diagnostic',?,0,0,0,0)", f.repo.Generation, raw)
+				if e == nil || f.count("SELECT COUNT(*) FROM scheduler_jobs") != 0 {
+					t.Fatal("unrepresentable source JSON escaped native CHECK")
+				}
+				rejected++
+				return
+			}
 			for _, item := range v["jobs"].([]any) {
 				j := item.(map[string]any)
 				if j["Generation"] == oldGeneration {
@@ -223,7 +237,7 @@ func TestMariaDBSchedulerJobSourceDisposable(t *testing.T) {
 	if t.Failed() {
 		return
 	}
-	if len(references) != 142 {
+	if len(references) != 142 || rejected != 1 {
 		t.Fatal("missing SQL source vectors", len(references))
 	}
 	input, _ := json.Marshal(references)
@@ -279,6 +293,9 @@ func TestMariaDBSchedulerJobOwnershipDisposable(t *testing.T) {
 		})
 		if !errors.Is(e, failure) || f.count("SELECT COUNT(*) FROM scheduler_jobs WHERE last_error='CI_partial'") != 0 {
 			t.Fatal("owned partial write escaped rollback")
+		}
+		if lease.Finish(f.ctx, parser.FinishOptions{Payload: json.RawMessage(`{"s":"\ud800"}`)}) == nil || lease.AssertActive(f.ctx) != nil || f.count("SELECT COUNT(*) FROM scheduler_jobs WHERE id='CI_owned' AND status='running' AND payload='{}' AND completed_at IS NULL") != 1 {
+			t.Fatal("target JSON refusal lost owned job or escaped rollback")
 		}
 		if lease.WithinOwned(f.ctx, func(tx *sql.Tx) error {
 			_, e := tx.ExecContext(f.ctx, "UPDATE scheduler_jobs SET last_error='CI_saved' WHERE id='CI_owned'")

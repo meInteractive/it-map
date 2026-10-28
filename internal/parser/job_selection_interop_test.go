@@ -3,9 +3,11 @@
 package parser
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"io"
+	"itmap/internal/backup"
 	"os/exec"
 	"testing"
 )
@@ -26,6 +28,8 @@ func TestSchedulerClaimSource(t *testing.T) {
 	for {
 		var v struct {
 			Name, Generation, Selected, Error, SettingsRaw string
+			Finish                                         json.RawMessage
+			FinishedPayload                                string
 			Now                                            int64
 			Settings                                       Settings
 			Jobs                                           []struct {
@@ -122,12 +126,26 @@ func TestSchedulerClaimSource(t *testing.T) {
 			if got != v.Selected {
 				t.Fatalf("Go selected %q; unchanged source selected %q", got, v.Selected)
 			}
+			if len(v.Finish) > 0 && best != nil {
+				var finish struct{ Payload json.RawMessage }
+				if e := json.Unmarshal(v.Finish, &finish); e != nil {
+					t.Fatal(e)
+				}
+				payload := finish.Payload
+				if len(payload) == 0 || bytes.Equal(bytes.TrimSpace(payload), []byte("null")) {
+					payload = best.Payload
+				}
+				canonical, e := backup.StringifyParsedJSON(payload)
+				if e != nil || string(canonical) != v.FinishedPayload {
+					t.Fatalf("source Finish payload differs: Go %s source %s error %v", canonical, v.FinishedPayload, e)
+				}
+			}
 		})
 	}
 	if err = cmd.Wait(); err != nil {
 		t.Fatal("scheduler source failed", err)
 	}
-	if count != 142 {
+	if count != 143 {
 		t.Fatal("missing source selection vectors", count)
 	}
 }

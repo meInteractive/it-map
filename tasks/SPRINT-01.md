@@ -1383,7 +1383,7 @@
 - **Приоритет:** Критический, только sprint1.1.
 - **Зависимости:** принятые cycle owner/recovery GO-080, settings model GO-078, существующая schema. До реализации разделить оставшуюся045:312 job claim/lease/fenced mutations →313 atomic reservation/attempt ledger/joint recovery.
 - **Критерии:** source due/type/agency/candidate/HH-page eligibility и порядок, jobId/diagnostic/deferred режимы, atomic claim и lease owner; complete/defer/fail и transactional owned mutation facade с generation/run/job fences. Реальные два соединения, stale owner/run/generation, late rollback и expiry/crash/recovery без потери/двойного claim; unchanged source oracle на SQLite :memory:. Провайдеры/фоновые Go ticks не запускаются.
-- **Результат:** реализованы source claim/opaque lease/owned TX/finish,23 044 JSON и142 unchanged-source fixtures локально pass. SQL tests/CI добавлены; до actual required positive disposable CI task остаётся открытой.
+- **Результат:** реализованы source claim/opaque lease/owned TX/finish,23 044 JSON и143 unchanged-source fixtures локально pass. SQL tests/CI добавлены; до actual required positive disposable CI task остаётся открытой.
 
 ### [ ] GO-313. Atomic scheduler budget/attempt ledger и joint crash gate (часть GO-045)
 

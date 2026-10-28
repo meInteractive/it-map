@@ -62,7 +62,8 @@ else{
  for(const finish of [{},{status:'pending',delayMs:60000,deferred:true,code:'apify_busy',message:'CI синтетика'},{status:'failed'},{status:'cancelled'},{payload:{2:'two',1:'one',a:'😀',n:1e100}},{payload:null}])add('finish '+JSON.stringify(finish),[job('a',{Attempts:2,Payload:{z:1}})],{},{finish});
  for(const [raw,expected] of [['{"enabled":true,"agenciesEnabled":true,"agenciesEnabled":false}',true],['{"enabled":true,"agenciesEnabled":false,"agenciesEnabled":true}',false]])add('agency duplicate '+expected,[job('a',{AgencyID:17,Priority:100}),job('b')],{},{settingsRaw:raw});
  add('run duplicate first',[{...hh(),PayloadRaw:'{"runId":"first","runId":"last"}'}],{allowApifyStarts:false},{operations:['listing:first:0']});
- add('finish duplicate last',[job('a',{PayloadRaw:'{"runId":"first","runId":"last","n":1e400,"s":"\\ud800"}'})],{},{finish:{}});
+ add('finish duplicate last',[job('a',{PayloadRaw:'{"runId":"first","runId":"last","n":1e400}'})],{},{finish:{}});
+ add('finish lone UTF16 target rejection',[job('a',{PayloadRaw:'{"s":"\\ud800"}'})],{},{finish:{},mariadbReject:'lone_UTF16'});
  let seed=312;const random=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed;};
  for(let n=0;n<100;n++){const jobs=Array.from({length:10},(_,i)=>job('CI_'+i,{Priority:random()%101,RunAfter:now-(random()%1000000),CreatedAt:now-(random()%30000000),Type:random()%2?'scan_source':'diagnostic',SourceID:random()%2?'hh':null}));add('random '+n,jobs,{allowApify:!!(random()%2)});}
  for(const v of cases)process.stdout.write(JSON.stringify(await reference(v))+'\n');
