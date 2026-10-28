@@ -755,6 +755,22 @@ jobs:
           go mod verify
           go mod tidy -diff
           git diff --exit-code -- go.mod go.sum
+      - name: Capture and verify trusted full schema metadata with read-only SQL
+        env:
+          ITMAP_REQUIRE_MARIADB_INTEGRATION: '1'
+          ITMAP_TEST_MARIADB_WRITE_DSN: 'itmap_ci:ci_only_disposable_writer@tcp(127.0.0.1:3306)/itmap_ci?parseTime=true&clientFoundRows=true&collation=utf8mb4_bin'
+        run: |
+          set -euo pipefail
+          result_file="$(mktemp)"
+          trap 'rm -f "$result_file"' EXIT
+          go test -race -tags mariadb,trustedcapture ./internal/storage -run '^TestMariaDBTrustedSchemaCaptureDisposable$' -count=1 -json | tee "$result_file"
+          python3 - "$result_file" <<'PYCODE'
+          import json,sys
+          events=[json.loads(line) for line in open(sys.argv[1],encoding='utf8')]
+          assert any(e.get('Test')=='TestMariaDBTrustedSchemaCaptureDisposable' and e.get('Action')=='pass' for e in events), 'required schema capture did not pass/run'
+          assert not any(e.get('Action')=='skip' for e in events), 'required schema capture skipped'
+          print('PASS: trusted schema metadata read without writes/skips')
+          PYCODE
       - name: Verify full historical v14-38 restore and preserve races ONLY in disposable CI
         env:
           ITMAP_REQUIRE_MARIADB_INTEGRATION: '1'

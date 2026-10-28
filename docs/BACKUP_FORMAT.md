@@ -184,4 +184,4 @@ C-P принята на [#68](https://github.com/meInteractive/it-map/pull/68), 
 
 Для legacy calendar сохраняется всегда; audit — только при отсутствии раздела, явно пустой audit очищает строки. Набор destination reads фиксируется по входному файлу до pure planning; final rows читаются заново под generation и `FOR UPDATE` locks до замены. `/validate` использует read-only snapshot и не резервирует counters/generation. Все normalization/clock/defaults завершаются до COMMIT.
 
-C-S пока ожидает actual disposable SQL/HTTP/race CI: unchanged source SQLite :memory: эталон, round-trip v39, rollback/retry и оба порядка concurrent calendar/audit writers. Trusted schema bootstrap D и полная GO-042 не приняты. Реальные backups/DB/keys/providers не используются.
+C-S принята на #69/code2297175: Public40653587489/MariaDB40653587455 fully pass. Required job122699204697 выполнил все6 signed/unsigned parents без skips. Проверены unchanged source SQLite :memory: эталон, round-trip v39, rollback/retry и оба порядка concurrent calendar/audit writers. Trusted schema bootstrap D и полная GO-042 не приняты. Реальные backups/DB/keys/providers не используются.
