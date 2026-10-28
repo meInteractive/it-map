@@ -36,7 +36,7 @@ func TestMariaDBTrustedSchemaCaptureDisposable(t *testing.T) {
 	}
 	fks := map[string]bool{}
 	for _, r := range snapshot["foreign_keys"] {
-		if len(r) != 9 || r[0] == nil || r[1] == nil {
+		if len(r) != 10 || r[0] == nil || r[1] == nil {
 			t.Fatal("invalid FK metadata")
 		}
 		fks[*r[0]+":"+*r[1]] = true
@@ -52,6 +52,8 @@ func TestMariaDBTrustedSchemaCaptureDisposable(t *testing.T) {
 		if e = dbschema.CheckFull(snapshot); e != nil {
 			t.Fatal("trusted metadata drift", e)
 		}
+		fmt.Println("PASS: full trusted schema metadata matches reviewed baseline")
+		return
 	}
 	encoded := base64.StdEncoding.EncodeToString(dbschema.CanonicalJSON(snapshot))
 	n := (len(encoded) + 5999) / 6000

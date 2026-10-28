@@ -36,6 +36,9 @@ func TestTrustedDDLSource(t *testing.T) {
 		}
 		return
 	}
+	if len(p.Metadata["tables"]) != 72 || len(p.Metadata["columns"]) != 606 || len(p.Metadata["checks"]) != 117 || len(p.Metadata["indexes"]) != 269 || len(p.Metadata["foreign_keys"]) != 51 || len(p.Metadata["triggers"]) != 22 {
+		t.Fatal("verified metadata coverage differs")
+	}
 	if e := CheckFull(p.Metadata); e != nil {
 		t.Fatal(e)
 	}

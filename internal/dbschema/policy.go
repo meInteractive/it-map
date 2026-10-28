@@ -73,13 +73,16 @@ func Preflight(current Snapshot) ([]Action, error) {
 	if len(p.Metadata) == 0 {
 		return nil, ErrUnverified
 	}
-	expectedCounts := map[string]int{"tables": 4, "columns": 10, "indexes": 9, "checks": 3, "foreign_keys": 9, "triggers": 7}
+	expectedCounts := map[string]int{"tables": 4, "columns": 10, "indexes": 9, "checks": 3, "foreign_keys": 10, "triggers": 7}
 	if len(current) != len(expectedCounts) || len(p.Metadata) != len(expectedCounts) {
 		return nil, errors.New("incomplete schema metadata")
 	}
 	actual := map[string]map[string]bool{}
 	presentTables := map[string]bool{}
 	for section, width := range expectedCounts {
+		if _, ok := current[section]; !ok {
+			return nil, errors.New("incomplete schema metadata")
+		}
 		expected, ok := p.Metadata[section]
 		if !ok {
 			return nil, ErrUnverified
@@ -100,6 +103,24 @@ func Preflight(current Snapshot) ([]Action, error) {
 			actual[section][key] = true
 			if section == "tables" {
 				presentTables[cell(r, 0)] = true
+			}
+		}
+	}
+	// A composite FK/index is indivisible: a received prefix of its rows is
+	// corrupt, even when other unrelated additive objects are also missing.
+	for _, section := range []string{"indexes", "foreign_keys"} {
+		groups, received := map[string][][]*string{}, map[string][][]*string{}
+		for _, r := range p.Metadata[section] {
+			key := cell(r, 0) + ":" + cell(r, 1)
+			groups[key] = append(groups[key], r)
+		}
+		for _, r := range current[section] {
+			key := cell(r, 0) + ":" + cell(r, 1)
+			received[key] = append(received[key], r)
+		}
+		for key, rows := range received {
+			if !equalRows(rows, groups[key]) {
+				return nil, errors.New("incomplete existing composite object")
 			}
 		}
 	}
