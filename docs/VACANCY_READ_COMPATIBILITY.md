@@ -34,3 +34,29 @@ clamping, strict archive и all. До исправления этот же corpu
 раньше границы двух месяцев. Исходники TypeScript и фронтенда не менялись.
 SQL row selection, role/source joins, HTTP query validation и полная GO-011
 этой pure проверкой не объявляются принятыми.
+
+## GO-319: роль, дерево и descendants
+
+`roles.Build` сохраняет flat order входного SQL read set, а sibling lists
+сортирует по sortOrder, принятому Russian collation из ADR-023 и затем ID.
+Ключи вычисляются один раз на роль; строки name/stableKey/path не меняются.
+Канонически равные имена сохраняют source ID tie, не сливаются. SQL childCount
+и usageCount передаются как в source readVacancyRoles; ChildCount больше не
+пересчитывается заново по входному массиву. Старые unit/HTTP fixtures получили
+согласованные с их graph значения SQL ChildCount.
+
+`TestRoleCatalogSource` вызывает unchanged readVacancyRoles с явным single-query
+read-set stub и сравнивает164 frames: empty, metadata/child counts, arbitrary
+flat order,128 sibling permutations и32 forests. Проверяются весь JSON
+roles/tree/roots/leaves, paths/descendants, sortOrder/usage/child counts,
+Cyrillic/Latin/case/accent/canonical equal names и стабильный ID tie. До
+исправления129 frames расходились; после — все совпадают. Эти fixtures
+содержат UTF8 text и positive safe integer IDs, соответствующие типам обычных
+SQL rows. Required Public CI запускает source gate с race detector.
+
+Это pure view proof, не выборка SQL, schema bootstrap, HTTP descendants
+handler или доказательство role/source vacancy filters. Предыдущая защита от
+cycles/orphan/duplicate/неположительных ID остаётся fail-closed; source orphan
+поведение намеренно не объявляется принимаемым вместо целостного FK graph.
+SQL/API role/filter integration и весь GO-011 остаются открытыми. Новое
+архитектурное решение Unicode не требуется: используется уже принятое ADR-023.

@@ -20,7 +20,18 @@ Unported business API endpoints return 401 without a session and 503 with one.
 Internal scheduler, MCP and database export endpoints **always remain disabled**
 until explicitly ported and accepted. This is not a production-ready auth audit:
 rate limiting, credential rotation procedures, real reverse proxy deployment,
-and browser end-to-end tests remain acceptance gates for later sprint tasks.
+remain acceptance gates for later sprint tasks. The synthetic three-account
+desktop/mobile browser matrix was accepted in GO-051; it does not prove the
+external reverse proxy.
 
 When switching hosts, old sessions can only be verified if the same session
 signing secret is used; rotating it intentionally invalidates old sessions.
+
+## HTTPS/proxy и повторный вход (GO-320)
+
+Actual loopback TLS → private HTTP → Go session flow для трёх ролей проверяет
+`TestAuthHTTPSProxySessionFlow`; он не читает SQL, не сохраняет credentials и
+не отключает TLS verification. Сценарии и границы проверки, включая отличие
+HTTP cookie jar от browser SameSite policy, описаны в
+[операторской инструкции](deployment/AUTH-ACCEPTANCE.md). Настоящие DNS/ACME,
+Nginx и браузерная приёмка на тестовом домене по-прежнему не выполнены.

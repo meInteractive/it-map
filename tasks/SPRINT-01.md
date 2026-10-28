@@ -178,7 +178,7 @@
 ### [ ] GO-009. Каталог компаний, агентств и карта
 
 - **Приоритет:** Критический.
-- **Критическая часть:** [x] SQL/API каталога и ID подтверждены synthetic smoke; карточки/список — GO-051. [ ] JS→Go search/filter/detail/map JSON parity, отсутствующие/null записи и user flags. [ ] GO-030 на разрешённом снимке.
+- **Критическая часть:** [x] SQL/API каталога и ID подтверждены synthetic smoke; карточки/список — GO-051. [x] Normalized JS→Go search/list/detail/map JSON/null/user flags:315/316 pure +317 actual source SQLite/router vs SELECT-only MariaDB,2592 responses. [ ] GO-030 на разрешённом снимке.
 - **Средняя часть:** [ ] Функциональная карта/ресурсы/реальные фильтры в браузере.
 - **Низкая часть:** [ ] Подписи/размеры маркеров и идеальная вёрстка карты.
 
@@ -190,7 +190,7 @@
 - **Критерии готовности:** Сопоставимые ответы из реальной MariaDB, карты и список работают.
 - **Как проверить:** JSON parity, MariaDB интеграция, браузерный smoke.
 - **Известные ограничения:** Go-роуты и тесты есть, staging нет.
-- **Результат:** Существующий код 895d3ee/5b44e54/e0c4ef9 и synthetic CI PR #1/#9; browser list/detail GO-051. Полный JS→Go search/map/filter и согласованный снимок ещё не приняты.
+- **Результат:** Существующий код 895d3ee/5b44e54/e0c4ef9 и synthetic CI PR #1/#9; browser list/detail GO-051. Normalized search/list/map/detail/source/user flags приняты315–317 на synthetic disposable MariaDB; согласованный snapshot030 и функциональные browser map/filter части остаются открытыми.
 
 
 ### [ ] GO-010. CRM компаний и пользовательские списки
@@ -1414,23 +1414,37 @@
 - **Критерии:** unchanged searchCatalogNames, точные JS lower/coercion/null/пробелы/embedded job-office-revenue-vpnAi поля и alias agencies search; без runtime/SQL activation до317.
 - **Результат:** pure PrepareCatalogSearch реализован без runtime/SQL activation;2551 unchanged searchCatalogNames fixtures сравнивают exact JSON/error boundary, включая UTF16/full lower/final sigma/field coercion/Infinity/numeric own keys. [PR #76](https://github.com/meInteractive/it-map/pull/76), code0876f4da5c7c611a99fbc16c78fa47b819c8436b/tree9e3f0d7b12f72b29bd786f8296743dd421402f44: Public40708192883/MariaDB40708192913 fully success, весь regression pass.
 
-### [ ] GO-317. Readonly MariaDB/API parity каталога (часть GO-009)
+### [x] GO-317. Readonly MariaDB/API parity каталога (часть GO-009)
 
 - **Приоритет:** Критический, только sprint1.1.
 - **Зависимости:** GO-315/316 pure proofs, существующие baseline/identity/read models.
 - **Критерии:** подключить pure normalization/projection/search к Go Repository/HTTP; unchanged source SQLite reference + actual MariaDB readonly account, заранее подготовленные IDs, user isolation/flags/application selection/null/unknown IDs/name/errors и method/role contracts. GET не создаёт identities и не меняет business rows. Только synthetic disposable CI, без private snapshot. Полная GO-009/030 не закрывается синтетикой.
-- **Результат:** runtime315/316 подключён через RawMessage DTO и readonly snapshots; новый source SQLite/router oracle2592 responses/12 frames, SELECT-only grant/full72-table immutability/error/duplicate/missing-ID и actual concurrent snapshot tests. Локальные Go/source gates проходят; positive MariaDB только в required disposable CI, полная приёмка ожидается.
+- **Результат:** runtime315/316 подключён через RawMessage DTO и readonly snapshots; новый source SQLite/router oracle2592 responses/12 frames, SELECT-only grant/full72-table immutability/error/duplicate/missing-ID и actual concurrent snapshot tests. [PR #77](https://github.com/meInteractive/it-map/pull/77), code40a026f5eb32f4d6c1e3d4c31123c73ee2076f4a/treec3a5bce39bac859bceddaebd32749ee0a13a79d1: Public40711808887/MariaDB40711808823 fully success. Required122898776673 подтвердил все3 parent tests/12 source frames/2592 HTTP responses, UNIQUE1062, missing-ID/private errors/actual snapshot, all72-table immutability и zero skips; весь old regression pass.
 
-### [ ] GO-318. Source publication dates и периоды вакансий (часть GO-011)
+### [x] GO-318. Source publication dates и периоды вакансий (часть GO-011)
 
 - **Приоритет:** Критический, только sprint1.1.
 - **Зависимости:** существующий Go period predicate, shared/publication-period.ts; SQL activation не требуется.
 - **Критерии:** неизменённый TypeScript oracle для typed DB text/null dates: ECMAScript trim/prefix/calendar validity/fallback, Moscow day/inclusive week/month clamp/archive/all. Meaningful negative probe, required source CI; существующие SQL/API gates не ломаются. Полная GO-011/roles/source filters отдельно.
-- **Результат:** unchanged shared TypeScript oracle27375 frames; до correction569 mismatches, после source/default/tagged race/vet/builds/Go1.23/API-audit/source/history/actionlint pass. Исправлены Date.UTC years0–99 и точный ECMAScript trim (FEFF/0085). Required source CI добавлен, полная приёмка ожидается; SQL/full GO-011 не закрыты.
+- **Результат:** unchanged shared TypeScript oracle27375 frames; до correction569 mismatches, после source/default/tagged race/vet/builds/Go1.23/API-audit/source/history/actionlint pass. Исправлены Date.UTC years0–99 и точный ECMAScript trim (FEFF/0085). [PR #78](https://github.com/meInteractive/it-map/pull/78), e6499be5a0d86a069ccbaf5386937e61516d57ec/tree6025110e88f00212359b9cdd3403c19ee45e7c71: Public40713039740/MariaDB40713039811 fully success, required27375 source frames и old SQL/API/browser regression pass; full GO-011 не закрыта.
 
-### [ ] GO-319. Source роль/дерево/потомки вакансий (часть GO-011)
+### [x] GO-319. Source роль/дерево/потомки вакансий (часть GO-011)
 
 - **Приоритет:** Критический, только sprint1.1.
 - **Зависимости:** существующий role schema/read model, source vacancy-roles.js, принятый Unicode ADR-023.
 - **Критерии:** unchanged source readVacancyRoles на synthetic read-set fixtures, точный flat order/tree/roots/leaves/path/descendants; исходная Russian collation + accepted canonical policy/stable ID tie. Повреждённые graph/IDs fail closed без recursion crash. SQL/API role/filter integration отдельно.
-- **Результат:** не реализовано.
+- **Результат:** source readVacancyRoles164 read-set frames; до correction129 mismatches, после exact DTO match -race. Русский порядок/ID tie используют принятый ADR-023, SQL childCount не перезаписывается. Corrupt graph guards сохранены; SQL/API filter integration не заявляется. [PR #79](https://github.com/meInteractive/it-map/pull/79), edf0956ee0e47a6412ed6646815ec27483d8a18b/tree5f3392da73469babfdced35bde2c07bcfc1e861c: Public40714714847/MariaDB40714714685 fully success, required164 source frames и old SQL/API/browser regression pass.
+
+### [x] GO-320. HTTPS/proxy session harness (средняя часть GO-008)
+
+- **Приоритет:** Средний, только sprint1.1.
+- **Зависимости:** принятые317/318/319 и пользовательская новая очередь; существующий Go auth/Host-preserving proxy contract.
+- **Критерии:** actual TLS termination → private HTTP → Go session flow для3 synthetic ролей: login/redirect/cookie flags, Secure HTTP refusal, cross-Origin, bad/signed-expired token, re-login/logout; без ослабления TLS verify, SQL/providers/реальных credentials. Проверка в required Go race CI и операторская инструкция. Не закрывать external real-domain/proxy/browser medium gate GO-008 по локальной synthetic проверке.
+- **Результат:** actual trusted TLS/public test hostname → loopback HTTP → Go auth,3 роли и полный session/cookie/Origin/expiry/re-login/logout flow проходят-race и Go1.23. Virtual example.com dialer допускает только2 loopback ports; localhost Secure-cookie exception не маскирует HTTP refusal. Runtime/auth/proxy config не менялись. Добавлена операторская инструкция, внешний medium gate остаётся открытым; [PR #80](https://github.com/meInteractive/it-map/pull/80), 5dba544df565ba5da68b4b3ebdd9106e426e9e41/tree4cb3b1d04096d305f55333fbe64b9437ac9ae233: Public40743050421/MariaDB40743050396 fully success,3-role TLS test/old SQL/API/browser/restore/bootstrap regression pass.
+
+### [ ] GO-321. Операторский UI export/validate/restore (средняя часть GO-019)
+
+- **Приоритет:** Средний, только sprint1.1.
+- **Зависимости:** принятый backup core041/042/100 и user queue после concrete320; existing BackupRestore/ExportCard React.
+- **Критерии:** actual browser→Go→disposable MariaDB v39 export/upload/validation preview/cancel/confirmed restore/reload, malformed/oversize/validation error/roles; до подтверждения нет restore POST, validate не меняет generation, подтверждённое restore действительно возвращает сохранённые synthetic данные. Desktop/mobile, zero skips, все external requests запрещены, trace/video/screenshots/backup artifacts не публикуются. Parent внешний cutover/реальные данные не разрешены.
+- **Результат:** guarded real browser/Go/MariaDB parent +6 desktop/mobile сценариев реализованы без изменения frontend/backup runtime. Separate required job доказывает actual export/preview/cancel/restore/reload/roles и generation boundaries; пока positive CI не выполнен. Локально compile/typecheck/discovery (6 tests, не исполнение browser), source/Go checks проходят.

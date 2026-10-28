@@ -9,10 +9,10 @@ import (
 func parent(id int64) *int64 { return &id }
 func TestBuildRoleTree(t *testing.T) {
 	c, err := Build([]Role{
-		{ID: 1, StableKey: "it_manager", Name: "IT Manager", SortOrder: 0, ChildCount: 1},
+		{ID: 1, StableKey: "it_manager", Name: "IT Manager", SortOrder: 0, ChildCount: 2},
 		{ID: 2, StableKey: "project", Name: "Менеджер проектов", ParentID: parent(1), SortOrder: 2, UsageCount: 5},
 		{ID: 3, StableKey: "devlead", Name: "Руководитель разработки", ParentID: parent(1), SortOrder: 1, UsageCount: 3},
-		{ID: 4, StableKey: "journalist", Name: "Журналист", SortOrder: 1},
+		{ID: 4, StableKey: "journalist", Name: "Журналист", SortOrder: 1, ChildCount: 1},
 		{ID: 5, StableKey: "editor", Name: "Редактор", ParentID: parent(4)},
 	})
 	if err != nil {
