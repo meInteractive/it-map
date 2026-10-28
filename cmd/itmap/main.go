@@ -21,6 +21,7 @@ import (
 	"itmap/internal/contacts"
 	"itmap/internal/crm"
 	"itmap/internal/httpapi"
+	"itmap/internal/parser"
 	"itmap/internal/profiles"
 	"itmap/internal/roles"
 	"itmap/internal/storage"
@@ -32,6 +33,7 @@ func httpHandler(logger *slog.Logger, db *sql.DB, manager *auth.Manager) http.Ha
 	opts := httpapi.Options{Auth: manager, WebDir: os.Getenv("WEB_DIST_DIR")}
 	if db != nil {
 		opts.DB = db
+		opts.SchedulerSettings = parser.SettingsRepository{DB: db}
 		opts.BackupExports = backup.Repository{DB: db}
 		opts.BackupRestores = backup.Repository{DB: db}
 		opts.Resumes = profiles.Repository{DB: db}

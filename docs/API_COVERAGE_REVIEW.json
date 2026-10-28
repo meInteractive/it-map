@@ -270,9 +270,9 @@
     },
     {
       "id": "scheduler",
-      "implementation": "unported",
-      "level": "Library lease/attempt/source/SQL core accepted",
-      "gap": "HTTP settings/queue/run/probe/cloud-owner/issues/funnel и stage wiring GO-046 отсутствуют; библиотеки не равны HTTP implementation.",
+      "implementation": "partial",
+      "level": "PUT settings HTTP + stored settings/lease/attempt SQL core; required CI pending",
+      "gap": "Dashboard/queue/run/probe/cloud-owner/issues/funnel и stage wiring GO-046 ещё отсутствуют; PUT не запускает worker. Strict duplicate/Sec-Fetch input policies проверяются отдельно от source parity.",
       "evidence": [
         {
           "file": "internal/storage/scheduler_jobs_integration_test.go",
@@ -286,6 +286,20 @@
         },
         {
           "file": "internal/parser/BILLING.md"
+        },
+        {
+          "file": "internal/httpapi/scheduler_settings_routes_test.go",
+          "symbol": "TestSchedulerSettingsHTTPBoundary"
+        },
+        {
+          "file": "internal/storage/scheduler_settings_http_integration_test.go",
+          "symbol": "TestMariaDBSchedulerSettingsHTTPDisposable",
+          "required": true
+        },
+        {
+          "file": "internal/storage/scheduler_settings_http_integration_test.go",
+          "symbol": "TestMariaDBSchedulerSettingsHTTPGuardsDisposable",
+          "required": true
         }
       ]
     },
@@ -484,7 +498,7 @@
   ],
   "sourceHashes": {
     "frontend/api/client.ts": "4aa67ca55e0940c44fb74b6ab68fe876d294d2b56d15b83bc1686b95519e06a7",
-    "internal/httpapi/handler.go": "6fbb21318b2e83ab4f823a9ff37714dac239fa3e9ce84b3c1eae46ea8aef5c0b",
+    "internal/httpapi/handler.go": "f563641809bf7f0f3ab0a2a3707da03e903068a8ef03487457e1590982884ccd",
     "server/routes/index.js": "6134004f682975cb51ea13cd2ec4de8e85a5957deff6a5392fbad3fd70ccb1e4"
   },
   "clientExports": [

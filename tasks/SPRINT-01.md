@@ -1462,3 +1462,10 @@
 - **Зависимости:**078 validation/322 raw preservation, baseline016, generation/known-deadlock boundary.
 - **Критерии:** readonly snapshot/default read, atomic scheduler JSON1 revision CAS (first duplicate != JSON.parse last), shared favorites/Firecrawl revision без потери unrelated/private fields; actual unchanged source SQLite vs guarded MariaDB. First write явным valid JSON вместо испорченного converted DEFAULT, без DDL/GET bootstrap; stale CAS/generation,2 writers/shared favorites, late rollback, unknown COMMIT без blind retry. API/providers/worker activation отдельно; только synthetic disposable CI.
 - **Результат:** SettingsRepository Read/Save, source SQLite oracle42 full-row transitions, required JSON1 CAS2324 comparisons и guarded native42/6/4 source/ownership/fault scenarios реализованы. Локальные Go race/vet/builds/Go1.23/source/CI syntax проходят; positive MariaDB приёмка ожидается. HTTP/providers/worker не подключены.
+
+### [ ] GO-324. Административный PUT настроек scheduler (часть GO-021)
+
+- **Приоритет:** Критический/средний внутри выбранной GO-021, только sprint1.1.
+- **Зависимости:**078/322/323 и existing auth/same-origin boundary; SQL323 должен пройти required native gate до приёмки HTTP.
+- **Критерии:** существующий PUT /api/scheduler/settings: session/admin/storage/Origin precedence, ограничение32KiB, source JSON/status/error code, auth-derived owner, сохранность private fields/CAS/rollback через реальный Go→MariaDB; unchanged source router/SQLite сравнение, denial без записи. Неперенесённые dashboard/commands/ticks остаются закрыты; enabled в настройках не запускает worker. Существующая078 строгая duplicate-input policy отмечается отдельно от source JSON.parse.
+- **Результат:** methodless admin handler и cmd wiring реализованы, source router/SQLite70 responses и4 target-only input/CSRF guards добавлены в required native gate. Локальные boundary/race/vet/tagged/Go1.23/build/web/API audit/source/history/actionlint проходят. Positive HTTP/SQL приёмка ожидается; parent021 не закрыт.

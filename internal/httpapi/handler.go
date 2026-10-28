@@ -66,6 +66,7 @@ type Options struct {
 	ProfileModelCatalog  ProfileModelValidator
 	BackupExports        BackupExporter
 	BackupRestores       BackupRestorer
+	SchedulerSettings    SchedulerSettingsWriter
 }
 
 // NewHandlerWithOptions constructs only explicitly implemented routes.
@@ -98,6 +99,7 @@ func NewHandlerWithOptions(logger *slog.Logger, opts Options) http.Handler {
 		mux.HandleFunc("POST /auth", loginHandler(opts.Auth, opts.WebDir))
 		mux.HandleFunc("GET /logout", LogoutHandler())
 		mux.HandleFunc("GET /api/session", SessionHandler(opts.Auth))
+		mux.HandleFunc("/api/scheduler/settings", SchedulerSettingsHandler(opts.Auth, opts.SchedulerSettings))
 		download := BackupDownloadHandler(opts.Auth, opts.BackupExports)
 		restore := BackupRestoreHandler(opts.Auth, opts.BackupRestores, false)
 		mux.HandleFunc("/api/backup", func(w http.ResponseWriter, r *http.Request) {
