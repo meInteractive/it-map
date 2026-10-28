@@ -109,16 +109,16 @@ func TestLegacyUnsignedFormat(t *testing.T) {
 	if count != 1468 || accepted != 469 || len(versions) != 2 {
 		t.Fatalf("missing legacy coverage: %d vectors, %d accepted, %d versions", count, accepted, len(versions))
 	}
-	// These entry points are the actual HTTP/runtime dependencies. A pure old
-	// validator must not accidentally enable incomplete old normalization/SQL.
+	// Modern-specific planning stays strict. Generic runtime now accepts legacy
+	// plans and reaches the storage boundary, whose actual write gate runs in CI.
 	if _, e := PrepareModernRestore(valid, nil, time.Now()); e == nil || ErrorStatus(e) != 400 {
 		t.Fatal("modern plan accepted unsigned legacy data")
 	}
-	if _, e := (Repository{}).ValidateRestore(context.Background(), valid); e == nil || ErrorStatus(e) != 400 {
-		t.Fatal("runtime validation accepted unsigned legacy data before storage")
+	if _, e := (Repository{}).ValidateRestore(context.Background(), valid); e == nil || ErrorStatus(e) == 400 {
+		t.Fatal("runtime validation did not reach storage for valid legacy input")
 	}
-	if _, e := (Repository{}).Restore(context.Background(), valid); e == nil || ErrorStatus(e) != 400 {
-		t.Fatal("runtime restore accepted unsigned legacy data before storage")
+	if _, e := (Repository{}).Restore(context.Background(), valid); e == nil || ErrorStatus(e) == 400 {
+		t.Fatal("runtime restore did not reach storage for valid legacy input")
 	}
 	// Request-size enforcement is shared with ReadRequest; source full-layout
 	// validation itself has no byte cap and cannot serve as an import boundary.

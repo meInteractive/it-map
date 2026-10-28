@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// preservedTables is the exact destination read set of source modern planning.
+// preservedTables is the destination read set shared by historical planning.
 // A historical validation result is never a reusable write plan.
 func preservedTables(version int) map[string]bool {
 	names := map[string]bool{}
@@ -29,8 +29,7 @@ func preservedTables(version int) map[string]bool {
 	}
 	return names
 }
-func readPreserved(ctx context.Context, tx *sql.Tx, actual map[string]sqlTable, version int, locking bool) ([]Table, error) {
-	wanted := preservedTables(version)
+func readPreserved(ctx context.Context, tx *sql.Tx, actual map[string]sqlTable, wanted map[string]bool, locking bool) ([]Table, error) {
 	byName := map[string]v39.Table{}
 	for _, t := range v39.Trusted().Tables {
 		byName[t.Name] = t
@@ -61,14 +60,16 @@ func readPreserved(ctx context.Context, tx *sql.Tx, actual map[string]sqlTable, 
 	return out, nil
 }
 
-// ValidateRestore plans signed v16–39 against a read-only consistent snapshot.
+// ValidateRestore plans full v14–39 against a read-only consistent snapshot.
 // It neither prepares counters nor claims locks for the later write request.
 func (r Repository) ValidateRestore(ctx context.Context, data []byte) (RestoreValidation, error) {
-	p, e := ValidateModernBackup(data)
+	p, e := validateRestoreInput(data)
 	if e != nil {
 		return RestoreValidation{}, e
 	}
-	initial, e := prepareHistoricalPayload(p, nil, time.Now())
+	wanted := preservedRestoreTables(p)
+	now := time.Now()
+	initial, e := prepareHistoricalPayload(p, nil, now)
 	if e != nil {
 		return RestoreValidation{}, e
 	}
@@ -87,11 +88,11 @@ func (r Repository) ValidateRestore(ctx context.Context, data []byte) (RestoreVa
 	if e != nil {
 		return RestoreValidation{}, e
 	}
-	current, e := readPreserved(ctx, tx, actual, int(p.Version), false)
+	current, e := readPreserved(ctx, tx, actual, wanted, false)
 	if e != nil {
 		return RestoreValidation{}, e
 	}
-	plan, e := PrepareModernRestore(data, current, time.Now())
+	plan, e := PrepareRestore(data, current, now)
 	if e != nil {
 		return RestoreValidation{}, e
 	}
@@ -104,7 +105,7 @@ func (r Repository) ValidateRestore(ctx context.Context, data []byte) (RestoreVa
 	return RestoreValidation{Tables: len(plan.Tables), Rows: plan.Rows, Warnings: plan.Warnings}, nil
 }
 
-// Restore imports signed v16–39 on a prepared schema. Preliminary planning uses
+// Restore imports full v14–39 on a prepared schema. Preliminary planning uses
 // no preserved rows: incoming/generated IDs are destination-independent. Existing
 // AUTO_INCREMENT/MAX is fenced separately before the data TX. Any concurrently
 // allocated preserved IDs have already advanced their own engine high-water.
@@ -113,7 +114,12 @@ func (r Repository) Restore(ctx context.Context, data []byte) (RestoreResult, er
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 	defer cancel()
 	now := time.Now()
-	plan, e := PrepareModernRestore(data, nil, now)
+	payload, e := validateRestoreInput(data)
+	if e != nil {
+		return RestoreResult{}, e
+	}
+	wanted := preservedRestoreTables(payload)
+	plan, e := prepareHistoricalPayload(payload, nil, now)
 	if e != nil {
 		return RestoreResult{}, e
 	}
@@ -126,10 +132,10 @@ func (r Repository) Restore(ctx context.Context, data []byte) (RestoreResult, er
 		return applyRestore(ctx, session, nil)
 	}
 	return applyRestore(ctx, session, func(ctx context.Context, tx *sql.Tx, actual map[string]sqlTable) (*RestorePlan, error) {
-		current, e := readPreserved(ctx, tx, actual, plan.SourceVersion, true)
+		current, e := readPreserved(ctx, tx, actual, wanted, true)
 		if e != nil {
 			return nil, e
 		}
-		return PrepareModernRestore(data, current, now)
+		return PrepareRestore(data, current, now)
 	})
 }

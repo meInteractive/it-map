@@ -273,6 +273,8 @@ Go GO-074 реализует `/api/hiring-contacts` (GET для сессии, PO
 | POST /api/backup/validate | JSON-бэкап как тело | {ok,tables,rows,warnings}; без изменения данных |
 | POST /api/backup | JSON-бэкап как тело | {ok,sourceVersion,version,companies,agencies,tables,rows,warnings}; заменяет данные транзакционно |
 
+Go sprint1.1: текущий экспорт v39; generic restore C-S принимает полные v14–39 на проверенной схеме (SQL gate C-S ещё ожидается). v14–15 не проверяются как signed-файлы и явно сообщают ограничение старого формата; uploaded metadata/SQL/counters игнорируются. Calendar сохраняется, отсутствующий audit сохраняется, явно пустой audit очищается. HTTP summary считает companies/agencies исходного файла, даже если nameless agencies отфильтрованы из normalized app_catalog. Предварительная validation не пишет данные/счётчики/generation; права admin, origin и private/no-store сохранены. Подробности и статус — [BACKUP_FORMAT.md](BACKUP_FORMAT.md).
+
 Все перечисленные методы — только для администратора. Точные столбцы, JSON-ключи, лимиты, правила пропусков и совместимость описаны в [форматах импорта/экспорта](TRANSFER_FORMATS.md). Бэкап затрагивает всех пользователей. Успешная предварительная проверка не отменяет повторной проверки при восстановлении.
 
 ## Google Calendar

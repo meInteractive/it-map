@@ -1,6 +1,6 @@
 # GO-100-C-P: канонический Unicode-порядок старого каталога
 
-Только sprint1.1, backup v14–15. Runtime Go пока принимает v16–39; предложенный comparator не подключён. Entity fields приняты отдельно в #60. 28.10.2026 пользователь поручил самостоятельно выбрать вариант. Выбран канонический Unicode-порядок со стабильным исходным порядком для равных ключей; решение зафиксировано ADR-023. Comparator/полный legacy plan остаются отдельной приёмкой.
+Только sprint1.1, backup v14–15. Приёмка C-P касается pure comparator/plan; SQL/HTTP подключается и проверяется отдельной C-S. Entity fields приняты отдельно в #60. 28.10.2026 пользователь поручил самостоятельно выбрать вариант. Выбран канонический Unicode-порядок со стабильным исходным порядком для равных ключей; решение зафиксировано ADR-023. Comparator/полный legacy plan остаются отдельной приёмкой.
 
 ## Наблюдение
 
@@ -34,7 +34,7 @@ Node24.19 / ICU78.3 / CLDR48 / Unicode17 не всегда считает рав
 
 ## Воспроизводимость исследования
 
-Генератор, таблица, лицензия и required tests перенесены в [internal/rucollation](../internal/rucollation/README.md). Проверка `node scripts/collation/generate.mjs` воспроизводит данные byte-for-byte на закреплённых Node24.19.0/ICU78.3. Расширенный required oracle теперь содержит479072 пары (исходные418748 +324 representative pairs +60000 unrelated random pairs) и восемь явно разрешённых отличий; остальные сравнения должны совпасть с неизменённым Node. Дополнительно170 unchanged legacy plans сравнивают каталог/rank и все52 таблицы, warnings/order/preserve/clock без выполнения SQL. До CI-подтверждения C-P остаётся открытой; runtime SQL/HTTP всё ещё signed16–39.
+Генератор, таблица, лицензия и required tests перенесены в [internal/rucollation](../internal/rucollation/README.md). Проверка `node scripts/collation/generate.mjs` воспроизводит данные byte-for-byte на закреплённых Node24.19.0/ICU78.3. Расширенный required oracle теперь содержит479072 пары (исходные418748 +324 representative pairs +60000 unrelated random pairs) и восемь явно разрешённых отличий; остальные сравнения должны совпасть с неизменённым Node. Дополнительно170 unchanged legacy plans сравнивают каталог/rank и все52 таблицы, warnings/order/preserve/clock без выполнения SQL. C-P принята на #68/code97bad5d: Public40651564976 и MariaDB40651565061 pass. Подключение SQL/HTTP принимает отдельная C-S.
 
 Минимальный воспроизводитель исходного поведения (Node24):
 

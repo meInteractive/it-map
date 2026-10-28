@@ -9,8 +9,8 @@ import (
 )
 
 // PrepareLegacyRestore builds a pure, owned v14–15 plan. Untrusted metadata is
-// never used as SQL or as a counter source. Runtime Repository entry points stay
-// signed v16–39 until the separate GO-100-C-S SQL/HTTP gate has passed.
+// never used as SQL or as a counter source. SQL/HTTP entry points rebuild the
+// plan under destination/generation locks rather than reusing a read-only plan.
 func PrepareLegacyRestore(data []byte, current []Table, now time.Time) (*RestorePlan, error) {
 	payload, e := ValidateLegacyBackup(data)
 	if e != nil {
