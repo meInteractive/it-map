@@ -60,7 +60,7 @@
 - **Компоненты:** `docs/LEGACY_API_*`, `server/routes`, `frontend/api`.
 - **Критерии готовности:** Полный инвентарь фактически используемых API и тесты критических контрактов.
 - **Как проверить:** Сравнение результатов JS/Go на одинаковых синтетических данных; тесты ошибок.
-- **Известные ограничения:** Статический инвентарь есть, покрытие не доказано.
+- **Известные ограничения:** Статический server inventory дополнен текущим React AST audit GO-314: docs/API_COVERAGE.md. Наличие references не доказывает полный HTTP golden; dynamic URL/methods и server/internal/MCP отдельны.
 - **Результат:** коммиты 13ef5b9; PR не подтверждён.
 
 ### [x] GO-003. Минимальный Go HTTP-сервер
@@ -488,7 +488,7 @@
 ### [ ] GO-027. Go scheduler, очередь, диагностика
 
 - **Приоритет:** Критический.
-- **Критическая часть:** [ ] GO-045 durable leases/generation/retry/crash; затем интеграция готовых стадий GO-046, no double parser/no double charge. RabbitMQ не вводить в 1.1.
+- **Критическая часть:** [x] GO-045 durable leases/generation/retry/crash, включая job ownership и conservative monetary ledger (GO-080/312/313). [ ] Интеграция готовых стадий GO-046, no double parser/no double charge в полном конвейере. RabbitMQ не вводить в 1.1.
 - **Средняя часть:** [ ] Тик/диагностика/API наблюдаемости после рабочих стадий; приёмка на staging.
 - **Низкая часть:** [ ] Полировка графиков 30-дневной диагностики.
 
@@ -748,19 +748,19 @@
 - **Известные ограничения:** Без реального платного actor в CI.
 - **Результат:** не завершено; коммита или PR нет.
 
-### [ ] GO-045. Планировщик: durable MariaDB leases
+### [x] GO-045. Планировщик: durable MariaDB leases
 
 - **Приоритет:** Критический.
 
-- **Статус:** [ ] — не принят целиком.
+- **Статус:** [x] — durable-core, не полный dispatcher.
 - **Цель:** Устойчиво выбрать due jobs.
 - **Что реализовать:** DB lock, retry, lease, crash recovery, generation.
 - **Зависимости:** Synthetic DB/generation/locking часть GO-005 и модель jobs/settings GO-021; не весь работающий parser.
 - **Компоненты:** новый Go scheduler.
 - **Критерии готовности:** Никакой потерянной/удвоенной задачи.
 - **Как проверить:** Crash/DB race tests.
-- **Известные ограничения:** Cycle lease/recovery GO-080 и job claim/owned mutations GO-312 приняты на disposable MariaDB; monetary ledger GO-313 ещё требует SQL proof. Pipeline/ticks/API относятся к отдельной GO-046.
-- **Результат:** GO-080 / #35 d48e4d7 подтвердил global cycle owner/replay/expiry/generation fencing, SQL rollback и SIGKILL recovery с сохранением reserve/result. GO-312/#72/a2683ba подтвердил source job claim/owned mutation facade/late rollback/expiry/SIGKILL. Monetary attempt ledger/joint proof GO-313 и полная GO-045 ещё открыты; provider activation/ticks отдельно GO-046.
+- **Известные ограничения:** Cycle lease/recovery GO-080 и job claim/owned mutations GO-312 приняты на disposable MariaDB; monetary attempt ledger/joint crash GO-313 принят #73. Pipeline/ticks/API относятся к отдельной GO-046.
+- **Результат:** GO-080 / #35 d48e4d7 подтвердил global cycle owner/replay/expiry/generation fencing, SQL rollback и SIGKILL recovery с сохранением reserve/result. GO-312/#72/a2683ba подтвердил source job claim/owned mutation facade/late rollback/expiry/SIGKILL. GO-313/#73/bb4be57 подтвердил global monetary ledger/joint receipt/unknown COMMIT/panic/SIGKILL; narrow durable-core GO-045 принят полностью, provider activation/ticks и интеграция стадий отдельно GO-046.
 
 ### [ ] GO-046. Планировщик: этапы, тик, диагностика
 
@@ -1385,9 +1385,17 @@
 - **Критерии:** source due/type/agency/candidate/HH-page eligibility и порядок, jobId/diagnostic/deferred режимы, atomic claim и lease owner; complete/defer/fail и transactional owned mutation facade с generation/run/job fences. Реальные два соединения, stale owner/run/generation, late rollback и expiry/crash/recovery без потери/двойного claim; unchanged source oracle на SQLite :memory:. Провайдеры/фоновые Go ticks не запускаются.
 - **Результат:** [PR #72](https://github.com/meInteractive/it-map/pull/72), codea2683babbdbe2666a3be218f83e06656b6ab36d4/treed76ed8edf0bce85c169586b54961239d30f660f2: Public40672364577/MariaDB40672364682 fully pass. Required job122762089873 —143 source subcases (142 full-row+1 native JSON refusal),5 ownership/concurrency/rollback/SIGKILL cases, zero skips;23044 JSON/1001 BIGINT cases и весь regression pass. GO-045 открыта до313; providers/ticks не включены.
 
-### [ ] GO-313. Atomic scheduler budget/attempt ledger и joint crash gate (часть GO-045)
+### [x] GO-313. Atomic scheduler budget/attempt ledger и joint crash gate (часть GO-045)
 
 - **Приоритет:** Критический, только sprint1.1.
 - **Зависимости:** GO-312, GO-079 upper bounds/московские периоды, существующие scheduler_attempts/provider ledgers.
 - **Критерии:** attempt lifecycle/reservation под теми же fences, global day/month ceiling включая old-generation spend/reserve; unknown outcome не бесплатный и не слепой повтор provider POST. Source billing differential, actual concurrent reservation, rollback/process crash/recovery и mock-only owned-job flow. Чтение реальных keys и включение parser остаются отдельными.
-- **Результат:** library attempt/reserve/settle/joint Finish реализованы;38 unchanged dispatcher+billing fixtures локально pass. Новые SQL parents source/concurrency/generation/late fault/unknown COMMIT/SIGKILL добавлены; до actual disposable SQL CI task остаётся открытой.
+- **Результат:** [PR #73](https://github.com/meInteractive/it-map/pull/73), codebb4be571749a5f01134afb33a12c6505450d688c/tree2c64e8d9dc52ca678469ffa8ba3ff7ba88790257: Public40691942853/MariaDB40691943019 fully pass. Required122828698691 —38 billing source+10 ownership/financial subcases, прежние143 job source+5 ownership тоже pass, zero skips. Actual two connections/global ceiling/release/generation/lease deadline/late rollback/unknown actual COMMIT/recovered panic/SIGKILL доказаны, весь regression pass. Без schema/provider activation.
+
+### [ ] GO-314. Аудит покрытия API текущего React-клиента (часть GO-002)
+
+- **Приоритет:** Критический, только sprint1.1.
+- **Зависимости:** исходный статический legacy inventory, текущие frontend/web и Go routes, подтверждённые API/source/SQL gates; production доступ не нужен.
+- **Цель:** устранить неоднозначность между числом выделенных leaf-задач и открытыми critical частями крупных задач.
+- **Критерии:** воспроизводимый AST inventory всех клиентских transport callsites (включая mutate/download/stream), проверяемая review matrix по семействам с Go handler/test references и явными gaps; динамические/неподтверждённые случаи не считать parity. Проверка stale inventory/reference drift в CI. Полная GO-002/golden и runtime API этой порцией не закрываются и не меняются.
+- **Результат:** воспроизводимый AST audit реализован:61 TS/TSX,129 transport/form/link sites,7 JSX URL bindings,1 download forwarding,26 evidence/gap families. Существование test refs/required SQL targets и source hashes проверяется; три negative drift mutations локально отвергнуты. CI gate добавлен после npm ci; до CI/PR proof узкая GO-314 остаётся открытой. Полный GO-002 не закрывается.

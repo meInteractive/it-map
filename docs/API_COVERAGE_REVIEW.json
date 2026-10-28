@@ -1,0 +1,473 @@
+{
+  "scope": "Reviewed frontend HTTP families. Existing test references describe selected evidence, not full endpoint parity.",
+  "families": [
+    {
+      "id": "session",
+      "implementation": "partial",
+      "level": "Go HTTP/session/roles + browser",
+      "gap": "Полный JS→Go HTTP golden и отрицательные контракты остальных write routes; внешний HTTPS/proxy отдельно.",
+      "evidence": [
+        {
+          "file": "internal/httpapi/auth_routes_test.go",
+          "symbol": "TestLoginSessionAndLogout"
+        },
+        {
+          "file": "internal/httpapi/handler_test.go",
+          "symbol": "TestNoImplicitSuccessForUnknownRoutes"
+        }
+      ]
+    },
+    {
+      "id": "catalog",
+      "implementation": "partial",
+      "level": "Go projection/unit + synthetic SQL/browser",
+      "gap": "GO-009: source search/list/map/detail/null/user flags parity; GO-030 согласованный snapshot отдельно.",
+      "evidence": [
+        {
+          "file": "internal/httpapi/compact_routes_test.go",
+          "symbol": "TestCompactRoutesAccessAndContract"
+        },
+        {
+          "file": "internal/httpapi/compact_routes_test.go",
+          "symbol": "TestCompactRoutesFailuresStayPrivate"
+        },
+        {
+          "file": "internal/httpapi/catalog_routes_test.go",
+          "symbol": "TestCompanySearchRequiresSessionAndPreservesResponse"
+        },
+        {
+          "file": "internal/catalog/projection_test.go"
+        }
+      ]
+    },
+    {
+      "id": "crm",
+      "implementation": "partial",
+      "level": "Source save normalization + required SQL/HTTP writes",
+      "gap": "Чтение/полный HTTP golden и связь с source catalog/user flags не объявлены принятыми.",
+      "evidence": [
+        {
+          "file": "scripts/check-crm-save-contract.mjs"
+        },
+        {
+          "file": "internal/storage/crm_flags_http_test.go",
+          "symbol": "TestMariaDBCRMFlagHTTPDisposable",
+          "required": true
+        },
+        {
+          "file": "internal/storage/crm_save_integration_test.go",
+          "symbol": "TestMariaDBCRMSaveHTTPDisposable",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "applications",
+      "implementation": "partial",
+      "level": "Source create hash + required SQL/HTTP/owner links",
+      "gap": "Полный UI round-trip и общая JS→Go HTTP response/error matrix остаются GO-013/002.",
+      "evidence": [
+        {
+          "file": "scripts/check-creation-contract.mjs"
+        },
+        {
+          "file": "internal/storage/application_http_integration_test.go",
+          "symbol": "TestMariaDBApplicationHTTPDisposable",
+          "required": true
+        },
+        {
+          "file": "internal/storage/application_owner_links_test.go",
+          "symbol": "TestMariaDBApplicationLinksHTTPDisposable",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "vacancies",
+      "implementation": "partial",
+      "level": "Required CRUD/flags SQL+HTTP; Go read projections",
+      "gap": "GO-011: period/role descendants/source/date/null parity; прочие отрицательные GET filters. Это не закрывает GO-032 agency часть.",
+      "evidence": [
+        {
+          "file": "internal/storage/vacancy_create_http_test.go",
+          "symbol": "TestMariaDBVacancyCreateHTTPDisposable",
+          "required": true
+        },
+        {
+          "file": "internal/storage/vacancy_edit_http_test.go",
+          "symbol": "TestMariaDBVacancyEditHTTPDisposable",
+          "required": true
+        },
+        {
+          "file": "internal/storage/vacancy_delete_http_test.go",
+          "symbol": "TestMariaDBVacancyDeleteHTTPDisposable",
+          "required": true
+        },
+        {
+          "file": "internal/storage/vacancy_flags_http_test.go",
+          "symbol": "TestMariaDBVacancyFlagHTTPDisposable",
+          "required": true
+        },
+        {
+          "file": "internal/vacancies/list_test.go"
+        }
+      ]
+    },
+    {
+      "id": "channels",
+      "implementation": "partial",
+      "level": "Source order/input + required SQL/HTTP",
+      "gap": "Source HTTP golden для всех ошибок/полного response; функциональная UI приёмка отдельно.",
+      "evidence": [
+        {
+          "file": "scripts/check-channel-input-contract.mjs"
+        },
+        {
+          "file": "internal/storage/channel_write_http_test.go",
+          "symbol": "TestMariaDBChannelHTTPDisposable",
+          "required": true
+        },
+        {
+          "file": "internal/storage/channel_write_race_test.go",
+          "symbol": "TestMariaDBChannelRaceDisposable",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "hiring-contacts",
+      "implementation": "partial",
+      "level": "Source input/WHATWG + required SQL/HTTP",
+      "gap": "Полная HTTP differential matrix/оставшаяся UI-приёмка.",
+      "evidence": [
+        {
+          "file": "internal/storage/contact_write_http_test.go",
+          "symbol": "TestMariaDBContactHTTPDisposable",
+          "required": true
+        },
+        {
+          "file": "internal/storage/contact_write_race_test.go",
+          "symbol": "TestMariaDBContactRaceDisposable",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "tasks",
+      "implementation": "partial",
+      "level": "Source input + required SQL/HTTP/browser",
+      "gap": "Calendar sync и полная source HTTP golden matrix ещё открыты.",
+      "evidence": [
+        {
+          "file": "scripts/check-task-create-contract.mjs"
+        },
+        {
+          "file": "internal/storage/task_http_integration_test.go",
+          "symbol": "TestMariaDBTaskHTTPDisposable",
+          "required": true
+        },
+        {
+          "file": "internal/storage/task_browser_integration_test.go",
+          "symbol": "TestMariaDBTaskBrowserDisposable",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "profile",
+      "implementation": "partial",
+      "level": "Source settings/resume + required SQL/HTTP CAS",
+      "gap": "Provider catalog/keys/backend wiring отдельно; общий golden всех методов ещё не принят.",
+      "evidence": [
+        {
+          "file": "scripts/check-profile-contract.mjs"
+        },
+        {
+          "file": "scripts/check-profile-storage-contract.mjs"
+        },
+        {
+          "file": "internal/storage/profile_settings_http_test.go",
+          "symbol": "TestMariaDBProfileSettingsHTTPDisposable",
+          "required": true
+        },
+        {
+          "file": "internal/storage/profile_resume_integration_test.go",
+          "symbol": "TestMariaDBProfileResumeDisposable",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "vacancy-roles",
+      "implementation": "partial",
+      "level": "Go GET tree/descendants + unit/SQL smoke",
+      "gap": "POST/PUT/DELETE role management не зарегистрированы; full source read parity тоже не принят.",
+      "evidence": [
+        {
+          "file": "internal/httpapi/role_routes_test.go",
+          "symbol": "TestVacancyRoleRoutes"
+        },
+        {
+          "file": "internal/httpapi/role_routes.go"
+        }
+      ]
+    },
+    {
+      "id": "backup",
+      "implementation": "partial",
+      "level": "Source v14–39 + required SQL/admin HTTP/round-trip/bootstrap",
+      "gap": "Операторский UI/реальные backup/deploy; synthetic proof не подменяет внешний restore rehearsal.",
+      "evidence": [
+        {
+          "file": "internal/storage/v39_export_http_test.go",
+          "symbol": "TestMariaDBV39ExportHTTPDisposable",
+          "required": true
+        },
+        {
+          "file": "internal/storage/historical_restore_http_test.go",
+          "symbol": "TestMariaDBHistoricalHTTPDisposable",
+          "required": true
+        },
+        {
+          "file": "internal/storage/unsigned_restore_http_test.go",
+          "symbol": "TestMariaDBUnsignedHTTPDisposable",
+          "required": true
+        },
+        {
+          "file": "internal/storage/schema_init_integration_test.go",
+          "symbol": "TestMariaDBSchemaInitDisposable",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "scheduler",
+      "implementation": "unported",
+      "level": "Library lease/attempt/source/SQL core accepted",
+      "gap": "HTTP settings/queue/run/probe/cloud-owner/issues/funnel и stage wiring GO-046 отсутствуют; библиотеки не равны HTTP implementation.",
+      "evidence": [
+        {
+          "file": "internal/storage/scheduler_jobs_integration_test.go",
+          "symbol": "TestMariaDBSchedulerJobOwnershipDisposable",
+          "required": true
+        },
+        {
+          "file": "internal/storage/scheduler_billing_integration_test.go",
+          "symbol": "TestMariaDBSchedulerBillingOwnershipDisposable",
+          "required": true
+        },
+        {
+          "file": "internal/parser/BILLING.md"
+        }
+      ]
+    },
+    {
+      "id": "openai",
+      "implementation": "unported",
+      "level": "Synthetic transport/settings primitives only",
+      "gap": "GET provider status/models, key update/check/test HTTP ещё не подключены. Real keys/providers не разрешены.",
+      "evidence": [
+        {
+          "file": "scripts/check-parser-settings-contract.mjs"
+        },
+        {
+          "file": "internal/httpapi/handler.go"
+        }
+      ]
+    },
+    {
+      "id": "openrouter",
+      "implementation": "unported",
+      "level": "Synthetic budget/settings primitives only",
+      "gap": "Provider/jev status/key/check/test HTTP отсутствуют; реальный provider отдельно.",
+      "evidence": [
+        {
+          "file": "scripts/check-parser-budget-contract.mjs"
+        },
+        {
+          "file": "internal/httpapi/handler.go"
+        }
+      ]
+    },
+    {
+      "id": "apify",
+      "implementation": "unported",
+      "level": "Mock/source transport and budget contracts",
+      "gap": "Settings/key/check/usage HTTP/provider-run wiring не зарегистрированы.",
+      "evidence": [
+        {
+          "file": "scripts/check-apify-transport-contract.mjs"
+        },
+        {
+          "file": "internal/httpapi/handler.go"
+        }
+      ]
+    },
+    {
+      "id": "firecrawl",
+      "implementation": "unported",
+      "level": "Source settings/budget primitives",
+      "gap": "Settings/key/mode/usage/sources/test/run save-resume HTTP и provider stages ещё не подключены.",
+      "evidence": [
+        {
+          "file": "scripts/check-parser-settings-contract.mjs"
+        },
+        {
+          "file": "internal/httpapi/handler.go"
+        }
+      ]
+    },
+    {
+      "id": "classification",
+      "implementation": "unported",
+      "level": "Source settings model only",
+      "gap": "settings/prompts/roles/jobs/test/resume HTTP и строгие классификационные стадии ещё не приняты.",
+      "evidence": [
+        {
+          "file": "scripts/check-parser-settings-contract.mjs"
+        },
+        {
+          "file": "internal/httpapi/handler.go"
+        }
+      ]
+    },
+    {
+      "id": "vacancy-details",
+      "implementation": "unported",
+      "level": "Legacy stage contract in source",
+      "gap": "GET/detail jobs/create/run HTTP и extraction wiring остаются GO-025/046.",
+      "evidence": [
+        {
+          "file": "internal/httpapi/handler.go"
+        },
+        {
+          "file": "tasks/SPRINT-01.md"
+        }
+      ]
+    },
+    {
+      "id": "vacancy-import",
+      "implementation": "unported",
+      "level": "Legacy importer/provenance contract only",
+      "gap": "preview/role assignment/confirm/run/history и atomic dedup/import/relevance GO-026 ещё не перенесены.",
+      "evidence": [
+        {
+          "file": "internal/httpapi/handler.go"
+        },
+        {
+          "file": "tasks/SPRINT-01.md"
+        }
+      ]
+    },
+    {
+      "id": "relevance",
+      "implementation": "unported",
+      "level": "Stored relevance fields in CRUD/read only",
+      "gap": "POST relevance provider flow и idempotency/result acceptance ещё не реализованы.",
+      "evidence": [
+        {
+          "file": "internal/httpapi/handler.go"
+        }
+      ]
+    },
+    {
+      "id": "cover-letter",
+      "implementation": "unported",
+      "level": "Stored letter read fields only",
+      "gap": "POST generation/regeneration stream и retries ещё не подключены.",
+      "evidence": [
+        {
+          "file": "internal/httpapi/handler.go"
+        }
+      ]
+    },
+    {
+      "id": "google-calendar",
+      "implementation": "unported",
+      "level": "Task guards prevent accidental external sync",
+      "gap": "OAuth/status/connect/disconnect/sync HTTP/provider integration отдельно.",
+      "evidence": [
+        {
+          "file": "internal/httpapi/handler.go"
+        },
+        {
+          "file": "internal/storage/task_http_integration_test.go",
+          "symbol": "TestMariaDBTaskHTTPDisposable",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "exports",
+      "implementation": "unported",
+      "level": "Reviewed JSX download bindings",
+      "gap": "Excel company/review/source/vacancy exports не равны реализованному JSON backup; Go routes отсутствуют.",
+      "evidence": [
+        {
+          "file": "internal/httpapi/handler.go"
+        },
+        {
+          "file": "frontend/features/settings/Settings.tsx"
+        }
+      ]
+    },
+    {
+      "id": "catalog-operations",
+      "implementation": "unported",
+      "level": "Legacy UI action only",
+      "gap": "POST recalculate-rating/import agency/companies отдельно; GO-032 остаётся средним.",
+      "evidence": [
+        {
+          "file": "internal/httpapi/handler.go"
+        },
+        {
+          "file": "tasks/SPRINT-01.md"
+        }
+      ]
+    },
+    {
+      "id": "docs",
+      "implementation": "unported",
+      "level": "Repository documentation exists",
+      "gap": "GET /api/docs manifest/section handler в Go отсутствует; файлы docs не являются HTTP реализацией.",
+      "evidence": [
+        {
+          "file": "internal/httpapi/handler.go"
+        }
+      ]
+    },
+    {
+      "id": "dynamic",
+      "implementation": "dynamic",
+      "level": "Explicit unresolved forwarding/conditional sites",
+      "gap": "Не считать endpoints/методы разрешёнными по текстовому совпадению. RevisionEditor url и ExportCard bindings показаны отдельно; VacancyActions вычисляет url/method/apply rewrite, ImportCard выбирает companies/vacancies. Полный branch-aware HTTP golden ещё нужен.",
+      "evidence": [
+        {
+          "file": "frontend/features/settings/Profile.tsx"
+        },
+        {
+          "file": "frontend/features/settings/Transfer.tsx"
+        },
+        {
+          "file": "frontend/features/vacancies/Vacancies.tsx"
+        }
+      ]
+    }
+  ],
+  "sourceHashes": {
+    "frontend/api/client.ts": "4aa67ca55e0940c44fb74b6ab68fe876d294d2b56d15b83bc1686b95519e06a7",
+    "internal/httpapi/handler.go": "847941242bc83f10692bd83554dc724109af26da11cd7971f483dfaa3ecb6a67",
+    "server/routes/index.js": "6134004f682975cb51ea13cd2ec4de8e85a5957deff6a5392fbad3fd70ccb1e4"
+  },
+  "clientExports": [
+    "ApiError",
+    "request",
+    "load",
+    "invalidate",
+    "onCacheEvent",
+    "invalidateMutation",
+    "useApi",
+    "mutate",
+    "clearCache"
+  ]
+}
