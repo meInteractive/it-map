@@ -45,7 +45,7 @@ func TestCatalogReadProjectionSource(t *testing.T) {
 	if e = cmd.Wait(); e != nil {
 		t.Fatal("required projection oracle failed", e)
 	}
-	if count != 1156 {
+	if count != 1180 {
 		t.Fatal("missing projection fixtures", count)
 	}
 	if mismatches > 0 {

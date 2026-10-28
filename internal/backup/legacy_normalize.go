@@ -4,6 +4,7 @@ package backup
 // Runtime legacy SQL/HTTP restore still requires the separate GO-100-C-S gate.
 import (
 	"math"
+	"sort"
 	"strings"
 	"sync"
 	"unicode/utf16"
@@ -102,6 +103,37 @@ func finishLegacyEntity(out *jsonValue, err error) (*jsonValue, error) {
 	// Canonicalize here so callers can store exact source JSON, not just values.
 	// Overflow numbers are converted only after all source arithmetic is done.
 	return orderedJSON(rawValue(out))
+}
+
+// Object spread can append numeric keys after ordinary keys. Give consumers
+// ECMAScript OwnPropertyKeys order without a stringify/parse round-trip that
+// would erase Infinity before subsequent truthiness/search. Containers are
+// copied so cached policy values and caller-owned source nodes stay immutable.
+func catalogOrderedValue(v *jsonValue) *jsonValue {
+	if v == nil || v.kind != '{' && v.kind != '[' {
+		return v
+	}
+	out := &jsonValue{kind: v.kind}
+	if v.kind == '[' {
+		out.items = make([]*jsonValue, len(v.items))
+		for i, item := range v.items {
+			out.items[i] = catalogOrderedValue(item)
+		}
+		return out
+	}
+	out.members = make([]jsonMember, len(v.members))
+	for i, m := range v.members {
+		out.members[i] = jsonMember{key: m.key, value: catalogOrderedValue(m.value)}
+	}
+	sort.SliceStable(out.members, func(i, j int) bool {
+		a, ai := arrayIndex(out.members[i].key)
+		b, bi := arrayIndex(out.members[j].key)
+		if ai != bi {
+			return ai
+		}
+		return ai && a < b
+	})
+	return out
 }
 
 type catalogNormalizer struct{ err error }

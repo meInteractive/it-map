@@ -2,6 +2,7 @@
 // Identity INSERTs are observed but NOT simulated. Actual SQL/ID bootstrap and
 // application-winner queries belong to GO-317, with preallocated IDs.
 import {readCompactEntities,readCompanyDetail} from '../server/services/catalog-projection.js';
+import {DATA} from '../server/data.js';
 globalThis.fetch=()=>{throw new Error('Catalog projection oracle forbids network');};
 const base=()=>({companies:[{name:'CI B',sector:'CI sector',jobs:[],offices:[]},{name:'CI A',offices:[{metro:'CI метро',address:'CI <&> \u2028😀',lat:55.5,lon:37.5}],jobs:[{title:'CI developer',url:'https://example.invalid/job'}],ratingInputs:{roleFit:7},middle:['100','200'],deferment:null,privateDetail:'CI detail only'}],agencies:[{name:'CI agency',rank:7,offices:[{}],jobs:[],functionalSpecializations:['IT'],middle:[100,200]}]});
 const states=[
@@ -21,6 +22,7 @@ add('duplicate names',c=>c.companies.push({...c.companies[1],marker:'CI later du
 add('agency filtering and coercion',c=>{c.agencies.push(null,{name:' '},{name:'CI second agency',rank:'3',revenue:{amount:'250'},middle:['10','20'],functionalSpecializations:'IT; CI'},false);});
 add('prototype company names',c=>{c.companies=['__proto__','constructor','toString'].map(name=>({name}));});
 add('source scope privacy',c=>Object.assign(c.companies[1],{reviews:{plus:'CI private detail'},resume:'CI never compact',revenue:{legal:'CI legal'},jobs:[{title:'CI title',url:'https://example.invalid',description:'CI never compact'}]}));
+add('embedded numeric spread',c=>{c.companies[1].name=DATA.companies[0].name;c.companies[1].ratingInputs=[1,2];});
 for(const raw of ['', 'null','{}','[]','true','{"companies":[]}','{"companies":[{"name":" "}]}','{"companies":[{"name":1}]}','CI invalid JSON','{"companies":[{"name":"CI A","jobs":[{"title":1e400,"url":"https://example.invalid"}]}]}','{"companies":[{"name":"CI A","offices":[{"lat":1e400}]}]}'])variants.push({name:'raw '+raw,raw});
 async function reference(v){let writes=0;
  const db={prepare(sql){let args=[];const statement={bind(...a){args=a;return this;},async first(){
@@ -42,7 +44,7 @@ async function reference(v){let writes=0;
 }
 let count=0;
 for(const variant of variants)for(let si=0;si<states.length;si++)for(const entityType of ['company','agency'])for(const view of ['list','map','detail']){
- const options={entityType,view,id:0,name:entityType==='company'?'CI A':'CI agency',favorite:si===1,hidden:si===2,vacancyCount:si+1};
+ const options={entityType,view,id:0,name:entityType==='company'?(variant.name==='embedded numeric spread'?DATA.companies[0].name:'CI A'):'CI agency',favorite:si===1,hidden:si===2,vacancyCount:si+1};
  process.stdout.write(JSON.stringify(await reference({name:variant.name+'/'+si+'/'+entityType+'/'+view,raw:variant.raw,state:states[si],options}))+'\n');count++;
 }
 for(const options of [{entityType:'company',view:'detail',id:11,name:'CI absent',favorite:true,hidden:false,vacancyCount:0},{entityType:'agency',view:'detail',id:21,name:'CI absent',favorite:false,hidden:true,vacancyCount:8},{entityType:'company',view:'detail',id:999,name:'CI A',favorite:false,hidden:false,vacancyCount:0},{entityType:'company',view:'detail',id:0,name:'CI absent',favorite:false,hidden:false,vacancyCount:0}]){process.stdout.write(JSON.stringify(await reference({name:'detail resolution '+options.id+'/'+options.entityType,raw:JSON.stringify(base()),state:states[1],options}))+'\n');count++;}

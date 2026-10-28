@@ -1405,7 +1405,7 @@
 - **Приоритет:** Критический, только sprint1.1.
 - **Зависимости:** GO-314 audit, принятый source catalog codec/normalizer/Unicode GO-100-C-P.
 - **Критерии:** unchanged readCompactEntities/readCompanyDetail на synthetic fixtures против pure Go projection; normalization/order/rank/defaults, omitted vs null, user flags, embedded jobs/initialized state, ID/name fallback и сохранение detail без jobs. Не выполнять SQL/provider calls и не активировать новый runtime путь. Переиспользовать принятые field/JSON helpers, не писать второй независимый normalizer. Предшествующие restore/source gates не ломаются.
-- **Результат:** pure PrepareCatalogRead реализован без Repository/HTTP activation;1156 unchanged-source read-set fixtures локально pass. Общие object builders сохраняют Infinity/truthiness до финального DTO stringify, старые entity и170 unsigned restore/source plan gates pass. Full CI ещё ожидается;315 projections →316 search →317 readonly SQL/API.
+- **Результат:** pure PrepareCatalogRead реализован без Repository/HTTP activation;1180 unchanged-source read-set fixtures локально pass. Общие object builders сохраняют Infinity/truthiness до финального DTO stringify, старые entity и170 unsigned restore/source plan gates pass. Full CI ещё ожидается;315 projections →316 search →317 readonly SQL/API.
 
 ### [ ] GO-316. Pure source search каталога (часть GO-009)
 

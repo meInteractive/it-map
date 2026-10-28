@@ -85,5 +85,5 @@ func normalizeCatalogObject(source *jsonValue) (*jsonValue, error) {
 		}
 	}
 	out.set("agencies", agencies)
-	return out, nil
+	return catalogOrderedValue(out), nil
 }
