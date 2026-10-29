@@ -519,3 +519,12 @@ GO-330/#91/e857a674d0c6dc20c8e6b62c75c09fbc64d4506e/tree950f183e1af594b4983a09d6
 
 
 GO-331 local proof:32 source run HTTP/SQLite и first requestId interop проходят, GET-only factory/read-only RR/hash/DTO реализованы. Native32+fault5 required, включая POST remains503/no-storage. Default/tagged race/vet/build/Go1.23/web/docs/API audit/actionlint/history pass; positive MariaDB ожидается. При исследовании следующего /issues установлено: source GET пишет parser_error_history, поэтому его нельзя объявлять SELECT-only. Следующий prerequisite выделять как отдельную проверяемую write порцию истории, без реальных ключей/провайдеров.
+
+
+GO-331 опубликована PR #92/b1d2e982f44d03ec6fc45a275fc96a604b1470c8, CI выполняется. GO-332 заранее выделена как prerequisite /issues: дневные пики/наблюдения на существующей parser_error_daily (уже baseline72 и exported v39), без новой схемы и standalone HTTP.30 дней — окно чтения, без удаления старой истории. Ветка от published331; продолжать автономно в текущей GO-021, providers/deploy/real data не включать.
+
+
+GO-331/#92/b1d2e982f44d03ec6fc45a275fc96a604b1470c8/treee1fc1098caed3b19458a6b929d05233b8d52dd49 принята: Public40839580472/MariaDB40839580437 success, source32+fault5 zero skips, весь regression pass; POST remains503/no-storage подтверждён. PR ready, automatic merge не выполнялся. GO-332 продолжает от проверенной вершины.
+
+
+GO-332 local proof: source19/calendars/Number storage interop pass; native source19+ownership3+fault4 compile/skip локально, required CI без skips. Owner/day upsert сохраняет independent MAX peaks/MIN-MAX timestamps; readonly30-day gaps/averages, old rows retained. Schema/React/HTTP activation не менялись. Default/tagged race/vet/build/Go1.23/web/docs/API audit/actionlint/history pass. Далее source issue scope/grouping и GET /issues integration отдельными порциями; нельзя подменять SQLite JSON1/date/BINARY predicates SQL-collation approximation.

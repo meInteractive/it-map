@@ -271,8 +271,8 @@
     {
       "id": "scheduler",
       "implementation": "partial",
-      "level": "Settings/dashboard/retry/cancel/queue приняты; GET saved run GO-331 ожидает required native CI",
-      "gap": "POST run/probe/cloud-owner/issues/funnel и stage wiring GO-046 ещё отсутствуют; readonly GET не активирует команды запуска. Duplicate/Sec-Fetch input policies отдельно от source parity.",
+      "level": "Settings/dashboard/retry/cancel/queue/GET saved run приняты; prerequisite error-history GO-332 ожидает native CI",
+      "gap": "POST run/probe/cloud-owner/issues/funnel и stage wiring GO-046 ещё отсутствуют; source GET issues пишет историю, поэтому не объявляется readonly. Standalone history HTTP не добавлен.",
       "evidence": [
         {
           "file": "internal/storage/scheduler_jobs_integration_test.go",
@@ -361,6 +361,25 @@
         {
           "file": "internal/storage/scheduler_run_read_integration_test.go",
           "symbol": "TestMariaDBSchedulerRunReadFaultsDisposable",
+          "required": true
+        },
+        {
+          "file": "internal/parser/error_history_interop_test.go",
+          "symbol": "TestErrorHistoryCalendarSource"
+        },
+        {
+          "file": "internal/storage/parser_error_history_integration_test.go",
+          "symbol": "TestMariaDBSchedulerErrorHistorySourceDisposable",
+          "required": true
+        },
+        {
+          "file": "internal/storage/parser_error_history_integration_test.go",
+          "symbol": "TestMariaDBSchedulerErrorHistoryOwnershipDisposable",
+          "required": true
+        },
+        {
+          "file": "internal/storage/parser_error_history_integration_test.go",
+          "symbol": "TestMariaDBSchedulerErrorHistoryFaultsDisposable",
           "required": true
         }
       ]
