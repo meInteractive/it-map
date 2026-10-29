@@ -129,7 +129,7 @@ func BuildList(input []Vacancy, selected map[int64][]roles.Role, channels map[in
 			}
 			item.Role = strings.Join(names, ", ")
 		}
-		item.TelegramSources = append([]TelegramSource{}, channels[item.ID]...)
+		item.TelegramSources = orderedTelegramSources(channels[item.ID])
 		// Исходный Set сохраняет первое появление непустого имени до period filter.
 		for _, name := range []string{item.CompanyName, item.RealCompanyName} {
 			if name != "" && !wanted[name] {
