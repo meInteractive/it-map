@@ -14,7 +14,7 @@
 
 [Native proof](../../internal/storage/vacancy_application_summary_integration_test.go) использует девять именованных source-наборов и реальный Repository.List на MariaDB10.11 с SELECT-only подключением.162 обязательных сочетания (9×3×6) сравниваются с заново вычисленным исходным SQLite summary. Fingerprint всех72 таблиц должен остаться прежним после каждого чтения. Fixture и cleanup выполняются отдельным guarded writer исключительно в synthetic disposable CI; локально положительная MariaDB не запускается. Required workflow проверяет parent pass, ровно162 leaf pass и отсутствие skips.
 
-Local source/default/tagged race, vet, сборки Go/React, Go1.23, документация, API audit, actionlint и history проверяются до публикации. Native acceptance и полный CI пока ожидаются; задачу не считать принятой до положительного результата.
+Local source/default/tagged race, vet, сборки Go/React, Go1.23,320 ссылок документации, API audit, actionlint и history проходят. Native162 прошли без skips в [job123519067043](https://github.com/meInteractive/it-map/actions/runs/40894290169/job/123519067043); полный CI успешен: [Public40894290467](https://github.com/meInteractive/it-map/actions/runs/40894290467), [MariaDB40894290169](https://github.com/meInteractive/it-map/actions/runs/40894290169), [negative10.3.32 40894290637](https://github.com/meInteractive/it-map/actions/runs/40894290637). Весь прежний regression также проходит. Код опубликован в [PR #99](https://github.com/meInteractive/it-map/pull/99), fc4f0b6ea0e79b39219316311f6f285bc6747971/treec2ab5d13b4d0b3a7c6ac70600a3fb84719b9a534.
 
 ## Границы
 
