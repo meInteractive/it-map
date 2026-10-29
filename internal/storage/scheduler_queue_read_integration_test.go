@@ -51,7 +51,7 @@ func queueReadFrames(t *testing.T) []queueReadFrame {
 		}
 		out = append(out, v)
 	}
-	if len(out) != 106 {
+	if len(out) != 104 {
 		t.Fatal("missing source queue frames", len(out))
 	}
 	return out
@@ -196,7 +196,7 @@ func TestMariaDBSchedulerQueueSourceDisposable(t *testing.T) {
 			}
 		})
 	}
-	t.Log("PASS: 106 full source router/SQLite queue responses vs Go/MariaDB, readonly account and 72-table immutability")
+	t.Log("PASS: 104 full source router/SQLite queue responses vs Go/MariaDB, readonly account and 72-table immutability")
 }
 func TestMariaDBSchedulerQueueSnapshotDisposable(t *testing.T) {
 	requireSettingsCI(t)

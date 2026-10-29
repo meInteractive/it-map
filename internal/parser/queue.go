@@ -7,7 +7,6 @@ import (
 	"errors"
 	"math"
 	"regexp"
-	"strconv"
 	"strings"
 
 	"itmap/internal/backup"
@@ -120,7 +119,7 @@ func (r QueueRepository) read(ctx context.Context, raw json.RawMessage, expected
 			}
 		}
 		// D1 Number → JSON.stringify применяется до json_each, в том числе к большим ID.
-		// Строковые JSON ID сравниваются точно; число bindings не зависит от числа owners.
+		// DECIMAL сохраняет точное сравнение целых, а два JSON bindings не зависят от числа owners.
 		lists := []string{}
 		for _, ids := range [][]any{companies, agencies} {
 			encoded, e := json.Marshal(ids)
@@ -131,13 +130,9 @@ func (r QueueRepository) read(ctx context.Context, raw json.RawMessage, expected
 			if e != nil {
 				return nil, e
 			}
-			list, e := queueSearchIDStrings(canonical)
-			if e != nil {
-				return nil, e
-			}
-			lists = append(lists, list)
+			lists = append(lists, string(canonical))
 		}
-		where += " AND (JSON_CONTAINS(?,JSON_QUOTE(CAST(j.company_id AS CHAR)))=1 OR JSON_CONTAINS(?,JSON_QUOTE(CAST(j.agency_id AS CHAR)))=1)"
+		where += " AND (j.company_id IN (SELECT q.owner_id FROM JSON_TABLE(?,'$[*]' COLUMNS(owner_id DECIMAL(65,0) PATH '$')) AS q) OR j.agency_id IN (SELECT q.owner_id FROM JSON_TABLE(?,'$[*]' COLUMNS(owner_id DECIMAL(65,0) PATH '$')) AS q))"
 		args = append(args, lists[0], lists[1])
 	}
 	var total int64
@@ -164,31 +159,4 @@ func (r QueueRepository) read(ctx context.Context, raw json.RawMessage, expected
 		return nil, e
 	}
 	return body, nil
-}
-
-// queueSearchIDStrings сохраняет сравнение INTEGER/REAL из JSON1 после D1 Number
-// и JSON.stringify. Строковые ID сравниваются без округления в double на MariaDB.
-func queueSearchIDStrings(raw json.RawMessage) (string, error) {
-	var numbers []json.Number
-	if json.Unmarshal(raw, &numbers) != nil {
-		return "", ErrSettingsStorage
-	}
-	ids := []string{}
-	for _, number := range numbers {
-		text := number.String()
-		if id, e := strconv.ParseInt(text, 10, 64); e == nil {
-			ids = append(ids, strconv.FormatInt(id, 10))
-			continue
-		}
-		if text == "" {
-			continue
-		}
-		n, e := sqliteDecimal(text)
-		if e != nil || math.IsNaN(n) || math.IsInf(n, 0) || math.Trunc(n) != n || n < -math.Ldexp(1, 63) || n >= math.Ldexp(1, 63) {
-			continue
-		}
-		ids = append(ids, strconv.FormatInt(int64(n), 10))
-	}
-	encoded, e := json.Marshal(ids)
-	return string(encoded), e
 }

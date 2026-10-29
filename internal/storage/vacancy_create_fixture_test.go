@@ -205,44 +205,12 @@ func (f *vacancyCreateFixture) linked(id int64) {
 		f.insert(`INSERT INTO company_tasks(user_name,company_name,vacancy_id,type,note,due_at) VALUES(?,?,?,'call','CI linked task','2026-10-26T12:00:00Z')`, user, crudCompany, id)
 	}
 }
-
-// Снимок строк без JSON_ARRAYAGG (появился только в MariaDB 10.5).
-// JSON_ARRAY на каждой строке сохраняет SQL NULL и порядок без лимита GROUP_CONCAT.
-func (f *vacancyCreateFixture) snapshotRowSets(queries []string, arg any) string {
-	f.t.Helper()
-	sets := make([][]json.RawMessage, 0, len(queries))
-	for _, query := range queries {
-		rows, err := f.db.QueryContext(f.ctx, query, arg)
-		if err != nil {
-			f.t.Fatal("cannot read CRM snapshot")
-		}
-		var set []json.RawMessage
-		for rows.Next() {
-			var raw json.RawMessage
-			if err = rows.Scan(&raw); err != nil {
-				rows.Close()
-				f.t.Fatal("cannot scan CRM snapshot")
-			}
-			set = append(set, raw)
-		}
-		err = rows.Err()
-		rows.Close()
-		if err != nil {
-			f.t.Fatal("cannot complete CRM snapshot")
-		}
-		sets = append(sets, set)
-	}
-	raw, err := json.Marshal(sets)
-	if err != nil {
-		f.t.Fatal("cannot encode CRM snapshot")
-	}
-	return string(raw)
-}
 func (f *vacancyCreateFixture) links(id int64) string {
 	f.t.Helper()
-	return f.snapshotRowSets([]string{
-		`SELECT JSON_ARRAY(id,user_name,company_name,vacancy_id,status,comment_md,updated_at) FROM company_applications WHERE vacancy_id=? ORDER BY id`,
-		`SELECT JSON_ARRAY(id,user_name,company_name,vacancy_id,type,note,due_at,completed,created_at,completed_at) FROM company_tasks WHERE vacancy_id=? ORDER BY id`,
-		`SELECT JSON_ARRAY(h.id,h.application_id,h.from_status,h.to_status,h.changed_at) FROM company_application_status_history h JOIN company_applications a ON a.id=h.application_id WHERE a.vacancy_id=? ORDER BY h.id`,
-	}, id)
+	var result string
+	f.scan(`SELECT JSON_ARRAY(
+ (SELECT JSON_ARRAYAGG(JSON_ARRAY(id,user_name,company_name,vacancy_id,status,comment_md,updated_at) ORDER BY id) FROM company_applications WHERE vacancy_id=?),
+ (SELECT JSON_ARRAYAGG(JSON_ARRAY(id,user_name,company_name,vacancy_id,type,note,due_at,completed,created_at,completed_at) ORDER BY id) FROM company_tasks WHERE vacancy_id=?),
+ (SELECT JSON_ARRAYAGG(JSON_ARRAY(h.id,h.application_id,h.from_status,h.to_status,h.changed_at) ORDER BY h.id) FROM company_application_status_history h JOIN company_applications a ON a.id=h.application_id WHERE a.vacancy_id=?))`, []any{id, id, id}, &result)
+	return result
 }

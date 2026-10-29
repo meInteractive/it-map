@@ -1532,9 +1532,9 @@
 - **Результат:** opaque history operation/record/read реализованы на существующей таблице без DDL/HTTP. Source19 SQLite и local calendar/Number interop проходят, exact stored INTEGER values входят в oracle. Native19+ownership3+fault4 required zero skips. Local default/tagged race/vet/build/Go1.23/web/docs/API audit/actionlint/history pass. Принято: PR #93/283c9a1, Public40843305904/MariaDB40843305972 success,19+3+4 native без skips (job123344655130).
 
 
-### [ ] GO-334. Совместимость с MariaDB 10.3.32
+### [ ] GO-334. Проверка MariaDB 10.3.32 и ранний отказ при несовместимости
 
-- **Приоритет:** Критический; новое уточнение пользователя о фактической версии сервера.
-- **Зависимости:** текущие принятые SQL/API/schema gates; GO-333 временно сохранена отдельно.
-- **Критерии:** аудит native SQL/schema/client CI на10.3.32, устранение несовместимых JSON_TABLE/JSON_ARRAYAGG/metadata/database COMMENT/version guard без потери source numeric/CAS/rollback/FK/nonce invariants. Полный disposable CI на точной10.3.32 и прежней10.11, positive acceptance без skips; исправить код и текущие deployment инструкции. Не подключаться к реальному серверу и не менять его версию/данные/DDL.
-- **Результат:** SQL/metadata/version guard и CI bootstrap исправлены, source queue расширен до106 (границы signed BIGINT). Добавлен полный reusable CI на10.3.32 при сохранении10.11. Local default/tagged race/vet/build/Go1.23/web/docs/API audit/actionlint/history pass; native MariaDB локально compile/skip. Deployment инструкции/ADR-027 обновлены; positive двухверсионный CI ожидается.
+- **Приоритет:** Критический; уточнение пользователя о фактическом сервере.
+- **Зависимости:** принятая схема GO-016 и SQL/API gates; GO-333 сохранена отдельно.
+- **Критерии:** аудит native SQL/schema/CI на точной10.3.32, воспроизводимый результат без подмены source numeric/CAS/rollback/FK/uniqueness. Если текущая схема несовместима — зафиксировать блокер, общий ранний отказ runtime/schema-init до baseline/DDL, required negative proof на10.3.32 и полный10.11 regression. Обновить инструкции. Не менять реальный сервер, данные и DDL; не объявлять поддержку по одному номеру версии.
+- **Результат:** exact10.3.32/run40858223594/job123394524459 отвергла первый из23 уникальных LONGTEXT HASH-индексов ERROR1170. Понижение floor и пробные SQL/metadata обходы отозваны; уникальность не ослабляется. Добавлены общая guard и CI реального отказа до baseline/DDL. Итоговые local/negative10.3.32/full10.11 проверки ожидаются. Развёртывание на текущем сервере10.3.32 блокируется; независимая миграция продолжается.

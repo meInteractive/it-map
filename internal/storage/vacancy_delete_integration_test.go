@@ -26,12 +26,13 @@ func prepareVacancyDeletion(t *testing.T, linked bool) (*vacancyCreateFixture, i
 }
 func (f *vacancyCreateFixture) retainedCRM() string {
 	f.t.Helper()
-	// При отвязке могут измениться только vacancy_id и application.updated_at.
-	return f.snapshotRowSets([]string{
-		`SELECT JSON_ARRAY(id,user_name,company_name,status,comment_md,created_at,recruiter_name,recruiter_phone,recruiter_email,recruiter_contact_type,application_sources) FROM company_applications WHERE company_name=? ORDER BY id`,
-		`SELECT JSON_ARRAY(id,user_name,company_name,type,note,due_at,completed,created_at,completed_at,google_event_id,google_event_html_link,google_sync_status,google_sync_error) FROM company_tasks WHERE company_name=? ORDER BY id`,
-		`SELECT JSON_ARRAY(h.id,h.application_id,h.from_status,h.to_status,h.changed_at) FROM company_application_status_history h JOIN company_applications a ON a.id=h.application_id WHERE a.company_name=? ORDER BY h.id`,
-	}, crudCompany)
+	var result string
+	// Only vacancy_id and application.updated_at may change on detach.
+	f.scan(`SELECT JSON_ARRAY(
+ (SELECT JSON_ARRAYAGG(JSON_ARRAY(id,user_name,company_name,status,comment_md,created_at,recruiter_name,recruiter_phone,recruiter_email,recruiter_contact_type,application_sources) ORDER BY id) FROM company_applications WHERE company_name=?),
+ (SELECT JSON_ARRAYAGG(JSON_ARRAY(id,user_name,company_name,type,note,due_at,completed,created_at,completed_at,google_event_id,google_event_html_link,google_sync_status,google_sync_error) ORDER BY id) FROM company_tasks WHERE company_name=?),
+ (SELECT JSON_ARRAYAGG(JSON_ARRAY(h.id,h.application_id,h.from_status,h.to_status,h.changed_at) ORDER BY h.id) FROM company_application_status_history h JOIN company_applications a ON a.id=h.application_id WHERE a.company_name=?))`, []any{crudCompany, crudCompany, crudCompany}, &result)
+	return result
 }
 func (f *vacancyCreateFixture) assertDeleted(id int64, linked bool) {
 	f.t.Helper()
