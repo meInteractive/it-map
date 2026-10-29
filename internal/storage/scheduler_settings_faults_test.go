@@ -25,6 +25,7 @@ type settingsHook struct {
 	pauseBegin, failAfterUpdate, unknownCommit bool
 	failQuery                                  bool
 	query                                      string
+	updatePrefix                               string
 	entered, release                           chan struct{}
 	fired                                      atomic.Bool
 	updates, commits, isolation                atomic.Int64
@@ -120,7 +121,11 @@ func (h *settingsHook) afterExec(q string, result driver.Result, e error) (drive
 	if errors.Is(e, driver.ErrSkip) {
 		return result, e
 	}
-	if strings.HasPrefix(q, "UPDATE firecrawl_settings SET scheduler_json=") {
+	prefix := h.updatePrefix
+	if prefix == "" {
+		prefix = "UPDATE firecrawl_settings SET scheduler_json="
+	}
+	if strings.HasPrefix(q, prefix) {
 		h.updates.Add(1)
 		if e == nil && h.failAfterUpdate && h.fired.CompareAndSwap(false, true) {
 			return result, errSettingsInjected

@@ -34,7 +34,9 @@ func httpHandler(logger *slog.Logger, db *sql.DB, manager *auth.Manager) http.Ha
 	if db != nil {
 		opts.DB = db
 		opts.SchedulerSettings = parser.SettingsRepository{DB: db}
+		opts.SchedulerJobActions = parser.JobActionsRepository{DB: db}
 		opts.SchedulerDashboard = parser.DashboardRepository{DB: db}
+		opts.SchedulerQueue = parser.QueueRepository{DB: db}
 		opts.BackupExports = backup.Repository{DB: db}
 		opts.BackupRestores = backup.Repository{DB: db}
 		opts.Resumes = profiles.Repository{DB: db}

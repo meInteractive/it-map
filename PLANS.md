@@ -260,3 +260,24 @@ GO-326 initialafc81f3/PR87: required123087499911 подтвердил все5 sn
 Поручение пользователя: сейчас GO-327 — разделить docs на dev/user и обновить все ссылки. Технические отчёты/архитектура/перенос относятся к dev, материалы существующих вкладок приложения — к user, deployment — user/deployment. Сохранить действующие document IDs/API/download names. После этой порции продолжить согласованную очередь GO-021; отдельно проверить capture generation до чтения HTTP body для settings при restore с совпавшей revision.326 PR87/fix499044787650f7bb6101da6ac15360ea5ccd10cb проходит повтор CI, ранее5 snapshot cases прошли; source ties comparator исправлен без runtime изменений.
 
 GO-326/#87/499044787650f7bb6101da6ac15360ea5ccd10cb/tree353083e4b10b4a6f76173e90b8c52d5936f74734 принята: Public40767577819/MariaDB40767577833 success, source36/144+5 snapshots и old regression pass; PR ready. GO-327: moved docs dev/user, обновлены relative/root/codegen/CI paths;293 local links и8 app source HTTP/HTML/download sections pass, negative broken-file/unregistered-section probes реально fail и восстановлены. Старый maintenance сохранён dev/archive, действующие dev/user инструкции разделены; отсутствовавший changelog восстановлен из committed generated. Frozen v39 schema fallback заменяет отсутствующий drizzle для генерации, backup-schema.json/v39 schema byte-unchanged. Go runtime diff относительно326 пуст.
+
+
+GO-327/#88/22a407e5d4b4ecb7cd33e2761fb5045c82014c78/tree f2d96e2d90dcecf8b26cea5f3e9d7a8aa4122957 принята: Public40779666736/MariaDB40779666781 success. Проверено пользовательское слияние #87/#88: main3a99919a656e283d710e2d45aef2e5dbeefd2f25 имеет точно то же дерево. GO-328 выделена до реализации: source schedulerRoute фиксирует candidateDb generation до readClassificationInput, текущий Go Save после body; требуется source/native regression с восстановленной прежней revision. Ветка codex/GO-328-settings-body-generation от проверенного main; только текущая GO-021, новые комментарии на русском.
+
+
+GO-328 local proof: source8 подтвердил precedence restored/body/method. Регрессия до исправления получила200 вместо409 и413 вместо500; после PrepareSave→opaque bound operation default/tagged race/vet/build/Go1.23/web/docs/API audit/actionlint успешны. Native8+2 compile/skip локально, required CI parent/count checks добавлены без допуска skips; positive MariaDB ожидается. Схема/provider execution не меняются. После приёмки328 продолжить текущую GO-021 командами retry/cancel, без запуска worker.
+
+
+GO-328 опубликована как PR #89/5f780e77bf99d64424ebe510621d2a12945aff46, CI выполняется. Следующая независимая GO-329 заранее выделена для source retry/cancel API: только state mutation, без worker/provider; финансовый журнал и lease поля неизменны. Ветка codex/GO-329-scheduler-job-actions от опубликованной328; родительская приёмка будет проверена до ready.
+
+
+GO-328/#89/5f780e77bf99d64424ebe510621d2a12945aff46/tree d001767dcad0504291e7d63262b19bb620a6c80a принята: Public40831785848/MariaDB40831785899 success, все3+13 jobs, required8 body-generation+2 capture/cancellation cases без skips и old regression pass. PR ready; automatic merge не выполнялся. GO-329 продолжает от этой проверенной вершины.
+
+
+GO-329 implementation: source43/45 HTTP, native source43+fault4 required counts без skips. Generation фиксируется до body, SQL clock как core, conditional UPDATE только6 полей, matched rows обеспечены existing clientFoundRows=true; финансовый журнал/lease/payload не меняются. Local default/tagged race/vet/build/Go1.23/web/source/docs/API audit/actionlint/history pass. Positive MariaDB ожидается; полная GO-021 остаётся открытой до remaining commands/read/stage gates.
+
+
+GO-329/#90/c64e5933ae5688c1ef73dd89a821cf798de92ffa/tree9eb0fba7c7994a51b7a8a198c47a495a6c8e4e1f принята: Public40833105767/MariaDB40833105821 success, source43/45 HTTP+fault4 без skips, весь old regression pass. Пользователь поручил продолжать автономно, кроме критических ситуаций. GO-330 заранее выделена: readonly queue, поиск/пагинация/query parity; ветка от принятой329, без ожидания merge. Общий порядок GO-021 →010→012→013→017 сохраняется.
+
+
+GO-330 local proof:104 unchanged queue router/SQLite frames, WHATWG last-query decoding, JS Number vs SQL affinity, UTF16 trim/lower/search и большие owner ID. Readonly RR count/page/имена/title, payload/service columns исключены; native readonly104+snapshot/fault4 required без skips, positive CI ожидается. Default/tagged race/vet/build/Go1.23/web/docs/API audit/actionlint/history pass. Далее независимое readonly чтение отдельного scheduler run; команды запуска/провайдеры не разрешаются этой порцией.

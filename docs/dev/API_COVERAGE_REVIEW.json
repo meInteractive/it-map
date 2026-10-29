@@ -271,8 +271,8 @@
     {
       "id": "scheduler",
       "implementation": "partial",
-      "level": "PUT settings принят; GET dashboard/readonly SQL/история — required CI pending",
-      "gap": "Queue/run/probe/cloud-owner/issues/funnel и stage wiring GO-046 ещё отсутствуют; API конфигурации/чтения не запускают worker. Duplicate/Sec-Fetch input policies отдельно от source parity.",
+      "level": "PUT settings/GET dashboard/retry/cancel приняты; GET queue GO-330 ожидает required native CI",
+      "gap": "Run/probe/cloud-owner/issues/funnel и stage wiring GO-046 ещё отсутствуют; конфигурация/чтение/retry/cancel не запускают worker. Duplicate/Sec-Fetch input policies отдельно от source parity.",
       "evidence": [
         {
           "file": "internal/storage/scheduler_jobs_integration_test.go",
@@ -313,6 +313,40 @@
         {
           "file": "internal/storage/scheduler_dashboard_faults_test.go",
           "symbol": "TestMariaDBSchedulerDashboardSnapshotDisposable",
+          "required": true
+        },
+        {
+          "file": "internal/storage/scheduler_settings_body_integration_test.go",
+          "symbol": "TestMariaDBSchedulerSettingsBodySourceDisposable",
+          "required": true
+        },
+        {
+          "file": "internal/storage/scheduler_settings_body_integration_test.go",
+          "symbol": "TestMariaDBSchedulerSettingsCaptureDisposable",
+          "required": true
+        },
+        {
+          "file": "internal/storage/scheduler_job_actions_integration_test.go",
+          "symbol": "TestMariaDBSchedulerJobActionsSourceDisposable",
+          "required": true
+        },
+        {
+          "file": "internal/storage/scheduler_job_actions_integration_test.go",
+          "symbol": "TestMariaDBSchedulerJobActionsFaultsDisposable",
+          "required": true
+        },
+        {
+          "file": "internal/httpapi/scheduler_queue_interop_test.go",
+          "symbol": "TestSchedulerQueueFiltersSource"
+        },
+        {
+          "file": "internal/storage/scheduler_queue_read_integration_test.go",
+          "symbol": "TestMariaDBSchedulerQueueSourceDisposable",
+          "required": true
+        },
+        {
+          "file": "internal/storage/scheduler_queue_read_integration_test.go",
+          "symbol": "TestMariaDBSchedulerQueueSnapshotDisposable",
           "required": true
         }
       ]
@@ -512,7 +546,7 @@
   ],
   "sourceHashes": {
     "frontend/api/client.ts": "4aa67ca55e0940c44fb74b6ab68fe876d294d2b56d15b83bc1686b95519e06a7",
-    "internal/httpapi/handler.go": "c82ee65c4335873f335aabf16cee44eaae0c4ff03a9bc1b0302cce794d5d726b",
+    "internal/httpapi/handler.go": "cab7ea90a50cbb2975eb0d6db320f070a6d79bc5534c6f293b05b49be48f611f",
     "server/routes/index.js": "6134004f682975cb51ea13cd2ec4de8e85a5957deff6a5392fbad3fd70ccb1e4"
   },
   "clientExports": [
