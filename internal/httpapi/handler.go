@@ -192,9 +192,7 @@ func NewHandlerWithOptions(logger *slog.Logger, opts Options) http.Handler {
 		} else if opts.TaskCompletion != nil {
 			mux.HandleFunc("PUT /api/tasks/{id}", TaskCompletionHandler(opts.Auth, opts.TaskCompletion))
 		}
-		if opts.Vacancies != nil {
-			mux.HandleFunc("GET /api/vacancies/list", VacancyListHandler(opts.Auth, opts.Vacancies, time.Now))
-		}
+		mux.HandleFunc("GET /api/vacancies/list", VacancyListHandler(opts.Auth, opts.Vacancies, time.Now))
 		if opts.VacancyCreates != nil {
 			mux.HandleFunc("POST /api/vacancies", ManualVacancyCreateHandler(opts.Auth, opts.VacancyCreates))
 		}
