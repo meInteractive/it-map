@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"sort"
 	"strings"
 	"time"
 
@@ -120,6 +119,7 @@ func BuildList(input []Vacancy, selected map[int64][]roles.Role, channels map[in
 		out.RoleTree = []roles.Role{}
 	}
 	wanted := map[string]bool{}
+	orderedNames := make([]string, 0, len(input)*2)
 	for _, item := range input {
 		item.Roles = roles.OrderAssigned(selected[item.ID])
 		if len(item.Roles) > 0 {
@@ -130,9 +130,12 @@ func BuildList(input []Vacancy, selected map[int64][]roles.Role, channels map[in
 			item.Role = strings.Join(names, ", ")
 		}
 		item.TelegramSources = append([]TelegramSource{}, channels[item.ID]...)
-		wanted[item.CompanyName] = true
-		if item.RealCompanyName != "" {
-			wanted[item.RealCompanyName] = true
+		// Исходный Set сохраняет первое появление непустого имени до period filter.
+		for _, name := range []string{item.CompanyName, item.RealCompanyName} {
+			if name != "" && !wanted[name] {
+				wanted[name] = true
+				orderedNames = append(orderedNames, name)
+			}
 		}
 		if period == nil || MatchesPublication(*period, Dates{PublishedAt: deref(item.PublishedAt), LoadedAt: deref(item.LoadedAt), CreatedAt: item.CreatedAt}, now) {
 			out.Vacancies = append(out.Vacancies, item)
@@ -156,16 +159,11 @@ func BuildList(input []Vacancy, selected map[int64][]roles.Role, channels map[in
 			Middle: entry["middle"], Senior: entry["senior"], Lead: entry["lead"], Head: entry["head"], ApplicationURL: entry["applicationUrl"],
 		})
 	}
-	// Original applicationSummary represents company-wide applications only.
-	names := make([]string, 0, len(general))
-	for name, exists := range general {
-		if exists && wanted[name] {
-			names = append(names, name)
+	// Общие отклики текущего пользователя следуют тому же порядку имён.
+	for _, name := range orderedNames {
+		if general[name] {
+			out.ApplicationSummary = append(out.ApplicationSummary, ApplicationSummary{CompanyName: name})
 		}
-	}
-	sort.Strings(names)
-	for _, name := range names {
-		out.ApplicationSummary = append(out.ApplicationSummary, ApplicationSummary{CompanyName: name})
 	}
 	return out
 }
