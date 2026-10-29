@@ -1516,9 +1516,17 @@
 - **Результат:** QueueRepository/GET подключены;104 unchanged router/SQLite frames и source query/UTF16 admission/search oracle проходят локально. JSON_TABLE с двумя binding сохраняет source D1-number/JSON owner matching; DTO без payload/service columns. Native readonly104 +snapshot/fault4 required без skips. Local default/tagged race/vet/build/Go1.23/web/docs/API audit/actionlint/history проходят. PR #91/e857a674d0c6dc20c8e6b62c75c09fbc64d4506e/tree950f183e1af594b4983a09d67aecb75ed8241860: Public40838213182/MariaDB40838213389 success, source104+snapshot/fault4 zero skips (job123327959102) и весь старый regression pass.
 
 
-### [ ] GO-331. Чтение отдельного запуска планировщика (часть GO-021)
+### [x] GO-331. Чтение отдельного запуска планировщика (часть GO-021)
 
 - **Приоритет:** Средний; независимое SELECT-only продолжение GO-330.
 - **Зависимости:** GO-045/326/328/330.
 - **Критерии:** existing admin GET /api/scheduler/run?requestId=UUID; first URLSearchParams.get для дубликата requestId, unknown-key/UUID/status/JSON source semantics. Детерминированный generation-bound run ID, SELECT-only consistent snapshot и полная проекция без новой схемы. Source router/SQLite vs actual Go/MariaDB, права/404/поколение/readonly/72-table immutability и native fault/cancellation. POST /run не активировать: execution/provider wiring остаётся отдельной частью. Required disposable CI без skips.
-- **Результат:** GET run подключён,32 unchanged source router/SQLite frames и first-query interop проходят. Native readonly32+fault/snapshot/restore/POST-safety5 required zero skips. Local default/tagged race/vet/build/Go1.23/web/docs/API audit/actionlint/history проходят; positive MariaDB ожидается. POST run не активирован.
+- **Результат:** GET run подключён,32 unchanged source router/SQLite frames и first-query interop проходят. Native readonly32+fault/snapshot/restore/POST-safety5 required zero skips. Local default/tagged race/vet/build/Go1.23/web/docs/API audit/actionlint/history проходят. PR #92/b1d2e982f44d03ec6fc45a275fc96a604b1470c8/treee1fc1098caed3b19458a6b929d05233b8d52dd49: Public40839580472/MariaDB40839580437 success, source32+fault5 zero skips, весь regression pass. POST run не активирован.
+
+
+### [ ] GO-332. Дневная история ошибок парсера (prerequisite GO-021 issues)
+
+- **Приоритет:** Средний; отдельная write порция до подключения GET issues.
+- **Зависимости:** принятая GO-016 schema/parser_error_daily и generation fences GO-323/328; backup v39 уже содержит эту таблицу.
+- **Критерии:** source recordParserErrorSnapshot/readParserErrorHistory на существующей таблице: owner/day isolation, Moscow UTC+3 buckets, MAX p1/p2 peaks, MIN/MAX sample time,30-day gaps/nulls и averages только наблюдавшихся дней. Старые строки не удалять:30 дней — окно чтения, не TTL. Серверная opaque operation фиксирует generation/owner, запись под generation lock, чтение SELECT-only RR. Source SQLite vs actual MariaDB, concurrent maxima/rollback/unknown COMMIT/restore и untouched71-table proof. Только synthetic disposable CI; standalone HTTP и GET issues пока не включать.
+- **Результат:** opaque history operation/record/read реализованы на существующей таблице без DDL/HTTP. Source19 SQLite и local calendar/Number interop проходят, exact stored INTEGER values входят в oracle. Native19+ownership3+fault4 required zero skips. Local default/tagged race/vet/build/Go1.23/web/docs/API audit/actionlint/history pass; positive MariaDB ожидается.

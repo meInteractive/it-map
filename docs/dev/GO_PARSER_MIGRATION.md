@@ -303,3 +303,23 @@ restore. Числа DTO проходят принятый ECMAScript codec. Sour
 readonly/72-table immutability, ошибки/cancellation/snapshot/restore.
 POST `/run` остаётся 503 и не вызывает factory хранилища: execution не включён.
 Положительный native proof до CI не заявляется.
+
+
+## GO-332: prerequisite дневной истории ошибок
+
+Source GET `/api/scheduler/issues` записывает parser_error_daily и затем читает
+историю; это не SELECT-only endpoint. Таблица уже есть в baseline72 и signed v39
+export, новые DDL/версии не нужны. Отдельный HTTP для истории не включается.
+
+Opaque history operation фиксирует trusted owner и generation. Record под тем же
+lock поколения сохраняет дневные MAX p1/p2, MIN first sample/MAX last sample;
+Moscow day вычисляется как UTC+3. Чтение — readonly RR с source30-day window,
+null gaps и average по observed days. Старые строки сохраняются: окно не TTL.
+Числа перед записью повторяют D1 Number→SQLite INTEGER, DTO — принятый JSON codec.
+
+Source19 frames проверяют calendar/leap/midnight, owner case/space/Unicode,
+zero-vs-gap, out-of-order, stale generation и точные integer storage values.
+Required native19+ownership3+fault4 проверяют реальные строки/DTO, concurrent
+maxima, rollback, unknown COMMIT без automatic retry, reader permissions,
+restore/cancellation и отсутствие записей в остальные 71 таблицу. Positive
+native proof до CI не заявляется. Интеграция /issues остаётся отдельной порцией.

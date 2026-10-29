@@ -61,6 +61,8 @@ jobs:
         run: go test -race -tags legacyinterop ./internal/parser -run '^TestStoredSchedulerSettingsSource$' -count=1
       - name: Verify dashboard JSON aggregation against actual SQLite SUM
         run: go test -race -tags legacyinterop ./internal/parser -run '^TestSchedulerDashboardSumSource$' -count=1
+      - name: Проверить source дневную историю ошибок на SQLite
+        run: go test -race -tags legacyinterop ./internal/parser -run '^TestErrorHistoryCalendarSource$' -count=1
       - name: Проверить source first requestId для сохранённого запуска
         run: go test -race -tags legacyinterop ./internal/httpapi -run '^TestSchedulerRunQuerySource$' -count=1
       - name: Проверить source query/UTF16 поиск очереди
