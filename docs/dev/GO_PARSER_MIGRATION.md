@@ -248,3 +248,18 @@ DTO, cancellation и integer overflow. Перед/после GET сравнив�
 сохранность 72 таблиц и pool из одного соединения проверяются только в guarded
 MariaDB CI. Локальные unit/source/build проверки проходят; положительный
 native proof до завершения CI не заявляется.
+
+
+## GO-329: retry/cancel очереди
+
+Перенесён существующий POST `/api/scheduler/jobs/:id/retry|cancel`: admin/session,
+Origin и предел body сохраняют исходный порядок ошибок; generation фиксируется
+до body. Под generation lock меняются только шесть исходных полей задания.
+Payload, lease, completed_at и финансовый журнал сохраняются. Команда не запускает
+worker и не создаёт платную попытку. Подробности — [JOBS.md](../../internal/parser/JOBS.md).
+
+Source router/SQLite даёт 43 frames/45 HTTP responses, включая повтор в тот же
+clock tick, текущие/старые поколения, статусы, права и body restore. Native CI
+обязан сопоставить полные строки jobs/attempts и неизменность остальных 71 таблиц,
+а также поздний UPDATE rollback, unknown COMMIT, restore и concurrent running.
+До завершения CI положительная native-приёмка не заявляется.

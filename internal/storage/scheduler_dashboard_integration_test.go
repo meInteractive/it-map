@@ -85,7 +85,7 @@ func dashboardFixture(t *testing.T) *settingsSQLFixture {
 	})
 	return f
 }
-func dashboardFingerprint(f *settingsSQLFixture) [32]byte {
+func dashboardFingerprint(f *settingsSQLFixture, ignoredTables ...string) [32]byte {
 	f.t.Helper()
 	var baseline schemaBaseline
 	if json.Unmarshal(baselineJSON, &baseline) != nil || len(baseline.Tables) != 72 {
@@ -93,6 +93,16 @@ func dashboardFingerprint(f *settingsSQLFixture) [32]byte {
 	}
 	content := []string{}
 	for table := range baseline.Tables {
+		ignored := false
+		for _, name := range ignoredTables {
+			if table == name {
+				ignored = true
+				break
+			}
+		}
+		if ignored {
+			continue
+		}
 		rows, e := f.reader.QueryContext(f.ctx, "SELECT * FROM `"+table+"`")
 		if e != nil {
 			f.t.Fatal("dashboard snapshot query failed")

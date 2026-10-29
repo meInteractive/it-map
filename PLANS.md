@@ -266,3 +266,12 @@ GO-327/#88/22a407e5d4b4ecb7cd33e2761fb5045c82014c78/tree f2d96e2d90dcecf8b26cea5
 
 
 GO-328 local proof: source8 подтвердил precedence restored/body/method. Регрессия до исправления получила200 вместо409 и413 вместо500; после PrepareSave→opaque bound operation default/tagged race/vet/build/Go1.23/web/docs/API audit/actionlint успешны. Native8+2 compile/skip локально, required CI parent/count checks добавлены без допуска skips; positive MariaDB ожидается. Схема/provider execution не меняются. После приёмки328 продолжить текущую GO-021 командами retry/cancel, без запуска worker.
+
+
+GO-328 опубликована как PR #89/5f780e77bf99d64424ebe510621d2a12945aff46, CI выполняется. Следующая независимая GO-329 заранее выделена для source retry/cancel API: только state mutation, без worker/provider; финансовый журнал и lease поля неизменны. Ветка codex/GO-329-scheduler-job-actions от опубликованной328; родительская приёмка будет проверена до ready.
+
+
+GO-328/#89/5f780e77bf99d64424ebe510621d2a12945aff46/tree d001767dcad0504291e7d63262b19bb620a6c80a принята: Public40831785848/MariaDB40831785899 success, все3+13 jobs, required8 body-generation+2 capture/cancellation cases без skips и old regression pass. PR ready; automatic merge не выполнялся. GO-329 продолжает от этой проверенной вершины.
+
+
+GO-329 implementation: source43/45 HTTP, native source43+fault4 required counts без skips. Generation фиксируется до body, SQL clock как core, conditional UPDATE только6 полей, matched rows обеспечены existing clientFoundRows=true; финансовый журнал/lease/payload не меняются. Local default/tagged race/vet/build/Go1.23/web/source/docs/API audit/actionlint/history pass. Positive MariaDB ожидается; полная GO-021 остаётся открытой до remaining commands/read/stage gates.

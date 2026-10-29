@@ -66,6 +66,7 @@ type Options struct {
 	ProfileModelCatalog  ProfileModelValidator
 	BackupExports        BackupExporter
 	BackupRestores       BackupRestorer
+	SchedulerJobActions  SchedulerJobActionWriter
 	SchedulerSettings    SchedulerSettingsWriter
 	SchedulerDashboard   SchedulerDashboardReader
 }
@@ -100,6 +101,7 @@ func NewHandlerWithOptions(logger *slog.Logger, opts Options) http.Handler {
 		mux.HandleFunc("POST /auth", loginHandler(opts.Auth, opts.WebDir))
 		mux.HandleFunc("GET /logout", LogoutHandler())
 		mux.HandleFunc("GET /api/session", SessionHandler(opts.Auth))
+		mux.HandleFunc("/api/scheduler/jobs/", SchedulerJobActionsHandler(opts.Auth, opts.SchedulerJobActions))
 		mux.HandleFunc("/api/scheduler/settings", SchedulerSettingsHandler(opts.Auth, opts.SchedulerSettings))
 		mux.HandleFunc("/api/scheduler", SchedulerDashboardHandler(opts.Auth, opts.SchedulerDashboard))
 		download := BackupDownloadHandler(opts.Auth, opts.BackupExports)
