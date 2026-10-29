@@ -223,8 +223,8 @@
     {
       "id": "vacancy-roles",
       "implementation": "partial",
-      "level": "Source GET tree/roots/leaves/descendants и строгие ID:166 HTTP frames; required native CI",
-      "gap": "POST/PUT/DELETE role management не зарегистрированы; остальные методы/URL вне bounded GET paths и полная GO-011/GO-002 отдельно. Native GO-341 acceptance ожидается.",
+      "level": "Source GET tree/roots/leaves/descendants и строгие ID:166 HTTP frames +166 SELECT-only MariaDB HTTP, GO-341",
+      "gap": "POST/PUT/DELETE role management не зарегистрированы; остальные методы/URL вне bounded GET paths и полная GO-011/GO-002 отдельно.",
       "evidence": [
         {
           "file": "internal/httpapi/role_routes_test.go",
