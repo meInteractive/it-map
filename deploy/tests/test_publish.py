@@ -138,6 +138,29 @@ class PublishTests(unittest.TestCase):
             with self.assertRaisesRegex(p.Rejected, 'ssh_request_failed'):
                 client.request({'operation':'status'})
 
+    def test_ssh_failures_emit_only_fixed_safe_codes(self):
+        client = self.client()
+        cases = [
+            ('Load key /private/identity: error in libcrypto', 'ssh_private_key_invalid'),
+            ('Load key: invalid format', 'ssh_private_key_invalid'),
+            ('incorrect passphrase supplied to decrypt private key', 'ssh_private_key_passphrase_required'),
+            ('Host key verification failed.', 'ssh_host_key_rejected'),
+            ('REMOTE HOST IDENTIFICATION HAS CHANGED!', 'ssh_host_key_rejected'),
+            ('Permission denied (publickey).', 'ssh_authentication_failed'),
+            ('Connection refused', 'ssh_connection_refused'),
+            ('Connection timed out', 'ssh_connection_timeout'),
+            ('Could not resolve hostname', 'ssh_hostname_unresolved'),
+            ('unexpected diagnostic', 'ssh_request_failed'),
+        ]
+        for diagnostic, code in cases:
+            result = subprocess.CompletedProcess([], 255, b'',
+                ('PRIVATE_DIAGNOSTIC_MARKER ' + diagnostic).encode())
+            with self.subTest(code=code), patch.object(p.subprocess, 'run', return_value=result):
+                with self.assertRaises(p.Rejected) as caught:
+                    client.request({'operation': 'status'})
+                self.assertEqual(str(caught.exception), code)
+                self.assertNotIn('PRIVATE_DIAGNOSTIC_MARKER', str(caught.exception))
+
     def test_invalid_ssh_settings_fail_before_any_connection(self):
         for values in [{}, {'DEPLOY_SSH_KEY':'CI KEY','DEPLOY_KNOWN_HOSTS':'CI HOST',
                            'DEPLOY_HOST':'-oProxyCommand=bad','DEPLOY_USER':'deploy'},

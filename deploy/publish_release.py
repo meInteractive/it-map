@@ -72,6 +72,24 @@ def package(request, binary, web, output, verify_checkout=True):
     return {'size': output.stat().st_size, 'digest': hashlib.sha256(output.read_bytes()).hexdigest()}
 
 
+def ssh_failure_code(stderr):
+    # Возвращаем только фиксированный код: stderr может содержать приватные данные.
+    text = stderr[:16384].decode('utf-8', errors='replace').lower()
+    rules = (
+        ('ssh_private_key_invalid', ('error in libcrypto', 'invalid format')),
+        ('ssh_private_key_passphrase_required', ('incorrect passphrase', 'bad passphrase')),
+        ('ssh_host_key_rejected', ('host key verification failed', 'remote host identification has changed')),
+        ('ssh_authentication_failed', ('permission denied',)),
+        ('ssh_connection_refused', ('connection refused',)),
+        ('ssh_connection_timeout', ('connection timed out', 'operation timed out')),
+        ('ssh_hostname_unresolved', ('could not resolve hostname',)),
+    )
+    for code, markers in rules:
+        if any(marker in text for marker in markers):
+            return code
+    return 'ssh_request_failed'
+
+
 class Client:
     def __init__(self, env):
         key, known = env.get('DEPLOY_SSH_KEY', ''), env.get('DEPLOY_KNOWN_HOSTS', '')
@@ -110,6 +128,8 @@ class Client:
             result = subprocess.run(self.command, input=data, capture_output=True, timeout=180, env=self.child_env)
             if len(result.stdout) > 8 * 1024 * 1024:
                 raise Rejected('oversized_receiver_response')
+            if result.returncode == 255:
+                raise Rejected(ssh_failure_code(result.stderr))
             response = json.loads(result.stdout)
         except (OSError, subprocess.TimeoutExpired, ValueError):
             raise Rejected('ssh_request_failed') from None
