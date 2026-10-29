@@ -1500,9 +1500,17 @@
 - **Результат:** unchanged router/SQLite8 source frames; до исправления local regression подтвердил ошибочные200 вместо409 restored и413 вместо500 capture failure. PrepareSave фиксирует generation/owner до body и возвращает серверную операцию без удержания connection/TX; прямой Save сохраняет прежний контракт. Новые native8 source HTTP/body-barrier +2 capture/cancellation cases требуют полный settings row,72-table immutability и pool из одного соединения. Local race/vet/default+tagged/build/Go1.23/web/docs/API audit/actionlint проходят; PR #89/5f780e77bf99d64424ebe510621d2a12945aff46/tree d001767dcad0504291e7d63262b19bb620a6c80a: Public40831785848/MariaDB40831785899 success, required8+2 cases без skips и весь прежний regression pass.
 
 
-### [ ] GO-329. HTTP retry/cancel заданий планировщика (часть GO-021)
+### [x] GO-329. HTTP retry/cancel заданий планировщика (часть GO-021)
 
 - **Приоритет:** Средний; следующая команда существующего API после GO-328.
 - **Зависимости:** GO-312/313 job/billing fences, GO-328 request generation.
 - **Критерии:** existing POST /api/scheduler/jobs/:id/retry|cancel с admin/session/Origin/body/source status+JSON, generation до body. Изменять только разрешённые source status/run_after/attempts/error/timestamp поля pending/failed/cancelled текущего поколения; running/completed/unknown/old generation отклонять. Не очищать leases/payload/финансовый журнал и не вызывать worker/provider. Неизменённый source router/SQLite против actual Go→MariaDB, CAS/rollback/generation и неизменность остальных таблиц, required disposable CI без skips.
-- **Результат:** generation-bound JobActionsRepository и существующий POST retry/cancel подключены без worker/provider.43 unchanged router/SQLite frames (45 ответов) проверены локально; native CI требует full job/ledger rows,71-table immutability,4 fault/race cases и zero skips. Local default/tagged race/vet/build/Go1.23/web/source/settings regression/API audit/docs/actionlint/history проходят; positive MariaDB ожидается.
+- **Результат:** generation-bound JobActionsRepository и существующий POST retry/cancel подключены без worker/provider.43 unchanged router/SQLite frames (45 ответов) проверены локально; native CI требует full job/ledger rows,71-table immutability,4 fault/race cases и zero skips. Local default/tagged race/vet/build/Go1.23/web/source/settings regression/API audit/docs/actionlint/history проходят. PR #90/c64e5933ae5688c1ef73dd89a821cf798de92ffa/tree9eb0fba7c7994a51b7a8a198c47a495a6c8e4e1f: Public40833105767/MariaDB40833105821 success; source43/45 HTTP+fault4 без skips (job123311580385), весь прежний regression pass.
+
+
+### [ ] GO-330. Чтение очереди планировщика (часть GO-021)
+
+- **Приоритет:** Средний; следующая независимая часть текущей очереди пользователя.
+- **Зависимости:** GO-326/328/329, принятые UTF16/JS lower/number и source JSON codec.
+- **Критерии:** existing admin GET /api/scheduler/queue; source query/Number/UTF16 validation, поиск по компании/агентству, разделение owner namespaces, текущий generation, created_at DESC/id ordering,30-row pagination и исключение payload. SELECT-only согласованный снимок generation/count/page/owner names/candidate titles. Неизменённый source router/SQLite против actual Go/MariaDB, readonly account/72-table immutability, snapshot/late faults; required disposable CI без skips. Worker/providers/schema/deploy не включать.
+- **Результат:** QueueRepository/GET подключены;104 unchanged router/SQLite frames и source query/UTF16 admission/search oracle проходят локально. JSON_TABLE с двумя binding сохраняет source D1-number/JSON owner matching; DTO без payload/service columns. Native readonly104 +snapshot/fault4 required без skips. Local default/tagged race/vet/build/Go1.23/web/docs/API audit/actionlint/history проходят; positive MariaDB ожидается.

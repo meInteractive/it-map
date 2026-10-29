@@ -1,0 +1,47 @@
+// Неизменённый source router/SQLite: подготовленная очередь, только SELECT и синтетика.
+import assert from 'node:assert/strict';
+import {DatabaseSync} from 'node:sqlite';
+import {schema} from './historical-format-support.mjs';
+import {schemaState} from '../server/constants.js';
+import {generationBoundDb} from '../server/repositories/generation-bound-db.js';
+import router from '../server/routes/index.js';
+import {createSession} from '../server/auth/session.js';
+import {SCHEDULER_TYPES} from '../server/repositories/scheduler.js';
+globalThis.fetch=()=>{throw new Error('Queue oracle forbids network');};
+const generation='11111111-2222-4333-8444-555555555555',secret='CI_SYNTHETIC_QUEUE_READ_SECRET_330';
+const companies=[{id:1,company_name:'CI Москва 100%_'},{id:2,company_name:'ΟΣ İSTANBUL'},{id:3,company_name:'😀 � 東京'},{id:'9007199254740993',company_name:'CI huge owner'},{id:'9007199254740992',company_name:'CI rounded neighbor'}];
+const agencies=[{id:1,agency_name:'CI Агентство Москва'},{id:2,agency_name:'Other agency'}];
+const candidates=[{id:1,company_id:1,creation_token:'CI_QUEUE_CANDIDATE',title_raw:'CI полный заголовок',title_hash:'a'.repeat(64),acquisition_method:'manual',first_seen_at:'2026-10-29',last_seen_at:'2026-10-29',created_at:'2026-10-29',updated_at:'2026-10-29'}];
+const jobs=Array.from({length:65},(_,i)=>({id:`00000000-0000-4000-8000-${String(i).padStart(12,'0')}`,generation:i>=62?'22222222-3333-4333-8444-555555555555':generation,dedupe_key:'CI_queue_'+i,type:SCHEDULER_TYPES[i%SCHEDULER_TYPES.length],company_id:i%3===0?null:i%3,agency_id:i%3===0?(i%2)+1:null,candidate_id:i===1?1:null,source_id:i%2?'hh':null,payload:'{"private":"CI_QUEUE_PAYLOAD_MUST_BE_REMOVED"}',status:['pending','running','completed','failed','cancelled'][i%5],priority:i,run_after:i,attempts:i%4,max_attempts:4,locked_by:'CI_OPAQUE_OWNER',locked_until:2000,last_error:i%2?'CI prior error':'',reason_code:'CI_prior',created_at:10000+Math.floor(i/3),updated_at:10000,completed_at:i%5===2?11000:null}));
+jobs[2].company_id='9007199254740993';jobs[4].company_id='9007199254740992';
+const cases=[],add=(name,query='',patch={})=>cases.push({name,query,user:'Eugene',method:'GET',...patch});
+add('default');for(const page of ['1','2','3','100000','0x2','0b10','02','2e0','+2',' 2 ','','0','-1','1.5','NaN','Infinity','100001'])add('page '+JSON.stringify(page),'page='+encodeURIComponent(page));
+for(const status of ['pending','running','completed','failed','cancelled','unknown','PENDING','pending '])add('status '+status,'status='+encodeURIComponent(status));
+for(const type of [...SCHEDULER_TYPES,'unknown','SCAN_SOURCE'])add('type '+type,'type='+type);
+for(const key of ['companyId','agencyId'])for(const value of ['1','2','+1','1.0','1e0','0x1','0b1','01','\ufeff1',' 1 ','','0','-1','1.5','9007199254740992'])add(key+' '+JSON.stringify(value),key+'='+encodeURIComponent(value));
+add('conflicting owners','companyId=1&agencyId=1');add('empty other owner','companyId=1&agencyId=');
+for(const search of ['москва','агентство','100%_','%','_','ΟΣ','ος','οσ','i̇','😀','�','東京','\ufeff Москва \u00a0','\u0085','   ','😀'.repeat(100),'😀'.repeat(101),'x'.repeat(200),'x'.repeat(201)])add('search '+JSON.stringify(search),'search='+encodeURIComponent(search));
+add('D1 rounded owner match','search=CI%20huge');
+add('combined','page=1&companyId=1&status=failed&type=diagnostic&search=москва');
+add('last duplicate','page=0&page=2');add('last invalid duplicate','page=2&page=0');add('escaped key','%70age=2');add('unknown query','unexpected=1');add('unknown empty key','=1');
+add('malformed percent','search=%ZZ');add('malformed utf8','search=%FF');add('semicolon','search=Москва;CI');
+for(const user of ['Demo','Nastya',''])add('access '+(user||'anonymous'),'page=0',{user});
+add('storage before bad query','page=0',{noDB:true});
+add('method fallback','unexpected=1',{method:'POST',body:'{}'});add('malformed fallback','',{method:'POST',body:'{'});add('origin before body','',{method:'POST',body:'{',origin:'https://other.invalid'});
+const d1Value=v=>typeof v==='bigint'?Number(v):Array.isArray(v)?v.map(d1Value):v&&typeof v==='object'?Object.fromEntries(Object.entries(v).map(([k,n])=>[k,d1Value(n)])):v;
+for(const c of cases){
+ const sqlite=new DatabaseSync(':memory:');assert.equal(sqlite.prepare('SELECT sqlite_version() v').get().v,'3.53.3');sqlite.exec('PRAGMA foreign_keys=ON');for(const o of schema.objects)sqlite.exec(o.sql);schemaState.ready=true;
+ const addRow=(table,row)=>{const keys=Object.keys(row);sqlite.prepare(`INSERT INTO ${table}(${keys.map(k=>'"'+k+'"').join(',')}) VALUES(${keys.map(()=>'?').join(',')})`).run(...keys.map(k=>row[k]));};
+ addRow('app_runtime_generation',{id:1,generation});addRow('firecrawl_settings',{id:1,scheduler_json:'{"revision":7}'});
+ for(const [table,rows] of [['company_identity',companies],['agency_identity',agencies],['vacancy_candidates',candidates],['scheduler_jobs',jobs]])for(const row of rows)addRow(table,row);
+ sqlite.exec(`UPDATE scheduler_jobs SET priority=9007199254740993 WHERE id='${jobs[1].id}'`);
+ const base={prepare(sql){let args=[];return {bind(...a){args=a;return this;},async first(column){const stmt=sqlite.prepare(sql);stmt.setReadBigInts(true);const r=d1Value(stmt.get(...args))??null;return column&&r?r[column]:r;},async all(){const stmt=sqlite.prepare(sql);stmt.setReadBigInts(true);return {results:d1Value(stmt.all(...args))};},async run(){const stmt=sqlite.prepare(sql);stmt.setReadBigInts(true);return stmt.columns().length?{results:d1Value(stmt.all(...args))}:{meta:d1Value(stmt.run(...args))};}};},async batch(ss){sqlite.exec('BEGIN');try{const out=[];for(const s of ss)out.push(await s.run());sqlite.exec('COMMIT');return out;}catch(e){sqlite.exec('ROLLBACK');throw e;}}};
+ const db=generationBoundDb(base,generation),before=sqlite.prepare('SELECT total_changes() n').get().n,headers={};if(c.user)headers.cookie='it_map_session='+await createSession(secret,c.user);if(c.origin)headers.origin=c.origin;
+ const request=new Request('https://example.invalid/api/scheduler/queue'+(c.query?'?'+c.query:''),{method:c.method,headers,...(c.method==='GET'?{}:{body:c.body})});
+ const response=await router.fetch(request,{SESSION_SECRET:secret,SITE_PASSWORD:'CI_UNUSED',DB:c.noDB?undefined:db},{}),body=await response.text();
+ assert.equal(sqlite.prepare('SELECT total_changes() n').get().n,before,'queue HTTP mutated prepared source');assert.ok(!body.includes('CI_QUEUE_PAYLOAD_MUST_BE_REMOVED'));
+ const queryObject=Object.fromEntries(new URL(request.url).searchParams),needle=(queryObject.search||'').trim().toLocaleLowerCase('ru-RU');
+ const ownerMatches=[...companies.map(r=>r.company_name),...agencies.map(r=>r.agency_name)].map(name=>({name,matched:name.toLocaleLowerCase('ru-RU').includes(needle)}));
+ process.stdout.write(JSON.stringify({...c,generation,companies,agencies,candidates,jobs,queryObject,ownerMatches,status:response.status,responseBody:body})+'\n');sqlite.close();
+}
+process.stderr.write(`Scheduler queue source router/SQLite: ${cases.length} frames\n`);

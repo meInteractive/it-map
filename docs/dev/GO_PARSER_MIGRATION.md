@@ -263,3 +263,26 @@ clock tick, текущие/старые поколения, статусы, пр
 обязан сопоставить полные строки jobs/attempts и неизменность остальных 71 таблиц,
 а также поздний UPDATE rollback, unknown COMMIT, restore и concurrent running.
 До завершения CI положительная native-приёмка не заявляется.
+
+
+## GO-330: чтение очереди
+
+GET `/api/scheduler/queue` сохраняет source query validation, поиск по company/agency,
+created_at DESC/id и страницы по 30 строк. URLSearchParams декодируется с WHATWG
+replacement и последним значением дубликата. Сравнение имени использует принятые
+UTF16/trim/lower/includes; locale SQL и LIKE не участвуют. Допуск owner ID через
+JS Number отделён от SQLite INTEGER affinity: hex/binary/Unicode whitespace
+могут быть допустимым фильтром с пустым результатом.
+
+Owner search сохраняет D1 Number → JSON.stringify → json_each для больших ID:
+в MariaDB используются два JSON binding и JSON_TABLE с точным DECIMAL, чтобы не
+превысить число SQL parameters и не заменить сравнение целых float-сравнением.
+JSON DTO проходит принятый source codec. Payload и невидимые служебные столбцы
+не читаются. Поколение фиксируется до query validation/fallback метода, а
+count/page/имена/title читаются в одном SELECT-only repeatable-read снимке,
+по принятому в GO-326 правилу согласованного чтения.
+
+104 unchanged source router/SQLite frames покрывают HTTP/фильтры/пагинацию/UTF16,
+включая округление больших ID и разделение owner namespaces. Native CI требует
+readonly account, неизменность 72 таблиц и четыре snapshot/fault/cancellation
+сценария. Положительная native-приёмка до CI не заявляется.

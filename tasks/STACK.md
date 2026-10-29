@@ -504,3 +504,9 @@ GO-328/#89/5f780e77bf99d64424ebe510621d2a12945aff46/tree d001767dcad0504291e7d63
 
 
 GO-329 implementation: source43/45 HTTP, native source43+fault4 required counts без skips. Generation фиксируется до body, SQL clock как core, conditional UPDATE только6 полей, matched rows обеспечены existing clientFoundRows=true; финансовый журнал/lease/payload не меняются. Local default/tagged race/vet/build/Go1.23/web/source/docs/API audit/actionlint/history pass. Positive MariaDB ожидается; полная GO-021 остаётся открытой до remaining commands/read/stage gates.
+
+
+GO-329/#90/c64e5933ae5688c1ef73dd89a821cf798de92ffa/tree9eb0fba7c7994a51b7a8a198c47a495a6c8e4e1f принята: Public40833105767/MariaDB40833105821 success, source43/45 HTTP+fault4 без skips, весь old regression pass. Пользователь поручил продолжать автономно, кроме критических ситуаций. GO-330 заранее выделена: readonly queue, поиск/пагинация/query parity; ветка от принятой329, без ожидания merge. Общий порядок GO-021 →010→012→013→017 сохраняется.
+
+
+GO-330 local proof:104 unchanged queue router/SQLite frames, WHATWG last-query decoding, JS Number vs SQL affinity, UTF16 trim/lower/search и большие owner ID. Readonly RR count/page/имена/title, payload/service columns исключены; native readonly104+snapshot/fault4 required без skips, positive CI ожидается. Default/tagged race/vet/build/Go1.23/web/docs/API audit/actionlint/history pass. Далее независимое readonly чтение отдельного scheduler run; команды запуска/провайдеры не разрешаются этой порцией.
