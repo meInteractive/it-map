@@ -577,3 +577,8 @@ GO-345: ветка codex/GO-345-main-only-deploy от7790d82/#103. Main-only pus
 GO-345: коммитf905921, [PR#104](https://github.com/meInteractive/it-map/pull/104)→main с ancestry#103, без merge.
 
 GO-346: ветка codex/GO-346-staging-snapshot-import отf905921; только запись разрешённой серверной операции, без дампа/данных/секретов/хешей строк. Рабочий бинарник main cabe5ff892c208499aefc0e69383110604a581d4 не менялся. Checksum/72-table full-row hash multiset/AUTO_INCREMENT/exact trusted schema pass; applied0/seededfalse. Новый import переключён, старая база сохранена; auth/origin TLS/SPA/catalog/read-only staging-smoke pass. Это не production/cutover/включение providers/полная миграция.
+
+
+GO-346: коммитe2a6cae/[PR#105](https://github.com/meInteractive/it-map/pull/105) принят пользователем, main1480a4ecd3fb22878580d81274b288c0c145e7bc имеет то же дерево;17 CI checks success.
+
+GO-347: codex/GO-347-deploy-ssh-diagnostics отmain1480a4e. Разрешённые initial dispatch40965212612 и40966200006 блокированы наregister до доставки: invalid settings, затем ssh_request_failed. Адрес исправлен владельцем, остальные секреты API не читает. Safe fixed-code SSH255 diagnostics,28 Python protocol tests/actionlint/source gate pass. Ни ключи, ни SSH stderr в Git/отчёт не включены; working app/database unchanged.
