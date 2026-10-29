@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { buildBackupSchema } from './backup-schema.mjs';
+import { buildBackupSchema, documentationSchemaVersion } from './backup-schema.mjs';
 import * as declarations from '../server/constants.js';
 import * as exportsModule from '../server/import-export/xlsx.js';
 
@@ -69,13 +69,13 @@ const descriptions = {
  google_calendar_connection:'Историческое общее подключение календаря; сохраняется ради совместимости.',google_calendar_user_connection:'Персональные подключения календаря; refresh-токен зашифрован.',vacancy_audit_runs:'Исторические результаты запусков проверки вакансий; количество удалений, обновлений дат и время завершения.'
 };
 export function buildDocumentation(root) {
- const manifest=JSON.parse(fs.readFileSync(path.join(root,'docs/manifest.json'),'utf8'));
+ const manifest=JSON.parse(fs.readFileSync(path.join(root,'docs/user/manifest.json'),'utf8'));
  const source=fs.readFileSync(path.join(root,'frontend/features/settings/xlsx.ts'),'utf8');
  const exportSource=fs.readFileSync(path.join(root,'server/import-export/xlsx.js'),'utf8');
  const constants={...declarations,...exportsModule};
  const schema=buildBackupSchema(root);
- const latest=fs.readdirSync(path.join(root,'drizzle')).filter(name=>name.endsWith('.sql')).sort().at(-1).replace(/\.sql$/,'');
- if(manifest.versions.backup!==constants.BACKUP_VERSION||manifest.versions.rating!==constants.RATING_FORMULA_VERSION||manifest.versions.schema!==latest)throw new Error('Documentation version metadata is stale. Update docs/manifest.json and CHANGELOG.md.');
+ const latest=documentationSchemaVersion(root);
+ if(manifest.versions.backup!==constants.BACKUP_VERSION||manifest.versions.rating!==constants.RATING_FORMULA_VERSION||manifest.versions.schema!==latest)throw new Error('Documentation version metadata is stale. Update docs/user/manifest.json and docs/user/CHANGELOG.md.');
  const schemaMarkdown=[...schema.tables,...schema.operationalTables].map(t=>'## '+t.name+'\n\n'+(descriptions[t.name]||'Добавьте описание новой сущности в scripts/documentation.mjs.')+'\n\n'+table(['Поле SQL','Тип','NOT NULL','Ключ','По умолчанию'],t.columns.map(c=>[c.name,c.type,c.notNull?'Да':'Нет',c.primaryKey?'PRIMARY KEY':'—',c.defaultValue]))+'\n\n'+(t.foreignKeys.length?table(['Внешний ключ','Ссылается на','При удалении'],t.foreignKeys.map(k=>[k.from,k.table+'.'+k.to,k.on_delete]))+'\n\n':'')+'```sql\n'+schema.objects.filter(o=>o.tbl_name===t.name).map(o=>o.sql+';').join('\n')+'\n```').join('\n\n');
  const sheets=[['Компании','COMPANY_IMPORT_EXPORT_HEADERS'],['Офисы','COMPANY_OFFICE_IMPORT_EXPORT_HEADERS'],['Отзывы','COMPANY_REVIEW_IMPORT_EXPORT_HEADERS'],['Агентства','AGENCY_IMPORT_EXPORT_HEADERS'],['Контакты','HIRING_CONTACT_IMPORT_EXPORT_HEADERS']];
  const fieldMaps={};
@@ -91,9 +91,9 @@ export function buildDocumentation(root) {
  }).join('\n\n');
  const vacancyKeys=['companyId','companyName','title','url','salaryFrom','salaryTo','level','role','relevance','publishedAt','loadedAt','descriptionMd','entityType','agencyId','agencyName','realCompanyId','realCompanyName','coverLetterSubject','coverLetterMd'];
  const vacancies=table(['№','Заголовок Excel','Поле JSON'],constants.VACANCY_EXPORT_HEADERS.map((header,index)=>[index+1,header,vacancyKeys[index]]));
- const replacements={'{{DATABASE_TABLES}}':schemaMarkdown,'{{COMPANY_FIELDS}}':formats,'{{NARROW_EXPORTS}}':narrow,'{{VACANCY_FIELDS}}':vacancies,'{{BACKUP_DETAILS}}':fs.readFileSync(path.join(root,'docs/BACKUP_FORMAT.md'),'utf8').replace(/^# /,'## ')};
+ const replacements={'{{DATABASE_TABLES}}':schemaMarkdown,'{{COMPANY_FIELDS}}':formats,'{{NARROW_EXPORTS}}':narrow,'{{VACANCY_FIELDS}}':vacancies,'{{BACKUP_DETAILS}}':fs.readFileSync(path.join(root,'docs/user/BACKUP_FORMAT.md'),'utf8').replace(/^# /,'## ')};
  return {...manifest,sections:manifest.sections.map(section=>{
-  let markdown=fs.readFileSync(path.join(root,'docs',section.file),'utf8');
+  let markdown=fs.readFileSync(path.join(root,'docs','user',section.file),'utf8');
   for(const [token,value] of Object.entries(replacements)){
    const name=token.slice(2,-2),start='<!-- AUTO:'+name+' -->',end='<!-- /AUTO:'+name+' -->';
    const block=start+'\n'+value+'\n'+end;
@@ -103,7 +103,7 @@ export function buildDocumentation(root) {
     markdown=markdown.slice(0,from)+block+markdown.slice(to+end.length);
    }else markdown=markdown.replace(token,()=>block);
   }
-  const file=path.join(root,'docs',section.file);
+  const file=path.join(root,'docs','user',section.file);
   if(fs.readFileSync(file,'utf8')!==markdown)fs.writeFileSync(file,markdown);
   if(/\{\{[A-Z_]+\}\}/.test(markdown))throw new Error('Unresolved documentation marker in '+section.file);
   return {...section,markdown};

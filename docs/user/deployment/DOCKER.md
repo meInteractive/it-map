@@ -8,7 +8,7 @@ Go разрешает только loopback и для HTTP_ADDR, и для DB_HO
 
 ## Собрать образ
 
-[deploy/Dockerfile](../../deploy/Dockerfile) — multistage: Node 24 собирает SPA, Go 1.27.3 собирает статический бинарник с `mariadb`, финальный scratch содержит только бинарник, web и CA bundle; uid/gid 65532. Go/Node/npm в runtime-образ не входят. [.dockerignore](../../.dockerignore) разрешает только сборочные входы; `.git`, env, dist, node_modules и дампы передавать в context нельзя.
+[deploy/Dockerfile](../../../deploy/Dockerfile) — multistage: Node 24 собирает SPA, Go 1.27.3 собирает статический бинарник с `mariadb`, финальный scratch содержит только бинарник, web и CA bundle; uid/gid 65532. Go/Node/npm в runtime-образ не входят. [.dockerignore](../../../.dockerignore) разрешает только сборочные входы; `.git`, env, dist, node_modules и дампы передавать в context нельзя.
 
 Из корня **проверенного** checkout:
 

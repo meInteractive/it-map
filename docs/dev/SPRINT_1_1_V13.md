@@ -4,7 +4,7 @@
 
 ## Документация Codex Cloud
 
-Ветка `docs/codex-cloud-foundation` с коммитом `8c58107` объединена **только в локальную** ветку `master` коммитом `af6cbdf`. В удалённом GitHub `meInteractive/it-map` во время проверки не найдено ни одного PR; удалённый merge не выполнялся. Исторический `docs/DATABASE.md` не изменялся, для MariaDB используется `docs/MARIADB.md`.
+Ветка `docs/codex-cloud-foundation` с коммитом `8c58107` объединена **только в локальную** ветку `master` коммитом `af6cbdf`. В удалённом GitHub `meInteractive/it-map` во время проверки не найдено ни одного PR; удалённый merge не выполнялся. Исторический `docs/user/DATABASE.md` не изменялся, для MariaDB используется `docs/dev/MARIADB.md`.
 
 ## Go: задачи CRM — частичная реализация GO-014 / GO-033
 

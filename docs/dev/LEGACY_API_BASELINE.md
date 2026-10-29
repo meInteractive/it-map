@@ -1,6 +1,6 @@
 # Базовый контракт HTTP перед переносом на Go
 
-Источник: `server/routes/index.js`, `server/services/*route*.js`, `server/integrations/*.js`, `shared/contracts.ts`, `docs/API.md` (Sites v316, 23.10.2026).
+Источник: `server/routes/index.js`, `server/services/*route*.js`, `server/integrations/*.js`, `shared/contracts.ts`, `docs/user/API.md` (Sites v316, 23.10.2026).
 
 `LEGACY_API_PATHS.json` создан командой `python3 scripts/extract-legacy-api.py` и перечисляет обнаруженные строковые пути со ссылками на места использования. **Это предварительный инвентарь, не исчерпывающая OpenAPI-спецификация**: часть путей построена динамически, вложенные маршруты обрабатываются отдельными модулями, а HTTP-методы зависят от веток выполнения.
 

@@ -4,10 +4,10 @@
 
 ## Быстрый порядок работы
 
-1. Прочитайте AGENTS.md, docs/manifest.json и начало/последнюю запись docs/refactoring-progress.md; проверьте git status/branch/log. Работайте в refactor/react-typescript. Сначала установите фактическое состояние по коду, не только по отчёту.
+1. Прочитайте AGENTS.md, docs/user/manifest.json и начало/последнюю запись docs/refactoring-progress.md; проверьте git status/branch/log. Работайте в refactor/react-typescript. Сначала установите фактическое состояние по коду, не только по отчёту.
 2. Разбейте изменение на 2–3 небольших шага. Найдите затронутые маршруты через rg в server/routes/index.js, сервис/SQL repository, frontend и shared/contracts.ts. Для локального поиска исключайте server/generated и dist: там большие сгенерированные строки.
 3. Обновите соответствующий основной раздел, а не добавляйте в конец опровергающую старый абзац заметку. Исторические CHANGELOG/аудиты/пользовательские ТЗ не переписывайте как новые факты; добавьте ясную текущую отметку/дату.
-4. Обновите revision/updatedAt docs/manifest.json и CHANGELOG.md: дата, поведение, данные, актуальные версии. API/БД/backup/rating/Excel независимы от номера публикации Sites. Для чистого документационного изменения не повышайте версии форматов.
+4. Обновите revision/updatedAt docs/user/manifest.json и CHANGELOG.md: дата, поведение, данные, актуальные версии. API/БД/backup/rating/Excel независимы от номера публикации Sites. Для чистого документационного изменения не повышайте версии форматов.
 5. Выполните нужные проверки, prepare-server/build, проверьте diff и согласованность generated артефактов. После законченного шага commit + push + подтверждение remote SHA. Промежуточный checkpoint не требует production-публикации.
 6. Для готового изменения выполните штатный Sites workflow: exact source push, архив из этого же состояния, одна saved version и deployment до terminal status. Сохраняйте project_id/audience/bindings/env; текущая задача пользователя определяет публикацию. Report-only фиксацию после успешного deploy повторно не собирайте/не публикуйте.
 
@@ -39,7 +39,7 @@
 | COMPANY_FIELDS | Заголовки server/import-export/xlsx.js, FieldMap браузерного xlsx.ts и инструкции колонок |
 | VACANCY_FIELDS | VACANCY_EXPORT_HEADERS + карта 19 ключей в documentation.mjs |
 | NARROW_EXPORTS | Заголовки выгрузок источников вакансий/отзывов |
-| BACKUP_DETAILS | docs/BACKUP_FORMAT.md |
+| BACKUP_DETAILS | docs/user/BACKUP_FORMAT.md |
 
 Не редактируйте текст между AUTO-маркерами: сборка перезапишет его. Меняйте исходник/описание и пересобирайте. После изменения состава/порядка столбцов вакансий обновите и карту vacancyKeys в генераторе; не считайте её автоматически выведенной из SQL. При новой таблице добавьте содержательное descriptions, проверьте прикладная она или операционная. server/generated/*.json — результат генерации; не самостоятельное хранилище документации или живых данных.
 

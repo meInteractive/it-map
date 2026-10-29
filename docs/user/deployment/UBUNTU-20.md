@@ -75,7 +75,7 @@ itmap-deploy-dev ALL=(root) NOPASSWD: /opt/itmap-python/bin/python3.12 -I /usr/l
 
 ## Nginx, TLS и приёмка
 
-Используемые в [nginx.conf.example](../../deploy/nginx.conf.example) директивы доступны в Nginx 1.18; `listen 443 ssl` сохраняется, новые директивы вида `http2 on` не нужны. OpenSSL 1.1.1 поддерживает TLS 1.3. Для пакетов Focal проверьте фактическое ESM/security-покрытие; возраст версии не заменяет проверку backport-исправлений. После установки выполнить `nginx -t`, выдачу сертификата, `certbot renew --dry-run` и проверку renew timer по [SERVER.md](SERVER.md); установку apt-версии и snap-версии Certbot не смешивать.
+Используемые в [nginx.conf.example](../../../deploy/nginx.conf.example) директивы доступны в Nginx 1.18; `listen 443 ssl` сохраняется, новые директивы вида `http2 on` не нужны. OpenSSL 1.1.1 поддерживает TLS 1.3. Для пакетов Focal проверьте фактическое ESM/security-покрытие; возраст версии не заменяет проверку backport-исправлений. После установки выполнить `nginx -t`, выдачу сертификата, `certbot renew --dry-run` и проверку renew timer по [SERVER.md](SERVER.md); установку apt-версии и snap-версии Certbot не смешивать.
 
 Текущий Nginx-шаблон ограничивает запрос 2 MiB: это относится и к Focal, и к 24.04. Код restore v39 допускает до 25 MiB, поэтому большие файлы потребуют отдельной рецензируемой настройки proxy; инструкция Ubuntu 20 сама по себе этот лимит не меняет.
 

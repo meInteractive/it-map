@@ -2,9 +2,20 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
+export function documentationSchemaVersion(root) {
+  const directory = path.join(root, 'drizzle');
+  if (!fs.existsSync(directory)) return '0083_parser_candidate_intakes';
+  return fs.readdirSync(directory).filter(name => name.endsWith('.sql')).sort().at(-1).replace(/\.sql$/, '');
+}
+
 // Build trusted restore DDL from the existing migration history. Never execute
 // schema SQL supplied by a backup. Seed records are deliberately not exported.
 export function buildBackupSchema(root) {
+  // В Go-ветке история Drizzle отсутствует. Берём принятую схему v39,
+  // совпадающую с прежним generated JSON, без обращения к рабочей БД.
+  if (!fs.existsSync(path.join(root, 'drizzle'))) {
+    return JSON.parse(fs.readFileSync(path.join(root, 'internal/v39/schema.json'), 'utf8'));
+  }
   const db = new DatabaseSync(':memory:');
   try {
     for (const name of fs.readdirSync(path.join(root, 'drizzle')).filter(n => n.endsWith('.sql')).sort()) {

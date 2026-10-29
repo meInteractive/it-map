@@ -1,6 +1,6 @@
 # Архитектура it-map: действующая и целевая
 
-**Актуализация: 26.10.2026.** Go-реализация частичная; production-интеграция и полный перенос не приняты. Здесь описаны границы и фактически присутствующие модули. Проверки конкретных SHA и статусы — в [реестре задач](../tasks/README.md) и [контрольных точках](../tasks/STACK.md), общий план — в [PLANS.md](../PLANS.md). Расположение файлов и вход в разработку: [GO_BACKEND_STRUCTURE.md](GO_BACKEND_STRUCTURE.md).
+**Актуализация: 26.10.2026.** Go-реализация частичная; production-интеграция и полный перенос не приняты. Здесь описаны границы и фактически присутствующие модули. Проверки конкретных SHA и статусы — в [реестре задач](../../tasks/README.md) и [контрольных точках](../../tasks/STACK.md), общий план — в [PLANS.md](../../PLANS.md). Расположение файлов и вход в разработку: [GO_BACKEND_STRUCTURE.md](GO_BACKEND_STRUCTURE.md).
 
 ## 1. Старый GPT Sites (эталон поведения)
 
@@ -9,7 +9,7 @@
 - `server/services/`: бизнес-логика, классификация и извлечение, источники, диагностика и планировщик.
 - `server/integrations/`: Firecrawl, Apify, OpenAI, OpenRouter/JEV, Google Calendar и вспомогательные адаптеры.
 - `server/backup/index.js`, `server/import-export/`: исторические backup v39, Excel/JSON и DB export.
-- `db/schema.ts`, [DATABASE.md](DATABASE.md), `server/generated/backup-schema.json`: историческая схема D1.
+- `db/schema.ts`, [DATABASE.md](../user/DATABASE.md), `server/generated/backup-schema.json`: историческая схема D1.
 
 Работающий GPT Sites **не обслуживается Go** и продолжает использовать собственные D1 и Site Automation. Публичный снимок исходников не равен этой production-среде.
 
@@ -36,7 +36,7 @@
 
 React/TypeScript находится в `frontend/`, вход — `frontend/Application.tsx`, API-клиент — `frontend/api/client.ts`. Историческая `app/` остаётся справочной. Самостоятельная SPA собирается из `web/` через `vite.web.config.ts` командой `npm run build:web`; Node нужен при сборке, отдельный Node-сервер при работе Go не нужен. Go раздаёт результат через `internal/httpapi/static.go`.
 
-Фронтенд использует относительные `/api/...` и сессии. `httpapi.Options` подключает только переданные зависимости. Исходные маршруты и JSON: [LEGACY_API_BASELINE.md](LEGACY_API_BASELINE.md), [LEGACY_API_PATHS.json](LEGACY_API_PATHS.json), [API.md](API.md). Контракты и права сохраняются при переносе. Для реализованных частей есть synthetic Go/MariaDB/API и desktop/mobile CI; полный внешний staging пока не принят.
+Фронтенд использует относительные `/api/...` и сессии. `httpapi.Options` подключает только переданные зависимости. Исходные маршруты и JSON: [LEGACY_API_BASELINE.md](LEGACY_API_BASELINE.md), [LEGACY_API_PATHS.json](LEGACY_API_PATHS.json), [API.md](../user/API.md). Контракты и права сохраняются при переносе. Для реализованных частей есть synthetic Go/MariaDB/API и desktop/mobile CI; полный внешний staging пока не принят.
 
 ## 4. Парсер и жизненный цикл вакансии
 
@@ -61,7 +61,7 @@ Google Calendar OAuth/sync в Go не перенесены. При подклю�
 
 ## 6. Хранилища и границы данных
 
-- Действующая D1/SQLite и её историческая схема: [DATABASE.md](DATABASE.md).
+- Действующая D1/SQLite и её историческая схема: [DATABASE.md](../user/DATABASE.md).
 - Целевая локальная MariaDB 10.11+, baseline и ограничения переноса: [MARIADB.md](MARIADB.md). Приложение не создаёт и не мигрирует схему при старте.
 - Snapshot не является синхронизацией двух БД. Cutover, заморозка и восстановление требуют отдельной согласованной процедуры.
 - HTTP отвечает за доступ/контракт, доменные `internal/*` — за бизнес-инварианты, `internal/storage` — за подключение. JS остаётся эталоном, не работающим Node-бекендом Go.
@@ -69,6 +69,6 @@ Google Calendar OAuth/sync в Go не перенесены. При подклю�
 
 ## 7. Проверки и реальные ограничения
 
-Набор проверок и команды собраны в [локальной инструкции](deployment/LOCAL.md), сервер/CI/CD/rollback — в [документации развёртывания](deployment/README.md). Результаты отдельных unit/contract/SQL/браузерных проверок фиксируются по SHA; наличие тестового файла не доказывает его выполнение.
+Набор проверок и команды собраны в [локальной инструкции](../user/deployment/LOCAL.md), сервер/CI/CD/rollback — в [документации развёртывания](../user/deployment/README.md). Результаты отдельных unit/contract/SQL/браузерных проверок фиксируются по SHA; наличие тестового файла не доказывает его выполнение.
 
 `/health/live` подтверждает живой процесс. `/health/ready` **намеренно всегда возвращает 503**, включая доступную БД: причины различают отсутствие/недоступность MariaDB и `business_api_not_migrated`. Это release gate до общей приёмки, а не утверждение, что каждый реализованный API недоступен. `APP_ENV=production` запрещён конфигурацией. Реальная инфраструктура, полный parser/backup/restore и production-cutover не следуют автоматически из успешного synthetic CI.

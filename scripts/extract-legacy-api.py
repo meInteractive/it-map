@@ -17,5 +17,5 @@ for f in files:
   rows.setdefault(path,set()).add((relative,idx))
 output={'description':'Static paths found in legacy code; dynamic regex routes and methods require manual review.',
         'paths':[{'path':p,'locations':[{'file':f,'line':line} for f,line in sorted(locs)]} for p,locs in sorted(rows.items())]}
-(root/'docs/LEGACY_API_PATHS.json').write_text(json.dumps(output,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+(root/'docs/dev/LEGACY_API_PATHS.json').write_text(json.dumps(output,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
 print('Indexed',len(rows),'candidate path literals; regex/dynamic routes may be omitted')

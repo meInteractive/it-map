@@ -33,5 +33,5 @@ Actual loopback TLS → private HTTP → Go session flow для трёх рол�
 `TestAuthHTTPSProxySessionFlow`; он не читает SQL, не сохраняет credentials и
 не отключает TLS verification. Сценарии и границы проверки, включая отличие
 HTTP cookie jar от browser SameSite policy, описаны в
-[операторской инструкции](deployment/AUTH-ACCEPTANCE.md). Настоящие DNS/ACME,
+[операторской инструкции](../user/deployment/AUTH-ACCEPTANCE.md). Настоящие DNS/ACME,
 Nginx и браузерная приёмка на тестовом домене по-прежнему не выполнены.

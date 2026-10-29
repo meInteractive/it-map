@@ -24,7 +24,7 @@
 | Отсутствует удалённая `gpt-site`, `master` имеет отдельную историю | Неполная веточная организация GO-001 | Зафиксировано; ветки не публиковались и не удалялись |
 | GitHub API возвращает `Forbidden` | Блокирует API-аудит, создание PR и проверку Actions | Git read подтверждён отдельно; API-права/результаты Actions не предполагаются |
 
-Исторические `master` в `PLANS.md`, `docs/ARCHITECTURE.md`, ADR-002/010, старых отчётах и описании первоначального переноса сохранены как исторические ссылки. Текущая административная смена основной ветки на `main` не меняет архитектурные решения. Старые сообщения об отсутствии Go-модулей и `go.sum` в `docs/MARIADB.md` относятся к прежним средам; добавлен текущий проверенный статус. В `docs/DATABASE.md` есть исторические упоминания разных версий backup; документ намеренно не изменялся.
+Исторические `master` в `PLANS.md`, `docs/dev/ARCHITECTURE.md`, ADR-002/010, старых отчётах и описании первоначального переноса сохранены как исторические ссылки. Текущая административная смена основной ветки на `main` не меняет архитектурные решения. Старые сообщения об отсутствии Go-модулей и `go.sum` в `docs/dev/MARIADB.md` относятся к прежним средам; добавлен текущий проверенный статус. В `docs/user/DATABASE.md` есть исторические упоминания разных версий backup; документ намеренно не изменялся.
 
 ## Реально выполненные проверки
 
@@ -60,7 +60,7 @@ MariaDB 10.11 не запускалась локально: разрешение
 
 ## Состояние спринта и следующая задача
 
-Изучены `AGENTS.md`, `PLANS.md`, `README.md`, `tasks/README.md`, `tasks/SPRINT-01.md`, `docs/ARCHITECTURE.md`, `docs/DECISIONS.md`, `docs/DATABASE.md`, `docs/MARIADB.md`, `docs/LEGACY_API_BASELINE.md`, `docs/API.md`, `deploy/README.md` и storage/HTTP/CI исходники. Актуален реестр `tasks/SPRINT-01.md`, старые отчёты — снимки. Порядок: весь блок A с приоритетом GO-005/007 и зависимостью GO-006; после его приёмки GO-019/020/041/042, затем остальные B/C и спринты 1.2–1.4.
+Изучены `AGENTS.md`, `PLANS.md`, `README.md`, `tasks/README.md`, `tasks/SPRINT-01.md`, `docs/dev/ARCHITECTURE.md`, `docs/dev/DECISIONS.md`, `docs/user/DATABASE.md`, `docs/dev/MARIADB.md`, `docs/dev/LEGACY_API_BASELINE.md`, `docs/user/API.md`, `deploy/README.md` и storage/HTTP/CI исходники. Актуален реестр `tasks/SPRINT-01.md`, старые отчёты — снимки. Порядок: весь блок A с приоритетом GO-005/007 и зависимостью GO-006; после его приёмки GO-019/020/041/042, затем остальные B/C и спринты 1.2–1.4.
 
 - GO-005 открыт: загрузка драйвера и tagged build подтверждены; живые schema/transaction/integration gates и согласованный снимок ещё не приняты.
 - GO-006 открыт: сборка и раздача SPA подтверждены; браузерная, мобильная и PWA-приёмка отсутствуют.
@@ -68,7 +68,7 @@ MariaDB 10.11 не запускалась локально: разрешение
 
 **Следующая отдельная задача GO-005 после ручной проверки первого PR:** получить воспроизводимый результат существующего synthetic MariaDB 10.11 CI и устранить только выявленные storage/fixture ошибки. Не переписывать GO-007 и бизнес-API одновременно.
 
-Файлы для изучения/возможного узкого исправления: `.github/workflows/mariadb-staging-ci.yml`, `internal/storage/{store.go,baseline.go,baseline_integration_test.go,schema_objects_integration_test.go,transaction_integration_test.go}`, disposable guard и его unit-тесты, `db/testdata/empty-schema.sql`, `db/testdata/smoke-catalog.sql`, `scripts/check-ci-schema.py`, `scripts/check-ci-smoke-seed.py`, `scripts/staging-smoke.sh`. Отчёт и статус: этот документ, `docs/MARIADB.md`, `tasks/SPRINT-01.md`. Зависимости и исторический `docs/DATABASE.md` без необходимости не менять.
+Файлы для изучения/возможного узкого исправления: `.github/workflows/mariadb-staging-ci.yml`, `internal/storage/{store.go,baseline.go,baseline_integration_test.go,schema_objects_integration_test.go,transaction_integration_test.go}`, disposable guard и его unit-тесты, `db/testdata/empty-schema.sql`, `db/testdata/smoke-catalog.sql`, `scripts/check-ci-schema.py`, `scripts/check-ci-smoke-seed.py`, `scripts/staging-smoke.sh`. Отчёт и статус: этот документ, `docs/dev/MARIADB.md`, `tasks/SPRINT-01.md`. Зависимости и исторический `docs/user/DATABASE.md` без необходимости не менять.
 
 Критерии: проверенная ссылка на Actions run для точного SHA рабочей ветки; MariaDB именно 10.11; ни одного пропуска обязательных DB-тестов; 72 таблицы/606 столбцов/50 именованных FK/22 именованных триггера/InnoDB; collation соединения и столбца; успешные rollback/error rollback/clientFoundRows и UUID guard; 401 → login 303 → session 200 → companies/list 200 на трёх синтетических строках; ready остаётся 503 с `business_api_not_migrated`. Зафиксировать версию сервера и каждый выполненный/пропущенный тест без DSN/cookie/секретов в отчёте.
 
