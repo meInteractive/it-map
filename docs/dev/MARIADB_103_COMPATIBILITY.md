@@ -36,7 +36,9 @@ ERROR 1170 (42000) at line 942: BLOB/TEXT column 'agency_name' used in key speci
 
 Прежний полный `.github/workflows/mariadb-staging-ci.yml` остаётся на 10.11: schema init/retry/ownership, 72 таблицы/606 столбцов/50 FK/22 триггера, CRM/vacancy CAS/rollback, backup v14–39/restore/generation/crash, parser/settings/history и HTTP/UI. Локально выполняются Go race/vet/build, Go1.23, web, docs/links, API audit/actionlint/history; positive MariaDB только в guarded disposable GitHub CI.
 
-Первичный эксперимент: PR[#94](https://github.com/meInteractive/it-map/pull/94), commit `e7212cfb0f1ff3465f06046370b57aabcc71c274`, [run40858223594](https://github.com/meInteractive/it-map/actions/runs/40858223594), job123394524459 — точная10.3.32 и ERROR1170 при импорте. Итоговый regression и negative guard после исправления ещё ожидаются.
+Первичный эксперимент: PR[#94](https://github.com/meInteractive/it-map/pull/94), commit `e7212cfb0f1ff3465f06046370b57aabcc71c274`, [run40858223594](https://github.com/meInteractive/it-map/actions/runs/40858223594), job123394524459 — точная10.3.32 и ERROR1170 при импорте.
+
+Итоговый принятый код: `973d60bc7a352ad27651d7a08acfa9d86b893faf`, tree `87167a4770870ce2bdc0aa5c9d5a729472105be1`. [Public40859355281](https://github.com/meInteractive/it-map/actions/runs/40859355281) —3 jobs success; [полный MariaDB10.11.19/40859355125](https://github.com/meInteractive/it-map/actions/runs/40859355125) —13 jobs success; [negative10.3.32/40859355106](https://github.com/meInteractive/it-map/actions/runs/40859355106) —1 job success, required test без skips (job123398331854). Зелёный negative gate подтверждает правильный отказ; deployment на10.3.32 остаётся блокирован.
 
 ## Последствия для сервера
 
