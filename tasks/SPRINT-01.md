@@ -1594,3 +1594,17 @@
 - **Зависимости:** действующий DetailByID, принятые read projections и текущая342; источник GET /api/vacancies/[0-9]+.
 - **Критерии:** unchanged router/SQLite vs Go HTTP/native: auth/path/DB/ID precedence, leading zeros, missing/zero/overflow, signed/encoded segments, безопасные ошибки и SELECT-only/72-table proof. Сохранить существующие detail DTO/revision/CAS и write routes; не менять общий URL/method policy или source JS/схему.
 - **Результат:** actual source router probe без GET writes:0/000/overflow→404, signed/%31→404 Not found, nilDB/0→503. Go HTTP probe:0/overflow→400,+1/%31→200. Probe-файлы вне репозитория /workspace/work/go343-*; implementation ещё не начата.
+
+
+### [ ] GO-344. Временный main staging на отдельном ARM64-сервере (часть GO-007/008)
+
+- **Приоритет:** текущая разрешённая серверная подготовка перед GO-343.
+- **Зависимости:** проверенный main с GO-341/342, рабочие SSH/Tailscale и отдельные домены владельца.
+- **Критерии:** инвентаризация, MariaDB10.11 и новая baseline72, только main/staging, отдельные runtime/SQL/admin/deploy users, закрытые наружу DB/HTTP, HTTPS/renewal, auth/SPA, ограниченный receiver, актуальные PLANS/ADR/deployment/env. Не переносить реальные данные, не выполнять cutover, upgrade ОС/reboot/auto merge.
+- **Результат (30.10.2026):** main cabe5ff892c208499aefc0e69383110604a581d4, статический ARM64 Go1.23.12 с mariadb tag и web одного SHA; Ubuntu24.04, MariaDB10.11.14. schema-init ready:true;72 tables/606 columns/50FK/22 triggers; runtime только SELECT/INSERT/UPDATE/DELETE своей БД. itmap@main enabled/active, HTTP18080 и SQL3306 loopback. Сертификат SAN/renew dry-run pass. Origin TLS/SPA/deep link/anonymous401/invalid401/cross-origin403/login303/session200/logout/relogin и cookie flags pass; phpMyAdmin basic401→login page200/setup403, SQL root login запрещён. Секреты root-only, в Git не передавались. main forced-command SSH/sudo status idle проверен. Локальный monitor timer и ограничения journald настроены. Внешняя Cloudflare challenge403 остаётся блокировкой приёмки, браузерный expiry/три роли/reboot/live receiver rollback не проверены; backup/restore владельцем отдельно. GO-345 — отдельная порция main-only controller; GitHub variables API403, автоматика не включена.
+
+### [ ] GO-345. Только main в автоматической доставке этапа A (часть GO-007)
+
+- **Приоритет:** серверная подготовка после GO-344; не блокирует независимые critical задачи.
+- **Критерии:** push/dispatch только main, delete/feature ref не доставляются, отказ перед доступом к секретам, независимый CI feature-веток сохраняется; main receiver ограничен своей службой. Unit/protocol/actionlint проверки; Actions→server route и Environments отдельно, ITMAP_DEPLOY_ENABLED не включать до live gate. После разделения серверов потребуется отдельный точный ref спринта1.2, не любой non-main.
+- **Результат:** подготовка; реализация ещё не внесена.
