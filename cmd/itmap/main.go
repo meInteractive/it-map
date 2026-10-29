@@ -37,6 +37,7 @@ func httpHandler(logger *slog.Logger, db *sql.DB, manager *auth.Manager) http.Ha
 		opts.SchedulerJobActions = parser.JobActionsRepository{DB: db}
 		opts.SchedulerDashboard = parser.DashboardRepository{DB: db}
 		opts.SchedulerQueue = parser.QueueRepository{DB: db}
+		opts.SchedulerRunRead = parser.RunReadRepository{DB: db}
 		opts.BackupExports = backup.Repository{DB: db}
 		opts.BackupRestores = backup.Repository{DB: db}
 		opts.Resumes = profiles.Repository{DB: db}

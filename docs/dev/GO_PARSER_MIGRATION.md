@@ -286,3 +286,20 @@ count/page/имена/title читаются в одном SELECT-only repeatabl
 включая округление больших ID и разделение owner namespaces. Native CI требует
 readonly account, неизменность 72 таблиц и четыре snapshot/fault/cancellation
 сценария. Положительная native-приёмка до CI не заявляется.
+
+
+## GO-331: отдельный сохранённый запуск
+
+Перенесён только GET `/api/scheduler/run?requestId=UUID` с admin/session guard.
+Разрешён единственный query key; его повторы читаются через URLSearchParams.get
+(первое значение), тогда как unknown-key проверка идёт через Object.fromEntries.
+Сохраняются исходная UUID-проверка без ограничения version/variant, generation-bound
+SHA256 run ID, 404 not_found и полная проекция сохранённой строки.
+
+ReadOnly repeatable-read сохраняет согласованную строку; захват поколения до query
+validation и повторная проверка перед snapshot не принимают старый запрос после
+restore. Числа DTO проходят принятый ECMAScript codec. Source32 HTTP/SQLite frames
+и native32+fault5 required scenarios проверяют права, дубликаты, состояния,
+readonly/72-table immutability, ошибки/cancellation/snapshot/restore.
+POST `/run` остаётся 503 и не вызывает factory хранилища: execution не включён.
+Положительный native proof до CI не заявляется.
