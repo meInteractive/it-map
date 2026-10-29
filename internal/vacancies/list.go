@@ -222,13 +222,12 @@ func (r Repository) List(ctx context.Context, user string, period *Period, now t
       v.archived,v.created_at,a.id,COALESCE(a.status,'')
     FROM company_vacancies v
     LEFT JOIN latest_state s ON s.vacancy_id=v.id AND s.rn=1
-    LEFT JOIN latest_app a ON a.vacancy_id=v.id AND a.rn=1
-    ORDER BY v.company_name,v.published_at IS NULL,v.published_at DESC,v.id DESC`
+    LEFT JOIN latest_app a ON a.vacancy_id=v.id AND a.rn=1`
 	rows, err := tx.QueryContext(ctx, query, user, user)
 	if err != nil {
 		return ListResponse{}, err
 	}
-	all := make([]Vacancy, 0)
+	states := make([]VacancyState, 0)
 	for rows.Next() {
 		var s VacancyState
 		err = rows.Scan(&s.ID, &s.CompanyName, &s.EntityType, &s.RealCompanySQL, &s.Title,
@@ -238,7 +237,7 @@ func (r Repository) List(ctx context.Context, user string, period *Period, now t
 		if err != nil {
 			break
 		}
-		all = append(all, s.project())
+		states = append(states, s)
 	}
 	if err == nil {
 		err = rows.Err()
@@ -247,6 +246,9 @@ func (r Repository) List(ctx context.Context, user string, period *Period, now t
 	if err != nil {
 		return ListResponse{}, err
 	}
+	// MariaDB collation не заменяет SQLite NOCASE; сохраняем сырые SQL-даты
+	// до сортировки, затем строим DTO и применяем существующий period filter.
+	all := orderedVacancyRows(states)
 	assigned := make(map[int64][]roles.Role)
 	byID := make(map[int64]roles.Role, len(roleCatalog.Roles))
 	for _, role := range roleCatalog.Roles {
