@@ -25,22 +25,30 @@ class PublishTests(unittest.TestCase):
         return dict(GITHUB_REPOSITORY=r.REPOSITORY, GITHUB_REF='refs/heads/codex/test',
                     GITHUB_SHA='1'*40, GITHUB_RUN_NUMBER='10', GITHUB_RUN_ID='20')
 
-    def test_push_delete_dispatch_and_rerun_selection(self):
-        env = self.env()
+    def test_only_main_push_dispatch_and_rerun_selection(self):
+        env = {**self.env(), 'GITHUB_REF': 'refs/heads/main'}
         for event in ('push', 'workflow_dispatch'):
             slot, op, request = p.event_request(event, {'ref': env['GITHUB_REF']}, env)
-            self.assertEqual((slot, op), ('dev', 'register'))
+            self.assertEqual((slot, op), ('main', 'register'))
             self.assertEqual(request['sequence'], 10)
-        slot, op, request = p.event_request('delete', {'ref':'codex/deleted','ref_type':'branch'}, {**env, 'GITHUB_REF':'refs/heads/main'})
-        self.assertEqual((slot, op, request['ref']), ('dev', 'invalidate', 'refs/heads/codex/deleted'))
-        self.assertEqual(p.event_request('push', {'ref':'refs/heads/main'}, {**env, 'GITHUB_REF':'refs/heads/main'})[0], 'main')
         first = p.event_request('push', {'ref':env['GITHUB_REF']}, {**env, 'GITHUB_RUN_ATTEMPT':'1'})
         self.assertEqual(first, p.event_request('push', {'ref':env['GITHUB_REF']}, {**env, 'GITHUB_RUN_ATTEMPT':'2'}))
-        for event, payload, values in [('pull_request',{},env), ('delete',{'ref':'v1','ref_type':'tag'},env),
-                                       ('push',{'ref':'refs/heads/wrong'},env),
-                                       ('push',{'ref':env['GITHUB_REF']},{**env,'GITHUB_REPOSITORY':'other/repo'})]:
+        for event, payload, values in [('pull_request',{},env),
+                ('delete',{'ref':'main','ref_type':'branch'},env),
+                ('delete',{'ref':'v1','ref_type':'tag'},env),
+                ('push',{'ref':'refs/heads/wrong'},env),
+                ('push',{'ref':env['GITHUB_REF']},{**env,'GITHUB_REPOSITORY':'other/repo'})]:
             with self.assertRaises(p.Rejected):
                 p.event_request(event, payload, values)
+
+    def test_feature_push_and_manual_dispatch_fail_before_ssh(self):
+        # Даже ручной запуск workflow из feature не получает main deployment.
+        for ref in ('refs/heads/codex/test', 'refs/heads/main-copy', 'refs/tags/main', ''):
+            for event in ('push', 'workflow_dispatch'):
+                with patch.object(p, 'Client') as client:
+                    with self.assertRaisesRegex(p.Rejected, 'only_main_deployment_supported'):
+                        p.event_request(event, {'ref': ref}, {**self.env(), 'GITHUB_REF': ref})
+                    client.assert_not_called()
 
     def inputs(self):
         header, data = archive(identity())

@@ -1,14 +1,13 @@
-name: Publish native main and latest dev
+name: Publish native main
 on:
   push:
-    branches: ['**']
-  delete:
+    branches: ['main']
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
   context:
-    if: vars.ITMAP_DEPLOY_ENABLED == 'true' && (github.event_name != 'delete' || github.event.ref_type == 'branch')
+    if: vars.ITMAP_DEPLOY_ENABLED == 'true' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-24.04
     outputs:
       slot: ${{ steps.context.outputs.slot }}
@@ -116,23 +115,3 @@ jobs:
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
           DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
         run: python3 deploy/publish_release.py publish --archive '${{ runner.temp }}/release/release.tar'
-
-  invalidate:
-    needs: context
-    if: needs.context.outputs.operation == 'invalidate'
-    runs-on: ubuntu-24.04
-    environment: itmap-${{ needs.context.outputs.slot }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.sha }}
-          persist-credentials: false
-      - name: Record deleted branch without touching a different candidate
-        env:
-          REQUEST_JSON: ${{ needs.context.outputs.request }}
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST || vars.DEPLOY_HOST }}
-          DEPLOY_PORT: ${{ vars.DEPLOY_PORT }}
-          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
-          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
-          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
-        run: python3 deploy/publish_release.py invalidate

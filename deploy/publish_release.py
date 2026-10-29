@@ -21,16 +21,14 @@ from receive_release import MAX_ARCHIVE, MAX_CONTENT, MAX_FILES, REPOSITORY, WOR
 def event_request(event, payload, env):
     ref = env.get('GITHUB_REF', '')
     operation = 'register'
-    if event == 'delete':
-        if payload.get('ref_type') != 'branch':
-            raise Rejected('only_branch_deletion_supported')
-        ref = 'refs/heads/' + payload.get('ref', '')
-        operation = 'invalidate'
-    elif event not in ('push', 'workflow_dispatch'):
+    if event not in ('push', 'workflow_dispatch'):
         raise Rejected('unsupported_event')
-    elif event == 'push' and payload.get('ref') != ref:
+    if event == 'push' and payload.get('ref') != ref:
         raise Rejected('event_ref_mismatch')
-    slot = 'main' if ref == 'refs/heads/main' else 'dev'
+    # На этапе A разрешён только main; будущий ref спринта1.2 ещё не задан.
+    if ref != 'refs/heads/main':
+        raise Rejected('only_main_deployment_supported')
+    slot = 'main'
     try:
         request = dict(repository=env.get('GITHUB_REPOSITORY'), workflow=WORKFLOW,
                        ref=ref, sha=env.get('GITHUB_SHA'), sequence=int(env.get('GITHUB_RUN_NUMBER', '')),
