@@ -568,3 +568,7 @@ GO-342 принята: PR #102, codeb231685943e582020e1fa4d020e41b7e059f9cea/tre
 
 
 GO-344 (30.10.2026): ветка codex/GO-344-main-staging-server от свежего origin/main cabe5ff892c208499aefc0e69383110604a581d4. Сервер получает именно этот main SHA, без feature-кода. Сборка Go1.23.12 ARM64/mariadb и npm ci/build:web pass; server baseline/origin TLS/auth/renewal pass. Внешний Cloudflare403 и GitHub variables API403 не считаются успехом; automation не включена. PR/commit и проверки документации фиксируются после завершения порции.
+
+GO-344: коммит7790d82, [PR#103](https://github.com/meInteractive/it-map/pull/103)→main, без merge. Source/history и88 Markdown links pass. Поздняя внешняя проверка из Codex: live200,ready503 business_api_not_migrated,SPA200,pma401;403 с IP сервера не переносится на все клиенты.
+
+GO-345: ветка codex/GO-345-main-only-deploy от7790d82/#103. Main-only push/dispatch controller, delete/feature/tag отказ; независимые CI workflows не менялись.27 deploy protocol tests pass (loopback требует обычной escalation), actionlint pass; внешний read-only staging-smoke проверяется отдельно. GitHub Actions variables API403; settings/VPN runner/реальная автоматическая доставка пока не настроены.
