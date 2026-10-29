@@ -32,7 +32,7 @@ func TestEffectiveLetterPreservesLegacyPrecedence(t *testing.T) {
 func TestDetailResponseMarshalsLegacyShape(t *testing.T) {
 	d := Detail{Vacancy: Vacancy{ID: 10, CompanyName: "Sample", Role: "Manager", TelegramSources: []TelegramSource{}},
 		URL: "https://example.org", Revision: strings.Repeat("a", 64), TelegramSources: []DetailTelegramSource{{ChannelID: 1, ChannelName: "Tech", MessageURL: "https://t.me/sample/1"}}, PublicationSources: []PublicationSource{}}
-	b, err := json.Marshal(DetailResponse{Vacancy: d, Entities: []Entity{}})
+	b, err := json.Marshal(DetailResponse{Vacancy: d, Entities: []DirectoryEntity{}})
 	if err != nil {
 		t.Fatal(err)
 	}

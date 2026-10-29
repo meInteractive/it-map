@@ -47,8 +47,8 @@ type PublicationSource struct {
 }
 
 type DetailResponse struct {
-	Vacancy  Detail   `json:"vacancy"`
-	Entities []Entity `json:"entities"`
+	Vacancy  Detail            `json:"vacancy"`
+	Entities []DirectoryEntity `json:"entities"`
 }
 
 var ErrNotFound = errors.New("vacancy not found")
@@ -104,35 +104,6 @@ func telegramRevisionRows(sources []DetailTelegramSource) []string {
 		result = append(result, strings.Join([]string{s.id, fmt.Sprint(s.ChannelID), s.MessageURL, s.TelegramContact, s.createdAt, s.updatedAt}, "\x00"))
 	}
 	return result
-}
-
-func detailEntities(data []byte, company, realCompany string) ([]Entity, error) {
-	var catalog struct{ Companies, Agencies []map[string]any }
-	if err := json.Unmarshal(data, &catalog); err != nil {
-		return nil, fmt.Errorf("decode catalog: %w", err)
-	}
-	if catalog.Companies == nil || catalog.Agencies == nil {
-		return nil, errors.New("incomplete catalog")
-	}
-	out := make([]Entity, 0, 2)
-	for _, set := range []struct {
-		entries []map[string]any
-		kind    string
-	}{{catalog.Companies, "company"}, {catalog.Agencies, "agency"}} {
-		for _, c := range set.entries {
-			name, _ := c["name"].(string)
-			if name != company && name != realCompany {
-				continue
-			}
-			kind := set.kind
-			if v, _ := c["entityType"].(string); v == "agency" {
-				kind = "agency"
-			}
-			out = append(out, Entity{Name: name, Rank: c["rank"], EntityType: kind,
-				Middle: c["middle"], Senior: c["senior"], Lead: c["lead"], Head: c["head"], ApplicationURL: c["applicationUrl"]})
-		}
-	}
-	return out, nil
 }
 
 // DetailByID obtains a consistent read-only snapshot of one vacancy and its
@@ -293,7 +264,7 @@ func readDetailTx(ctx context.Context, tx *sql.Tx, user string, id int64, roleCa
 		return DetailResponse{}, err
 	}
 	var catalogJSON []byte
-	if err = tx.QueryRowContext(ctx, "SELECT data_json FROM app_catalog WHERE id=1").Scan(&catalogJSON); err != nil {
+	if err = tx.QueryRowContext(ctx, "SELECT data_json FROM app_catalog WHERE id=1").Scan(&catalogJSON); err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return DetailResponse{}, err
 	}
 	entities, err := detailEntities(catalogJSON, v.CompanyName, v.RealCompanyName)

@@ -28,7 +28,7 @@ func (p *detailProbe) DetailByID(_ context.Context, user string, id int64) (vaca
 	if p.err != nil {
 		return vacancies.DetailResponse{}, p.err
 	}
-	return vacancies.DetailResponse{Vacancy: vacancies.Detail{Vacancy: vacancies.Vacancy{ID: id, CompanyName: "Sample", Title: "Tech lead"}, URL: "https://example.org/role", DescriptionMD: "Description", CoverLetterMD: "private letter", CoverLetterScope: "personal", Revision: strings.Repeat("f", 64), TelegramSources: []vacancies.DetailTelegramSource{}, PublicationSources: []vacancies.PublicationSource{}}, Entities: []vacancies.Entity{}}, nil
+	return vacancies.DetailResponse{Vacancy: vacancies.Detail{Vacancy: vacancies.Vacancy{ID: id, CompanyName: "Sample", Title: "Tech lead"}, URL: "https://example.org/role", DescriptionMD: "Description", CoverLetterMD: "private letter", CoverLetterScope: "personal", Revision: strings.Repeat("f", 64), TelegramSources: []vacancies.DetailTelegramSource{}, PublicationSources: []vacancies.PublicationSource{}}, Entities: []vacancies.DirectoryEntity{}}, nil
 }
 func TestVacancyDetailAuthenticationAndContract(t *testing.T) {
 	manager, err := auth.NewManager(strings.Repeat("s", 64), map[string]string{"eugene": "admin-secret", "demo": "demoPassword"})
