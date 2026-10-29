@@ -202,6 +202,9 @@ func (r Repository) CompanyVacancies(ctx context.Context, user, company string) 
 			return nil, err
 		}
 	}
+	for i := range result {
+		result[i].TelegramSources = orderedDetailTelegramSources(result[i].TelegramSources)
+	}
 	if err = tx.Commit(); err != nil {
 		return nil, err
 	}

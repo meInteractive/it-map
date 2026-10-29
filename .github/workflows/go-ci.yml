@@ -93,6 +93,8 @@ jobs:
         run: go test -race -tags legacyinterop ./internal/vacancies -run '^TestVacancyRowOrderSource$' -count=1
       - name: Проверить общий список откликов по исходной SQLite
         run: go test -race -tags legacyinterop ./internal/vacancies -run '^TestVacancyApplicationSummarySource$' -count=1
+      - name: Проверить Telegram-источники вакансии по исходной SQLite
+        run: go test -race -tags legacyinterop ./internal/vacancies -run '^TestVacancyTelegramSourceOrderSource$' -count=1
       - name: Проверить source нормализацию компаний в данных вакансий
         run: go test -race -tags legacyinterop ./internal/vacancies -run '^TestVacancyEntitiesSource$' -count=1
       - name: Проверить порядок назначенных ролей вакансии по исходной SQLite

@@ -129,6 +129,8 @@ func (r Repository) DetailByID(ctx context.Context, user string, id int64) (Deta
 	if err := tx.Commit(); err != nil {
 		return DetailResponse{}, err
 	}
+	// Порядок ответа не меняет readDetailTx и provenance/revision для CAS.
+	resp.Vacancy.TelegramSources = orderedDetailTelegramSources(resp.Vacancy.TelegramSources)
 	return resp, nil
 }
 
