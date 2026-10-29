@@ -100,8 +100,8 @@
     {
       "id": "vacancies",
       "implementation": "partial",
-      "level": "Required CRUD/flags SQL+HTTP; source read projections336–340; bounded GET list query HTTP176, native CI required",
-      "gap": "GO-011: остальные read/API filters, полная HTTP matrix и методы отдельно. Native176 GO-342 acceptance ожидается. GO-032 agency часть не закрыта.",
+      "level": "Required CRUD/flags SQL+HTTP; source read projections336–340; bounded GET list query HTTP176, native176 SELECT-only HTTP pass",
+      "gap": "GO-011: остальные read/API filters, полная HTTP matrix и методы отдельно. GO-032 agency часть не закрыта.",
       "evidence": [
         {
           "file": "internal/storage/vacancy_create_http_test.go",
