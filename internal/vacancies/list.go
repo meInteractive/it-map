@@ -3,7 +3,6 @@ package vacancies
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"sort"
@@ -203,21 +202,8 @@ func (r Repository) List(ctx context.Context, user string, period *Period, now t
 	}
 	defer tx.Rollback()
 	var catalogJSON []byte
-	if err = tx.QueryRowContext(ctx, "SELECT data_json FROM app_catalog WHERE id=1").Scan(&catalogJSON); err != nil {
+	if err = tx.QueryRowContext(ctx, "SELECT data_json FROM app_catalog WHERE id=1").Scan(&catalogJSON); err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return ListResponse{}, err
-	}
-	var catalog struct{ Companies, Agencies []map[string]any }
-	if err = json.Unmarshal(catalogJSON, &catalog); err != nil {
-		return ListResponse{}, fmt.Errorf("parse catalog: %w", err)
-	}
-	entries := make([]map[string]any, 0, len(catalog.Companies)+len(catalog.Agencies))
-	for _, c := range catalog.Companies {
-		c["entityType"] = "company"
-		entries = append(entries, c)
-	}
-	for _, c := range catalog.Agencies {
-		c["entityType"] = "agency"
-		entries = append(entries, c)
 	}
 
 	// Window functions avoid accidental multiplication by duplicate user-state
@@ -353,6 +339,14 @@ func (r Repository) List(ctx context.Context, user string, period *Period, now t
 		err = rows.Err()
 	}
 	rows.Close()
+	if err != nil {
+		return ListResponse{}, err
+	}
+	names := make([]string, 0, len(all)*2)
+	for _, vacancy := range all {
+		names = append(names, vacancy.CompanyName, vacancy.RealCompanyName)
+	}
+	entries, err := vacancyCatalogEntries(catalogJSON, names)
 	if err != nil {
 		return ListResponse{}, err
 	}
