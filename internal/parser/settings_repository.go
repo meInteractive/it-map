@@ -188,7 +188,9 @@ func settingsRevisionMatches(raw []byte, expected int64) (bool, error) {
 	return n == float64(expected), nil
 }
 
-func (r SettingsRepository) Save(ctx context.Context, input json.RawMessage, ownerName string) (json.RawMessage, error) {
+// PrepareSave фиксирует поколение и владельца до чтения HTTP body.
+// Возвращаемая операция не удерживает соединение или SQL-транзакцию.
+func (r SettingsRepository) PrepareSave(ctx context.Context, ownerName string) (func(context.Context, json.RawMessage) (json.RawMessage, error), error) {
 	if r.DB == nil {
 		return nil, ErrSettingsStorage
 	}
@@ -199,6 +201,20 @@ func (r SettingsRepository) Save(ctx context.Context, input json.RawMessage, own
 	if e := r.DB.QueryRowContext(ctx, "SELECT generation FROM app_runtime_generation WHERE id=1").Scan(&expectedGeneration); e != nil || !generationPattern.MatchString(expectedGeneration) {
 		return nil, settingsFailure(ctx, ErrSettingsStorage)
 	}
+	return func(ctx context.Context, input json.RawMessage) (json.RawMessage, error) {
+		return r.saveInGeneration(ctx, input, ownerName, expectedGeneration)
+	}, nil
+}
+
+func (r SettingsRepository) Save(ctx context.Context, input json.RawMessage, ownerName string) (json.RawMessage, error) {
+	save, e := r.PrepareSave(ctx, ownerName)
+	if e != nil {
+		return nil, e
+	}
+	return save(ctx, input)
+}
+
+func (r SettingsRepository) saveInGeneration(ctx context.Context, input json.RawMessage, ownerName, expectedGeneration string) (json.RawMessage, error) {
 	result, e := dbretry.Run(ctx, func() (json.RawMessage, error) {
 		tx, e := r.DB.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
 		if e != nil {

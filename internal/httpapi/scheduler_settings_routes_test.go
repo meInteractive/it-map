@@ -26,6 +26,12 @@ func (p *schedulerSettingsProbe) Save(_ context.Context, _ json.RawMessage, owne
 	return json.RawMessage(`{"enabled":true,"revision":8,"cloudConnected":true}`), p.err
 }
 
+func (p *schedulerSettingsProbe) PrepareSave(_ context.Context, owner string) (func(context.Context, json.RawMessage) (json.RawMessage, error), error) {
+	return func(ctx context.Context, body json.RawMessage) (json.RawMessage, error) {
+		return p.Save(ctx, body, owner)
+	}, nil
+}
+
 func TestSchedulerSettingsHTTPBoundary(t *testing.T) {
 	m, e := auth.NewManager(strings.Repeat("s", 64), map[string]string{"eugene": "CI_pw", "nastya": "CI_pw", "demo": "CI_pw"})
 	if e != nil {

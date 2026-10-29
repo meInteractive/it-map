@@ -231,3 +231,20 @@ INSERT, actual concurrent generation snapshot, поздний SELECT fault бе�
 DTO, cancellation и integer overflow. Перед/после GET сравнивается содержимое
 всех72 таблиц; reader также обязан получить1142 при пробе UPDATE с пустым WHERE.
 Положительная SQL приёмка326 фиксируется после CI. Пока parent021 остаётся открыт.
+
+
+## GO-328: поколение настроек до чтения запроса
+
+Исходный `schedulerRoute` вызывает `candidateDb` до `readClassificationInput`.
+В Go `PrepareSave` фиксирует поколение и authenticated owner до чтения body;
+возвращаемая серверная операция не удерживает соединение или транзакцию.
+Запись затем сверяет это поколение под прежней блокировкой, включая повторы
+после deadlock. Клиент не передаёт generation.
+
+Это не позволяет запросу, начатому до восстановления, сохранить настройки
+в новом поколении при совпавшей revision. Ошибки разбора body и fallback метода
+сохраняют source precedence. `check-scheduler-settings-body.mjs` проверяет восемь
+сценариев на неизменённом source router/SQLite; native HTTP/body barrier,
+сохранность 72 таблиц и pool из одного соединения проверяются только в guarded
+MariaDB CI. Локальные unit/source/build проверки проходят; положительный
+native proof до завершения CI не заявляется.

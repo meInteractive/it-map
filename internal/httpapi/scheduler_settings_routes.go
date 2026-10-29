@@ -14,7 +14,7 @@ import (
 )
 
 type SchedulerSettingsWriter interface {
-	Save(context.Context, json.RawMessage, string) (json.RawMessage, error)
+	PrepareSave(context.Context, string) (func(context.Context, json.RawMessage) (json.RawMessage, error), error)
 }
 
 // Configuration is independent of execution: this handler cannot start a worker
@@ -32,6 +32,19 @@ func SchedulerSettingsHandler(manager *auth.Manager, store SchedulerSettingsWrit
 		}
 		if r.Method != "GET" && !writeSameOrigin(r) {
 			jsonReply(w, 403, map[string]string{"error": "Недопустимый источник запроса."})
+			return
+		}
+		// Source candidateDb фиксирует поколение до размера, разбора и fallback метода.
+		// Подготовка освобождает соединение до первого чтения тела запроса.
+		captureCtx, captureCancel := context.WithTimeout(r.Context(), 35*time.Second)
+		save, e := store.PrepareSave(captureCtx, user.Name)
+		captureCancel()
+		if e != nil {
+			schedulerSettingsFailure(w, e)
+			return
+		}
+		if save == nil {
+			schedulerSettingsFailure(w, parser.ErrSettingsStorage)
 			return
 		}
 		// Source reads the body before its method fallback, and does not require
@@ -67,7 +80,7 @@ func SchedulerSettingsHandler(manager *auth.Manager, store SchedulerSettingsWrit
 		}
 		ctx, cancel := context.WithTimeout(r.Context(), 35*time.Second)
 		defer cancel()
-		saved, e := store.Save(ctx, body, user.Name)
+		saved, e := save(ctx, body)
 		if e != nil {
 			schedulerSettingsFailure(w, e)
 			return
