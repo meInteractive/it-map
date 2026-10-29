@@ -15,6 +15,17 @@ import (
 	"unicode/utf8"
 )
 
+// ErrUnsupportedServer не содержит строки подключения или версии от сервера.
+var ErrUnsupportedServer = errors.New("MariaDB 10.11 or newer is required; MariaDB 10.3 cannot create the trusted schema's long-text unique indexes")
+
+// CheckServerVersion применяется до чтения схемы, DDL и запуска HTTP.
+func CheckServerVersion(version string) error {
+	if !supportedVersion(version) {
+		return ErrUnsupportedServer
+	}
+	return nil
+}
+
 var ErrBusy = errors.New("schema initialization or restore already active")
 var ErrPopulated = errors.New("partial schema contains rows or allocated IDs; initialization refused")
 var mariaVersion = regexp.MustCompile(`(?:^|-)([0-9]+)\.([0-9]+)\.[0-9]+-MariaDB`)
@@ -31,8 +42,11 @@ func supportedVersion(version string) bool {
 	if len(match) != 3 {
 		return false
 	}
-	major, _ := strconv.Atoi(match[1])
-	minor, _ := strconv.Atoi(match[2])
+	major, majorErr := strconv.Atoi(match[1])
+	minor, minorErr := strconv.Atoi(match[2])
+	if majorErr != nil || minorErr != nil {
+		return false
+	}
 	return major > 10 || major == 10 && minor >= 11
 }
 func discard(conn *sql.Conn) { _ = conn.Raw(func(any) error { return driver.ErrBadConn }) }
@@ -64,8 +78,8 @@ func Initialize(ctx context.Context, db *sql.DB) (result InitResult, err error) 
 	if database == "" || transaction != 0 || autocommit != 1 {
 		return result, errors.New("schema initialization requires an idle autocommit connection")
 	}
-	if !supportedVersion(version) {
-		return result, errors.New("schema initialization requires MariaDB 10.11 or newer")
+	if e = CheckServerVersion(version); e != nil {
+		return result, e
 	}
 	hash := sha256.Sum256([]byte(database))
 	// Same ownership key as backup.RestoreSession: metadata/DDL initialization

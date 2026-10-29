@@ -1,0 +1,72 @@
+name: MariaDB 10.3.32 unsupported schema guard
+on:
+  pull_request:
+    branches: [main, 'codex/**']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  mariadb-103-rejection:
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:10.3.32
+        ports:
+          - 3306:3306
+        env:
+          MYSQL_ROOT_PASSWORD: ci_only_disposable_root
+          MYSQL_DATABASE: itmap_ci
+          MYSQL_USER: itmap_ci
+          MYSQL_PASSWORD: ci_only_disposable_writer
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -u root -pci_only_disposable_root --silent"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Проверить точную версию и защитить одноразовую БД
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(docker exec '${{ job.services.mariadb.id }}' mysql -u root -pci_only_disposable_root --batch --skip-column-names -e 'SELECT VERSION()')"
+          echo "MariaDB: $actual"
+          [[ "$actual" == '10.3.32-MariaDB'* ]]
+          disposable_generation="$(python3 -c 'import uuid; print(uuid.uuid4())')"
+          echo "ITMAP_TEST_DISPOSABLE_GENERATION=$disposable_generation" >> "$GITHUB_ENV"
+          docker exec '${{ job.services.mariadb.id }}' mysql -u root -pci_only_disposable_root -e \
+            "CREATE DATABASE itmap_ci_guard; CREATE TABLE itmap_ci_guard.ownership (database_name VARCHAR(64) PRIMARY KEY, generation CHAR(36) NOT NULL); INSERT INTO itmap_ci_guard.ownership VALUES ('itmap_ci', '$disposable_generation'); GRANT SELECT ON itmap_ci_guard.* TO 'itmap_ci'@'%';"
+      - name: Воспроизвести отказ неизменённой схемы на длинном уникальном индексе
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/check-ci-schema.py
+          if docker exec -i '${{ job.services.mariadb.id }}' mysql -u root -pci_only_disposable_root itmap_ci < db/testdata/empty-schema.sql > "$RUNNER_TEMP/mariadb103-schema-rejection.log" 2>&1; then
+            echo 'Expected unsupported long-text unique index rejection' >&2
+            exit 1
+          fi
+          python3 - "$RUNNER_TEMP/mariadb103-schema-rejection.log" <<'PY'
+          import pathlib,sys
+          lines=pathlib.Path(sys.argv[1]).read_text().splitlines()
+          expected=[line for line in lines if "ERROR 1170 (42000)" in line and "BLOB/TEXT column 'agency_name' used in key specification without a key length" in line]
+          assert len(expected)==1, 'schema failed for an unexpected reason'
+          print('PASS: unchanged trusted schema rejected on MariaDB 10.3.32: '+expected[0])
+          PY
+      - name: Проверить ранний отказ runtime и schema-init без DDL
+        env:
+          ITMAP_REQUIRE_MARIADB_INTEGRATION: '1'
+          ITMAP_TEST_MARIADB_WRITE_DSN: 'itmap_ci:ci_only_disposable_writer@tcp(127.0.0.1:3306)/itmap_ci?parseTime=true&clientFoundRows=true&collation=utf8mb4_bin'
+        shell: bash
+        run: |
+          set -euo pipefail
+          result_file="$(mktemp)"
+          trap 'rm -f "$result_file"' EXIT
+          go test -race -tags mariadb,mariadb103 ./internal/storage -run '^TestMariaDB103RejectionDisposable$' -count=1 -json | tee "$result_file"
+          python3 - "$result_file" <<'PY'
+          import json,sys
+          events=[json.loads(line) for line in open(sys.argv[1],encoding='utf8')]
+          assert any(e.get('Test')=='TestMariaDB103RejectionDisposable' and e.get('Action')=='pass' for e in events), 'required version guard did not pass/run'
+          assert not any(e.get('Action')=='skip' for e in events), 'required version guard skipped'
+          print('PASS: unsupported MariaDB runtime/schema-init guard executed without skips')
+          PY

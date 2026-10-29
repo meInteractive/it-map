@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"itmap/internal/dbschema"
 )
 
 var identifier = regexp.MustCompile(`^[A-Za-z0-9_]+$`)
@@ -99,6 +101,17 @@ func Open(ctx context.Context, s Settings, password string) (*sql.DB, error) {
 	if err := db.PingContext(ctx); err != nil {
 		db.Close()
 		return nil, errors.New("could not connect to local DB (verify credentials and server availability)")
+	}
+	// Проверяем сервер раньше baseline: неполная схема не должна скрыть причину
+	// отказа MariaDB 10.3, а успешный Ping сам по себе не доказывает совместимость.
+	var version string
+	if err := db.QueryRowContext(ctx, "SELECT VERSION()").Scan(&version); err != nil {
+		db.Close()
+		return nil, errors.New("could not verify DB server version")
+	}
+	if err := dbschema.CheckServerVersion(version); err != nil {
+		db.Close()
+		return nil, err
 	}
 	if err := ValidateBaseline(ctx, db); err != nil {
 		db.Close()

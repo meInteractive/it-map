@@ -528,3 +528,14 @@ GO-331/#92/b1d2e982f44d03ec6fc45a275fc96a604b1470c8/treee1fc1098caed3b19458a6b92
 
 
 GO-332 local proof: source19/calendars/Number storage interop pass; native source19+ownership3+fault4 compile/skip локально, required CI без skips. Owner/day upsert сохраняет independent MAX peaks/MIN-MAX timestamps; readonly30-day gaps/averages, old rows retained. Schema/React/HTTP activation не менялись. Default/tagged race/vet/build/Go1.23/web/docs/API audit/actionlint/history pass. Далее source issue scope/grouping и GET /issues integration отдельными порциями; нельзя подменять SQLite JSON1/date/BINARY predicates SQL-collation approximation.
+
+
+GO-334 выделена до реализации по уточнению пользователя10.3.32-MariaDB. Ветка codex/GO-334-mariadb-103-compat от принятой332/283c9a1; GO-333 local work сохранена отдельно и проверена без потери. Выявлены runtime JSON_TABLE, schema-init floor10.11, test JSON_ARRAYAGG, metadata IGNORED/DESC и database COMMENT CI guard; positive10.3.32 proof ещё не получен.
+
+GO-334: предварительный локальный эксперимент SQL/metadata прошёл проверки; положительную совместимость10.3.32 это не доказывает и итоговый code path его не включает. Проверено main5e2df036e987dff625e166c81961de4b3a10d1d8/tree51e010285020db014045e04c6497f96ef42a3994: пользователь слил #93, дерево равно базе ветки283c9a1. GO-333 сохранена отдельно до завершения совместимости.
+
+GO-334: первичный реальный10.3.32/run40858223594/job123394524459 показал ERROR1170 на agency_identity_agency_name_unique, первом из23 уникальных LONGTEXT HASH-индексов. Сохранить10.11+; пробное понижение floor/SQL/metadata обходы отозваны, т.к. не решают schema blocker. Реализация меняется на ранний общий version guard и required negative10.3.32 плюс прежний полный10.11 regression. Deployment на установленную10.3.32 блокируется, без обновления сервера/данных; независимая текущая GO-021 и очередь не блокируются. GO-333 сохранена отдельно, продолжить после GO-334.
+
+GO-334 итоговая реализация: local default/mariadb race, vet, build, Go1.23, web/docs313 links, API audit, actionlint и history pass. Native negative10.3.32 локально compile/skip; требуется реальный required CI без skips. Минимум10.11 сохранён; задача — доказанная диагностика и безопасный ранний отказ, а не поддержка10.3.32.
+
+GO-334 принята как проверка/ранний отказ: PR #94, code commit973d60bc7a352ad27651d7a08acfa9d86b893faf/tree87167a4770870ce2bdc0aa5c9d5a729472105be1: Public40859355281 (3 jobs), полный MariaDB10.11.19/run40859355125 (13 jobs), negative exact10.3.32/run40859355106/job123398331854 (1 job) — success. Нулевые skips в required native gates. Negative guard доказывает несовместимость и ранний отказ, не поддержку10.3.32. Исходная схема/v39/23 UNIQUE сохранены. Адаптация схемы под10.3 или обновление реального сервера не выполнялись. Следующая независимая задача — сохранённая GO-333; исправить путь policy artifact до публикации, общий порядок GO-021→010→012→013→017 прежний.
