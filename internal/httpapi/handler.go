@@ -210,12 +210,10 @@ func NewHandlerWithOptions(logger *slog.Logger, opts Options) http.Handler {
 		if opts.VacancyDetails != nil {
 			mux.HandleFunc("GET /api/vacancies/{id}", VacancyDetailHandler(opts.Auth, opts.VacancyDetails))
 		}
-		if opts.Roles != nil {
-			mux.HandleFunc("GET /api/vacancy-roles", VacancyRoleHandler(opts.Auth, opts.Roles, "all"))
-			mux.HandleFunc("GET /api/vacancy-roles/roots", VacancyRoleHandler(opts.Auth, opts.Roles, "roots"))
-			mux.HandleFunc("GET /api/vacancy-roles/leaves", VacancyRoleHandler(opts.Auth, opts.Roles, "leaves"))
-			mux.HandleFunc("GET /api/vacancy-roles/{id}/descendants", VacancyRoleHandler(opts.Auth, opts.Roles, "descendants"))
-		}
+		mux.HandleFunc("GET /api/vacancy-roles", VacancyRoleHandler(opts.Auth, opts.Roles, "all"))
+		mux.HandleFunc("GET /api/vacancy-roles/roots", VacancyRoleHandler(opts.Auth, opts.Roles, "roots"))
+		mux.HandleFunc("GET /api/vacancy-roles/leaves", VacancyRoleHandler(opts.Auth, opts.Roles, "leaves"))
+		mux.HandleFunc("GET /api/vacancy-roles/{id}/descendants", VacancyRoleHandler(opts.Auth, opts.Roles, "descendants"))
 		protected = RequireSession(opts.Auth, unmigrated)
 	}
 	mux.HandleFunc("/api/", protected)

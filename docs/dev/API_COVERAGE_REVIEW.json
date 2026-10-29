@@ -223,8 +223,8 @@
     {
       "id": "vacancy-roles",
       "implementation": "partial",
-      "level": "Go GET tree/descendants + unit/SQL smoke",
-      "gap": "POST/PUT/DELETE role management не зарегистрированы; full source read parity тоже не принят.",
+      "level": "Source GET tree/roots/leaves/descendants и строгие ID:166 HTTP frames +166 SELECT-only MariaDB HTTP, GO-341",
+      "gap": "POST/PUT/DELETE role management не зарегистрированы; остальные методы/URL вне bounded GET paths и полная GO-011/GO-002 отдельно.",
       "evidence": [
         {
           "file": "internal/httpapi/role_routes_test.go",
@@ -232,6 +232,15 @@
         },
         {
           "file": "internal/httpapi/role_routes.go"
+        },
+        {
+          "file": "internal/httpapi/role_read_interop_test.go",
+          "symbol": "TestRoleReadHTTPSource"
+        },
+        {
+          "file": "internal/storage/role_read_http_integration_test.go",
+          "symbol": "TestMariaDBRoleReadHTTPSourceDisposable",
+          "required": true
         }
       ]
     },
@@ -579,7 +588,7 @@
   ],
   "sourceHashes": {
     "frontend/api/client.ts": "4aa67ca55e0940c44fb74b6ab68fe876d294d2b56d15b83bc1686b95519e06a7",
-    "internal/httpapi/handler.go": "93c4815c91dc4f857348d052a2c206fdae4237e4b4dee0470f7c7e0d94af49f9",
+    "internal/httpapi/handler.go": "0d851332ba618ba84478377d15d7fa5290481e205178457e2ebe924007790e82",
     "server/routes/index.js": "6134004f682975cb51ea13cd2ec4de8e85a5957deff6a5392fbad3fd70ccb1e4"
   },
   "clientExports": [
