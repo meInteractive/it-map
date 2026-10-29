@@ -122,8 +122,7 @@ func BuildList(input []Vacancy, selected map[int64][]roles.Role, channels map[in
 	}
 	wanted := map[string]bool{}
 	for _, item := range input {
-		item.Roles = append([]roles.Role{}, selected[item.ID]...)
-		sort.Slice(item.Roles, func(i, j int) bool { return item.Roles[i].Path < item.Roles[j].Path })
+		item.Roles = roles.OrderAssigned(selected[item.ID])
 		if len(item.Roles) > 0 {
 			names := make([]string, 0, len(item.Roles))
 			for _, r := range item.Roles {

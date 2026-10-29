@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"sort"
 	"strings"
 
 	"itmap/internal/roles"
@@ -239,7 +238,7 @@ func readDetailTx(ctx context.Context, tx *sql.Tx, user string, id int64, roleCa
 			v.Roles = append(v.Roles, role)
 		}
 	}
-	sort.Slice(v.Roles, func(i, j int) bool { return v.Roles[i].Path < v.Roles[j].Path })
+	v.Roles = roles.OrderAssigned(v.Roles)
 	if len(v.Roles) > 0 {
 		names := make([]string, 0, len(v.Roles))
 		for _, role := range v.Roles {

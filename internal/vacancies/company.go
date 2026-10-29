@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"sort"
 	"strings"
 
 	"itmap/internal/roles"
@@ -133,7 +132,7 @@ func (r Repository) CompanyVacancies(ctx context.Context, user, company string) 
 		}
 		for i := range result {
 			v := &result[i]
-			sort.Slice(v.Roles, func(a, b int) bool { return v.Roles[a].Path < v.Roles[b].Path })
+			v.Roles = roles.OrderAssigned(v.Roles)
 			if len(v.Roles) > 0 {
 				names := make([]string, 0, len(v.Roles))
 				for _, role := range v.Roles {
