@@ -1350,6 +1350,24 @@ jobs:
           assert not any(e.get('Action')=='skip' for e in events), 'required entity source gate skipped'
           print('PASS: readonly list/detail normalized catalog and 3-user flags, 30 cases without skips')
           PYCODE
+      - name: Проверить исходный порядок вакансий только в одноразовой CI БД
+        env:
+          ITMAP_REQUIRE_MARIADB_INTEGRATION: '1'
+          ITMAP_TEST_MARIADB_DSN: 'itmap_readonly_ci:ci_only_disposable_reader@tcp(127.0.0.1:3306)/itmap_ci?parseTime=true&collation=utf8mb4_bin'
+          ITMAP_TEST_MARIADB_WRITE_DSN: 'itmap_ci:ci_only_disposable_writer@tcp(127.0.0.1:3306)/itmap_ci?parseTime=true&clientFoundRows=true&collation=utf8mb4_bin'
+        run: |
+          set -euo pipefail
+          result_file="$(mktemp)"
+          trap 'rm -f "$result_file"' EXIT
+          go test -race -tags mariadb,schedulerwrites,schedulersettings,schedulerdashboard ./internal/storage -run '^TestMariaDBVacancyRowOrderSourceDisposable$' -count=1 -json | tee "$result_file"
+          python3 - "$result_file" <<'PYCODE'
+          import json,sys
+          events=[json.loads(line) for line in open(sys.argv[1],encoding='utf8')]
+          assert any(e.get('Test')=='TestMariaDBVacancyRowOrderSourceDisposable' and e.get('Action')=='pass' for e in events), 'required vacancy ordering parent did not run/pass'
+          assert len([e for e in events if e.get('Action')=='pass' and e.get('Test','').startswith('TestMariaDBVacancyRowOrderSourceDisposable/')])==126, 'required vacancy ordering cases missing'
+          assert not any(e.get('Action')=='skip' for e in events), 'required vacancy ordering skipped'
+          print('PASS: SQLite NOCASE/raw dates and 3-user period parity, 126 cases without skips')
+          PYCODE
       - name: Verify durable scheduler settings and shared favorites ONLY in disposable CI
         env:
           ITMAP_REQUIRE_MARIADB_INTEGRATION: '1'

@@ -89,6 +89,8 @@ jobs:
         run: go test -race -tags legacyinterop ./internal/backup -run '^TestCatalogSearchSource$' -count=1
       - name: Verify publication dates periods and Moscow boundaries against unchanged source
         run: go test -race -tags legacyinterop ./internal/vacancies -run '^TestPublicationPeriodSource$' -count=1
+      - name: Проверить SQLite NOCASE порядок и сырые даты вакансий
+        run: go test -race -tags legacyinterop ./internal/vacancies -run '^TestVacancyRowOrderSource$' -count=1
       - name: Проверить source нормализацию компаний в данных вакансий
         run: go test -race -tags legacyinterop ./internal/vacancies -run '^TestVacancyEntitiesSource$' -count=1
       - name: Проверить порядок назначенных ролей вакансии по исходной SQLite
