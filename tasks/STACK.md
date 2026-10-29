@@ -572,3 +572,8 @@ GO-344 (30.10.2026): ветка codex/GO-344-main-staging-server от свеже
 GO-344: коммит7790d82, [PR#103](https://github.com/meInteractive/it-map/pull/103)→main, без merge. Source/history и88 Markdown links pass. Поздняя внешняя проверка из Codex: live200,ready503 business_api_not_migrated,SPA200,pma401;403 с IP сервера не переносится на все клиенты.
 
 GO-345: ветка codex/GO-345-main-only-deploy от7790d82/#103. Main-only push/dispatch controller, delete/feature/tag отказ; независимые CI workflows не менялись.27 deploy protocol tests pass (loopback требует обычной escalation), actionlint pass; внешний read-only staging-smoke проверяется отдельно. GitHub Actions variables API403; settings/VPN runner/реальная автоматическая доставка пока не настроены.
+
+
+GO-345: коммитf905921, [PR#104](https://github.com/meInteractive/it-map/pull/104)→main с ancestry#103, без merge.
+
+GO-346: ветка codex/GO-346-staging-snapshot-import отf905921; только запись разрешённой серверной операции, без дампа/данных/секретов/хешей строк. Рабочий бинарник main cabe5ff892c208499aefc0e69383110604a581d4 не менялся. Checksum/72-table full-row hash multiset/AUTO_INCREMENT/exact trusted schema pass; applied0/seededfalse. Новый import переключён, старая база сохранена; auth/origin TLS/SPA/catalog/read-only staging-smoke pass. Это не production/cutover/включение providers/полная миграция.
