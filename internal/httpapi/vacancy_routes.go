@@ -3,14 +3,27 @@ package httpapi
 import (
 	"context"
 	"net/http"
+	"strings"
 	"time"
 
 	"itmap/internal/auth"
+	"itmap/internal/backup"
 	"itmap/internal/vacancies"
 )
 
 type VacancyLister interface {
 	List(context.Context, string, *vacancies.Period, time.Time) (vacancies.ListResponse, error)
+}
+
+// URLSearchParams.get сохраняет первый period и не отбрасывает пары с semicolon.
+func vacancyPeriodQuery(raw string) (string, bool) {
+	for _, pair := range strings.Split(raw, "&") {
+		key, _, _ := strings.Cut(pair, "=")
+		if backup.CatalogQueryValue("q="+key, "q") == "period" {
+			return backup.CatalogQueryValue(pair, "period"), true
+		}
+	}
+	return "", false
 }
 
 func VacancyListHandler(m *auth.Manager, repo VacancyLister, now func() time.Time) http.HandlerFunc {
@@ -23,12 +36,22 @@ func VacancyListHandler(m *auth.Manager, repo VacancyLister, now func() time.Tim
 			jsonReply(w, http.StatusUnauthorized, map[string]string{"error": "Требуется авторизация."})
 			return
 		}
+		if r.URL.EscapedPath() != "/api/vacancies/list" {
+			w.Header().Set("Content-Type", "text/plain;charset=UTF-8")
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte("Not found"))
+			return
+		}
+		if repo == nil {
+			jsonReply(w, http.StatusServiceUnavailable, map[string]string{"error": "Хранилище вакансий пока не подключено."})
+			return
+		}
 		var period *vacancies.Period
-		if _, present := r.URL.Query()["period"]; present {
-			p, err := vacancies.ParsePeriod(r.URL.Query().Get("period"))
+		if value, present := vacancyPeriodQuery(r.URL.RawQuery); present {
+			p, err := vacancies.ParsePeriod(value)
 			// A supplied empty period is invalid in Sites v316; omission is
 			// different, and returns all vacancies before the UI filters them.
-			if err != nil || r.URL.Query().Get("period") == "" {
+			if err != nil || value == "" {
 				jsonReply(w, http.StatusBadRequest, map[string]string{"error": "Некорректный период публикации."})
 				return
 			}

@@ -100,8 +100,8 @@
     {
       "id": "vacancies",
       "implementation": "partial",
-      "level": "Required CRUD/flags SQL+HTTP; Go read projections",
-      "gap": "GO-011: actual source SQL/API role/source/date/null joins и отрицательные GET filters остаются; pure date/role source proofs318/319 отдельно. GO-032 agency часть не закрыта.",
+      "level": "Required CRUD/flags SQL+HTTP; source read projections336–340; bounded GET list query HTTP176, native176 SELECT-only HTTP pass",
+      "gap": "GO-011: остальные read/API filters, полная HTTP matrix и методы отдельно. GO-032 agency часть не закрыта.",
       "evidence": [
         {
           "file": "internal/storage/vacancy_create_http_test.go",
@@ -133,6 +133,15 @@
         {
           "file": "internal/roles/roles_interop_test.go",
           "symbol": "TestRoleCatalogSource"
+        },
+        {
+          "file": "internal/httpapi/vacancy_list_http_interop_test.go",
+          "symbol": "TestVacancyListHTTPSource"
+        },
+        {
+          "file": "internal/storage/vacancy_list_http_integration_test.go",
+          "symbol": "TestMariaDBVacancyListHTTPSourceDisposable",
+          "required": true
         }
       ]
     },
@@ -588,7 +597,7 @@
   ],
   "sourceHashes": {
     "frontend/api/client.ts": "4aa67ca55e0940c44fb74b6ab68fe876d294d2b56d15b83bc1686b95519e06a7",
-    "internal/httpapi/handler.go": "0d851332ba618ba84478377d15d7fa5290481e205178457e2ebe924007790e82",
+    "internal/httpapi/handler.go": "4261d5e4a0dd78950e2f75693b6729fbdc0abcee9690fccac1bd5d634a8c9556",
     "server/routes/index.js": "6134004f682975cb51ea13cd2ec4de8e85a5957deff6a5392fbad3fd70ccb1e4"
   },
   "clientExports": [
