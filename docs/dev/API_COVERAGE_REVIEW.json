@@ -271,8 +271,8 @@
     {
       "id": "scheduler",
       "implementation": "partial",
-      "level": "PUT settings/GET dashboard/retry/cancel приняты; GET queue GO-330 ожидает required native CI",
-      "gap": "Run/probe/cloud-owner/issues/funnel и stage wiring GO-046 ещё отсутствуют; конфигурация/чтение/retry/cancel не запускают worker. Duplicate/Sec-Fetch input policies отдельно от source parity.",
+      "level": "Settings/dashboard/retry/cancel/queue приняты; GET saved run GO-331 ожидает required native CI",
+      "gap": "POST run/probe/cloud-owner/issues/funnel и stage wiring GO-046 ещё отсутствуют; readonly GET не активирует команды запуска. Duplicate/Sec-Fetch input policies отдельно от source parity.",
       "evidence": [
         {
           "file": "internal/storage/scheduler_jobs_integration_test.go",
@@ -347,6 +347,20 @@
         {
           "file": "internal/storage/scheduler_queue_read_integration_test.go",
           "symbol": "TestMariaDBSchedulerQueueSnapshotDisposable",
+          "required": true
+        },
+        {
+          "file": "internal/httpapi/scheduler_run_read_interop_test.go",
+          "symbol": "TestSchedulerRunQuerySource"
+        },
+        {
+          "file": "internal/storage/scheduler_run_read_integration_test.go",
+          "symbol": "TestMariaDBSchedulerRunReadSourceDisposable",
+          "required": true
+        },
+        {
+          "file": "internal/storage/scheduler_run_read_integration_test.go",
+          "symbol": "TestMariaDBSchedulerRunReadFaultsDisposable",
           "required": true
         }
       ]
@@ -546,7 +560,7 @@
   ],
   "sourceHashes": {
     "frontend/api/client.ts": "4aa67ca55e0940c44fb74b6ab68fe876d294d2b56d15b83bc1686b95519e06a7",
-    "internal/httpapi/handler.go": "cab7ea90a50cbb2975eb0d6db320f070a6d79bc5534c6f293b05b49be48f611f",
+    "internal/httpapi/handler.go": "93c4815c91dc4f857348d052a2c206fdae4237e4b4dee0470f7c7e0d94af49f9",
     "server/routes/index.js": "6134004f682975cb51ea13cd2ec4de8e85a5957deff6a5392fbad3fd70ccb1e4"
   },
   "clientExports": [

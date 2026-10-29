@@ -281,3 +281,12 @@ GO-329/#90/c64e5933ae5688c1ef73dd89a821cf798de92ffa/tree9eb0fba7c7994a51b7a8a198
 
 
 GO-330 local proof:104 unchanged queue router/SQLite frames, WHATWG last-query decoding, JS Number vs SQL affinity, UTF16 trim/lower/search и большие owner ID. Readonly RR count/page/имена/title, payload/service columns исключены; native readonly104+snapshot/fault4 required без skips, positive CI ожидается. Default/tagged race/vet/build/Go1.23/web/docs/API audit/actionlint/history pass. Далее независимое readonly чтение отдельного scheduler run; команды запуска/провайдеры не разрешаются этой порцией.
+
+
+GO-330 опубликована PR #91/e857a674d0c6dc20c8e6b62c75c09fbc64d4506e, CI выполняется. GO-331 выделена до реализации: только GET отдельного сохранённого run, source requestId использует первое значение query-дубликата, в отличие от queue Object.fromEntries(last). POST /run и execution не включать. Ветка codex/GO-331-scheduler-run-read от опубликованной330; родительскую приёмку проверить до ready.
+
+
+GO-330/#91/e857a674d0c6dc20c8e6b62c75c09fbc64d4506e/tree950f183e1af594b4983a09d67aecb75ed8241860 принята: Public40838213182/MariaDB40838213389 success, source104+snapshot/fault4 zero skips (job123327959102), весь regression pass. PR ready, automatic merge не выполнялся. GO-331 продолжает от этой проверенной вершины.
+
+
+GO-331 local proof:32 source run HTTP/SQLite и first requestId interop проходят, GET-only factory/read-only RR/hash/DTO реализованы. Native32+fault5 required, включая POST remains503/no-storage. Default/tagged race/vet/build/Go1.23/web/docs/API audit/actionlint/history pass; positive MariaDB ожидается. При исследовании следующего /issues установлено: source GET пишет parser_error_history, поэтому его нельзя объявлять SELECT-only. Следующий prerequisite выделять как отдельную проверяемую write порцию истории, без реальных ключей/провайдеров.
