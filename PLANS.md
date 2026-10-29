@@ -299,3 +299,8 @@ GO-331/#92/b1d2e982f44d03ec6fc45a275fc96a604b1470c8/treee1fc1098caed3b19458a6b92
 
 
 GO-332 local proof: source19/calendars/Number storage interop pass; native source19+ownership3+fault4 compile/skip локально, required CI без skips. Owner/day upsert сохраняет independent MAX peaks/MIN-MAX timestamps; readonly30-day gaps/averages, old rows retained. Schema/React/HTTP activation не менялись. Default/tagged race/vet/build/Go1.23/web/docs/API audit/actionlint/history pass. Далее source issue scope/grouping и GET /issues integration отдельными порциями; нельзя подменять SQLite JSON1/date/BINARY predicates SQL-collation approximation.
+
+
+29.10.2026 пользователь уточнил фактическую БД:10.3.32-MariaDB и поручил проверить/исправить совместимость. GO-334 приоритетна перед продолжением parser; текущая GO-333 сохранена в проверенной локальной резервной копии незавершённой работы (возобновить после GO-334). Нужны точный10.3.32 CI плюс10.11 regression, совместимые SQL/metadata/bootstrap CI guard и deployment docs. Реальные DB/provider/production/deploy и automatic merge не разрешены. База ветки codex/GO-334-mariadb-103-compat — принятая #93/283c9a1.
+
+GO-334 local proof: default/tagged race/vet/build/Go1.23/web/docs/API audit/actionlint/history pass;106 source queue frames. Нет локального сервера БД: native compile/skip, положительный10.3.32+10.11 CI ожидается. Проверено main5e2df036e987dff625e166c81961de4b3a10d1d8/tree51e010285020db014045e04c6497f96ef42a3994: пользователь слил #93, дерево равно базе ветки283c9a1. GO-333 сохранена отдельно до завершения совместимости.

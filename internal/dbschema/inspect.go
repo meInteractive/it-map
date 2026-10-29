@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strings"
 )
 
 type Reader interface {
@@ -25,10 +26,28 @@ func Inspect(ctx context.Context, reader Reader) (Snapshot, error) {
 	if reader == nil {
 		return nil, errors.New("schema reader unavailable")
 	}
+	versionRows, e := reader.QueryContext(ctx, "SELECT VERSION()")
+	if e != nil {
+		return nil, errors.New("cannot inspect schema server version")
+	}
+	var version string
+	if !versionRows.Next() || versionRows.Scan(&version) != nil {
+		versionRows.Close()
+		return nil, errors.New("cannot read schema server version")
+	}
+	e = versionRows.Err()
+	versionRows.Close()
+	if e != nil || !supportedVersion(version) {
+		return nil, errors.New("unsupported schema server version")
+	}
 	out := Snapshot{}
 	cells, bytes := 0, 0
 	for _, section := range []string{"tables", "columns", "indexes", "checks", "foreign_keys", "triggers"} {
-		rows, e := reader.QueryContext(ctx, queries[section])
+		query := queries[section]
+		if section == "indexes" && !mariaAtLeast(version, 10, 6, 0) {
+			query = strings.Replace(query, ",IGNORED FROM", ",'NO' AS IGNORED FROM", 1)
+		}
+		rows, e := reader.QueryContext(ctx, query)
 		if e != nil {
 			return nil, errors.New("cannot inspect schema metadata")
 		}
@@ -69,5 +88,29 @@ func Inspect(ctx context.Context, reader Reader) (Snapshot, error) {
 			return nil, errors.New("cannot read schema metadata")
 		}
 	}
+	if !mariaAtLeast(version, 10, 8, 0) {
+		normalizeLegacyIndexDirections(out)
+	}
 	return out, nil
+}
+
+// До 10.8 сервер принимает DESC, но хранит индекс в ASC. Приводим только
+// известные DESC-позиции эталона; остальные свойства по-прежнему проверяет Preflight.
+func normalizeLegacyIndexDirections(snapshot Snapshot) {
+	expectedIndexes := Trusted().Metadata["indexes"]
+	for _, row := range snapshot["indexes"] {
+		if len(row) != 9 || cell(row, 5) != "A" {
+			continue
+		}
+		for _, expected := range expectedIndexes {
+			if cell(expected, 5) != "D" {
+				continue
+			}
+			if cell(row, 0) == cell(expected, 0) && cell(row, 1) == cell(expected, 1) && cell(row, 3) == cell(expected, 3) && cell(row, 4) == cell(expected, 4) {
+				direction := "D"
+				row[5] = &direction
+				break
+			}
+		}
+	}
 }

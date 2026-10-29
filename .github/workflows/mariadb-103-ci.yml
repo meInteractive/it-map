@@ -1,0 +1,12 @@
+name: MariaDB 10.3.32 compatibility gate
+on:
+  pull_request:
+    branches: [main, 'codex/**']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  mariadb-103:
+    uses: ./.github/workflows/mariadb-staging-ci.yml
+    with:
+      mariadb_version: '10.3.32'

@@ -64,7 +64,7 @@ func TestSchedulerQueueFiltersSource(t *testing.T) {
 			}
 		})
 	}
-	if cmd.Wait() != nil || count != 104 {
+	if cmd.Wait() != nil || count != 106 {
 		t.Fatal("неполный source queue corpus", count)
 	}
 }

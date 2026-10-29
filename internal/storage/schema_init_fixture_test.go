@@ -12,9 +12,9 @@ import (
 	mysql "github.com/go-sql-driver/mysql"
 )
 
-// The fresh-schema job has no generation table yet. Its run-only nonce is
-// instead bound by CI root to the database COMMENT, outside application tables.
-// Every reset checks that comment before dropping this disposable database.
+// В пустой схеме ещё нет поколения. CI root хранит маркер запуска в отдельной
+// служебной БД; тестовый пользователь имеет к ней только SELECT. Перед каждым
+// сбросом проверяем маркер, не зависящий от COMMENT (доступен лишь с 10.5).
 func openBlankSchemaFixture(t *testing.T) (context.Context, *sql.DB) {
 	t.Helper()
 	if os.Getenv("GITHUB_ACTIONS") != "true" {
@@ -49,14 +49,14 @@ func openBlankSchemaFixture(t *testing.T) (context.Context, *sql.DB) {
 	defer admin.Close()
 	admin.SetMaxOpenConns(1)
 	var recorded string
-	if e = admin.QueryRowContext(ctx, "SELECT SCHEMA_COMMENT FROM information_schema.SCHEMATA WHERE SCHEMA_NAME='itmap_ci'").Scan(&recorded); e != nil || requireDisposableGeneration(nonce, recorded) != nil {
-		t.Fatal("disposable schema comment did not match current run")
+	if e = admin.QueryRowContext(ctx, "SELECT generation FROM itmap_ci_guard.ownership WHERE database_name='itmap_ci'").Scan(&recorded); e != nil || requireDisposableGeneration(nonce, recorded) != nil {
+		t.Fatal("disposable schema ownership did not match current run")
 	}
 	if _, e = admin.ExecContext(ctx, "DROP DATABASE `itmap_ci`"); e != nil {
 		t.Fatal("cannot reset owned disposable schema")
 	}
-	// nonce has already passed the strict UUID guard; database name is constant.
-	if _, e = admin.ExecContext(ctx, "CREATE DATABASE `itmap_ci` CHARACTER SET utf8mb4 COLLATE utf8mb4_nopad_bin COMMENT '"+nonce+"'"); e != nil {
+	// Имя БД постоянно; маркер проверен до DROP и недоступен тестам для записи.
+	if _, e = admin.ExecContext(ctx, "CREATE DATABASE `itmap_ci` CHARACTER SET utf8mb4 COLLATE utf8mb4_nopad_bin"); e != nil {
 		t.Fatal("cannot recreate owned disposable schema")
 	}
 	db, e := sql.Open("mysql", dsn)
