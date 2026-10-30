@@ -30,3 +30,7 @@ completed, чужое поколение или отсутствующий ID д
 
 Положительная приёмка требует 43 source router/SQLite frames (45 HTTP responses)
 против actual Go/MariaDB и четырёх native fault/race сценариев без skips.
+
+## AI execution boundary (GO-358)
+
+Явный executor и FinishWithin описаны в [GO_PARSER_AI_EXECUTION.md](../../docs/dev/GO_PARSER_AI_EXECUTION.md). Вызов не получает права из job payload, требует owned plan и revalidation. Бизнес-loaders и автоматический tick этим слоем не включаются.

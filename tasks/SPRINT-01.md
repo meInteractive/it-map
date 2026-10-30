@@ -1682,3 +1682,10 @@
 - **Критерии:** source payload и typed score/choice validation, независимые title roles, missing decision не reject, exact leaf answers/12 limit/no truncation/context cap; relevance 0..9→0..100. Automatic ledger и active/generation/revision guards обязательны. Source/mocks вместо платных calls, main не деплоить. Затем отдельная358 parser AI stage executor.
 
 - **Результат357:** typed relevance/title/leaf и metadata receipts реализованы;16 actual source frames и budget/no-replay/cancel/leaf limit mocks pass. Native receipt gate добавлен, ждёт CI. [Границы](../docs/dev/GO_JEV_STAGES.md).
+
+### [ ] GO-358. Parser AI execution boundary (GO-350/046)
+
+- **Зависимости:**357 typed JEV,313 durable attempts.
+- **Критерии:** server-owned prepared plan, явный dispatch четырёх AI stages, обязательный opaque JobLease/Attempt ledger; revalidate перед provider и атомарно с Save+attempt/job finish. Cache без POST, отсутствие retry неизвестного платного результата. Fixture SQL/mocks; не включать ticks и старую очередь. SQL loaders/provenance отдельных стадий — следующий359, не выдавать boundary за полный parser.
+
+- **Результат358:** execution boundary/FinishWithin реализованы; required native dispatch/cache/budget/unknown outcome/late rollback/provenance proof добавлен. До положительного CI SQL acceptance не заявляется. [Контракт](../docs/dev/GO_PARSER_AI_EXECUTION.md).

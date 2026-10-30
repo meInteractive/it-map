@@ -263,6 +263,13 @@ func (a *Attempt) Run(ctx context.Context, request json.RawMessage, work func(co
 }
 
 func (a *Attempt) Finish(ctx context.Context, options AttemptFinish) error {
+	return a.FinishWithin(ctx, options, nil)
+}
+
+// fn записывает результат стадии в той же транзакции, что attempt и job receipt.
+// Разрешены только ограниченные SELECT/DML; внешний I/O внутри fn запрещён.
+func (a *Attempt) FinishWithin(ctx context.Context, options AttemptFinish, fn func(*sql.Tx) error) error {
+
 	if a == nil || a.state == nil {
 		return ErrJobInput
 	}
@@ -294,6 +301,11 @@ func (a *Attempt) Finish(ctx context.Context, options AttemptFinish) error {
 		return e
 	}
 	defer tx.Rollback()
+	if fn != nil {
+		if e = fn(tx); e != nil {
+			return e
+		}
+	}
 	if _, e = tx.ExecContext(ctx, "UPDATE scheduler_attempts SET finished_at=?,status=?,reason_code=?,message=?,cost_usd=CASE WHEN ? THEN NULL ELSE reserved_usd END,credits=?,result_json=? WHERE id=?", now, job.Status, job.Code, job.Message, s.unknown.Load(), options.Credits, string(result), s.id); e != nil {
 		return storageError(ctx)
 	}
