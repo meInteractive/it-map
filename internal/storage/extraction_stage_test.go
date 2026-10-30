@@ -115,6 +115,23 @@ func TestMariaDBExtractionStageSourceDisposable(t *testing.T) {
 		t.Run(frame.Name, func(t *testing.T) {
 			seed(i)
 			lease := extractionStageLease(t, f)
+			company, candidate, source := int64(990002), int64(990001), "companySite"
+			readPlanner := func() (parser.CandidateExtractionInput, error) {
+				tx, err := f.db.BeginTx(f.ctx, nil)
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer tx.Rollback()
+				return parser.ReadCandidateExtractionInput(f.ctx, tx, parser.Job{CompanyID: &company, CandidateID: &candidate, SourceID: &source}, "CI_USER")
+			}
+			before, err := readPlanner()
+			if err != nil {
+				t.Fatal("planner before extraction", err)
+			}
+			next, err := parser.PlanCandidateStage(parser.CandidateStageInput(before))
+			if err != nil || next == nil || next.Type != "extract_vacancy" {
+				t.Fatal("missing extraction not planned", err)
+			}
 			runner := &extractionRunner{content: frame.Value}
 			executor := &parser.AIStageExecutor{Store: parser.ExtractionStageStore{Owner: "CI_USER"}, Generator: runner}
 			out, e := executor.Execute(f.ctx, lease)
@@ -127,6 +144,10 @@ func TestMariaDBExtractionStageSourceDisposable(t *testing.T) {
 			_ = json.Unmarshal(frame.Stored, &stored)
 			if actualConfig != stored["config_hash"] || actualPrompt != stored["prompt_version"] || float64(schemaVersion) != stored["schema_version"] {
 				t.Fatal("source provenance hash differs")
+			}
+			after, err := readPlanner()
+			if err != nil || after.ExtractionConfigHash != actualConfig || after.ExtractionPromptVersion != actualPrompt || (after.ExtractionID != "") != frame.OK {
+				t.Fatal("planner extraction differs from source", err)
 			}
 			if !frame.OK {
 				var diag, status string
@@ -157,6 +178,12 @@ func TestMariaDBExtractionStageSourceDisposable(t *testing.T) {
 				if e != nil || out.Generation.Model != "gpt-6-luna" {
 					t.Fatal("source success failed", e)
 				}
+				f.exec("UPDATE vacancy_detail_settings SET markdown='CI_CHANGED_PROMPT' WHERE id=1")
+				changed, err := readPlanner()
+				if err != nil || changed.ExtractionID != "" || changed.ExtractionPromptVersion == actualPrompt {
+					t.Fatal("stale prompt result accepted", err)
+				}
+				f.exec("UPDATE vacancy_detail_settings SET markdown=? WHERE id=1", frame.Prompt)
 				var data, diag string
 				var input, output sql.NullInt64
 				var cost sql.NullFloat64

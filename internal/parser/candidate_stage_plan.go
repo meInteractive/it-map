@@ -50,6 +50,22 @@ func stageDateMillis(value string) (int64, bool) {
 	return 0, false
 }
 
+func candidateTextRefresh(in CandidateStageInput) (bool, error) {
+	if in.Snapshot == nil || in.TitleUpdatedAt == "" {
+		return false, nil
+	}
+	updated, ok := stageDateMillis(in.TitleUpdatedAt)
+	last, lastOK := stageDateMillis(in.Snapshot.FetchedAt)
+	if in.LastSuccessfulFetch != nil && *in.LastSuccessfulFetch != 0 {
+		last = *in.LastSuccessfulFetch
+		lastOK = true
+	}
+	if !ok || !lastOK {
+		return false, ErrJobInput
+	}
+	return updated > last, nil
+}
+
 // Чистый расчёт работает только с проверенным серверным snapshot. Сам он не
 // читает job payload, не создаёт заданий и не вызывает внешние сервисы.
 func PlanCandidateStage(in CandidateStageInput) (*CandidateStagePlan, error) {
@@ -102,18 +118,9 @@ func PlanCandidateStage(in CandidateStageInput) (*CandidateStagePlan, error) {
 	if !matched {
 		return nil, nil
 	}
-	refresh := false
-	if in.Snapshot != nil && in.TitleUpdatedAt != "" {
-		updated, ok := stageDateMillis(in.TitleUpdatedAt)
-		last, lastOK := stageDateMillis(in.Snapshot.FetchedAt)
-		if in.LastSuccessfulFetch != nil && *in.LastSuccessfulFetch != 0 {
-			last = *in.LastSuccessfulFetch
-			lastOK = true
-		}
-		if !ok || !lastOK {
-			return nil, ErrJobInput
-		}
-		refresh = updated > last
+	refresh, e := candidateTextRefresh(in)
+	if e != nil {
+		return nil, e
 	}
 	if in.Snapshot == nil || refresh {
 		suffix := ""
