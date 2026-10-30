@@ -58,8 +58,16 @@ func TestMariaDBCompanyFlagBrowserDisposable(t *testing.T) {
         t.Logf("browser report: %s",stdout.String())
         t.Fatalf("desktop/mobile flags: expected=%d unexpected=%d skipped=%d",result.Stats.Expected,result.Stats.Unexpected,result.Stats.Skipped)
     }
-    if f.count("SELECT COUNT(*) FROM company_user_state WHERE user_name IN ('Demo','Nastya') AND company_name=?",crmFlagCompany)!=0 {
-        t.Fatal("браузер оставил личные флаги после выключения")
+    // Выключение флагов сохраняет пользовательскую строку, а не удаляет её.
+    // Важно проверить оба значения, отсутствие дубликатов и изоляцию Nastya.
+    if f.count("SELECT COUNT(*) FROM company_user_state WHERE user_name='Demo' AND company_name=?", crmFlagCompany) != 1 {
+        t.Fatal("браузер не сохранил единственное состояние Demo")
+    }
+    if f.count("SELECT COUNT(*) FROM company_user_state WHERE user_name='Demo' AND company_name=? AND favorite=0 AND hidden=0", crmFlagCompany) != 1 {
+        t.Fatal("браузер не выключил оба личных флага")
+    }
+    if f.count("SELECT COUNT(*) FROM company_user_state WHERE user_name='Nastya' AND company_name=?", crmFlagCompany) != 0 {
+        t.Fatal("браузер изменил состояние другого пользователя")
     }
     t.Log("PASS: desktop/mobile CRM flags, retry, real SQL and user isolation")
 }
