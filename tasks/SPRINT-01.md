@@ -1657,3 +1657,9 @@
 - **Критерии:** source public cache/model metrics/last-test projection; GET не создаёт singleton/DDL, legacy refresh сохраняет previous cache при provider errors. key/check/refresh с generation+revision fences, network вне SQL TX. Admin/session/method/path/origin/body guards; logs read-only. Платный test и parser отдельная350. Actual source/mocks плюс required disposable MariaDB; не выкладывать на сервер.
 
 - **Результат353:** подготовлены source state/cache/metrics projection, guarded cache updates и HTTP/main wiring status/key/check/refresh/logs. Локальные mock/race/body/access проверки проходят;4 actual source public frames и generation/revision/cache preservation required native gate ждут CI. [Границы](../docs/dev/GO_OPENROUTER_SETTINGS_HTTP.md).
+
+### [ ] GO-354. AI generation и ручной connection-test (GO-036/037/350)
+
+- **Критерии:** source Responses/chat-completions payload/выбор модели/effort/ответы/ошибки, no-retry оплачиваемого OpenAI POST, только бесплатные ranked OpenRouter candidates и серверный fallback; manual admin connection_test отдельно от automatic обязательного parser.Attempt-compatible billing. Никаких real provider calls в разработке. Mocks/source HTTP proof; generation/изменение ключей не должны сохранять старый результат. Не запускать parser/старую очередь и не выкладывать на сервер.
+
+- **Результат354:** реализованы проверка ответов и protected manual test/main wiring обоих провайдеров; source8+6 payload/result/error frames, no-repeat/budget-deny/context и HTTP access tests pass. Native metadata/generation/rotation gate ждёт CI; автоматический parser не включён. [Контракт и границы](../docs/dev/GO_AI_GENERATION.md).

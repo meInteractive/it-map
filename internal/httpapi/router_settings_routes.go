@@ -44,7 +44,7 @@ func routerSettingsError(w http.ResponseWriter, err error) {
 	}
 	jsonReply(w, status, map[string]any{"error": message, "code": code})
 }
-func RouterSettingsHandler(manager *auth.Manager, service RouterSettingsService) http.HandlerFunc {
+func RouterSettingsHandler(manager *auth.Manager, service RouterSettingsService, tests ...AIConnectionTests) http.HandlerFunc {
 	return RequireSession(manager, func(w http.ResponseWriter, r *http.Request) {
 		user, ok := sessionFromRequest(manager, r)
 		if !ok {
@@ -70,7 +70,11 @@ func RouterSettingsHandler(manager *auth.Manager, service RouterSettingsService)
 			jsonReply(w, 403, map[string]string{"error": "Недопустимый источник запроса."})
 			return
 		}
-		if action == "/test" || action == "/jev" {
+		if action == "/test" {
+			runAIConnectionTest(w, r, aihttp.OpenRouter, tests)
+			return
+		}
+		if action == "/jev" {
 			jsonReply(w, 503, map[string]string{"error": "Эта операция OpenRouter ещё не подключена.", "code": "backend_not_migrated"})
 			return
 		}
