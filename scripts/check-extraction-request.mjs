@@ -25,7 +25,9 @@ try{for(const spec of [{name:'valid',raw:'CI_MARKDOWN',value:valid},{name:'html_
  let payload,metadata,calls=0;globalThis.fetch=async(url,opts)=>{if(String(url).endsWith('/models'))return Response.json({data:[{id:'gpt-6-luna'}]});calls++;payload=JSON.parse(opts.body);return Response.json({model:'gpt-6-luna',status:'completed',output:[{type:'message',role:'assistant',content:[{type:'output_text',text:JSON.stringify(spec.value)}]}],usage:{input_tokens:10,output_tokens:2}})};
  const env={DB:generationBoundDb(db,gen),OPENAI_API_KEY:'CI_SYNTHETIC_KEY',SCHEDULER_BILLING:{run(meta,work){metadata=meta;return work()}}};let expected;
  try{let r=await extractCandidateMarkdown(env,990001,{allowImported:true});expected={ok:true,data:JSON.parse(r.extraction.extracted_data),diagnostics:JSON.parse(r.extraction.diagnostics)}}catch(e){expected={ok:false,code:e.code||null,status:e.status||null,message:e.message}}
- frames.push({name:spec.name,raw:spec.raw,prompt:spec.prompt??prompt,title,company,url,value:spec.value,payload,metadata,calls,...expected});
+ const stored=sqlite.prepare('SELECT config_hash,prompt_version,schema_version,status,error_code,diagnostics FROM vacancy_extractions WHERE candidate_id=990001').get();
+ if(stored)stored.diagnostics=JSON.parse(stored.diagnostics);
+ frames.push({name:spec.name,raw:spec.raw,prompt:spec.prompt??prompt,title,company,url,value:spec.value,payload,metadata,calls,stored,...expected});
  }finally{sqlite.close()}
 }}finally{globalThis.fetch=oldFetch;console.info=oldInfo}
 console.log(JSON.stringify(frames));

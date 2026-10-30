@@ -349,3 +349,21 @@ func (s TitleStageStore) SaveFailure(ctx context.Context, tx *sql.Tx, j Job, p A
 	}
 	return s.Save(ctx, tx, j, p, AIStageOutput{Classification: &r})
 }
+
+// Снимает только lease, полученные этим plan, если attempt не удалось начать.
+func (s TitleStageStore) Abort(ctx context.Context, tx *sql.Tx, j Job, plan AIStagePlan) error {
+	x, ok := plan.provenance.(titleSnapshot)
+	if !ok {
+		return ErrJobInput
+	}
+	if plan.Cached != nil {
+		return nil
+	}
+	if _, e := tx.ExecContext(ctx, "DELETE FROM vacancy_candidate_classification_leases WHERE candidate_id=? AND generation=? AND owner_token=?", x.CandidateID, j.Generation, x.Token); e != nil {
+		return ErrSettingsStorage
+	}
+	if _, e := tx.ExecContext(ctx, "DELETE FROM vacancy_classification_slots WHERE slot=? AND generation=? AND owner_token=?", x.Slot, j.Generation, x.Token); e != nil {
+		return ErrSettingsStorage
+	}
+	return nil
+}
