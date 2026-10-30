@@ -55,6 +55,8 @@ func (e *Error) Error() string {
 		return "OpenAI отклонил параметры запроса. Проверьте модель и уровень рассуждений."
 	case "invalid_response":
 		return "OpenAI вернул некорректный ответ."
+	case "invalid_models":
+		return "OpenAI вернул некорректный список моделей."
 	case "network":
 		return "OpenAI не ответил за 5 минут или соединение прервано. Повторите запрос."
 	case "missing_key":
