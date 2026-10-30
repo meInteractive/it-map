@@ -1,0 +1,72 @@
+name: Company flags browser disposable MariaDB
+on:
+  pull_request:
+    paths:
+      - 'frontend/features/companies/CompanyDrawer.tsx'
+      - 'tests/browser-company-flags/**'
+      - 'internal/storage/crm_flags_browser_integration_test.go'
+      - 'playwright.company-flags.config.ts'
+      - '.github/workflows/company-flags-browser.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      mariadb:
+        image: mariadb:10.11
+        ports:
+          - 3306:3306
+        env:
+          MARIADB_ROOT_PASSWORD: ci_only_disposable_root
+          MARIADB_DATABASE: itmap_ci
+          MARIADB_USER: itmap_ci
+          MARIADB_PASSWORD: ci_only_disposable_writer
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Проверить отсутствие приватных данных
+        run: |
+          python3 scripts/check-ci-schema.py
+          python3 scripts/check-ci-smoke-seed.py
+          python3 scripts/check-public-repo.py
+      - name: Развернуть только одноразовую CI-базу
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker exec -i '${{ job.services.mariadb.id }}' mariadb -u root -pci_only_disposable_root itmap_ci < db/testdata/empty-schema.sql
+          generation="$(python3 -c 'import uuid; print(uuid.uuid4())')"
+          echo "ITMAP_TEST_DISPOSABLE_GENERATION=$generation" >> "$GITHUB_ENV"
+          docker exec '${{ job.services.mariadb.id }}' mariadb -u root -pci_only_disposable_root itmap_ci -e "INSERT INTO app_runtime_generation(id,generation) VALUES(1,'$generation')"
+          docker exec -i '${{ job.services.mariadb.id }}' mariadb -u root -pci_only_disposable_root itmap_ci < db/testdata/smoke-catalog.sql
+          docker exec -i '${{ job.services.mariadb.id }}' mariadb -u root -pci_only_disposable_root itmap_ci < db/testdata/read-models.sql
+      - name: Собрать реальный React и установить Chromium
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build:web
+          npx playwright install --with-deps --only-shell chromium
+      - name: Проверить company flags desktop/mobile через Go и MariaDB
+        env:
+          ITMAP_REQUIRE_MARIADB_INTEGRATION: '1'
+          ITMAP_TEST_MARIADB_WRITE_DSN: 'itmap_ci:ci_only_disposable_writer@tcp(127.0.0.1:3306)/itmap_ci?parseTime=true&clientFoundRows=true&collation=utf8mb4_bin'
+        run: |
+          set -euo pipefail
+          go test -tags mariadb,crmwrites,companybrowser ./internal/storage -run '^TestMariaDBCompanyFlagBrowserDisposable$' -count=1 -json | tee "$RUNNER_TEMP/company-flags-browser.jsonl"
+          python3 - "$RUNNER_TEMP/company-flags-browser.jsonl" <<'PYCODE'
+          import json,sys
+          events=[json.loads(line) for line in open(sys.argv[1],encoding='utf8')]
+          target='TestMariaDBCompanyFlagBrowserDisposable'
+          assert any(e.get('Test')==target and e.get('Action')=='pass' for e in events), 'required browser test did not pass'
+          assert not any(e.get('Action')=='skip' for e in events), 'browser test skipped'
+          print('PASS: browser desktop/mobile synthetic Go/MariaDB, zero skips')
+          PYCODE
