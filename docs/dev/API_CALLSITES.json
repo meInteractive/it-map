@@ -294,13 +294,13 @@
       "dynamicURL": true
     },
     {
-      "id": "1db4d2eb57ff54dd",
+      "id": "8c0b5828d1089e85",
       "file": "frontend/features/companies/CompanyDrawer.tsx",
-      "line": 144,
+      "line": 145,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
-      "urlExpression": "'/api/crm/' + (key === 'hidden' ? 'hidden-company' : 'favorite')",
+      "urlExpression": "'/api/crm/' + (key === 'hidden' ? 'hidden-company' : 'favorite') + '?company=' + encodeURIComponent(name)",
       "literalFragments": [
         "/api/crm/"
       ],
