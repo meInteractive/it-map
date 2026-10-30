@@ -141,7 +141,8 @@ export default function CompanyDrawer({ name, type, nav, admin, onClose, onCreat
 }>('/api/' + (type === 'agency' ? 'agencies' : 'companies') + '/detail?name=' + encodeURIComponent(name)); const fallback = useApi<{
     company: Entity;
 }>(!type && q.error && 'status' in q.error && q.error.status === 404 ? '/api/agencies/detail?name=' + encodeURIComponent(name) : null); const c = q.data?.company || fallback.data?.company, [tab, setTab] = useState('summary'), [review, setReview] = useState(false), [error, setError] = useState<unknown>(); const agency = c?.entityType === 'agency'; async function flag(key: 'favorite' | 'hidden') { try {
-    await mutate('/api/crm/' + (key === 'hidden' ? 'hidden-company' : 'favorite'), 'PUT', { companyName: name, [key]: !c?.[key] });
+    setError(undefined);
+    await mutate('/api/crm/' + (key === 'hidden' ? 'hidden-company' : 'favorite') + '?company=' + encodeURIComponent(name), 'PUT', { [key]: !c?.[key] });
 }
 catch (e) {
     setError(e);
