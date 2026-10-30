@@ -34,3 +34,9 @@ failure, generation refusal, concurrent revisions и отсутствие нов
 Локальный tagged skip не положительный SQL gate. Рабочая импортированная БД
 для тестов не используется. HTTP/API/source UI/generation body race и provider
 refresh-cache ещё требуют отдельной реализации и приёмки.
+
+Сервис OpenAI подготавливает six-hour cache, принудительный refresh и source warning
+при отсутствии/невозможности расшифровки ключа. Cache привязан к SHA256 ключа;
+возвращаются копии slices, чтобы caller не менял общий cache. Secret в cache-key
+не хранится. Метрики letterTiming и полный публичный HTTP DTO ещё не подключены,
+этот сервис не передаётся main/httpapi до завершения следующего gate.
