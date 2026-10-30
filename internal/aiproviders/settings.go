@@ -157,15 +157,7 @@ func (r Repository) Resolve(ctx context.Context, p aihttp.Provider) (string, err
 		return "", e
 	}
 	if s.encrypted != "" {
-		codec, e := legacycrypto.New(r.secret, legacycrypto.Domain(":"+string(p)+":v1"))
-		if e != nil {
-			return "", ErrDecrypt
-		}
-		key, e := codec.Decrypt(s.encrypted)
-		if e != nil {
-			return "", ErrDecrypt
-		}
-		return key, nil
+		return r.decryptStored(p, s.encrypted)
 	}
 	if p == aihttp.OpenAI && strings.TrimSpace(r.openAIEnvKey) != "" {
 		return strings.TrimSpace(r.openAIEnvKey), nil
@@ -224,4 +216,16 @@ func (r Repository) SaveKey(ctx context.Context, p aihttp.Provider, generation, 
 		return ErrStorage
 	}
 	return nil
+}
+
+func (r Repository) decryptStored(p aihttp.Provider, encrypted string) (string, error) {
+	codec, e := legacycrypto.New(r.secret, legacycrypto.Domain(":"+string(p)+":v1"))
+	if e != nil {
+		return "", ErrDecrypt
+	}
+	key, e := codec.Decrypt(encrypted)
+	if e != nil {
+		return "", ErrDecrypt
+	}
+	return key, nil
 }
