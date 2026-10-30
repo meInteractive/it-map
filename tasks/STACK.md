@@ -625,3 +625,7 @@ GO-358:b458271/[PR#118](https://github.com/meInteractive/it-map/pull/118)→main
 Пользователь смержил116/117/118: origin/main e2dc2d7, diff сb458271 пуст, ancestry сохранена. Автоматические Publish41036320501/41036438239/41036467332 отменены по прежнему запрету на deploy. Работа359 продолжена от этой main без повторения прошлых изменений.
 
 GO-359: codex/GO-359-stored-title-stage, concrete TitleStageStore, active root prompts/scope/cache, candidate ownership и2 durable slots, partial/failure history и atomic Save. Actual source SQLite4 frames и required native projection/cache/missing-role retry/favorite/slots/unknown/provenance gates подготовлены. Остальные SQL стадии и enqueue-next не объявляются готовыми; server runtime не активирован.
+
+GO-359:bea697c/[PR#119](https://github.com/meInteractive/it-map/pull/119)→main; native сравнение выявило ошибку самого теста: []any сравнивался с []map. Исправлено b540c5f нормализацией обеих проекций; required scheduler gate41037380076/job124001467269 pass, source4+native cache/retry/slot/unknown/favorite/provenance без skips. Полный workflow ещё выполняется.
+
+GO-360: codex/GO-360-extraction-validation отb540c5f, source schema v2 и pure strict/normalizing validator с46 actual source frames. Required Public source gate добавлен; SQL extraction stage/snapshots/hashes/cache и остальные stages остаются отдельными задачами. Сервер и провайдеры не затрагиваются.

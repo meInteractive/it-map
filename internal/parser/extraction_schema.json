@@ -1,0 +1,145 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "employer_name": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "location": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "work_format": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "office",
+        "hybrid",
+        "remote",
+        null
+      ]
+    },
+    "employment_type": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "level": {
+      "type": "string",
+      "enum": [
+        "Senior",
+        "Middle",
+        "Lead",
+        "Head"
+      ],
+      "description": "Обязательная оценка уровня: Middle, Senior, Lead или Head. При отсутствии прямого грейда определи по обязанностям и масштабу ответственности согласно системному промту; null запрещён."
+    },
+    "salary_from": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "salary_to": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "salary_currency": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "salary_period": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "hour",
+        "month",
+        "year",
+        "other",
+        null
+      ]
+    },
+    "salary_tax_type": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "gross",
+        "net",
+        null
+      ]
+    },
+    "responsibilities": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "requirements": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "conditions": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "published_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$",
+      "description": "Дата публикации в формате YYYY-MM-DD, только если год, месяц и день подтверждены исходным текстом. Неизвестная, неполная или относительная дата без опорной даты: null. Не используй дату загрузки."
+    },
+    "description_md": {
+      "type": "string"
+    },
+    "language": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "title",
+    "employer_name",
+    "location",
+    "work_format",
+    "employment_type",
+    "level",
+    "salary_from",
+    "salary_to",
+    "salary_currency",
+    "salary_period",
+    "salary_tax_type",
+    "responsibilities",
+    "requirements",
+    "conditions",
+    "published_at",
+    "description_md",
+    "language"
+  ]
+}
