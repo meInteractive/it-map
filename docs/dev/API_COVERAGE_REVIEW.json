@@ -444,7 +444,7 @@
       "id": "openrouter",
       "implementation": "partial",
       "level": "Status/key/check/refresh/logs, admin connection-test и read-only JEV catalog/profile choice",
-      "gap": "Typed JEV stages, structured health/model metrics writeback и parser orchestration ещё не подключены; live provider не проверялся.",
+      "gap": "Parser orchestration и structured health/model metrics writeback ещё не подключены; live provider не проверялся.",
       "evidence": [
         {
           "file": "scripts/check-parser-budget-contract.mjs"
@@ -471,6 +471,14 @@
         {
           "file": "internal/httpapi/router_settings_routes_test.go",
           "symbol": "TestJEVCatalogHTTPAdminReadOnly"
+        },
+        {
+          "file": "internal/aiproviders/jev_source_test.go",
+          "symbol": "TestUnchangedJEVStagesSource"
+        },
+        {
+          "file": "internal/storage/ai_jev_receipt_test.go",
+          "symbol": "TestMariaDBJEVReceiptDisposable"
         }
       ]
     },

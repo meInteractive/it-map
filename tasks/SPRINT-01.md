@@ -1675,3 +1675,10 @@
 - **Критерии:** exact typesafe/jev-1.13, явный decisions catalog, положительная цена, фиксированный alpha/decisions endpoint, paid automatic billing и no blind POST replay; profile JEV choice и GET catalog. Source/mocks и guarded CI; real requests/server не трогать. Затем отдельное подключение classifier/leaf/relevance к parser.
 
 - **Результат356:** catalog/profile choice/admin GET и фиксированный Decisions transport реализованы. Local vet/race/full tagged build/source oracle/web/source/docs/API gates pass; native SQL gates сохраняются без изменений, local skip не SQL acceptance. Typed stages/dispatcher — следующая357. [Границы](../docs/dev/GO_JEV_DECISIONS.md).
+
+### [ ] GO-357. Типизированные JEV title/relevance/leaf решения (GO-024/025/350)
+
+- **Зависимости:**356 catalog/transport/billing,355 profiles.
+- **Критерии:** source payload и typed score/choice validation, независимые title roles, missing decision не reject, exact leaf answers/12 limit/no truncation/context cap; relevance 0..9→0..100. Automatic ledger и active/generation/revision guards обязательны. Source/mocks вместо платных calls, main не деплоить. Затем отдельная358 parser AI stage executor.
+
+- **Результат357:** typed relevance/title/leaf и metadata receipts реализованы;16 actual source frames и budget/no-replay/cancel/leaf limit mocks pass. Native receipt gate добавлен, ждёт CI. [Границы](../docs/dev/GO_JEV_STAGES.md).

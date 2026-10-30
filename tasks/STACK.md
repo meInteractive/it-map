@@ -611,3 +611,7 @@ GO-354: c07bfdd/[PR#114](https://github.com/meInteractive/it-map/pull/114)→mai
 GO-355: codex/GO-355-ai-model-choice отc07bfdd. OpenAI profile model availability/effort validator и generation before body/network; guarded SaveModel с прежним revision CAS. Local vet/race/source/build/web/docs366/source/API audit/actionlint/tidy-diff pass. Native required profile model generation race gate добавлен, локальный skip не acceptance; provider calls только mocks.
 
 GO-356: codex/GO-356-jev-decisions от проверенной origin/main bb28863, дерево main совпало с GO-355. Каталог JEV/profile validator/admin GET и alpha Decisions transport с обязательным ledger, проверкой generation/revision перед POST и без replay. Source catalog oracle и mock endpoints/budget/access/rotation/restore; SQL/сервер/реальные платные запросы не затронуты. Следующий слой: typed title/leaf/relevance, затем parser wiring. Leaf PR направляется main по текущему согласованному плану доставки.
+
+GO-356:4736828/[PR#116](https://github.com/meInteractive/it-map/pull/116)→main, local checks pass; native/public CI запущены. Замеченный автоматический Publish41034005028 отменён по запрету пользователя, package/publish не выполнялись.
+
+GO-357: codex/GO-357-jev-stages от4736828. Typed relevance/title/leaf, общий Generator.Automatic для JEV и metadata receipts, source oracle16 frames. Native JEV receipt/generation/rotation required gate добавлен. Разработка только mocks; classifier slots и parser execution отдельная358. Сервер/схема/данные не менялись.
