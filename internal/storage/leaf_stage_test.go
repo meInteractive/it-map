@@ -155,6 +155,15 @@ func TestMariaDBLeafStageSourceDisposable(t *testing.T) {
 			if err != nil || next == nil || next.Type != "assign_roles" {
 				t.Fatal("missing role result not planned", err)
 			}
+			tx, err := f.db.BeginTx(f.ctx, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			planned, err := (parser.SQLCandidateHandoffPlanner{Owner: "CI_USER"}).Next(f.ctx, tx, parser.Job{CompanyID: &company, CandidateID: &candidate, SourceID: &source})
+			tx.Rollback()
+			if err != nil || !reflect.DeepEqual(planned, next) {
+				t.Fatal("SQL planner did not select source role stage", err)
+			}
 			model, provider := "gpt-6-luna", "openai"
 			content := frame.Value
 			var failure error
