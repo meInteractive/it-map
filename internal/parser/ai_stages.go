@@ -50,6 +50,7 @@ type AIStageExecutor struct {
 	Store      AIStageStore
 	Generator  AIStageGenerator
 	Classifier AIStageClassifier
+	Handoff    *CandidateHandoff
 }
 
 func aiStageTask(kind string) string {
@@ -167,10 +168,15 @@ func (e *AIStageExecutor) Execute(ctx context.Context, lease *JobLease) (AIStage
 		if err := e.Store.Revalidate(ctx, tx, job, plan); err != nil {
 			return err
 		}
-		if output.Reused {
-			return nil
+		if !output.Reused {
+			if err := e.Store.Save(ctx, tx, job, plan, output); err != nil {
+				return err
+			}
 		}
-		return e.Store.Save(ctx, tx, job, plan, output)
+		if stageError == nil && e.Handoff != nil {
+			return e.Handoff.Enqueue(ctx, tx, job)
+		}
+		return nil
 	})
 	if err != nil {
 		return AIStageOutput{}, err
