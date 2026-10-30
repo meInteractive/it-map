@@ -38,7 +38,7 @@ try {
     throw Error('Неожиданный тестовый запрос: ' + url);
   };
   const listProps = {
-    nav, filters: defaultFilters, query: '', onCount: n => counts.push(n), admin: false,
+    nav, filters: defaultFilters, query: '', onCount: n => { counts.push(n); }, admin: false,
   };
   // 18. Пустой каталог компаний после завершения загрузки.
   await act(async () => { root = create(h(CompanyList, listProps)); });
@@ -60,7 +60,7 @@ try {
   await act(async () => {
     root = create(h(Vacancies, {
       nav, admin: false, filters: defaultFilters, vacancyFilters: defaultVacancyFilters,
-      query: 'несуществующая вакансия', onCount: n => counts.push(n), type: 'company',
+      query: 'несуществующая вакансия', onCount: n => { counts.push(n); }, type: 'company',
     }));
   });
   await flush();
