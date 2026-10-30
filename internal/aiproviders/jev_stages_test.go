@@ -170,3 +170,15 @@ func TestJEVUnknownPaidOutcomeNoReplay(t *testing.T) {
 		t.Fatal("uncertain paid request repeated", e)
 	}
 }
+
+func TestJEVLeafValidationErrorStopsResultWithoutReplay(t *testing.T) {
+	raw := json.RawMessage(`{"model":"typesafe/jev-1.13","answers":{"leaf_1":{"type":"choice","choice":"match"}},"usage":{"cost":0.001}}`)
+	s, calls := jevStageService(raw, 262144)
+	bill := &billingProbe{}
+	expected := &ServiceError{Code: "invalid_output", Status: 422, Message: "CI_VALIDATION_FAILED"}
+	r := GenerationRequest{Task: "vacancy_role", Instructions: "CI_RULES", State: "CI_TEXT", Roles: []LeafRole{{ID: 1, Path: "CI_ROLE"}}, ValidateContent: func(string) error { return expected }}
+	_, e := NewGenerator(nil, s).Automatic(context.Background(), r, profiles.ModelInput{Provider: "openrouter", OpenRouterModel: "jev"}, bill)
+	if !errors.Is(e, expected) || len(*calls) != 1 || bill.calls != 1 {
+		t.Fatal("validation failure was lost or POST repeated", e)
+	}
+}

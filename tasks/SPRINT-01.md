@@ -1725,3 +1725,9 @@
 - **Критерии:** owned candidate/source/favorite/root-match, validated latest snapshot, source prompt/model config hashes, cache, durable candidate+2 LLM slots, existing Attempt billing; нормализация source output и атомарные extraction+attempt/job записи, failure/unknown guards. Source SQLite projection и required disposable MariaDB integration; без live provider, server или активации worker.
 
 - **Результат364:** concrete SQL extraction repository и preflight/failure/lease guards подготовлены; source URL/usage frames, actual extraction oracle и required native gate добавлены. [Границы](../docs/dev/GO_EXTRACTION_SQL_STAGE.md). Следующий слой — handoff и SQL конечных ролей.
+
+### [ ] GO-365. Запрос и валидация конечных ролей (GO-025/350)
+
+- **Критерии:** source `validateLeafRoleIds` и request OpenAI/free/JEV: полный Markdown без усечения, только разрешённые ID, не более12 и без дублей; source schema/prompts и typed failure. Actual source oracle/mocks, никакой DB/worker activation. SQL storage/cache/leases — отдельная366.
+
+- **Результат365:** pure role validation и source-compatible запрос для OpenAI/free/JEV подготовлены;15+4 actual source frames и mock no-replay проходят. SQL stage отдельно366. [Границы](../docs/dev/GO_LEAF_ROLES.md).

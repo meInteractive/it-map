@@ -149,6 +149,11 @@ func (s *RouterService) jevLeafRoles(ctx context.Context, r GenerationRequest, b
 	return jevContent(ctx, r, v, string(content), "Роли JEV не прошли проверку.")
 }
 func jevContent(ctx context.Context, r GenerationRequest, v decisionEnvelope, content, message string) (AIResult, error) {
+	if r.ValidateContent != nil {
+		if e := r.ValidateContent(content); e != nil {
+			return AIResult{}, e
+		}
+	}
 	if r.Validate != nil && !r.Validate(content) {
 		return AIResult{}, generationError("invalid_output", message, 502)
 	}
