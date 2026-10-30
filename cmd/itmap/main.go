@@ -34,7 +34,9 @@ func httpHandler(logger *slog.Logger, db *sql.DB, manager *auth.Manager) http.Ha
 	opts := httpapi.Options{Auth: manager, WebDir: os.Getenv("WEB_DIST_DIR")}
 	if db != nil {
 		opts.DB = db
-		opts.OpenAISettings = aiproviders.NewOpenAIService(aiproviders.NewRepository(db, os.Getenv("SESSION_SECRET"), os.Getenv("OPENAI_API_KEY")))
+		aiKeys := aiproviders.NewRepository(db, os.Getenv("SESSION_SECRET"), os.Getenv("OPENAI_API_KEY"))
+		opts.OpenAISettings = aiproviders.NewOpenAIService(aiKeys)
+		opts.RouterSettings = aiproviders.NewRouterService(aiKeys)
 		opts.SchedulerSettings = parser.SettingsRepository{DB: db}
 		opts.SchedulerJobActions = parser.JobActionsRepository{DB: db}
 		opts.SchedulerDashboard = parser.DashboardRepository{DB: db}

@@ -426,15 +426,23 @@
     },
     {
       "id": "openrouter",
-      "implementation": "unported",
-      "level": "Synthetic budget/settings primitives only",
-      "gap": "Provider/jev status/key/check/test HTTP отсутствуют; реальный provider отдельно.",
+      "implementation": "partial",
+      "level": "Status/key/check/refresh/logs и source public projection на native MariaDB",
+      "gap": "Test/completion/JEV и parser ещё закрыты; runtime live keys/providers не проверялись.",
       "evidence": [
         {
           "file": "scripts/check-parser-budget-contract.mjs"
         },
         {
           "file": "internal/httpapi/handler.go"
+        },
+        {
+          "file": "internal/httpapi/router_settings_routes.go",
+          "symbol": "RouterSettingsHandler"
+        },
+        {
+          "file": "internal/storage/ai_router_settings_test.go",
+          "symbol": "TestMariaDBRouterSettingsDisposable"
         }
       ]
     },
@@ -605,7 +613,7 @@
   ],
   "sourceHashes": {
     "frontend/api/client.ts": "4aa67ca55e0940c44fb74b6ab68fe876d294d2b56d15b83bc1686b95519e06a7",
-    "internal/httpapi/handler.go": "0a035f4e8473dbc2fd908faffe489d9e83f6163314d3f6f000e4011983cf3e1f",
+    "internal/httpapi/handler.go": "727630b8651f357d81ce2ae99eb34ee1e8c17885263c7567048644582b7bcaab",
     "server/routes/index.js": "6134004f682975cb51ea13cd2ec4de8e85a5957deff6a5392fbad3fd70ccb1e4"
   },
   "clientExports": [

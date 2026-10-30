@@ -596,3 +596,6 @@ GO-351: codex/GO-351-openai-settings-http отb9ee6f5/#110: admin status/key-sav
 
 
 GO-352: пользователь принял109/110/111, но main e4133cb содержит только348: дочерние merge попали в feature parents. Ветка codex/GO-352-ai-main-delivery сохраняет e8dcc0f и ancestry main; дерево совпадает с проверенной351. Native/full CI351 pass. Нужен отдельный recovery PR→main без auto merge. По текущему поручению пользователя deploy не выполнять; активный Publish41025077896 отменяется, независимые CI не затронуты. Дальнейшие leaf PR направлять main с сохранённой ancestry.
+
+
+GO-353: codex/GO-353-openrouter-settings-http от recovery352/ab2004d. Source public oracle4 frames подготовлен; native required router settings gate добавлен. Local Go1.23 vet/race/source/default/tagged compile/build/web/source/docs358/API audit/actionlint pass. Local live SQL skip; CI positive ожидается. Новые leaf→main сохраняют ancestry352. /test/jev/parser ещё закрыты, deploy запрещён пользователем.

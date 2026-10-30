@@ -64,6 +64,7 @@ type Options struct {
 	Resumes              ResumeStore
 	ProfileSettings      ProfileSettingsStore
 	OpenAISettings       OpenAISettingsService
+	RouterSettings       RouterSettingsService
 	ProfileModelCatalog  ProfileModelValidator
 	BackupExports        BackupExporter
 	BackupRestores       BackupRestorer
@@ -106,6 +107,8 @@ func NewHandlerWithOptions(logger *slog.Logger, opts Options) http.Handler {
 		mux.HandleFunc("GET /api/session", SessionHandler(opts.Auth))
 		mux.HandleFunc("/api/openai", OpenAISettingsHandler(opts.Auth, opts.OpenAISettings))
 		mux.HandleFunc("/api/openai/", OpenAISettingsHandler(opts.Auth, opts.OpenAISettings))
+		mux.HandleFunc("/api/openrouter", RouterSettingsHandler(opts.Auth, opts.RouterSettings))
+		mux.HandleFunc("/api/openrouter/", RouterSettingsHandler(opts.Auth, opts.RouterSettings))
 		mux.HandleFunc("GET /api/scheduler/run", SchedulerRunReadHandler(opts.Auth, opts.SchedulerRunRead))
 		mux.HandleFunc("/api/scheduler/queue", SchedulerQueueHandler(opts.Auth, opts.SchedulerQueue))
 		mux.HandleFunc("/api/scheduler/jobs/", SchedulerJobActionsHandler(opts.Auth, opts.SchedulerJobActions))

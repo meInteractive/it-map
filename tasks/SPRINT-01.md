@@ -1650,3 +1650,10 @@
 - **Критерии:** authenticated/admin/source method/path/origin/bounded body; capture generation до body; public status/key-save/refresh и main wiring. Ошибки безопасны, legacy ciphertext не сбрасываются. Платный test endpoint явно503 до отдельного billing/provenance gate, OpenRouter routes и parser пока не включать. Mock HTTP/access/generation/cache tests, required source/native parents; не считать full provider readiness.
 
 - **Результат351:** authenticated/admin status/key-save/refresh подключены в main; safe errors и generation-before-body guards. Mock HTTP/cache tests pass; required native HTTP gate ждёт CI, текущий сервер не изменён. [Границы](../docs/dev/GO_OPENAI_SETTINGS_HTTP.md).
+
+
+### [ ] GO-353. OpenRouter settings/check/refresh HTTP (GO-037/349)
+
+- **Критерии:** source public cache/model metrics/last-test projection; GET не создаёт singleton/DDL, legacy refresh сохраняет previous cache при provider errors. key/check/refresh с generation+revision fences, network вне SQL TX. Admin/session/method/path/origin/body guards; logs read-only. Платный test и parser отдельная350. Actual source/mocks плюс required disposable MariaDB; не выкладывать на сервер.
+
+- **Результат353:** подготовлены source state/cache/metrics projection, guarded cache updates и HTTP/main wiring status/key/check/refresh/logs. Локальные mock/race/body/access проверки проходят;4 actual source public frames и generation/revision/cache preservation required native gate ждут CI. [Границы](../docs/dev/GO_OPENROUTER_SETTINGS_HTTP.md).
