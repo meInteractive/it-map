@@ -39,11 +39,9 @@ try {
   assert.equal(props('second')['data-value'], 1);
 
   // 12. Ошибка начальной загрузки и восстановление через invalidate.
+  await act(async () => root.unmount()); root = null;
   api.clearCache();
-  await act(async () => root.update(h(Pair, { second: false })));
-  await act(async () => root.update(h(Pair)));
-  // clearCache не обязан немедленно запустить GET: обновляем ключ через явную инвалидaцию.
-  await act(async () => api.invalidate(key => key === '/api/test-subscriber-races'));
+  await act(async () => { root = create(h(Pair)); });
   assert.equal(calls.length, 2);
   await answer({ error: 'Временный отказ чтения' }, 503);
   assert.match(props('first')['data-error'], /Временный отказ чтения/);
