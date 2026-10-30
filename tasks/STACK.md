@@ -619,3 +619,9 @@ GO-357: codex/GO-357-jev-stages от4736828. Typed relevance/title/leaf, общ�
 GO-357:8475d9e/[PR#117](https://github.com/meInteractive/it-map/pull/117)→main включает116; source16 и local checks pass, native receipt gate выполняется CI. GO-356 exact4736828 Public41034858195 и full MariaDB41034858197 success.
 
 GO-358: codex/GO-358-parser-ai-execution от8475d9e. Server-owned AI dispatch4, mandatory opaque attempt billing, atomic stage Save+attempt/job via FinishWithin, cache/no POST и fail-closed partial/unknown results. Required disposable execution gate добавлен; SQL stage loaders/provenance/slots остаются следующей359. Runtime main/ticks/deploy не активированы.
+
+GO-358:b458271/[PR#118](https://github.com/meInteractive/it-map/pull/118)→main; required execution+existing billing native gate выполняется. GO-357 exact8475d9e Public41035378509/full native41035378531/negative41035378536 success.
+
+Пользователь смержил116/117/118: origin/main e2dc2d7, diff сb458271 пуст, ancestry сохранена. Автоматические Publish41036320501/41036438239/41036467332 отменены по прежнему запрету на deploy. Работа359 продолжена от этой main без повторения прошлых изменений.
+
+GO-359: codex/GO-359-stored-title-stage, concrete TitleStageStore, active root prompts/scope/cache, candidate ownership и2 durable slots, partial/failure history и atomic Save. Actual source SQLite4 frames и required native projection/cache/missing-role retry/favorite/slots/unknown/provenance gates подготовлены. Остальные SQL стадии и enqueue-next не объявляются готовыми; server runtime не активирован.

@@ -16,6 +16,7 @@ var ErrAIStageUnavailable = errors.New("scheduler AI stage is not configured")
 // План читается серверным repository, а не из HTTP body или job.payload.
 // Store повторно проверяет provenance, scope, настройки и hash перед Save.
 type AIStagePlan struct {
+	provenance any
 	Request    aiproviders.GenerationRequest
 	Config     profiles.ModelInput
 	Title      string
@@ -31,6 +32,9 @@ type AIStageStore interface {
 	Prepare(context.Context, *sql.Tx, Job) (AIStagePlan, error)
 	Revalidate(context.Context, *sql.Tx, Job, AIStagePlan) error
 	Save(context.Context, *sql.Tx, Job, AIStagePlan, AIStageOutput) error
+}
+type AIStageFailureStore interface {
+	SaveFailure(context.Context, *sql.Tx, Job, AIStagePlan, error) error
 }
 type AIStageGenerator interface {
 	Automatic(context.Context, aiproviders.GenerationRequest, profiles.ModelInput, aiproviders.Billing) (aiproviders.AIResult, error)
@@ -119,7 +123,15 @@ func (e *AIStageExecutor) Execute(ctx context.Context, lease *JobLease) (AIStage
 	if err != nil {
 		// Неизвестный платный исход остаётся зарезервированным; автоматического POST retry нет.
 		code := aiStageErrorCode(err)
-		finish := attempt.Finish(ctx, AttemptFinish{Job: FinishOptions{Status: "failed", Code: code, Message: "Не удалось выполнить AI-этап. Проверьте причину перед повторным запуском."}, Result: json.RawMessage(`{}`)})
+		finish := attempt.FinishWithin(ctx, AttemptFinish{Job: FinishOptions{Status: "failed", Code: code, Message: "Не удалось выполнить AI-этап. Проверьте причину перед повторным запуском."}, Result: json.RawMessage(`{}`)}, func(tx *sql.Tx) error {
+			if err := e.Store.Revalidate(ctx, tx, job, plan); err != nil {
+				return err
+			}
+			if store, ok := e.Store.(AIStageFailureStore); ok {
+				return store.SaveFailure(ctx, tx, job, plan, err)
+			}
+			return nil
+		})
 		if finish != nil {
 			return AIStageOutput{}, finish
 		}
