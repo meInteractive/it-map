@@ -1737,3 +1737,9 @@
 - **Критерии:** source eligible candidate/current extraction/active matches, полное дерево доступных конечных ролей и source hashes, prompt/model и cache, candidate+LLM slots/Attempt budget, typed JEV/OpenAI result и атомарное сохранение. Source SQLite oracle и required disposable MariaDB gate; live providers, worker/server не включать.
 
 - **Результат366:** SQL role stage/source hashes и required native gate подготовлены. Локальный SQL guard пропускает тест; положительный CI ожидается. [Контракт](../docs/dev/GO_LEAF_SQL_STAGE.md).
+
+### [ ] GO-367. Выбор следующей стадии кандидата (GO-046)
+
+- **Критерии:** source nextCandidateStage для новых кандидатов: title match/completeness, fulltext/refresh, extraction, leaf roles, empty-selection и import; точные ключи/sha, owner/source scope, без network/SQL writes/runtime. Actual SQLite source oracle. Импортированные вакансии/relevance и atomic enqueue отдельно.
+
+- **Результат367:** pure source candidate stage selection и ключи подготовлены,11 actual SQLite frames; неопределённая дата/imported relevance закрыты. [Границы](../docs/dev/GO_CANDIDATE_STAGE_PLAN.md). Атомарный enqueue и SQL-resolver ещё отдельно.
