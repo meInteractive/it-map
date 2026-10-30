@@ -633,3 +633,7 @@ GO-360: codex/GO-360-extraction-validation отb540c5f, source schema v2 и pure
 GO-360:6093fc1/[PR#120](https://github.com/meInteractive/it-map/pull/120) смержен в main1b1bfe4, дерево совпадает с проверенной вершиной. Public41037985430, полный native41037985435 и negative41037985327 success. По прямому поручению пользователя main1b1bfe4 вручную установлен на согласованный тестовый сервер; HTTPS/live/login/routes проверены, прежний релиз сохранён. Readiness ожидаемо503 business_api_not_migrated, реальных provider POST и очереди не запускалось. Workflow Publish native main отключён пользователем задачи через GitHub API (`disabled_manually`); продолжение автодеплоя отложено.
 
 GO-361: codex/GO-361-extraction-stage от main1b1bfe4. Source extraction request builder с обязательной schema/лимитом полного Markdown и typed validation errors,7 actual source SQLite frames и mock проверка OpenAI/OpenRouter без повторного POST. SQL extraction repository/snapshot provenance/leases/cache следующая362; сервер и runtime этой ветки не меняются.
+
+GO-361:db83055/[PR#121](https://github.com/meInteractive/it-map/pull/121)→main, local vet/race/source/build/web/docs/API/actionlint pass; полный CI выполняется. Server остаётся на main1b1bfe4; Publish workflow disabled_manually.
+
+GO-362: codex/GO-362-raw-snapshot-contract от db83055: full raw snapshot assembly с защитой SHA-256 и source rabota body oracle16 vectors; SQL extraction repository/cache/lease следующая363. Работа только synthetic, сервер и provider calls не затрагиваются.
