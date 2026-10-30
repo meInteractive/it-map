@@ -585,3 +585,6 @@ GO-347: codex/GO-347-deploy-ssh-diagnostics отmain1480a4e. Разрешённ�
 
 
 GO-348: codex/GO-348-ai-provider-transport от проверенного main26868847b0f66c5077ad92255962473f54f19ae0 (план #107 принят). Source42 и bounded/race/cancel/no-repeat tests pass; Go1.23 vet/default-race/tagged/build/web/source/docs350/API audit/actionlint pass. Новая обязательная legacyinterop CI-проверка. Provider routes/runtime/SQL/server не включались. Следующая349 — model catalogs/settings/HTTP, затем350 parser wiring.
+
+
+GO-348 опубликована:6d95363, [PR#109](https://github.com/meInteractive/it-map/pull/109), без merge. GO-349 codex/GO-349-ai-key-settings от этой вершины: crypto/generation storage и source model catalogs; HTTP wiring ещё отсутствует. Required native AI key gate добавлен в existing guarded CI, локальный skip не SQL acceptance.

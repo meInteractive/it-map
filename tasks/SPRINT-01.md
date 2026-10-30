@@ -1637,6 +1637,8 @@
 
 - **Критерии:** после348 перенести source model catalogs/settings/key/admin HTTP, AES-GCM domains и CAS/generation fence, redaction и bounded inputs; read-only GET без legacy lazy DDL. Actual source+guarded disposable MariaDB proof, существующая schema72 неизменна. Импортированные encrypted values не сбрасывать; decrypt error предлагает повторный ввод через защищённый UI. Production и старую очередь не запускать.
 
+- **Результат349, слой1:** repository crypto/public settings/generation save и pure model catalogs подготовлены. Source profiles/ranking и parsing tests pass; native SQL required gate добавлен, положительный CI ожидается. UI HTTP/refresh-cache/main wiring ещё не реализованы: следующий слой этой задачи после SQL proof. [Границы](../docs/dev/GO_AI_SETTINGS.md).
+
 ### [ ] GO-350. Связать AI clients со стадиями parser (GO-024/025/046)
 
 - **Критерии:** после provider settings/model catalogs и существующего budget/lease ledger подключать отдельно выбранные stages, соблюдать prompt/model provenance, spend reservations и отсутствие повторного оплачиваемого POST при неизвестном результате. Mocks/source/generation/cancel/concurrency proof до разрешённого live smoke. Не объявлять весь parser готовым по одному клиенту.
