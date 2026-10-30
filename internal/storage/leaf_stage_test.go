@@ -138,6 +138,23 @@ func TestMariaDBLeafStageSourceDisposable(t *testing.T) {
 		t.Run(frame.Name, func(t *testing.T) {
 			seed(i)
 			lease := leafStageLease(t, f)
+			company, candidate, source := int64(990002), int64(990001), "companySite"
+			readPlanner := func() (parser.CandidateLeafInput, error) {
+				tx, err := f.db.BeginTx(f.ctx, nil)
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer tx.Rollback()
+				return parser.ReadCandidateLeafInput(f.ctx, tx, parser.Job{CompanyID: &company, CandidateID: &candidate, SourceID: &source}, "CI_USER")
+			}
+			before, err := readPlanner()
+			if err != nil {
+				t.Fatal("planner before roles", err)
+			}
+			next, err := parser.PlanCandidateStage(parser.CandidateStageInput(before))
+			if err != nil || next == nil || next.Type != "assign_roles" {
+				t.Fatal("missing role result not planned", err)
+			}
 			model, provider := "gpt-6-luna", "openai"
 			content := frame.Value
 			var failure error
@@ -161,6 +178,10 @@ func TestMariaDBLeafStageSourceDisposable(t *testing.T) {
 			e = f.db.QueryRowContext(f.ctx, "SELECT input_hash,tree_hash,prompt_version,config_hash,model_id,provider,role_ids,status,error_code,message,input_tokens,output_tokens,cost_usd FROM vacancy_role_results WHERE candidate_id=990001").Scan(&inputHash, &treeHash, &promptHash, &configHash, &modelDB, &providerDB, &roleIDs, &status, &code, &message, &input, &output, &cost)
 			if e != nil {
 				t.Fatal(e)
+			}
+			after, err := readPlanner()
+			if err != nil || after.LeafInputHash != inputHash || (after.Leaf != nil) != frame.OK {
+				t.Fatal("planner role result differs", err)
 			}
 			nullString := func(v sql.NullString) any {
 				if v.Valid {
@@ -218,15 +239,21 @@ func TestMariaDBLeafStageSourceDisposable(t *testing.T) {
 		seed(0)
 		lease := leafStageLease(t, f)
 		_, e := (&parser.AIStageExecutor{Store: parser.LeafStageStore{Owner: "CI_USER"}}).Execute(f.ctx, lease)
-		if !errors.Is(e, parser.ErrAIStageUnavailable) || f.count("SELECT COUNT(*) FROM vacancy_detail_leases") != 0 { t.Fatal("unused role leases remain", e) }
+		if !errors.Is(e, parser.ErrAIStageUnavailable) || f.count("SELECT COUNT(*) FROM vacancy_detail_leases") != 0 {
+			t.Fatal("unused role leases remain", e)
+		}
 	})
 	t.Run("attempt_replay_releases_leases", func(t *testing.T) {
 		seed(0)
 		lease := leafStageLease(t, f)
-		if _, e := lease.StartAttempt(f.ctx); e != nil { t.Fatal(e) }
+		if _, e := lease.StartAttempt(f.ctx); e != nil {
+			t.Fatal(e)
+		}
 		runner := &leafStageRunner{content: frames[0].Value, model: "gpt-6-luna", provider: "openai"}
 		_, e := (&parser.AIStageExecutor{Store: parser.LeafStageStore{Owner: "CI_USER"}, Generator: runner}).Execute(f.ctx, lease)
-		if !errors.Is(e, parser.ErrAttemptReplay) || runner.calls != 0 || f.count("SELECT COUNT(*) FROM vacancy_detail_leases") != 0 { t.Fatal("replay held unused role leases", e) }
+		if !errors.Is(e, parser.ErrAttemptReplay) || runner.calls != 0 || f.count("SELECT COUNT(*) FROM vacancy_detail_leases") != 0 {
+			t.Fatal("replay held unused role leases", e)
+		}
 	})
 	t.Run("budget_denial", func(t *testing.T) {
 		seed(0)
@@ -234,7 +261,9 @@ func TestMariaDBLeafStageSourceDisposable(t *testing.T) {
 		f.exec(`UPDATE firecrawl_settings SET scheduler_json='{"enabled":true,"sourceIds":["companySite"],"dayBudgetUsd":0,"monthBudgetUsd":0}' WHERE id=1`)
 		runner := &leafStageRunner{content: frames[0].Value, model: "gpt-6-luna", provider: "openai"}
 		_, e := (&parser.AIStageExecutor{Store: parser.LeafStageStore{Owner: "CI_USER"}, Generator: runner}).Execute(f.ctx, lease)
-		if !errors.Is(e, parser.ErrBudgetLimit) || runner.calls != 0 || f.count("SELECT COUNT(*) FROM vacancy_detail_leases") != 0 { t.Fatal("budget denial failed", e) }
+		if !errors.Is(e, parser.ErrBudgetLimit) || runner.calls != 0 || f.count("SELECT COUNT(*) FROM vacancy_detail_leases") != 0 {
+			t.Fatal("budget denial failed", e)
+		}
 	})
 	t.Run("unknown_outcome", func(t *testing.T) {
 		seed(0)
