@@ -9,9 +9,9 @@ import (
 )
 
 type ServiceError struct {
-	Code    string
-	Status  int
-	Message string
+	Code    string `json:"code"`
+	Status  int    `json:"-"`
+	Message string `json:"message"`
 }
 
 func (e *ServiceError) Error() string { return e.Message }

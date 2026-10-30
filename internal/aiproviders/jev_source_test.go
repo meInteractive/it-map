@@ -14,3 +14,11 @@ func TestUnchangedJEVCatalogSource(t *testing.T) {
 	}
 	checkJEVCatalogSource(t, b)
 }
+
+func TestUnchangedJEVStagesSource(t *testing.T) {
+	b, e := exec.Command("node", "../../scripts/check-jev-stages.mjs").Output()
+	if e != nil {
+		t.Fatal(e)
+	}
+	checkJEVStagesSource(t, b)
+}

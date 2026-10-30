@@ -93,6 +93,17 @@ func (t *ManualTests) Test(ctx context.Context, p aihttp.Provider) (map[string]a
 var safeLogCode = regexp.MustCompile(`^[a-z0-9_-]{1,80}$`)
 
 func (r Repository) recordRouterTest(ctx context.Context, g string, revision int64, result AIResult, failure error) error {
+	return r.RecordRouterGeneration(ctx, g, revision, "connection_test", result, failure)
+}
+
+// Сохраняет только метаданные, под прежними generation/revision fences.
+func (r Repository) RecordRouterGeneration(ctx context.Context, g string, revision int64, task string, result AIResult, failure error) error {
+	switch task {
+	case "connection_test", "relevance", "vacancy_role", "title_classification":
+	default:
+		return ErrStorage
+	}
+
 	if r.DB == nil {
 		return ErrStorage
 	}
@@ -123,6 +134,9 @@ func (r Repository) recordRouterTest(ctx context.Context, g string, revision int
 	if len(result.Attempted) > 0 {
 		primary = result.Attempted[0]
 	}
+	if result.Model != "" {
+		model = result.Model
+	}
 	if failure == nil {
 		success = 1
 		model = result.Model
@@ -151,7 +165,7 @@ func (r Repository) recordRouterTest(ctx context.Context, g string, revision int
 	if result.Fallback {
 		fallback = 1
 	}
-	if _, e = tx.ExecContext(ctx, "INSERT INTO openrouter_ai_logs(created_at,task,requested_primary_model,actual_model,fallback_used,success,error_code) VALUES(?,'connection_test',?,?,?,?,?)", now, primary, model, fallback, success, code); e != nil {
+	if _, e = tx.ExecContext(ctx, "INSERT INTO openrouter_ai_logs(created_at,task,requested_primary_model,actual_model,fallback_used,success,error_code) VALUES(?,?,?,?,?,?,?)", now, task, primary, model, fallback, success, code); e != nil {
 		return ErrStorage
 	}
 	if _, e = tx.ExecContext(ctx, "DELETE FROM openrouter_ai_logs WHERE id NOT IN (SELECT id FROM (SELECT id FROM openrouter_ai_logs ORDER BY id DESC LIMIT 200) AS retained)"); e != nil {

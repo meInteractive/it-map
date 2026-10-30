@@ -23,6 +23,9 @@ type AIResult struct {
 }
 type GenerationRequest struct {
 	Task           string
+	Instructions   string
+	State          any
+	Roles          []LeafRole
 	Messages       []Message
 	MaxTokens      int
 	ResponseFormat json.RawMessage
@@ -78,7 +81,13 @@ func (g *Generator) run(ctx context.Context, r GenerationRequest, c profiles.Mod
 	if c.Provider == "openai" {
 		return g.openAI(ctx, r, c, b)
 	}
-	if c.Provider != "openrouter" || c.OpenRouterModel == "jev" {
+	if c.Provider == "openrouter" && c.OpenRouterModel == "jev" {
+		if g.Router == nil {
+			return AIResult{}, ErrStorage
+		}
+		return g.Router.runJEV(ctx, r, b)
+	}
+	if c.Provider != "openrouter" {
 		return AIResult{}, generationError("model_unavailable", "Выбранный провайдер ещё не подключён.", 409)
 	}
 	return g.router(ctx, r, b)
