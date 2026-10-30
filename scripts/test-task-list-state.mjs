@@ -50,6 +50,7 @@ const names = () => cards().map(n =>
   n.findByProps({ className: 'task-note' }).children.join(''));
 const completed = name => card(name).findByProps({ className: 'task-complete' }).findByType('input');
 const count = () => Number(root.root.findByProps({ className: 'applications-count' }).children.join(''));
+const label = node => typeof node === 'string' ? node : Array.isArray(node) ? node.map(label).join('') : node?.children ? label(node.children) : '';
 
 try {
   clearCache();
@@ -83,8 +84,8 @@ try {
   await act(async () => completed('Задача Б').props.onChange({ target: { checked: true } }));
   await flush();
   assert.deepEqual(writes.at(-1), { id: 12, body: { completed: true } });
-  assert.match(JSON.stringify(card('Задача Б').toJSON()), /Ошибка задачи 12/);
-  assert.doesNotMatch(JSON.stringify(card('Задача А').toJSON()), /Ошибка задачи 12/);
+  assert.match(label(card('Задача Б')), /Ошибка задачи 12/);
+  assert.doesNotMatch(label(card('Задача А')), /Ошибка задачи 12/);
   assert.equal(completed('Задача Б').props.checked, false);
   assert.equal(completed('Задача А').props.checked, true);
 
