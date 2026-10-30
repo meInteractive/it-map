@@ -150,6 +150,40 @@ func TestMariaDBStoredTitleStageDisposable(t *testing.T) {
 		f.exec("INSERT INTO vacancy_roles(id,stable_key,name,sort_order)VALUES(?,?,?,?)", id, fmt.Sprint("CI_ROOT_", id), fmt.Sprint("CI_ROLE_", id), id)
 		f.exec("INSERT INTO vacancy_role_classification(role_id,markdown,revision,parsing_enabled)VALUES(?,?,1,1)", id, fmt.Sprint("CI_RULES_", id))
 	}
+	t.Run("candidate_title_snapshot", func(t *testing.T) {
+		f.exec(`UPDATE firecrawl_settings SET favorites_only=0,scheduler_json='{"enabled":true,"sourceIds":["companySite"],"ownerName":"CI_USER"}' WHERE id=1`)
+		company, candidate, source := int64(990002), int64(990001), "companySite"
+		job := parser.Job{CompanyID: &company, CandidateID: &candidate, SourceID: &source}
+		tx, err := f.db.BeginTx(f.ctx, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		input, err := parser.ReadCandidateTitleInput(f.ctx, tx, job, "CI_USER")
+		if err != nil {
+			tx.Rollback()
+			t.Fatal(err)
+		}
+		if len(input.Roles) != 2 || input.Roles[0].ID != 990101 || input.Roles[1].ID != 990102 || input.Roles[0].Decision != nil || input.Roles[1].Decision != nil {
+			tx.Rollback()
+			t.Fatal("unexpected title planning snapshot")
+		}
+		plan, err := parser.PlanCandidateStage(parser.CandidateStageInput(input))
+		if err != nil || plan == nil || plan.Type != "classify_title" {
+			tx.Rollback()
+			t.Fatal("missing classification was not scheduled", err)
+		}
+		tx.Rollback()
+		f.exec("UPDATE firecrawl_settings SET favorites_only=1 WHERE id=1")
+		tx, err = f.db.BeginTx(f.ctx, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = parser.ReadCandidateTitleInput(f.ctx, tx, job, "CI_USER")
+		tx.Rollback()
+		if !errors.Is(err, parser.ErrCandidateChanged) {
+			t.Fatal("favorite scope was bypassed", err)
+		}
+	})
 	for _, frame := range frames {
 		t.Run(frame.Name, func(t *testing.T) {
 			f.exec("DELETE FROM vacancy_classification_attempts WHERE candidate_id=990001")
@@ -169,6 +203,28 @@ func TestMariaDBStoredTitleStageDisposable(t *testing.T) {
 			normalize := func(v any) any { b, _ := json.Marshal(v); var a any; _ = json.Unmarshal(b, &a); return a }
 			if !reflect.DeepEqual(normalize(attempts), normalize(frame.Attempts)) || !reflect.DeepEqual(normalize(decisions), normalize(frame.Decisions)) {
 				t.Fatal("stored source projection differs")
+			}
+			company, candidate, source := int64(990002), int64(990001), "companySite"
+			tx, err := f.db.BeginTx(f.ctx, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			snapshot, err := parser.ReadCandidateTitleInput(f.ctx, tx, parser.Job{CompanyID: &company, CandidateID: &candidate, SourceID: &source}, "CI_USER")
+			tx.Rollback()
+			if err != nil {
+				t.Fatal("title snapshot", err)
+			}
+			for _, role := range snapshot.Roles {
+				var expected *string
+				for _, decision := range frame.Decisions {
+					if int64(decision["root_role_id"].(float64)) == role.ID {
+						v := decision["decision"].(string)
+						expected = &v
+					}
+				}
+				if !reflect.DeepEqual(role.Decision, expected) {
+					t.Fatal("snapshot differs from source decisions")
+				}
 			}
 			if f.count("SELECT COUNT(*) FROM vacancy_candidate_classification_leases") != 0 || f.count("SELECT COUNT(*) FROM vacancy_classification_slots") != 0 {
 				t.Fatal("finished lease not released")

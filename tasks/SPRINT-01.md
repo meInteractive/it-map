@@ -1747,3 +1747,7 @@
 ### [ ] GO-368. Атомарная передача следующей стадии (GO-046)
 
 - **Критерии:** optional server-owned SQL planner, тот же owner/generation/candidate/source, source SHA dedupe/priority/payload, атомарное Save+enqueue+attempt/job finish; cache handoff и duplicate reuse, late rollback/replay guards. Required disposable MariaDB fixture, source stage-key oracle; без runtime worker и внешних вызовов. Concrete SQL resolver и импорт/relevance отдельно.
+
+### [ ] GO-369. SQL-снимок классификации для планировщика кандидата (GO-046)
+
+- **Критерии:** серверное чтение owner/source/favorite, заголовка, упорядоченных активных корневых ролей и актуальных решений JEV в одной транзакции; ошибочные и устаревшие данные не считаются актуальными. Снимок не запускает worker и не планирует последующие стадии без raw/extraction/leaf зависимостей. Проверка на изолированной MariaDB; полный resolver остаётся следующей задачей.
