@@ -1,0 +1,1065 @@
+{
+  "schema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "title": {
+        "type": "string"
+      },
+      "employer_name": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "location": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "work_format": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "enum": [
+          "office",
+          "hybrid",
+          "remote",
+          null
+        ]
+      },
+      "employment_type": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "level": {
+        "type": "string",
+        "enum": [
+          "Senior",
+          "Middle",
+          "Lead",
+          "Head"
+        ],
+        "description": "Обязательная оценка уровня: Middle, Senior, Lead или Head. При отсутствии прямого грейда определи по обязанностям и масштабу ответственности согласно системному промту; null запрещён."
+      },
+      "salary_from": {
+        "type": [
+          "number",
+          "null"
+        ]
+      },
+      "salary_to": {
+        "type": [
+          "number",
+          "null"
+        ]
+      },
+      "salary_currency": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "salary_period": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "enum": [
+          "hour",
+          "month",
+          "year",
+          "other",
+          null
+        ]
+      },
+      "salary_tax_type": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "enum": [
+          "gross",
+          "net",
+          null
+        ]
+      },
+      "responsibilities": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "requirements": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "conditions": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "published_at": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$",
+        "description": "Дата публикации в формате YYYY-MM-DD, только если год, месяц и день подтверждены исходным текстом. Неизвестная, неполная или относительная дата без опорной даты: null. Не используй дату загрузки."
+      },
+      "description_md": {
+        "type": "string"
+      },
+      "language": {
+        "type": [
+          "string",
+          "null"
+        ]
+      }
+    },
+    "required": [
+      "title",
+      "employer_name",
+      "location",
+      "work_format",
+      "employment_type",
+      "level",
+      "salary_from",
+      "salary_to",
+      "salary_currency",
+      "salary_period",
+      "salary_tax_type",
+      "responsibilities",
+      "requirements",
+      "conditions",
+      "published_at",
+      "description_md",
+      "language"
+    ]
+  },
+  "version": 2,
+  "limit": 120000,
+  "frames": [
+    {
+      "name": "basic",
+      "content": "{\"title\":\"CI_TITLE\",\"employer_name\":null,\"location\":null,\"work_format\":null,\"employment_type\":null,\"level\":\"Senior\",\"salary_from\":null,\"salary_to\":null,\"salary_currency\":null,\"salary_period\":null,\"salary_tax_type\":null,\"responsibilities\":null,\"requirements\":null,\"conditions\":null,\"published_at\":null,\"description_md\":\"CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION \",\"language\":null}",
+      "raw": "CI_TEXT",
+      "strict": false,
+      "ok": true,
+      "result": {
+        "data": {
+          "title": "CI_TITLE",
+          "employer_name": null,
+          "location": null,
+          "work_format": null,
+          "employment_type": null,
+          "level": "Senior",
+          "salary_from": null,
+          "salary_to": null,
+          "salary_currency": null,
+          "salary_period": null,
+          "salary_tax_type": null,
+          "responsibilities": null,
+          "requirements": null,
+          "conditions": null,
+          "published_at": null,
+          "description_md": "CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION ",
+          "language": null
+        },
+        "corrections": []
+      }
+    },
+    {
+      "name": "salary_long_s",
+      "content": "{\"title\":\"CI_TITLE\",\"employer_name\":null,\"location\":null,\"work_format\":null,\"employment_type\":null,\"level\":\"Senior\",\"salary_from\":100000,\"salary_to\":null,\"salary_currency\":null,\"salary_period\":null,\"salary_tax_type\":null,\"responsibilities\":null,\"requirements\":null,\"conditions\":null,\"published_at\":null,\"description_md\":\"CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION \",\"language\":null}",
+      "raw": "ſalary 100000",
+      "strict": false,
+      "ok": false,
+      "code": "invalid_output",
+      "status": 422,
+      "message": "Зарплата не подтверждается исходным текстом."
+    },
+    {
+      "name": "currency_long_s",
+      "content": "{\"title\":\"CI_TITLE\",\"employer_name\":null,\"location\":null,\"work_format\":null,\"employment_type\":null,\"level\":\"Senior\",\"salary_from\":null,\"salary_to\":null,\"salary_currency\":\"USD\",\"salary_period\":null,\"salary_tax_type\":null,\"responsibilities\":null,\"requirements\":null,\"conditions\":null,\"published_at\":null,\"description_md\":\"CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION \",\"language\":null}",
+      "raw": "uſd",
+      "strict": false,
+      "ok": true,
+      "result": {
+        "data": {
+          "title": "CI_TITLE",
+          "employer_name": null,
+          "location": null,
+          "work_format": null,
+          "employment_type": null,
+          "level": "Senior",
+          "salary_from": null,
+          "salary_to": null,
+          "salary_currency": null,
+          "salary_period": null,
+          "salary_tax_type": null,
+          "responsibilities": null,
+          "requirements": null,
+          "conditions": null,
+          "published_at": null,
+          "description_md": "CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION ",
+          "language": null
+        },
+        "corrections": [
+          {
+            "field": "salary_currency",
+            "reason": "Значение salary_currency не подтверждается исходным текстом."
+          }
+        ]
+      }
+    },
+    {
+      "name": "gross_long_s",
+      "content": "{\"title\":\"CI_TITLE\",\"employer_name\":null,\"location\":null,\"work_format\":null,\"employment_type\":null,\"level\":\"Senior\",\"salary_from\":null,\"salary_to\":null,\"salary_currency\":null,\"salary_period\":null,\"salary_tax_type\":\"gross\",\"responsibilities\":null,\"requirements\":null,\"conditions\":null,\"published_at\":null,\"description_md\":\"CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION \",\"language\":null}",
+      "raw": "groſſ",
+      "strict": false,
+      "ok": true,
+      "result": {
+        "data": {
+          "title": "CI_TITLE",
+          "employer_name": null,
+          "location": null,
+          "work_format": null,
+          "employment_type": null,
+          "level": "Senior",
+          "salary_from": null,
+          "salary_to": null,
+          "salary_currency": null,
+          "salary_period": null,
+          "salary_tax_type": null,
+          "responsibilities": null,
+          "requirements": null,
+          "conditions": null,
+          "published_at": null,
+          "description_md": "CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION ",
+          "language": null
+        },
+        "corrections": [
+          {
+            "field": "salary_tax_type",
+            "reason": "Значение salary_tax_type не подтверждается исходным текстом."
+          }
+        ]
+      }
+    },
+    {
+      "name": "work_line_separator",
+      "content": "{\"title\":\"CI_TITLE\",\"employer_name\":null,\"location\":null,\"work_format\":\"office\",\"employment_type\":null,\"level\":\"Senior\",\"salary_from\":null,\"salary_to\":null,\"salary_currency\":null,\"salary_period\":null,\"salary_tax_type\":null,\"responsibilities\":null,\"requirements\":null,\"conditions\":null,\"published_at\":null,\"description_md\":\"CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION \",\"language\":null}",
+      "raw": "on site",
+      "strict": false,
+      "ok": true,
+      "result": {
+        "data": {
+          "title": "CI_TITLE",
+          "employer_name": null,
+          "location": null,
+          "work_format": null,
+          "employment_type": null,
+          "level": "Senior",
+          "salary_from": null,
+          "salary_to": null,
+          "salary_currency": null,
+          "salary_period": null,
+          "salary_tax_type": null,
+          "responsibilities": null,
+          "requirements": null,
+          "conditions": null,
+          "published_at": null,
+          "description_md": "CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION ",
+          "language": null
+        },
+        "corrections": [
+          {
+            "field": "work_format",
+            "reason": "Значение work_format не подтверждается исходным текстом."
+          }
+        ]
+      }
+    },
+    {
+      "name": "date_utf16_window",
+      "content": "{\"title\":\"CI_TITLE\",\"employer_name\":null,\"location\":null,\"work_format\":null,\"employment_type\":null,\"level\":\"Senior\",\"salary_from\":null,\"salary_to\":null,\"salary_currency\":null,\"salary_period\":null,\"salary_tax_type\":null,\"responsibilities\":null,\"requirements\":null,\"conditions\":null,\"published_at\":\"2026-10-23\",\"description_md\":\"CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION \",\"language\":null}",
+      "raw": "23 октябр😀😀😀😀😀😀😀😀2026",
+      "strict": false,
+      "ok": true,
+      "result": {
+        "data": {
+          "title": "CI_TITLE",
+          "employer_name": null,
+          "location": null,
+          "work_format": null,
+          "employment_type": null,
+          "level": "Senior",
+          "salary_from": null,
+          "salary_to": null,
+          "salary_currency": null,
+          "salary_period": null,
+          "salary_tax_type": null,
+          "responsibilities": null,
+          "requirements": null,
+          "conditions": null,
+          "published_at": null,
+          "description_md": "CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION ",
+          "language": null
+        },
+        "corrections": [
+          {
+            "field": "published_at",
+            "reason": "Дата публикации не подтверждается источником."
+          }
+        ]
+      }
+    },
+    {
+      "name": "salary_nbsp_short",
+      "content": "{\"title\":\"CI_TITLE\",\"employer_name\":null,\"location\":null,\"work_format\":null,\"employment_type\":null,\"level\":\"Senior\",\"salary_from\":150000,\"salary_to\":null,\"salary_currency\":null,\"salary_period\":null,\"salary_tax_type\":null,\"responsibilities\":null,\"requirements\":null,\"conditions\":null,\"published_at\":null,\"description_md\":\"CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION \",\"language\":null}",
+      "raw": "Зарплата 150 тыс руб",
+      "strict": false,
+      "ok": true,
+      "result": {
+        "data": {
+          "title": "CI_TITLE",
+          "employer_name": null,
+          "location": null,
+          "work_format": null,
+          "employment_type": null,
+          "level": "Senior",
+          "salary_from": 150000,
+          "salary_to": null,
+          "salary_currency": null,
+          "salary_period": null,
+          "salary_tax_type": null,
+          "responsibilities": null,
+          "requirements": null,
+          "conditions": null,
+          "published_at": null,
+          "description_md": "CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION ",
+          "language": null
+        },
+        "corrections": []
+      }
+    },
+    {
+      "name": "date_nbsp",
+      "content": "{\"title\":\"CI_TITLE\",\"employer_name\":null,\"location\":null,\"work_format\":null,\"employment_type\":null,\"level\":\"Senior\",\"salary_from\":null,\"salary_to\":null,\"salary_currency\":null,\"salary_period\":null,\"salary_tax_type\":null,\"responsibilities\":null,\"requirements\":null,\"conditions\":null,\"published_at\":\"2026-10-23\",\"description_md\":\"CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION \",\"language\":null}",
+      "raw": "Дата 23 октября 2026",
+      "strict": false,
+      "ok": true,
+      "result": {
+        "data": {
+          "title": "CI_TITLE",
+          "employer_name": null,
+          "location": null,
+          "work_format": null,
+          "employment_type": null,
+          "level": "Senior",
+          "salary_from": null,
+          "salary_to": null,
+          "salary_currency": null,
+          "salary_period": null,
+          "salary_tax_type": null,
+          "responsibilities": null,
+          "requirements": null,
+          "conditions": null,
+          "published_at": "2026-10-23",
+          "description_md": "CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION ",
+          "language": null
+        },
+        "corrections": []
+      }
+    },
+    {
+      "name": "enum_object",
+      "content": "{\"title\":\"CI_TITLE\",\"employer_name\":null,\"location\":null,\"work_format\":{},\"employment_type\":null,\"level\":\"Senior\",\"salary_from\":null,\"salary_to\":null,\"salary_currency\":null,\"salary_period\":null,\"salary_tax_type\":null,\"responsibilities\":null,\"requirements\":null,\"conditions\":null,\"published_at\":null,\"description_md\":\"CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION \",\"language\":null}",
+      "raw": "CI_TEXT",
+      "strict": false,
+      "ok": false,
+      "code": "invalid_output",
+      "status": 422,
+      "message": "Некорректное поле work_format."
+    },
+    {
+      "name": "enum_array",
+      "content": "{\"title\":\"CI_TITLE\",\"employer_name\":null,\"location\":null,\"work_format\":null,\"employment_type\":null,\"level\":[],\"salary_from\":null,\"salary_to\":null,\"salary_currency\":null,\"salary_period\":null,\"salary_tax_type\":null,\"responsibilities\":null,\"requirements\":null,\"conditions\":null,\"published_at\":null,\"description_md\":\"CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION \",\"language\":null}",
+      "raw": "CI_TEXT",
+      "strict": false,
+      "ok": false,
+      "code": "invalid_output",
+      "status": 422,
+      "message": "Некорректное поле level."
+    },
+    {
+      "name": "currency_unicode",
+      "content": "{\"title\":\"CI_TITLE\",\"employer_name\":null,\"location\":null,\"work_format\":null,\"employment_type\":null,\"level\":\"Senior\",\"salary_from\":null,\"salary_to\":null,\"salary_currency\":\"ΟΣ\",\"salary_period\":null,\"salary_tax_type\":null,\"responsibilities\":null,\"requirements\":null,\"conditions\":null,\"published_at\":null,\"description_md\":\"CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION \",\"language\":null}",
+      "raw": "Salary ος",
+      "strict": false,
+      "ok": true,
+      "result": {
+        "data": {
+          "title": "CI_TITLE",
+          "employer_name": null,
+          "location": null,
+          "work_format": null,
+          "employment_type": null,
+          "level": "Senior",
+          "salary_from": null,
+          "salary_to": null,
+          "salary_currency": "ΟΣ",
+          "salary_period": null,
+          "salary_tax_type": null,
+          "responsibilities": null,
+          "requirements": null,
+          "conditions": null,
+          "published_at": null,
+          "description_md": "CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION ",
+          "language": null
+        },
+        "corrections": []
+      }
+    },
+    {
+      "name": "salary_utf16_context",
+      "content": "{\"title\":\"CI_TITLE\",\"employer_name\":null,\"location\":null,\"work_format\":null,\"employment_type\":null,\"level\":\"Senior\",\"salary_from\":100000,\"salary_to\":null,\"salary_currency\":null,\"salary_period\":null,\"salary_tax_type\":null,\"responsibilities\":null,\"requirements\":null,\"conditions\":null,\"published_at\":null,\"description_md\":\"CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION \",\"language\":null}",
+      "raw": "Salary😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀100000",
+      "strict": false,
+      "ok": false,
+      "code": "invalid_output",
+      "status": 422,
+      "message": "Зарплата не подтверждается исходным текстом."
+    },
+    {
+      "name": "salary",
+      "content": "{\"title\":\"CI_TITLE\",\"employer_name\":null,\"location\":null,\"work_format\":null,\"employment_type\":null,\"level\":\"Senior\",\"salary_from\":100000,\"salary_to\":150000,\"salary_currency\":\"RUB\",\"salary_period\":\"month\",\"salary_tax_type\":\"net\",\"responsibilities\":null,\"requirements\":null,\"conditions\":null,\"published_at\":null,\"description_md\":\"CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION \",\"language\":null}",
+      "raw": "Зарплата 100 000–150 000 руб в месяц на руки.",
+      "strict": false,
+      "ok": true,
+      "result": {
+        "data": {
+          "title": "CI_TITLE",
+          "employer_name": null,
+          "location": null,
+          "work_format": null,
+          "employment_type": null,
+          "level": "Senior",
+          "salary_from": 100000,
+          "salary_to": 150000,
+          "salary_currency": "RUB",
+          "salary_period": "month",
+          "salary_tax_type": "net",
+          "responsibilities": null,
+          "requirements": null,
+          "conditions": null,
+          "published_at": null,
+          "description_md": "CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION ",
+          "language": null
+        },
+        "corrections": []
+      }
+    },
+    {
+      "name": "salary_short",
+      "content": "{\"title\":\"CI_TITLE\",\"employer_name\":null,\"location\":null,\"work_format\":null,\"employment_type\":null,\"level\":\"Senior\",\"salary_from\":150000,\"salary_to\":null,\"salary_currency\":null,\"salary_period\":null,\"salary_tax_type\":null,\"responsibilities\":null,\"requirements\":null,\"conditions\":null,\"published_at\":null,\"description_md\":\"CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION \",\"language\":null}",
+      "raw": "Salary 150k",
+      "strict": false,
+      "ok": true,
+      "result": {
+        "data": {
+          "title": "CI_TITLE",
+          "employer_name": null,
+          "location": null,
+          "work_format": null,
+          "employment_type": null,
+          "level": "Senior",
+          "salary_from": 150000,
+          "salary_to": null,
+          "salary_currency": null,
+          "salary_period": null,
+          "salary_tax_type": null,
+          "responsibilities": null,
+          "requirements": null,
+          "conditions": null,
+          "published_at": null,
+          "description_md": "CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION ",
+          "language": null
+        },
+        "corrections": []
+      }
+    },
+    {
+      "name": "salary_fraction",
+      "content": "{\"title\":\"CI_TITLE\",\"employer_name\":null,\"location\":null,\"work_format\":null,\"employment_type\":null,\"level\":\"Senior\",\"salary_from\":150500,\"salary_to\":null,\"salary_currency\":null,\"salary_period\":null,\"salary_tax_type\":null,\"responsibilities\":null,\"requirements\":null,\"conditions\":null,\"published_at\":null,\"description_md\":\"CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION \",\"language\":null}",
+      "raw": "Зарплата 150,5 тыс руб",
+      "strict": false,
+      "ok": true,
+      "result": {
+        "data": {
+          "title": "CI_TITLE",
+          "employer_name": null,
+          "location": null,
+          "work_format": null,
+          "employment_type": null,
+          "level": "Senior",
+          "salary_from": 150500,
+          "salary_to": null,
+          "salary_currency": null,
+          "salary_period": null,
+          "salary_tax_type": null,
+          "responsibilities": null,
+          "requirements": null,
+          "conditions": null,
+          "published_at": null,
+          "description_md": "CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION ",
+          "language": null
+        },
+        "corrections": []
+      }
+    },
+    {
+      "name": "salary_unknown",
+      "content": "{\"title\":\"CI_TITLE\",\"employer_name\":null,\"location\":null,\"work_format\":null,\"employment_type\":null,\"level\":\"Senior\",\"salary_from\":100000,\"salary_to\":null,\"salary_currency\":null,\"salary_period\":null,\"salary_tax_type\":null,\"responsibilities\":null,\"requirements\":null,\"conditions\":null,\"published_at\":null,\"description_md\":\"CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION \",\"language\":null}",
+      "raw": "CI_TEXT",
+      "strict": false,
+      "ok": false,
+      "code": "invalid_output",
+      "status": 422,
+      "message": "Зарплата не подтверждается исходным текстом."
+    },
+    {
+      "name": "salary_reversed",
+      "content": "{\"title\":\"CI_TITLE\",\"employer_name\":null,\"location\":null,\"work_format\":null,\"employment_type\":null,\"level\":\"Senior\",\"salary_from\":200000,\"salary_to\":100000,\"salary_currency\":null,\"salary_period\":null,\"salary_tax_type\":null,\"responsibilities\":null,\"requirements\":null,\"conditions\":null,\"published_at\":null,\"description_md\":\"CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION \",\"language\":null}",
+      "raw": "Зарплата 100000–200000 руб",
+      "strict": false,
+      "ok": false,
+      "code": "invalid_output",
+      "status": 422,
+      "message": "Границы зарплаты перепутаны."
+    },
+    {
+      "name": "salary_negative",
+      "content": "{\"title\":\"CI_TITLE\",\"employer_name\":null,\"location\":null,\"work_format\":null,\"employment_type\":null,\"level\":\"Senior\",\"salary_from\":-1,\"salary_to\":null,\"salary_currency\":null,\"salary_period\":null,\"salary_tax_type\":null,\"responsibilities\":null,\"requirements\":null,\"conditions\":null,\"published_at\":null,\"description_md\":\"CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION \",\"language\":null}",
+      "raw": "Зарплата -1 руб",
+      "strict": false,
+      "ok": false,
+      "code": "invalid_output",
+      "status": 422,
+      "message": "Некорректное поле salary_from."
+    },
+    {
+      "name": "work_unknown",
+      "content": "{\"title\":\"CI_TITLE\",\"employer_name\":null,\"location\":null,\"work_format\":\"remote\",\"employment_type\":null,\"level\":\"Senior\",\"salary_from\":null,\"salary_to\":null,\"salary_currency\":null,\"salary_period\":null,\"salary_tax_type\":null,\"responsibilities\":null,\"requirements\":null,\"conditions\":null,\"published_at\":null,\"description_md\":\"CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION \",\"language\":null}",
+      "raw": "CI_TEXT",
+      "strict": false,
+      "ok": true,
+      "result": {
+        "data": {
+          "title": "CI_TITLE",
+          "employer_name": null,
+          "location": null,
+          "work_format": null,
+          "employment_type": null,
+          "level": "Senior",
+          "salary_from": null,
+          "salary_to": null,
+          "salary_currency": null,
+          "salary_period": null,
+          "salary_tax_type": null,
+          "responsibilities": null,
+          "requirements": null,
+          "conditions": null,
+          "published_at": null,
+          "description_md": "CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION ",
+          "language": null
+        },
+        "corrections": [
+          {
+            "field": "work_format",
+            "reason": "Значение work_format не подтверждается исходным текстом."
+          }
+        ]
+      }
+    },
+    {
+      "name": "work_known",
+      "content": "{\"title\":\"CI_TITLE\",\"employer_name\":null,\"location\":null,\"work_format\":\"remote\",\"employment_type\":null,\"level\":\"Senior\",\"salary_from\":null,\"salary_to\":null,\"salary_currency\":null,\"salary_period\":null,\"salary_tax_type\":null,\"responsibilities\":null,\"requirements\":null,\"conditions\":null,\"published_at\":null,\"description_md\":\"CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION \",\"language\":null}",
+      "raw": "Удалённая работа.",
+      "strict": false,
+      "ok": true,
+      "result": {
+        "data": {
+          "title": "CI_TITLE",
+          "employer_name": null,
+          "location": null,
+          "work_format": "remote",
+          "employment_type": null,
+          "level": "Senior",
+          "salary_from": null,
+          "salary_to": null,
+          "salary_currency": null,
+          "salary_period": null,
+          "salary_tax_type": null,
+          "responsibilities": null,
+          "requirements": null,
+          "conditions": null,
+          "published_at": null,
+          "description_md": "CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION ",
+          "language": null
+        },
+        "corrections": []
+      }
+    },
+    {
+      "name": "gross_unknown",
+      "content": "{\"title\":\"CI_TITLE\",\"employer_name\":null,\"location\":null,\"work_format\":null,\"employment_type\":null,\"level\":\"Senior\",\"salary_from\":null,\"salary_to\":null,\"salary_currency\":null,\"salary_period\":null,\"salary_tax_type\":\"gross\",\"responsibilities\":null,\"requirements\":null,\"conditions\":null,\"published_at\":null,\"description_md\":\"CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION \",\"language\":null}",
+      "raw": "CI_TEXT",
+      "strict": false,
+      "ok": true,
+      "result": {
+        "data": {
+          "title": "CI_TITLE",
+          "employer_name": null,
+          "location": null,
+          "work_format": null,
+          "employment_type": null,
+          "level": "Senior",
+          "salary_from": null,
+          "salary_to": null,
+          "salary_currency": null,
+          "salary_period": null,
+          "salary_tax_type": null,
+          "responsibilities": null,
+          "requirements": null,
+          "conditions": null,
+          "published_at": null,
+          "description_md": "CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION ",
+          "language": null
+        },
+        "corrections": [
+          {
+            "field": "salary_tax_type",
+            "reason": "Значение salary_tax_type не подтверждается исходным текстом."
+          }
+        ]
+      }
+    },
+    {
+      "name": "currency_unknown",
+      "content": "{\"title\":\"CI_TITLE\",\"employer_name\":null,\"location\":null,\"work_format\":null,\"employment_type\":null,\"level\":\"Senior\",\"salary_from\":null,\"salary_to\":null,\"salary_currency\":\"USD\",\"salary_period\":null,\"salary_tax_type\":null,\"responsibilities\":null,\"requirements\":null,\"conditions\":null,\"published_at\":null,\"description_md\":\"CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION \",\"language\":null}",
+      "raw": "CI_TEXT",
+      "strict": false,
+      "ok": true,
+      "result": {
+        "data": {
+          "title": "CI_TITLE",
+          "employer_name": null,
+          "location": null,
+          "work_format": null,
+          "employment_type": null,
+          "level": "Senior",
+          "salary_from": null,
+          "salary_to": null,
+          "salary_currency": null,
+          "salary_period": null,
+          "salary_tax_type": null,
+          "responsibilities": null,
+          "requirements": null,
+          "conditions": null,
+          "published_at": null,
+          "description_md": "CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION ",
+          "language": null
+        },
+        "corrections": [
+          {
+            "field": "salary_currency",
+            "reason": "Значение salary_currency не подтверждается исходным текстом."
+          }
+        ]
+      }
+    },
+    {
+      "name": "currency_custom",
+      "content": "{\"title\":\"CI_TITLE\",\"employer_name\":null,\"location\":null,\"work_format\":null,\"employment_type\":null,\"level\":\"Senior\",\"salary_from\":null,\"salary_to\":null,\"salary_currency\":\"GBP\",\"salary_period\":null,\"salary_tax_type\":null,\"responsibilities\":null,\"requirements\":null,\"conditions\":null,\"published_at\":null,\"description_md\":\"CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION \",\"language\":null}",
+      "raw": "Salary GBP",
+      "strict": false,
+      "ok": true,
+      "result": {
+        "data": {
+          "title": "CI_TITLE",
+          "employer_name": null,
+          "location": null,
+          "work_format": null,
+          "employment_type": null,
+          "level": "Senior",
+          "salary_from": null,
+          "salary_to": null,
+          "salary_currency": "GBP",
+          "salary_period": null,
+          "salary_tax_type": null,
+          "responsibilities": null,
+          "requirements": null,
+          "conditions": null,
+          "published_at": null,
+          "description_md": "CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION ",
+          "language": null
+        },
+        "corrections": []
+      }
+    },
+    {
+      "name": "period_other",
+      "content": "{\"title\":\"CI_TITLE\",\"employer_name\":null,\"location\":null,\"work_format\":null,\"employment_type\":null,\"level\":\"Senior\",\"salary_from\":null,\"salary_to\":null,\"salary_currency\":null,\"salary_period\":\"other\",\"salary_tax_type\":null,\"responsibilities\":null,\"requirements\":null,\"conditions\":null,\"published_at\":null,\"description_md\":\"CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION \",\"language\":null}",
+      "raw": "CI_TEXT",
+      "strict": false,
+      "ok": true,
+      "result": {
+        "data": {
+          "title": "CI_TITLE",
+          "employer_name": null,
+          "location": null,
+          "work_format": null,
+          "employment_type": null,
+          "level": "Senior",
+          "salary_from": null,
+          "salary_to": null,
+          "salary_currency": null,
+          "salary_period": "other",
+          "salary_tax_type": null,
+          "responsibilities": null,
+          "requirements": null,
+          "conditions": null,
+          "published_at": null,
+          "description_md": "CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION ",
+          "language": null
+        },
+        "corrections": []
+      }
+    },
+    {
+      "name": "date_iso",
+      "content": "{\"title\":\"CI_TITLE\",\"employer_name\":null,\"location\":null,\"work_format\":null,\"employment_type\":null,\"level\":\"Senior\",\"salary_from\":null,\"salary_to\":null,\"salary_currency\":null,\"salary_period\":null,\"salary_tax_type\":null,\"responsibilities\":null,\"requirements\":null,\"conditions\":null,\"published_at\":\"2026-10-23\",\"description_md\":\"CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION \",\"language\":null}",
+      "raw": "Дата 2026-10-23",
+      "strict": false,
+      "ok": true,
+      "result": {
+        "data": {
+          "title": "CI_TITLE",
+          "employer_name": null,
+          "location": null,
+          "work_format": null,
+          "employment_type": null,
+          "level": "Senior",
+          "salary_from": null,
+          "salary_to": null,
+          "salary_currency": null,
+          "salary_period": null,
+          "salary_tax_type": null,
+          "responsibilities": null,
+          "requirements": null,
+          "conditions": null,
+          "published_at": "2026-10-23",
+          "description_md": "CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION ",
+          "language": null
+        },
+        "corrections": []
+      }
+    },
+    {
+      "name": "date_dots",
+      "content": "{\"title\":\"CI_TITLE\",\"employer_name\":null,\"location\":null,\"work_format\":null,\"employment_type\":null,\"level\":\"Senior\",\"salary_from\":null,\"salary_to\":null,\"salary_currency\":null,\"salary_period\":null,\"salary_tax_type\":null,\"responsibilities\":null,\"requirements\":null,\"conditions\":null,\"published_at\":\"2026-10-23\",\"description_md\":\"CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION \",\"language\":null}",
+      "raw": "Дата 23.10.2026",
+      "strict": false,
+      "ok": true,
+      "result": {
+        "data": {
+          "title": "CI_TITLE",
+          "employer_name": null,
+          "location": null,
+          "work_format": null,
+          "employment_type": null,
+          "level": "Senior",
+          "salary_from": null,
+          "salary_to": null,
+          "salary_currency": null,
+          "salary_period": null,
+          "salary_tax_type": null,
+          "responsibilities": null,
+          "requirements": null,
+          "conditions": null,
+          "published_at": "2026-10-23",
+          "description_md": "CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION ",
+          "language": null
+        },
+        "corrections": []
+      }
+    },
+    {
+      "name": "date_ru",
+      "content": "{\"title\":\"CI_TITLE\",\"employer_name\":null,\"location\":null,\"work_format\":null,\"employment_type\":null,\"level\":\"Senior\",\"salary_from\":null,\"salary_to\":null,\"salary_currency\":null,\"salary_period\":null,\"salary_tax_type\":null,\"responsibilities\":null,\"requirements\":null,\"conditions\":null,\"published_at\":\"2026-10-23\",\"description_md\":\"CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION \",\"language\":null}",
+      "raw": "Дата 23 октября 2026",
+      "strict": false,
+      "ok": true,
+      "result": {
+        "data": {
+          "title": "CI_TITLE",
+          "employer_name": null,
+          "location": null,
+          "work_format": null,
+          "employment_type": null,
+          "level": "Senior",
+          "salary_from": null,
+          "salary_to": null,
+          "salary_currency": null,
+          "salary_period": null,
+          "salary_tax_type": null,
+          "responsibilities": null,
+          "requirements": null,
+          "conditions": null,
+          "published_at": "2026-10-23",
+          "description_md": "CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION ",
+          "language": null
+        },
+        "corrections": []
+      }
+    },
+    {
+      "name": "date_unknown",
+      "content": "{\"title\":\"CI_TITLE\",\"employer_name\":null,\"location\":null,\"work_format\":null,\"employment_type\":null,\"level\":\"Senior\",\"salary_from\":null,\"salary_to\":null,\"salary_currency\":null,\"salary_period\":null,\"salary_tax_type\":null,\"responsibilities\":null,\"requirements\":null,\"conditions\":null,\"published_at\":\"2026-10-23\",\"description_md\":\"CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION \",\"language\":null}",
+      "raw": "Сегодня",
+      "strict": false,
+      "ok": true,
+      "result": {
+        "data": {
+          "title": "CI_TITLE",
+          "employer_name": null,
+          "location": null,
+          "work_format": null,
+          "employment_type": null,
+          "level": "Senior",
+          "salary_from": null,
+          "salary_to": null,
+          "salary_currency": null,
+          "salary_period": null,
+          "salary_tax_type": null,
+          "responsibilities": null,
+          "requirements": null,
+          "conditions": null,
+          "published_at": null,
+          "description_md": "CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION ",
+          "language": null
+        },
+        "corrections": [
+          {
+            "field": "published_at",
+            "reason": "Дата публикации не подтверждается источником."
+          }
+        ]
+      }
+    },
+    {
+      "name": "date_invalid",
+      "content": "{\"title\":\"CI_TITLE\",\"employer_name\":null,\"location\":null,\"work_format\":null,\"employment_type\":null,\"level\":\"Senior\",\"salary_from\":null,\"salary_to\":null,\"salary_currency\":null,\"salary_period\":null,\"salary_tax_type\":null,\"responsibilities\":null,\"requirements\":null,\"conditions\":null,\"published_at\":\"2026-02-29\",\"description_md\":\"CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION \",\"language\":null}",
+      "raw": "2026-02-29",
+      "strict": false,
+      "ok": false,
+      "code": "invalid_output",
+      "status": 422,
+      "message": "Дата публикации должна быть действительной датой YYYY-MM-DD."
+    },
+    {
+      "name": "date_shape",
+      "content": "{\"title\":\"CI_TITLE\",\"employer_name\":null,\"location\":null,\"work_format\":null,\"employment_type\":null,\"level\":\"Senior\",\"salary_from\":null,\"salary_to\":null,\"salary_currency\":null,\"salary_period\":null,\"salary_tax_type\":null,\"responsibilities\":null,\"requirements\":null,\"conditions\":null,\"published_at\":\"23.10.2026\",\"description_md\":\"CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION \",\"language\":null}",
+      "raw": "23.10.2026",
+      "strict": false,
+      "ok": false,
+      "code": "invalid_output",
+      "status": 422,
+      "message": "Дата публикации должна быть действительной датой YYYY-MM-DD."
+    },
+    {
+      "name": "title_empty",
+      "content": "{\"title\":\" \",\"employer_name\":null,\"location\":null,\"work_format\":null,\"employment_type\":null,\"level\":\"Senior\",\"salary_from\":null,\"salary_to\":null,\"salary_currency\":null,\"salary_period\":null,\"salary_tax_type\":null,\"responsibilities\":null,\"requirements\":null,\"conditions\":null,\"published_at\":null,\"description_md\":\"CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION \",\"language\":null}",
+      "raw": "CI_TEXT",
+      "strict": false,
+      "ok": false,
+      "code": "invalid_output",
+      "status": 422,
+      "message": "Некорректное поле title."
+    },
+    {
+      "name": "description_short",
+      "content": "{\"title\":\"CI_TITLE\",\"employer_name\":null,\"location\":null,\"work_format\":null,\"employment_type\":null,\"level\":\"Senior\",\"salary_from\":null,\"salary_to\":null,\"salary_currency\":null,\"salary_period\":null,\"salary_tax_type\":null,\"responsibilities\":null,\"requirements\":null,\"conditions\":null,\"published_at\":null,\"description_md\":\"short\",\"language\":null}",
+      "raw": "CI_TEXT",
+      "strict": false,
+      "ok": false,
+      "code": "invalid_output",
+      "status": 422,
+      "message": "Недостаточное содержательное описание."
+    },
+    {
+      "name": "level_null",
+      "content": "{\"title\":\"CI_TITLE\",\"employer_name\":null,\"location\":null,\"work_format\":null,\"employment_type\":null,\"level\":null,\"salary_from\":null,\"salary_to\":null,\"salary_currency\":null,\"salary_period\":null,\"salary_tax_type\":null,\"responsibilities\":null,\"requirements\":null,\"conditions\":null,\"published_at\":null,\"description_md\":\"CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION \",\"language\":null}",
+      "raw": "CI_TEXT",
+      "strict": false,
+      "ok": false,
+      "code": "invalid_output",
+      "status": 422,
+      "message": "Некорректное поле level."
+    },
+    {
+      "name": "level_invalid",
+      "content": "{\"title\":\"CI_TITLE\",\"employer_name\":null,\"location\":null,\"work_format\":null,\"employment_type\":null,\"level\":\"Junior\",\"salary_from\":null,\"salary_to\":null,\"salary_currency\":null,\"salary_period\":null,\"salary_tax_type\":null,\"responsibilities\":null,\"requirements\":null,\"conditions\":null,\"published_at\":null,\"description_md\":\"CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION \",\"language\":null}",
+      "raw": "CI_TEXT",
+      "strict": false,
+      "ok": false,
+      "code": "invalid_output",
+      "status": 422,
+      "message": "Некорректное поле level."
+    },
+    {
+      "name": "extra_field",
+      "content": "{\"title\":\"CI_TITLE\",\"employer_name\":null,\"location\":null,\"work_format\":null,\"employment_type\":null,\"level\":\"Senior\",\"salary_from\":null,\"salary_to\":null,\"salary_currency\":null,\"salary_period\":null,\"salary_tax_type\":null,\"responsibilities\":null,\"requirements\":null,\"conditions\":null,\"published_at\":null,\"description_md\":\"CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION \",\"language\":null,\"alien\":true}",
+      "raw": "CI_TEXT",
+      "strict": false,
+      "ok": false,
+      "code": "invalid_output",
+      "status": 422,
+      "message": "Поля ответа не соответствуют схеме."
+    },
+    {
+      "name": "number_string",
+      "content": "{\"title\":\"CI_TITLE\",\"employer_name\":null,\"location\":null,\"work_format\":null,\"employment_type\":null,\"level\":\"Senior\",\"salary_from\":\"100000\",\"salary_to\":null,\"salary_currency\":null,\"salary_period\":null,\"salary_tax_type\":null,\"responsibilities\":null,\"requirements\":null,\"conditions\":null,\"published_at\":null,\"description_md\":\"CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION \",\"language\":null}",
+      "raw": "Зарплата 100000 руб",
+      "strict": false,
+      "ok": false,
+      "code": "invalid_output",
+      "status": 422,
+      "message": "Некорректное поле salary_from."
+    },
+    {
+      "name": "nullbyte",
+      "content": "{\"title\":\"CI_TITLE\",\"employer_name\":null,\"location\":null,\"work_format\":null,\"employment_type\":null,\"level\":\"Senior\",\"salary_from\":null,\"salary_to\":null,\"salary_currency\":null,\"salary_period\":null,\"salary_tax_type\":null,\"responsibilities\":null,\"requirements\":\"CI\\u0000TEXT\",\"conditions\":null,\"published_at\":null,\"description_md\":\"CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION \",\"language\":null}",
+      "raw": "CI_TEXT",
+      "strict": false,
+      "ok": false,
+      "code": "invalid_output",
+      "status": 422,
+      "message": "Некорректное поле requirements."
+    },
+    {
+      "name": "salary_no_boundary",
+      "content": "{\"title\":\"CI_TITLE\",\"employer_name\":null,\"location\":null,\"work_format\":null,\"employment_type\":null,\"level\":\"Senior\",\"salary_from\":100000,\"salary_to\":null,\"salary_currency\":null,\"salary_period\":null,\"salary_tax_type\":null,\"responsibilities\":null,\"requirements\":null,\"conditions\":null,\"published_at\":null,\"description_md\":\"CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION \",\"language\":null}",
+      "raw": "Зарплата 21000001 руб",
+      "strict": false,
+      "ok": false,
+      "code": "invalid_output",
+      "status": 422,
+      "message": "Зарплата не подтверждается исходным текстом."
+    },
+    {
+      "name": "salary_other_line",
+      "content": "{\"title\":\"CI_TITLE\",\"employer_name\":null,\"location\":null,\"work_format\":null,\"employment_type\":null,\"level\":\"Senior\",\"salary_from\":100000,\"salary_to\":null,\"salary_currency\":null,\"salary_period\":null,\"salary_tax_type\":null,\"responsibilities\":null,\"requirements\":null,\"conditions\":null,\"published_at\":null,\"description_md\":\"CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION \",\"language\":null}",
+      "raw": "Salary\nCI 100000",
+      "strict": false,
+      "ok": false,
+      "code": "invalid_output",
+      "status": 422,
+      "message": "Зарплата не подтверждается исходным текстом."
+    },
+    {
+      "name": "salary_zero",
+      "content": "{\"title\":\"CI_TITLE\",\"employer_name\":null,\"location\":null,\"work_format\":null,\"employment_type\":null,\"level\":\"Senior\",\"salary_from\":0,\"salary_to\":null,\"salary_currency\":null,\"salary_period\":null,\"salary_tax_type\":null,\"responsibilities\":null,\"requirements\":null,\"conditions\":null,\"published_at\":null,\"description_md\":\"CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION \",\"language\":null}",
+      "raw": "Зарплата 0 руб",
+      "strict": false,
+      "ok": true,
+      "result": {
+        "data": {
+          "title": "CI_TITLE",
+          "employer_name": null,
+          "location": null,
+          "work_format": null,
+          "employment_type": null,
+          "level": "Senior",
+          "salary_from": 0,
+          "salary_to": null,
+          "salary_currency": null,
+          "salary_period": null,
+          "salary_tax_type": null,
+          "responsibilities": null,
+          "requirements": null,
+          "conditions": null,
+          "published_at": null,
+          "description_md": "CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION ",
+          "language": null
+        },
+        "corrections": []
+      }
+    },
+    {
+      "name": "title_utf16",
+      "content": "{\"title\":\"😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀\",\"employer_name\":null,\"location\":null,\"work_format\":null,\"employment_type\":null,\"level\":\"Senior\",\"salary_from\":null,\"salary_to\":null,\"salary_currency\":null,\"salary_period\":null,\"salary_tax_type\":null,\"responsibilities\":null,\"requirements\":null,\"conditions\":null,\"published_at\":null,\"description_md\":\"CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION \",\"language\":null}",
+      "raw": "CI_TEXT",
+      "strict": false,
+      "ok": false,
+      "code": "invalid_output",
+      "status": 422,
+      "message": "Недостаточное содержательное описание."
+    },
+    {
+      "name": "work_unknown_strict",
+      "content": "{\"title\":\"CI_TITLE\",\"employer_name\":null,\"location\":null,\"work_format\":\"remote\",\"employment_type\":null,\"level\":\"Senior\",\"salary_from\":null,\"salary_to\":null,\"salary_currency\":null,\"salary_period\":null,\"salary_tax_type\":null,\"responsibilities\":null,\"requirements\":null,\"conditions\":null,\"published_at\":null,\"description_md\":\"CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION CI_DESCRIPTION \",\"language\":null}",
+      "raw": "CI_TEXT",
+      "strict": true,
+      "ok": false,
+      "code": "invalid_output",
+      "status": 422,
+      "message": "Значение work_format не подтверждается исходным текстом."
+    },
+    {
+      "name": "json_{",
+      "content": "{",
+      "raw": "CI_TEXT",
+      "ok": false,
+      "code": "invalid_output",
+      "status": 422,
+      "message": "Модель вернула некорректный JSON."
+    },
+    {
+      "name": "json_null",
+      "content": "null",
+      "raw": "CI_TEXT",
+      "ok": false,
+      "code": "invalid_output",
+      "status": 422,
+      "message": "Поля ответа не соответствуют схеме."
+    },
+    {
+      "name": "json_[]",
+      "content": "[]",
+      "raw": "CI_TEXT",
+      "ok": false,
+      "code": "invalid_output",
+      "status": 422,
+      "message": "Поля ответа не соответствуют схеме."
+    },
+    {
+      "name": "json_{}",
+      "content": "{}",
+      "raw": "CI_TEXT",
+      "ok": false,
+      "code": "invalid_output",
+      "status": 422,
+      "message": "Поля ответа не соответствуют схеме."
+    }
+  ]
+}

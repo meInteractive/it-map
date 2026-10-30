@@ -1695,3 +1695,9 @@
 - **Критерии:** concrete AIStageStore для classify_title: current candidate/source/owner/favorites/active root prompts, cache по title/prompt/model, durable candidate lease и2 global slots; независимые решения/errors/provenance, partial не reject, atomic result+attempt/job. Source projection и required disposable SQL proof. Enqueue-next и прочие SQL stages отдельно, runtime worker не активировать.
 
 - **Результат359:** concrete title repository и source4 projection подготовлены; required native gate добавлен. SQL acceptance ждёт CI; real provider/сервер/worker не запускались. [Контракт](../docs/dev/GO_STORED_TITLE_STAGE.md).
+
+### [ ] GO-360. Валидация структурированных вакансий (GO-025/350)
+
+- **Критерии:** source schema v2/17 обязательных полей, типы/enums/даты/зарплата и evidence, неподтверждённые optional metadata→null с corrections; salary amounts/некорректный JSON/text — hard error. Actual unchanged JS oracle и guarded CI, без моделей/SQL/runtime. Затем SQL extraction stage с snapshots/hashes/cache/leases.
+
+- **Результат360:** schema/strict/normalizing validator реализованы;46 source frames и Unicode/evidence отрицательные случаи pass. Required source CI добавлен, SQL pipeline ещё отдельно. [Контракт](../docs/dev/GO_EXTRACTION_VALIDATION.md).
