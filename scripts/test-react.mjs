@@ -151,17 +151,27 @@ export async function testFilterMenuFocus(){
  try{
   browser();Object.assign(document,bind(docEvents));Object.assign(window,bind(windowEvents));
   await act(async()=>{root=create(h(ui.RankFilter,{value:ui.defaultFilters,count:229,onChange:value=>{changed=value;}}),{createNodeMock:node=>node.props.className==='rank-filter'?container:null});});
-  await click(button('Места'));assert.equal(menu().props.hidden,false);
+  assert.equal(button('Места').props['aria-expanded'],false);
+   assert.equal(menu().props.hidden,true);
+   await click(button('Места'));assert.equal(menu().props.hidden,false);
+   assert.equal(button('Места').props['aria-expanded'],true);
   // An internal pointer can blur the toggle before a label activates its checkbox.
   await act(async()=>{docEvents.get('pointerdown')?.({target:inside});root.root.findByProps({className:'rank-filter'}).props.onBlur({currentTarget:container,relatedTarget:null});});
   assert.equal(menu().props.hidden,false,'A null-target blur must not hide an internal label before its click');
   const input=root.root.findAllByType('label').find(l=>label(l)==='Избранные').findByType('input');
   await act(async()=>input.props.onChange({target:{checked:true}}));assert.equal(changed.favoriteOnly,true);assert.equal(menu().props.hidden,false);
-  await act(async()=>docEvents.get('focusin')({target:inside}));assert.equal(menu().props.hidden,false);
+  await act(async()=>root.root.findByProps({className:'rank-filter'}).props.onBlur({currentTarget:container,relatedTarget:inside}));
+   assert.equal(menu().props.hidden,false,'Фокус внутри меню не закрывает его');
+   await act(async()=>docEvents.get('focusin')({target:inside}));assert.equal(menu().props.hidden,false);
+   assert.equal(button('Места').props['aria-expanded'],true);
   await act(async()=>docEvents.get('focusin')({target:outside}));assert.equal(menu().props.hidden,true);
+   assert.equal(button('Места').props['aria-expanded'],false);
   await click(button('Места'));await act(async()=>docEvents.get('pointerdown')({target:outside}));assert.equal(menu().props.hidden,true);
   await click(button('Места'));await act(async()=>windowEvents.get('blur')());assert.equal(menu().props.hidden,true);
-  await click(button('Места'));await act(async()=>root.root.findByProps({className:'rank-filter'}).props.onKeyDown({key:'Escape'}));assert.equal(menu().props.hidden,true);
+  await click(button('Места'));assert.equal(button('Места').props['aria-expanded'],true);
+   await act(async()=>root.root.findByProps({className:'rank-filter'}).props.onKeyDown({key:'Escape'}));
+   assert.equal(menu().props.hidden,true);
+   assert.equal(button('Места').props['aria-expanded'],false);
   await click(button('Места'));await stop();assert.equal(docEvents.size,0);assert.equal(windowEvents.size,0);
  }finally{await stop();}
 }
