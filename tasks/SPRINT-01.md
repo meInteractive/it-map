@@ -1731,3 +1731,9 @@
 - **Критерии:** source `validateLeafRoleIds` и request OpenAI/free/JEV: полный Markdown без усечения, только разрешённые ID, не более12 и без дублей; source schema/prompts и typed failure. Actual source oracle/mocks, никакой DB/worker activation. SQL storage/cache/leases — отдельная366.
 
 - **Результат365:** pure role validation и source-compatible запрос для OpenAI/free/JEV подготовлены;15+4 actual source frames и mock no-replay проходят. SQL stage отдельно366. [Границы](../docs/dev/GO_LEAF_ROLES.md).
+
+### [ ] GO-366. SQL-стадия конечных ролей (GO-025/350)
+
+- **Критерии:** source eligible candidate/current extraction/active matches, полное дерево доступных конечных ролей и source hashes, prompt/model и cache, candidate+LLM slots/Attempt budget, typed JEV/OpenAI result и атомарное сохранение. Source SQLite oracle и required disposable MariaDB gate; live providers, worker/server не включать.
+
+- **Результат366:** SQL role stage/source hashes и required native gate подготовлены. Локальный SQL guard пропускает тест; положительный CI ожидается. [Контракт](../docs/dev/GO_LEAF_SQL_STAGE.md).

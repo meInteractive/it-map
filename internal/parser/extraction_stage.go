@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"fmt"
 	whatwg "github.com/nlnwa/whatwg-url/url"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -213,55 +212,10 @@ func (s ExtractionStageStore) Prepare(ctx context.Context, tx *sql.Tx, j Job) (A
 		}
 		plan.PreflightError = requestError
 	}
-	x.Token, e = stageToken()
+
+	x.Token, x.Slot, x.Started, e = acquireDetailLeases(ctx, tx, j, x.Title.CandidateID, plan.PreflightError == nil)
 	if e != nil {
 		return AIStagePlan{}, e
-	}
-	x.Started, e = runClock(ctx, tx)
-	if e != nil {
-		return AIStagePlan{}, ErrSettingsStorage
-	}
-	acquire := func(key string, candidate bool) (bool, error) {
-		condition := "expires_at<=?"
-		if candidate {
-			condition = "generation<>VALUES(generation) OR expires_at<=?"
-		}
-		q := `INSERT INTO vacancy_detail_leases(lease_key,generation,owner_token,expires_at) VALUES(?,?,?,?) ON DUPLICATE KEY UPDATE owner_token=IF(` + condition + `,VALUES(owner_token),owner_token),expires_at=IF(` + condition + `,VALUES(expires_at),expires_at),generation=IF(owner_token=VALUES(owner_token),VALUES(generation),generation)`
-		if _, e := tx.ExecContext(ctx, q, key, j.Generation, x.Token, x.Started+300000, x.Started, x.Started); e != nil {
-			return false, ErrSettingsStorage
-		}
-		var token string
-		if e := tx.QueryRowContext(ctx, "SELECT owner_token FROM vacancy_detail_leases WHERE lease_key=?", key).Scan(&token); e != nil {
-			return false, ErrSettingsStorage
-		}
-		return token == x.Token, nil
-	}
-	ok, e := acquire(fmt.Sprintf("candidate:%d", x.Title.CandidateID), true)
-	if e != nil {
-		return AIStagePlan{}, e
-	}
-	if !ok {
-		return AIStagePlan{}, ErrDetailBusy
-	}
-	if plan.PreflightError != nil {
-		plan.provenance = struct {
-			Snapshot extractionSnapshot
-			Cached   *extractionCache
-		}{x, nil}
-		return plan, nil
-	}
-	for _, key := range []string{"llm:1", "llm:2"} {
-		ok, e = acquire(key, false)
-		if e != nil {
-			return AIStagePlan{}, e
-		}
-		if ok {
-			x.Slot = key
-			break
-		}
-	}
-	if x.Slot == "" {
-		return AIStagePlan{}, ErrDetailBusy
 	}
 	plan.provenance = struct {
 		Snapshot extractionSnapshot
@@ -295,33 +249,8 @@ func (s ExtractionStageStore) Revalidate(ctx context.Context, tx *sql.Tx, j Job,
 		}
 		return nil
 	}
-	rows, e := tx.QueryContext(ctx, `SELECT lease_key FROM vacancy_detail_leases WHERE lease_key IN (?,?) AND generation=? AND owner_token=? AND expires_at>CAST(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000 AS SIGNED) FOR UPDATE`, fmt.Sprintf("candidate:%d", old.Title.CandidateID), old.Slot, j.Generation, old.Token)
-	if e != nil {
-		return ErrSettingsStorage
-	}
-	n := 0
-	for rows.Next() {
-		var key string
-		if e = rows.Scan(&key); e != nil {
-			break
-		}
-		n++
-	}
-	if e == nil {
-		e = rows.Err()
-	}
-	rows.Close()
-	if e != nil {
-		return ErrSettingsStorage
-	}
-	expected := 2
-	if old.Slot == "" && plan.PreflightError != nil {
-		expected = 1
-	}
-	if n != expected {
-		return ErrDetailBusy
-	}
-	return nil
+
+	return validateDetailLeases(ctx, tx, j, old.Title.CandidateID, old.Slot, old.Token, plan.PreflightError != nil)
 }
 func extractionUsage(raw json.RawMessage, provider, model string) (any, any, any, bool) {
 	var usage map[string]json.RawMessage
@@ -411,15 +340,9 @@ func (s ExtractionStageStore) Save(ctx context.Context, tx *sql.Tx, j Job, plan 
 	return releaseDetail(ctx, tx, j, x, false)
 }
 func releaseDetail(ctx context.Context, tx *sql.Tx, j Job, x extractionSnapshot, retain bool) error {
-	if retain {
-		return nil
-	}
-	_, e := tx.ExecContext(ctx, "DELETE FROM vacancy_detail_leases WHERE lease_key IN (?,?) AND generation=? AND owner_token=?", fmt.Sprintf("candidate:%d", x.Title.CandidateID), x.Slot, j.Generation, x.Token)
-	if e != nil {
-		return ErrSettingsStorage
-	}
-	return nil
+	return releaseOwnedDetail(ctx, tx, j, x.Title.CandidateID, x.Slot, x.Token, retain)
 }
+
 func extractionFailureMessage(failure error) string {
 	var typed *aiproviders.ServiceError
 	if errors.As(failure, &typed) {
