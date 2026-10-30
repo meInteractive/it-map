@@ -1,0 +1,11 @@
+# GO-359: классификация сохранённых кандидатов
+
+`TitleStageStore` — конкретный repository для `AIStageExecutor/classify_title`. В owned транзакции читает current candidate/title/hash/revision, активные root prompts, выбранный источник и область владельца. Имя владельца задаёт серверный dispatcher; job.payload не задаёт промт или scope. Проверяются enabled/sourceIds/agency toggle и персональное избранное, строки настроек/identity/favorite/candidate/prompts блокируются при повторной проверке.
+
+Решения повторно используются только при совпадении title hash/revision, prompt hash и JEV model key. Для неполного результата запрашиваются только недостающие направления. Одно кандидатное владение и два общих durable model slots берутся в той же prepare-транзакции; отказ откатывает частичное получение lease. Реальные таблицы уже существуют, DDL нет.
+
+Результат, исходный title, версии промтов, errors, outcome и известная стоимость сохраняются в существующие classification tables атомарно с scheduler attempt/job. Partial response не превращается в reject или completed. Provider failure также сохраняет историю без решений и неизвестную стоимость. При network/timeout сохраняется общий slot до expiry, а monetary reservation не освобождается. Изменившиеся title/roles/scope приводят к отказу сохранить устаревший результат.
+
+Actual unchanged `classifyStoredCandidate` исполняется на SQLite :memory: и mock Decisions. Четыре source-сценария complete/partial/empty/rejected сравнивают сохранённые поля, prompt hashes, requested roles и ошибки с native Go/MariaDB. Required disposable gate дополнительно проверяет cache без POST, retry только missing role, избранное, два занятых slot, unknown outcome/history/reserve и смену промта во время вызова. Локальный guarded skip не SQL acceptance.
+
+Границы: source bootstrap/default prompt upgrades не исполняются автоматически новым read; используются уже настроенные активные направления. При изменении состава промтов в полёте новый внутренний repository отклоняет весь устаревший снимок; публичный classification HTTP этим PR не включается. Automatic enqueue-next, полноценные extract/leaf/relevance SQL stages, runtime tick/worker/API остаются следующими задачами. Код main не активирует историческую очередь. Деплой и реальные provider calls не выполнялись.

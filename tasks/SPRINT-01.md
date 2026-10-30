@@ -1689,3 +1689,9 @@
 - **Критерии:** server-owned prepared plan, явный dispatch четырёх AI stages, обязательный opaque JobLease/Attempt ledger; revalidate перед provider и атомарно с Save+attempt/job finish. Cache без POST, отсутствие retry неизвестного платного результата. Fixture SQL/mocks; не включать ticks и старую очередь. SQL loaders/provenance отдельных стадий — следующий359, не выдавать boundary за полный parser.
 
 - **Результат358:** execution boundary/FinishWithin реализованы; required native dispatch/cache/budget/unknown outcome/late rollback/provenance proof добавлен. До положительного CI SQL acceptance не заявляется. [Контракт](../docs/dev/GO_PARSER_AI_EXECUTION.md).
+
+### [ ] GO-359. Stored title stage repository (GO-024/350)
+
+- **Критерии:** concrete AIStageStore для classify_title: current candidate/source/owner/favorites/active root prompts, cache по title/prompt/model, durable candidate lease и2 global slots; независимые решения/errors/provenance, partial не reject, atomic result+attempt/job. Source projection и required disposable SQL proof. Enqueue-next и прочие SQL stages отдельно, runtime worker не активировать.
+
+- **Результат359:** concrete title repository и source4 projection подготовлены; required native gate добавлен. SQL acceptance ждёт CI; real provider/сервер/worker не запускались. [Контракт](../docs/dev/GO_STORED_TITLE_STAGE.md).
