@@ -1783,3 +1783,7 @@
 ### [ ] GO-392. SQL-планировщик следующей стадии кандидата (GO-046)
 
 - **Критерии:** объединить проверенные SQL-снимки и source-compatible выбор стадии в owned транзакции; не доверять payload, не обходить scope и imported/relevance guard. Disposable MariaDB source fixture; runtime worker и внешний провайдер не включать.
+
+### [ ] GO-393. Проверить SQL-планировщик и передачу роли следующей стадии (GO-046)
+
+- **Критерии:** в disposable MariaDB совместить SQLCandidateHandoffPlanner с сохранением конечных ролей и атомарной постановкой import для непустых ролей; без реальных провайдеров и runtime worker. Сохранить source oracle и CI без пропусков.

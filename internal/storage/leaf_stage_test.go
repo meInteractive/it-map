@@ -175,7 +175,7 @@ func TestMariaDBLeafStageSourceDisposable(t *testing.T) {
 				}
 			}
 			runner := &leafStageRunner{content: content, model: model, provider: provider, failure: failure}
-			executor := &parser.AIStageExecutor{Store: parser.LeafStageStore{Owner: "CI_USER"}, Generator: runner}
+			executor := &parser.AIStageExecutor{Store: parser.LeafStageStore{Owner: "CI_USER"}, Generator: runner, Handoff: &parser.CandidateHandoff{Planner: parser.SQLCandidateHandoffPlanner{Owner: "CI_USER"}}}
 			out, e := executor.Execute(f.ctx, lease)
 			if frame.OK && e != nil || !frame.OK && e == nil || runner.calls != 1 {
 				t.Fatal("source role result failed", e)
@@ -191,6 +191,15 @@ func TestMariaDBLeafStageSourceDisposable(t *testing.T) {
 			after, err := readPlanner()
 			if err != nil || after.LeafInputHash != inputHash || (after.Leaf != nil) != frame.OK {
 				t.Fatal("planner role result differs", err)
+			}
+			if frame.OK {
+				wanted := 0
+				if len(after.Leaf.RoleIDs) > 0 {
+					wanted = 1
+				}
+				if f.count("SELECT COUNT(*) FROM scheduler_jobs WHERE candidate_id=990001 AND type='import_vacancy' AND status='pending'") != wanted || f.count("SELECT COUNT(*) FROM scheduler_jobs WHERE id='CI_LEAF_JOB' AND status='completed'") != 1 {
+					t.Fatal("role result and next stage were not committed together")
+				}
 			}
 			nullString := func(v sql.NullString) any {
 				if v.Valid {
