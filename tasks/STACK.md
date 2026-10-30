@@ -653,3 +653,7 @@ GO-365: codex/GO-365-leaf-role-contract от33caea7. Source leaf IDs validator15
 GO-365:0838ebb/[PR#125](https://github.com/meInteractive/it-map/pull/125)→main включает124; local vet/race/source/build/web/docs/API/actionlint pass, CI выполняется.
 
 GO-366: codex/GO-366-leaf-roles-sql от0838ebb. Concrete role SQL stage: source root matches/role tree/input hashes, current extraction/cache, candidate+LLM slots, mandatory Attempt, typed decisions и atomic role/attempt/job save. Actual SQLite source4 и required native/fault gate подготовлены; source root sort_order исправлен, shared detail lease helpers сохраняют предыдущие guards. Не запускает worker/provider/server; handoff/import/relevance отдельно.
+
+GO-366:a787578/[PR#126](https://github.com/meInteractive/it-map/pull/126)→main включает124/125; required scheduler-job gate41063557539/job124089066328 pass: source OpenAI/JEV, hashes/cache/budget/unknown/tree/slots и root order без skips. Full Public/native workflows ещё завершаются; server/worker не включались.
+
+GO-367: codex/GO-367-candidate-stage-plan от a787578. Pure source stage selection с versioned keys/refresh/terminal cases, actual SQLite source11 scenarios; imported relevance требует отдельного решения, SQL enqueue/worker отсутствуют. Autopublish disabled.
