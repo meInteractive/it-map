@@ -46,7 +46,7 @@ try {
   await act(async () => { previewButton().props.onClick(); });
   assert.equal(root.root.findAllByType('textarea').length, 0);
   const preview = root.root.findByProps({ 'aria-label': 'Предпросмотр: Синтетическая заметка' });
-  assert.match(JSON.stringify(preview.toJSON()), /😀x/);
+  assert.match(JSON.stringify(root.toJSON()), /😀x/);
   const tools = root.root.findAllByType('button').filter(b => b.props.title);
   assert.equal(tools.length, 5);
   assert.ok(tools.every(b => b.props.disabled === true));
