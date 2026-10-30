@@ -1701,3 +1701,9 @@
 - **Критерии:** source schema v2/17 обязательных полей, типы/enums/даты/зарплата и evidence, неподтверждённые optional metadata→null с corrections; salary amounts/некорректный JSON/text — hard error. Actual unchanged JS oracle и guarded CI, без моделей/SQL/runtime. Затем SQL extraction stage с snapshots/hashes/cache/leases.
 
 - **Результат360:** schema/strict/normalizing validator реализованы;46 source frames и Unicode/evidence отрицательные случаи pass. Required source CI добавлен, SQL pipeline ещё отдельно. [Контракт](../docs/dev/GO_EXTRACTION_VALIDATION.md).
+
+### [ ] GO-361. Подготовка AI-запроса извлечения вакансии (GO-025/350)
+
+- **Критерии:** source schema v2 и `extractCandidateMarkdown` request, исходный Markdown целиком, лимит120000 UTF-16 и непустой промт, безопасный формат роли/JSON/schema; источник и URL только как данные. Подключить нормализующий валидатор к `Generator.Automatic` через типизированный request. Actual unchanged JS oracle с изолированной SQLite и mock provider, без реальных запросов; SQL stage/cache/slots — следующая362.
+
+- **Результат361:** source-compatible request builder и typed validation hook реализованы;7 actual SQLite/source frames и mock error/no-replay обоих провайдеров проходят. SQL stage остаётся362. [Границы](../docs/dev/GO_EXTRACTION_REQUEST.md).

@@ -235,3 +235,40 @@ func TestAutomaticReservationPrecedesProviderWork(t *testing.T) {
 		t.Fatal("billing metadata incomplete")
 	}
 }
+
+func TestStructuredValidationErrorIsPreservedWithoutReplay(t *testing.T) {
+	expected := &ServiceError{Code: "invalid_output", Status: 422, Message: "CI_VALIDATION_FAILED"}
+	req := GenerationRequest{Task: "vacancy_extraction", Messages: []Message{{Role: "user", Content: "CI_INPUT"}}, ValidateContent: func(string) error { return expected }}
+	for _, provider := range []string{"openai", "openrouter"} {
+		t.Run(provider, func(t *testing.T) {
+			calls := []json.RawMessage{}
+			bill := &billingProbe{}
+			var g *Generator
+			var cfg profiles.ModelInput
+			if provider == "openai" {
+				store := &serviceStore{key: "CI_KEY", configured: true}
+				service := NewOpenAIService(store)
+				service.factory = func(string) (ModelTransport, error) {
+					return modelClient(func(context.Context) (json.RawMessage, error) { return []byte(`{"data":[{"id":"gpt-6-luna"}]}`), nil }), nil
+				}
+				g = NewGenerator(service, nil)
+				cfg = profiles.ModelInput{Provider: "openai", OpenAIModel: "gpt-6-luna", ReasoningEffort: "medium"}
+				g.factory = func(aihttp.Provider, string) (CompletionTransport, error) {
+					return completionMock{payloads: &calls, response: []byte(`{"status":"completed","model":"gpt-6-luna","output":[{"type":"message","role":"assistant","content":[{"type":"output_text","text":"CI_RESPONSE"}]}],"usage":{"cost":0.01}}`)}, nil
+				}
+			} else {
+				stamp := time.Now().UTC().Format(time.RFC3339Nano)
+				store := &routerMemory{key: "CI_KEY", generation: "CI_GENERATION", row: RouterSnapshot{Configured: true, Revision: 1, SyncedAt: &stamp, Models: []map[string]any{{"id": "vendor/model:free", "canonical_slug": "vendor/model:free", "supports_structured_outputs": true}}}}
+				g = NewGenerator(nil, NewRouterService(store))
+				cfg = profiles.ModelInput{Provider: "openrouter", OpenRouterModel: "best_free"}
+				g.factory = func(aihttp.Provider, string) (CompletionTransport, error) {
+					return completionMock{payloads: &calls, response: []byte(`{"model":"vendor/model:free","choices":[{"finish_reason":"stop","message":{"role":"assistant","content":"CI_RESPONSE"}}],"usage":{"cost":0}}`)}, nil
+				}
+			}
+			_, e := g.Automatic(context.Background(), req, cfg, bill)
+			if !errors.Is(e, expected) || len(calls) != 1 || bill.calls != 1 {
+				t.Fatal("validation error lost or request repeated", e)
+			}
+		})
+	}
+}
