@@ -36,7 +36,9 @@ try{for(const spec of cases){
  const env={DB:generationBoundDb(db,gen),SESSION_SECRET:secret,OPENAI_API_KEY:'CI_SYNTHETIC_KEY',SCHEDULER_BILLING:{run(_meta,work){return work()}}};
  await extractCandidateMarkdown(env,990001,{allowImported:true});phase='leaf';let expected;
  try{const r=await analyzeVacancyLeafRoles(env,990001);expected={ok:true,ids:r.roleIds}}catch(e){expected={ok:false,code:e.code||null,status:e.status||null,message:e.message}}
- frames.push({name:spec.name,provider:spec.provider,title,markdown,prompt,allowed:[{id:990102,path:'CI_ROLE → CI_ONE'},{id:990103,path:'CI_ROLE → CI_TWO'}],value:spec.value,answers:spec.answers,payload:calls[0],...expected});
+ const stored=sqlite.prepare('SELECT input_hash,tree_hash,prompt_version,config_hash,model_id,provider,role_ids,status,error_code,message,input_tokens,output_tokens,cost_usd FROM vacancy_role_results WHERE candidate_id=990001').get();
+ if(stored?.role_ids)stored.role_ids=JSON.parse(stored.role_ids);
+ frames.push({name:spec.name,provider:spec.provider,title,markdown,prompt,allowed:[{id:990102,path:'CI_ROLE → CI_ONE'},{id:990103,path:'CI_ROLE → CI_TWO'}],value:spec.value,answers:spec.answers,payload:calls[0],stored,...expected});
  }finally{sqlite.close()}
 }}finally{globalThis.fetch=oldFetch;console.info=oldInfo}
 console.log(JSON.stringify(frames));

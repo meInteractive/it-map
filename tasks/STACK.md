@@ -649,3 +649,7 @@ GO-364: codex/GO-364-extraction-sql-stage от слитого e561d7b. Concrete 
 GO-364:33caea7/[PR#124](https://github.com/meInteractive/it-map/pull/124)→main; required scheduler-job acceptance41061995137/job124083773430 pass, включая source extraction и owned SQL tests без skips. Остальные CI завершаются; локальный source/race/build pass. Сервер не менялся.
 
 GO-365: codex/GO-365-leaf-role-contract от33caea7. Source leaf IDs validator15 cases и actual analyzeVacancyLeafRoles request oracle4 cases для OpenAI/JEV; typed callback errors не повторяют POST. SQL stage/role provenance следующая366, provider/worker/server не активированы.
+
+GO-365:0838ebb/[PR#125](https://github.com/meInteractive/it-map/pull/125)→main включает124; local vet/race/source/build/web/docs/API/actionlint pass, CI выполняется.
+
+GO-366: codex/GO-366-leaf-roles-sql от0838ebb. Concrete role SQL stage: source root matches/role tree/input hashes, current extraction/cache, candidate+LLM slots, mandatory Attempt, typed decisions и atomic role/attempt/job save. Actual SQLite source4 и required native/fault gate подготовлены; source root sort_order исправлен, shared detail lease helpers сохраняют предыдущие guards. Не запускает worker/provider/server; handoff/import/relevance отдельно.

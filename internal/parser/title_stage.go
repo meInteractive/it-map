@@ -112,7 +112,7 @@ func (s TitleStageStore) read(ctx context.Context, tx *sql.Tx, j Job) (titleSnap
 	if !reflect.DeepEqual(nullableInt(company), j.CompanyID) || !reflect.DeepEqual(nullableInt(agency), j.AgencyID) || !source.Valid || source.String != *j.SourceID || stageHash(jsStageTrim(x.Raw)) != x.Hash {
 		return x, ErrCandidateChanged
 	}
-	rows, e := tx.QueryContext(ctx, "SELECT r.id,r.stable_key,r.name,r.sort_order,c.markdown,c.revision FROM vacancy_roles r JOIN vacancy_role_classification c ON c.role_id=r.id WHERE r.parent_id IS NULL AND c.parsing_enabled=1 FOR UPDATE")
+	rows, e := tx.QueryContext(ctx, "SELECT r.id,r.stable_key,r.name,r.sort_order,c.markdown,c.revision FROM vacancy_roles r JOIN vacancy_role_classification c ON c.role_id=r.id WHERE r.parent_id IS NULL AND c.parsing_enabled=1 ORDER BY r.sort_order,r.id FOR UPDATE")
 	if e != nil {
 		return x, ErrSettingsStorage
 	}

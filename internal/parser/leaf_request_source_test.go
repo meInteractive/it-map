@@ -14,3 +14,11 @@ func TestUnchangedLeafRequestSource(t *testing.T) {
 	}
 	checkLeafRequestSource(t, b)
 }
+
+func TestUnchangedLeafStageSource(t *testing.T) {
+	b, e := exec.Command("node", "../../scripts/check-leaf-role-request.mjs").Output()
+	if e != nil {
+		t.Fatal(e)
+	}
+	checkLeafStageHashes(t, b)
+}

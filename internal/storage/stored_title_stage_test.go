@@ -181,6 +181,18 @@ func TestMariaDBStoredTitleStageDisposable(t *testing.T) {
 			}
 		})
 	}
+	t.Run("root_order", func(t *testing.T) {
+		f.exec("DELETE FROM vacancy_classification_attempts WHERE candidate_id=990001")
+		f.exec("UPDATE vacancy_roles SET sort_order=CASE WHEN id=990101 THEN 2 ELSE 1 END WHERE id IN (990101,990102)")
+		lease := titleStageLease(t, f)
+		runner := &storedTitleRunner{answers: frames[0].Answers}
+		_, err := (&parser.AIStageExecutor{Store: parser.TitleStageStore{Owner: "CI_USER"}, Classifier: runner}).Execute(f.ctx, lease)
+		if err != nil || !reflect.DeepEqual(runner.requested, []int64{990102, 990101}) {
+			t.Fatal("source root order differs", err)
+		}
+		f.exec("UPDATE vacancy_roles SET sort_order=id WHERE id IN (990101,990102)")
+		f.exec("DELETE FROM vacancy_classification_attempts WHERE candidate_id=990001")
+	})
 	t.Run("favorite_scope", func(t *testing.T) {
 		f.exec("DELETE FROM vacancy_classification_attempts WHERE candidate_id=990001")
 		lease := titleStageLease(t, f)
