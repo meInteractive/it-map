@@ -637,3 +637,7 @@ GO-361: codex/GO-361-extraction-stage от main1b1bfe4. Source extraction reques
 GO-361:db83055/[PR#121](https://github.com/meInteractive/it-map/pull/121)→main, local vet/race/source/build/web/docs/API/actionlint pass; полный CI выполняется. Server остаётся на main1b1bfe4; Publish workflow disabled_manually.
 
 GO-362: codex/GO-362-raw-snapshot-contract от db83055: full raw snapshot assembly с защитой SHA-256 и source rabota body oracle16 vectors; SQL extraction repository/cache/lease следующая363. Работа только synthetic, сервер и provider calls не затрагиваются.
+
+GO-362:7720fd5/[PR#122](https://github.com/meInteractive/it-map/pull/122)→main включает361. Local vet/race/legacy source/mariadb-tagged/build/docs/API/actionlint pass; Public/native CI выполняются. Пользователь не просил очередной деплой; workflow Publish остаётся отключённым.
+
+GO-363: codex/GO-363-snapshot-repository от7720fd5: read-only MariaDB snapshot lookup, status/parts/hash/rabota guard и безопасный отказ при неоднозначном timestamp. Required disposable MariaDB source7+fault gate добавлен. Scope/owned TX обеспечивает будущая стадия; cache/settings/leases/save отдельно364, worker не запускается.
