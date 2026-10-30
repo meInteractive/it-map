@@ -58,6 +58,10 @@ try{
  await act(async()=>checkbox('Руководитель разработки').props.onChange({target:{checked:true}}));
  await act(async()=>checkbox('Редактор').props.onChange({target:{checked:true}}));assert.deepEqual(selected,[2,4]);
  const labels=root.root.findByProps({className:'vacancy-role-selection'}).findAllByType('span').map(node=>node.children.join(''));assert.deepEqual(labels,[developer.path,editor.path]);
+ await act(async()=>checkbox('Редактор').props.onChange({target:{checked:false}}));assert.deepEqual(selected,[2],'снятие конечной роли сохраняет другую');
+ const remaining=root.root.findByProps({className:'vacancy-role-selection'}).findAllByType('span').map(node=>node.children.join(''));
+ assert.deepEqual(remaining,[developer.path],'после снятия остаётся путь выбранной конечной роли');
+ await act(async()=>checkbox('Редактор').props.onChange({target:{checked:true}}));assert.deepEqual(selected,[2,4],'повторный выбор конечной роли');
  await act(async()=>root.unmount());
  await act(async()=>{root=create(h(ui.RoleTreeOptions,{selected:[],onChange:ids=>{selected=ids;}}));});
  assert.equal(checkbox('IT Manager').props.disabled,false,'parent categories selectable in filters');
