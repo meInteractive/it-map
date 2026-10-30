@@ -645,3 +645,7 @@ GO-363: codex/GO-363-snapshot-repository от7720fd5: read-only MariaDB snapshot
 Пользователь смержил121/122/123: main e561d7b содержит полное проверенное дерево cb10057. Public41054878925/full MariaDB41054878989 и родительские source/native gates pass; workflow Publish disabled_manually, сервер сохраняет прежний вручную разрешённый main1b1bfe4. Начата GO-364.
 
 GO-364: codex/GO-364-extraction-sql-stage от слитого e561d7b. Concrete SQL extraction stage: source scope/match/snapshot/settings/hash/cache, candidate+LLM slots, billing, normalized data/failure и atomic attempt/job; unused leases cleanup. Source URL/usage oracle и required disposable extraction gate подготовлены. Локальный SQL skip не acceptance; CI ожидается. Main runtime/worker/server не активированы.
+
+GO-364:33caea7/[PR#124](https://github.com/meInteractive/it-map/pull/124)→main; required scheduler-job acceptance41061995137/job124083773430 pass, включая source extraction и owned SQL tests без skips. Остальные CI завершаются; локальный source/race/build pass. Сервер не менялся.
+
+GO-365: codex/GO-365-leaf-role-contract от33caea7. Source leaf IDs validator15 cases и actual analyzeVacancyLeafRoles request oracle4 cases для OpenAI/JEV; typed callback errors не повторяют POST. SQL stage/role provenance следующая366, provider/worker/server не активированы.
