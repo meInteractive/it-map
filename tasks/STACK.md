@@ -615,3 +615,7 @@ GO-356: codex/GO-356-jev-decisions от проверенной origin/main bb288
 GO-356:4736828/[PR#116](https://github.com/meInteractive/it-map/pull/116)→main, local checks pass; native/public CI запущены. Замеченный автоматический Publish41034005028 отменён по запрету пользователя, package/publish не выполнялись.
 
 GO-357: codex/GO-357-jev-stages от4736828. Typed relevance/title/leaf, общий Generator.Automatic для JEV и metadata receipts, source oracle16 frames. Native JEV receipt/generation/rotation required gate добавлен. Разработка только mocks; classifier slots и parser execution отдельная358. Сервер/схема/данные не менялись.
+
+GO-357:8475d9e/[PR#117](https://github.com/meInteractive/it-map/pull/117)→main включает116; source16 и local checks pass, native receipt gate выполняется CI. GO-356 exact4736828 Public41034858195 и full MariaDB41034858197 success.
+
+GO-358: codex/GO-358-parser-ai-execution от8475d9e. Server-owned AI dispatch4, mandatory opaque attempt billing, atomic stage Save+attempt/job via FinishWithin, cache/no POST и fail-closed partial/unknown results. Required disposable execution gate добавлен; SQL stage loaders/provenance/slots остаются следующей359. Runtime main/ticks/deploy не активированы.
