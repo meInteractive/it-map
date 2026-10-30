@@ -167,7 +167,7 @@ func TestMariaDBStoredTitleStageDisposable(t *testing.T) {
 			attempts := titleStageRows(t, f, "SELECT title_raw,title_hash,title_revision,model_key,model_id,requested_roles_json,errors_json,outcome,cost_usd FROM vacancy_classification_attempts WHERE candidate_id=990001")
 			decisions := titleStageRows(t, f, "SELECT root_role_id,root_role_name,decision,model_key,model_id,prompt_version,prompt_revision,title_hash,title_revision FROM vacancy_classifications WHERE candidate_id=990001 ORDER BY root_role_id")
 			normalize := func(v any) any { b, _ := json.Marshal(v); var a any; _ = json.Unmarshal(b, &a); return a }
-			if !reflect.DeepEqual(normalize(attempts), frame.Attempts) || !reflect.DeepEqual(normalize(decisions), frame.Decisions) {
+			if !reflect.DeepEqual(normalize(attempts), normalize(frame.Attempts)) || !reflect.DeepEqual(normalize(decisions), normalize(frame.Decisions)) {
 				t.Fatal("stored source projection differs")
 			}
 			if f.count("SELECT COUNT(*) FROM vacancy_candidate_classification_leases") != 0 || f.count("SELECT COUNT(*) FROM vacancy_classification_slots") != 0 {
