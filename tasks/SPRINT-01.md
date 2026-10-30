@@ -1787,3 +1787,20 @@
 ### [ ] GO-393. Проверить SQL-планировщик и передачу роли следующей стадии (GO-046)
 
 - **Критерии:** в disposable MariaDB совместить SQLCandidateHandoffPlanner с сохранением конечных ролей и атомарной постановкой import для непустых ролей; без реальных провайдеров и runtime worker. Сохранить source oracle и CI без пропусков.
+
+### Принятые проверки UI из поручения ChatGPT (30 пунктов)
+
+Все десять групп выполнены и приняты в объёме перечисленных проверок; PR слиты в `main`. Непосредственный запуск десяти соответствующих Node-скриптов на `main` `db4537825dd7b49090d6cac947896265132065d0` прошёл, как и `npm run build:web`; проверки GitHub для PR #155–164 завершились успешно. Это проверки компонентов и функций, а не полная браузерная или staging-приёмка родительских GO-задач.
+
+- [x] Пункты 1–3: текстовые значения, массивы и объект — [PR #155](https://github.com/meInteractive/it-map/pull/155), `test-common-values.mjs`.
+- [x] Пункты 4–6: допустимые и опасные ссылки — [PR #156](https://github.com/meInteractive/it-map/pull/156), `test-common-links.mjs`.
+- [x] Пункты 7–9: загрузка, ошибка и содержимое — [PR #157](https://github.com/meInteractive/it-map/pull/157), `test-common-states.mjs`.
+- [x] Пункты 10–12: тип организации, состояние и обработчик — [PR #158](https://github.com/meInteractive/it-map/pull/158), `test-entity-switch.mjs`.
+- [x] Пункты 13–15: пустой Markdown, заголовки, абзацы и список — [PR #159](https://github.com/meInteractive/it-map/pull/159), `test-markdown-basic-render.mjs`.
+- [x] Пункты 16–18: код и ссылки Markdown — [PR #160](https://github.com/meInteractive/it-map/pull/160), `test-markdown-code-links.mjs`.
+- [x] Пункты 19–21: загрузка, ошибка и пустой выбор ролей — [PR #161](https://github.com/meInteractive/it-map/pull/161), `test-role-tree-read-states.mjs`.
+- [x] Пункты 22–24: пути, запрет выбора категории, снятие и повторный выбор роли — [PR #162](https://github.com/meInteractive/it-map/pull/162), `test-role-tree-ui.mjs`.
+- [x] Пункты 25–27: разделение станций, пробелы и неизвестная станция — [PR #163](https://github.com/meInteractive/it-map/pull/163), `test-office-station-chips.mjs`.
+- [x] Пункты 28–30: подписи ролей, порядок и старое поле `role` — [PR #164](https://github.com/meInteractive/it-map/pull/164), `test-vacancy-role-text.mjs`.
+
+Скрипты этой группы не найдены в командах `package.json` и workflow GitHub Actions; успешный CI PR не подтверждает их автоматический запуск. Полная приёмка GO-006, GO-009 и GO-011 остаётся открытой.
