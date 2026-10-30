@@ -582,3 +582,6 @@ GO-346: ветка codex/GO-346-staging-snapshot-import отf905921; тольк�
 GO-346: коммитe2a6cae/[PR#105](https://github.com/meInteractive/it-map/pull/105) принят пользователем, main1480a4ecd3fb22878580d81274b288c0c145e7bc имеет то же дерево;17 CI checks success.
 
 GO-347: codex/GO-347-deploy-ssh-diagnostics отmain1480a4e. Разрешённые initial dispatch40965212612 и40966200006 блокированы наregister до доставки: invalid settings, затем ssh_request_failed. Адрес исправлен владельцем, остальные секреты API не читает. Safe fixed-code SSH255 diagnostics,28 Python protocol tests/actionlint/source gate pass. Ни ключи, ни SSH stderr в Git/отчёт не включены; working app/database unchanged.
+
+
+GO-348: codex/GO-348-ai-provider-transport от проверенного main26868847b0f66c5077ad92255962473f54f19ae0 (план #107 принят). Source42 и bounded/race/cancel/no-repeat tests pass; Go1.23 vet/default-race/tagged/build/web/source/docs350/API audit/actionlint pass. Новая обязательная legacyinterop CI-проверка. Provider routes/runtime/SQL/server не включались. Следующая349 — model catalogs/settings/HTTP, затем350 parser wiring.

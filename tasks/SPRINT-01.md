@@ -1625,3 +1625,18 @@
 - **Основание:** первый разрешённый Actions publish блокируется до регистрации; после исправления формата host клиент выдаёт общий ssh_request_failed. Приложение/БД не переключались.
 - **Критерии:** различать только фиксированными кодами отказ ключа/host-key/auth/network; не выводить SSH stderr, ключи/host/персональные сведения; сохранить strict host verification и протокол receiver; synthetic regression tests. Не отключать проверки ради деплоя.
 - **Результат:** ограниченная классификация stderr только при SSH exit255; исходный текст не выводится. Live runner диагностика требует принятия кода в main; до успешного workflow автодеплой не объявляется работающим.
+
+
+### [ ] GO-348. HTTP transport OpenAI/OpenRouter (части GO-036/037)
+
+- **Критерии:** source openaiFetch/orFetch oracle на mock fetch; фиксированные HTTPS endpoints models/key/benchmarks/responses/chat completions; безопасные русские errors/code/status; context/25s read и300s/210s POST timeouts; bounded body, no redirects/auth leakage/replay. Unknown POST outcome явно помечен для будущего durable billing. Тесты без реальных ключей/провайдеров; runtime/SQL/schema/source JS не менять.
+
+- **Результат348:** 42 actual source frames и race/cancel/no-retry/redirect/bounds pass; Go1.23 vet/default-race/tagged/build/web/source/docs/API audit/actionlint pass. SQL/runtime/server не менялись. [Границы](../docs/dev/GO_AI_TRANSPORT.md).
+
+### [ ] GO-349. Настройки и API OpenAI/OpenRouter (части GO-036/037/040)
+
+- **Критерии:** после348 перенести source model catalogs/settings/key/admin HTTP, AES-GCM domains и CAS/generation fence, redaction и bounded inputs; read-only GET без legacy lazy DDL. Actual source+guarded disposable MariaDB proof, существующая schema72 неизменна. Импортированные encrypted values не сбрасывать; decrypt error предлагает повторный ввод через защищённый UI. Production и старую очередь не запускать.
+
+### [ ] GO-350. Связать AI clients со стадиями parser (GO-024/025/046)
+
+- **Критерии:** после provider settings/model catalogs и существующего budget/lease ledger подключать отдельно выбранные stages, соблюдать prompt/model provenance, spend reservations и отсутствие повторного оплачиваемого POST при неизвестном результате. Mocks/source/generation/cancel/concurrency proof до разрешённого live smoke. Не объявлять весь parser готовым по одному клиенту.
