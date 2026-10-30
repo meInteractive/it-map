@@ -12,6 +12,7 @@ import (
 	"itmap/internal/parser"
 	"os/exec"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -225,6 +226,45 @@ func TestMariaDBStoredTitleStageDisposable(t *testing.T) {
 				if !reflect.DeepEqual(role.Decision, expected) {
 					t.Fatal("snapshot differs from source decisions")
 				}
+			}
+			if frame.Name == "complete" {
+				f.exec("UPDATE vacancy_candidates SET vacancy_url='https://example.com/ci',title_updated_at='2026-01-02T00:00:00Z' WHERE id=990001")
+				readFull := func() (parser.CandidateFullTextInput, error) {
+					tx, e := f.db.BeginTx(f.ctx, nil)
+					if e != nil {
+						t.Fatal(e)
+					}
+					defer tx.Rollback()
+					return parser.ReadCandidateFullTextInput(f.ctx, tx, parser.Job{CompanyID: &company, CandidateID: &candidate, SourceID: &source}, "CI_USER")
+				}
+				full, e := readFull()
+				plan, pe := parser.PlanCandidateStage(parser.CandidateStageInput(full))
+				if e != nil || pe != nil || plan == nil || plan.Type != "fetch_full_text" || plan.Payload["refresh"] != false {
+					t.Fatal("missing full text", e, pe)
+				}
+				f.exec("INSERT INTO vacancy_raw_snapshots(id,candidate_id,source_url,final_url,markdown_raw,content_hash,fetched_at,firecrawl_mode,content_status,diagnostics,created_at) VALUES('CI_PLANNER_RAW',990001,'https://example.com/ci','https://example.com/ci','CI_BODY',?,'2026-01-01T00:00:00Z','free','valid','{}','2026-01-01T00:00:00Z')", testStageHash("CI_BODY"))
+				full, e = readFull()
+				plan, pe = parser.PlanCandidateStage(parser.CandidateStageInput(full))
+				if e != nil || pe != nil || plan == nil || plan.Type != "fetch_full_text" || plan.Payload["refresh"] != true {
+					t.Fatal("stale full text", e, pe)
+				}
+				f.exec("INSERT INTO vacancy_content_fetches(id,candidate_id,source_url,firecrawl_mode,started_at,duration_ms,status,message) VALUES('CI_PLANNER_FETCH',990001,'https://example.com/ci','free',1767398400000,0,'success','')")
+				full, e = readFull()
+				if e != nil || full.Snapshot == nil || full.LastSuccessfulFetch == nil || *full.LastSuccessfulFetch != 1767398400000 {
+					t.Fatal("latest successful fetch missing", e)
+				}
+				_, pe = parser.PlanCandidateStage(parser.CandidateStageInput(full))
+				if !errors.Is(pe, parser.ErrJobInput) {
+					t.Fatal("incomplete extraction snapshot was accepted", pe)
+				}
+				f.exec("UPDATE vacancy_raw_snapshots SET content_hash=? WHERE id='CI_PLANNER_RAW'", strings.Repeat("a", 64))
+				_, e = readFull()
+				if !errors.Is(e, parser.ErrSnapshotInvalid) {
+					t.Fatal("corrupt full text accepted", e)
+				}
+				f.exec("DELETE FROM vacancy_content_fetches WHERE id='CI_PLANNER_FETCH'")
+				f.exec("DELETE FROM vacancy_raw_snapshots WHERE id='CI_PLANNER_RAW'")
+				f.exec("UPDATE vacancy_candidates SET vacancy_url=NULL,title_updated_at=NULL WHERE id=990001")
 			}
 			if f.count("SELECT COUNT(*) FROM vacancy_candidate_classification_leases") != 0 || f.count("SELECT COUNT(*) FROM vacancy_classification_slots") != 0 {
 				t.Fatal("finished lease not released")

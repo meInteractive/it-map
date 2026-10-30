@@ -9,7 +9,7 @@ import (
 var ErrSnapshotMissing = errors.New("valid vacancy raw snapshot not found")
 var ErrSnapshotAmbiguous = errors.New("latest vacancy raw snapshot is ambiguous")
 
-type StoredRawSnapshot struct{ ID, ContentHash, SourceURL, FinalURL, CreatedAt, Markdown string }
+type StoredRawSnapshot struct{ ID, ContentHash, SourceURL, FinalURL, CreatedAt, FetchedAt, Markdown string }
 type snapshotRow struct {
 	StoredRawSnapshot
 	inline sql.NullString
@@ -22,14 +22,14 @@ func ReadRawSnapshot(ctx context.Context, tx *sql.Tx, candidateID int64, sourceU
 	if tx == nil || candidateID < 1 || sourceURL == "" || sourceID == "" {
 		return StoredRawSnapshot{}, ErrJobInput
 	}
-	rows, e := tx.QueryContext(ctx, `SELECT id,content_hash,source_url,final_url,created_at,markdown_raw,content_status FROM vacancy_raw_snapshots WHERE candidate_id=? AND source_url=? ORDER BY created_at DESC,id DESC LIMIT 2 FOR UPDATE`, candidateID, sourceURL)
+	rows, e := tx.QueryContext(ctx, `SELECT id,content_hash,source_url,final_url,created_at,fetched_at,markdown_raw,content_status FROM vacancy_raw_snapshots WHERE candidate_id=? AND source_url=? ORDER BY created_at DESC,id DESC LIMIT 2 FOR UPDATE`, candidateID, sourceURL)
 	if e != nil {
 		return StoredRawSnapshot{}, ErrSettingsStorage
 	}
 	found := []snapshotRow{}
 	for rows.Next() {
 		var r snapshotRow
-		if e = rows.Scan(&r.ID, &r.ContentHash, &r.SourceURL, &r.FinalURL, &r.CreatedAt, &r.inline, &r.status); e != nil {
+		if e = rows.Scan(&r.ID, &r.ContentHash, &r.SourceURL, &r.FinalURL, &r.CreatedAt, &r.FetchedAt, &r.inline, &r.status); e != nil {
 			break
 		}
 		found = append(found, r)
