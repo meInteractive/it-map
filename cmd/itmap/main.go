@@ -38,7 +38,7 @@ func httpHandler(logger *slog.Logger, db *sql.DB, manager *auth.Manager) http.Ha
 		openAI := aiproviders.NewOpenAIService(aiKeys)
 		router := aiproviders.NewRouterService(aiKeys)
 		opts.OpenAISettings = openAI
-		opts.ProfileModelCatalog = openAI
+		opts.ProfileModelCatalog = aiproviders.ModelCatalog{OpenAI: openAI, Router: router}
 		opts.RouterSettings = router
 		opts.AIConnectionTests = &aiproviders.ManualTests{Keys: aiKeys, Runner: aiproviders.NewGenerator(openAI, router), OpenAI: openAI, Router: router}
 		opts.SchedulerSettings = parser.SettingsRepository{DB: db}
