@@ -1713,3 +1713,9 @@
 - **Критерии:** source rabotaBodyPresent, проверка полного Markdown/составных частей и content hash без усечения; неизвестный/повреждённый снимок не отправляется модели. Actual source oracle, synthetic-only; SQL repository/cache/leases — GO-363, включение worker отдельно.
 
 - **Результат362:** pure сборка полного текста и source-проверка rabota подготовлены с16 source frames и проверками целостности; [границы](../docs/dev/GO_RAW_SNAPSHOT.md). SQL stage отдельно363.
+
+### [ ] GO-363. Чтение исходного снимка из MariaDB (GO-025/350)
+
+- **Критерии:** source currentRawSnapshot/snapshotMarkdown на принадлежащем кандидату URL: последняя запись, valid content, сборка частей, hash integrity и rabota body. Безопасный отказ при неоднозначном времени latest и повреждении; actual source/isolated MariaDB proof. Не запускать providers/worker. Полный extraction cache/lease/save — отдельная364.
+
+- **Результат363:** repository снимков и source7/native fault gate подготовлены; локально SQL fixture пропущена по guard и не считается приёмкой. [Контракт](../docs/dev/GO_SNAPSHOT_REPOSITORY.md).
