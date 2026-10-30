@@ -22,15 +22,16 @@ type AIResult struct {
 	Attempted []string        `json:"attempted_models"`
 }
 type GenerationRequest struct {
-	Task           string
-	Instructions   string
-	State          any
-	Roles          []LeafRole
-	Messages       []Message
-	MaxTokens      int
-	ResponseFormat json.RawMessage
-	Validate       func(string) bool
-	CheckActive    func(context.Context) error
+	Task            string
+	Instructions    string
+	State           any
+	Roles           []LeafRole
+	Messages        []Message
+	MaxTokens       int
+	ResponseFormat  json.RawMessage
+	Validate        func(string) bool
+	ValidateContent func(string) error
+	CheckActive     func(context.Context) error
 }
 
 // parser.Attempt реализует этот интерфейс. Запуск automatic без ledger запрещён.
@@ -237,6 +238,11 @@ func (g *Generator) openAI(ctx context.Context, r GenerationRequest, c profiles.
 	if data.Status != "completed" || refusal || strings.TrimSpace(content) == "" || r.Validate != nil && !r.Validate(content) {
 		return AIResult{}, generationError("invalid_output", "OpenAI не вернул полный ответ в нужном формате. Результат не сохранён.", 502)
 	}
+	if r.ValidateContent != nil {
+		if e := r.ValidateContent(content); e != nil {
+			return AIResult{}, e
+		}
+	}
 	if data.Model != id && !regexp.MustCompile("^"+regexp.QuoteMeta(id)+`-\d{4}-\d{2}-\d{2}$`).MatchString(data.Model) {
 		return AIResult{}, generationError("model_mismatch", "OpenAI вернул ответ другой модели. Результат не сохранён.", 502)
 	}
@@ -363,6 +369,14 @@ func (g *Generator) router(ctx context.Context, r GenerationRequest, b Billing) 
 			content := choice.Message.Content
 			if strings.TrimSpace(content) == "" {
 				break
+			}
+			if r.ValidateContent != nil {
+				if e := r.ValidateContent(content); e != nil {
+					if structured {
+						return AIResult{Attempted: attempted}, e
+					}
+					break
+				}
 			}
 			if r.Validate != nil && !r.Validate(content) {
 				invalid = true
