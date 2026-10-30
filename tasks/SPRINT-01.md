@@ -1707,3 +1707,9 @@
 - **Критерии:** source schema v2 и `extractCandidateMarkdown` request, исходный Markdown целиком, лимит120000 UTF-16 и непустой промт, безопасный формат роли/JSON/schema; источник и URL только как данные. Подключить нормализующий валидатор к `Generator.Automatic` через типизированный request. Actual unchanged JS oracle с изолированной SQLite и mock provider, без реальных запросов; SQL stage/cache/slots — следующая362.
 
 - **Результат361:** source-compatible request builder и typed validation hook реализованы;7 actual SQLite/source frames и mock error/no-replay обоих провайдеров проходят. SQL stage остаётся362. [Границы](../docs/dev/GO_EXTRACTION_REQUEST.md).
+
+### [ ] GO-362. Подготовка полного исходного снимка (GO-025/350)
+
+- **Критерии:** source rabotaBodyPresent, проверка полного Markdown/составных частей и content hash без усечения; неизвестный/повреждённый снимок не отправляется модели. Actual source oracle, synthetic-only; SQL repository/cache/leases — GO-363, включение worker отдельно.
+
+- **Результат362:** pure сборка полного текста и source-проверка rabota подготовлены с16 source frames и проверками целостности; [границы](../docs/dev/GO_RAW_SNAPSHOT.md). SQL stage отдельно363.
