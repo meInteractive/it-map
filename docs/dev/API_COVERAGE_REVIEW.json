@@ -406,7 +406,7 @@
       "id": "openai",
       "implementation": "partial",
       "level": "OpenAI status/key/refresh и явный admin connection-test; source transport/catalog/generation",
-      "gap": "Timings, profile model validator и parser orchestration ещё не подключены; live provider не проверялся.",
+      "gap": "Timings и parser orchestration ещё не подключены; live provider не проверялся.",
       "evidence": [
         {
           "file": "scripts/check-parser-settings-contract.mjs"
@@ -429,6 +429,14 @@
         {
           "file": "internal/httpapi/ai_connection_tests_test.go",
           "symbol": "TestAIConnectionTestsRequireExplicitAdminPost"
+        },
+        {
+          "file": "internal/aiproviders/model_choice_test.go",
+          "symbol": "TestProfileOpenAIModelChoice"
+        },
+        {
+          "file": "internal/storage/ai_model_choice_test.go",
+          "symbol": "TestMariaDBAIModelChoiceGenerationDisposable"
         }
       ]
     },

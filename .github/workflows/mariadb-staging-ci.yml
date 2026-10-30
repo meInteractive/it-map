@@ -324,11 +324,11 @@ jobs:
           set -euo pipefail
           result_file="$(mktemp)"
           trap 'rm -f "$result_file"' EXIT
-          go test -race -tags mariadb,profilewrites ./internal/storage -run '^TestMariaDB(AIKeySettings|OpenAISettingsHTTP|RouterSettings|AIManualTest)Disposable$' -count=1 -json | tee "$result_file"
+          go test -race -tags mariadb,profilewrites ./internal/storage -run '^TestMariaDB(AIKeySettings|OpenAISettingsHTTP|RouterSettings|AIManualTest|AIModelChoiceGeneration)Disposable$' -count=1 -json | tee "$result_file"
           python3 - "$result_file" <<'PYCODE'
           import json,sys
           events=[json.loads(line) for line in open(sys.argv[1],encoding='utf8')]
-          for target in ['TestMariaDBAIKeySettingsDisposable','TestMariaDBOpenAISettingsHTTPDisposable','TestMariaDBRouterSettingsDisposable','TestMariaDBAIManualTestDisposable']:
+          for target in ['TestMariaDBAIKeySettingsDisposable','TestMariaDBOpenAISettingsHTTPDisposable','TestMariaDBRouterSettingsDisposable','TestMariaDBAIManualTestDisposable','TestMariaDBAIModelChoiceGenerationDisposable']:
               assert any(e.get('Test')==target and e.get('Action')=='pass' for e in events), 'AI key native gate did not pass: '+target
           assert not any(e.get('Action')=='skip' for e in events), 'AI key native gate skipped'
           print('PASS: AI key encryption, generation, concurrent save and read-only settings')

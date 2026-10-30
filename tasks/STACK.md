@@ -604,3 +604,8 @@ GO-353: codex/GO-353-openrouter-settings-http от recovery352/ab2004d. Source p
 GO-352: recovery[PR#112](https://github.com/meInteractive/it-map/pull/112), ab2004d→main. GO-353 d4e6232/[PR#113](https://github.com/meInteractive/it-map/pull/113)→main включает recovery ancestry. Public41026192944 и полный native41026192907 success,4 actual source public projection frames и native router cache/fence gate без skips.
 
 GO-354: codex/GO-354-ai-generation отd4e6232. Source8 OpenAI+6 Router generation frames; mock budget-deny/no-blind-retry и protected admin POST tests pass. Local vet/race/source/build/web/source/docs363/API audit/actionlint pass; native receipts+generation/key-rotation gate required, локальный skip не acceptance. Ручной test включается в коде, automatic требует existing billing interface; parser dispatcher/JEV/structured health отдельно. Сервер не менялся, deploy не выполнялся.
+
+
+GO-354: c07bfdd/[PR#114](https://github.com/meInteractive/it-map/pull/114)→main содержит ancestry112/113. Source8+6 generation и local reserve-before-post/HTTP admin tests pass, native manual metadata+generation/key rotation required gate ожидается; сервер не менялся.
+
+GO-355: codex/GO-355-ai-model-choice отc07bfdd. OpenAI profile model availability/effort validator и generation before body/network; guarded SaveModel с прежним revision CAS. Local vet/race/source/build/web/docs366/source/API audit/actionlint/tidy-diff pass. Native required profile model generation race gate добавлен, локальный skip не acceptance; provider calls только mocks.
