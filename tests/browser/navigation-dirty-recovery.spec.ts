@@ -82,7 +82,7 @@ test('26–30: настоящие переходы с изменённой фо�
     await detail.getByRole('button', { name: 'Редактировать' }).click();
     await expect(editor).toBeVisible();
   };
-  const nextConfirm = async accepted => page.evaluate(allow => {
+  const nextConfirm = async (accepted: boolean) => page.evaluate(allow => {
     (window as any).__confirmAnswers.push(allow);
   }, accepted);
   const confirmationCount = () => page.evaluate(() => (window as any).__confirmMessages.length);
