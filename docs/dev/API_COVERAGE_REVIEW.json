@@ -404,15 +404,23 @@
     },
     {
       "id": "openai",
-      "implementation": "unported",
-      "level": "Synthetic transport/settings primitives only",
-      "gap": "GET provider status/models, key update/check/test HTTP ещё не подключены. Real keys/providers не разрешены.",
+      "implementation": "partial",
+      "level": "OpenAI status/key-save/refresh, source transport/catalog и native key storage",
+      "gap": "Платный test, timings, profile model validator и parser wiring ещё закрыты. OpenRouter HTTP отдельно; live keys/providers не проверялись.",
       "evidence": [
         {
           "file": "scripts/check-parser-settings-contract.mjs"
         },
         {
           "file": "internal/httpapi/handler.go"
+        },
+        {
+          "file": "internal/httpapi/openai_settings_routes.go",
+          "symbol": "OpenAISettingsHandler"
+        },
+        {
+          "file": "internal/httpapi/openai_settings_routes_test.go",
+          "symbol": "TestOpenAIHTTPAccessAndGeneration"
         }
       ]
     },
@@ -597,7 +605,7 @@
   ],
   "sourceHashes": {
     "frontend/api/client.ts": "4aa67ca55e0940c44fb74b6ab68fe876d294d2b56d15b83bc1686b95519e06a7",
-    "internal/httpapi/handler.go": "4261d5e4a0dd78950e2f75693b6729fbdc0abcee9690fccac1bd5d634a8c9556",
+    "internal/httpapi/handler.go": "0a035f4e8473dbc2fd908faffe489d9e83f6163314d3f6f000e4011983cf3e1f",
     "server/routes/index.js": "6134004f682975cb51ea13cd2ec4de8e85a5957deff6a5392fbad3fd70ccb1e4"
   },
   "clientExports": [

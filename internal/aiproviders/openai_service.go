@@ -124,3 +124,26 @@ func (s *OpenAIService) Public(ctx context.Context, refresh bool) (map[string]an
 	out["warning"] = warning
 	return out, nil
 }
+
+func (s *OpenAIService) Generation(ctx context.Context) (string, error) {
+	if s == nil || s.Store == nil {
+		return "", ErrStorage
+	}
+	return s.Store.Generation(ctx)
+}
+func (s *OpenAIService) Save(ctx context.Context, generation string, body []byte) (map[string]any, error) {
+	key, err := ParseKey(aihttp.OpenAI, body)
+	if err != nil {
+		return nil, err
+	}
+	if s == nil || s.Store == nil {
+		return nil, ErrStorage
+	}
+	if err = s.Store.SaveKey(ctx, aihttp.OpenAI, generation, key); err != nil {
+		return nil, err
+	}
+	s.mu.Lock()
+	s.cache = nil
+	s.mu.Unlock()
+	return map[string]any{"configured": true, "key_mask": "••••" + key[len(key)-4:]}, nil
+}

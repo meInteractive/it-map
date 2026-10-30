@@ -1642,3 +1642,11 @@
 ### [ ] GO-350. Связать AI clients со стадиями parser (GO-024/025/046)
 
 - **Критерии:** после provider settings/model catalogs и существующего budget/lease ledger подключать отдельно выбранные stages, соблюдать prompt/model provenance, spend reservations и отсутствие повторного оплачиваемого POST при неизвестном результате. Mocks/source/generation/cancel/concurrency proof до разрешённого live smoke. Не объявлять весь parser готовым по одному клиенту.
+
+
+### [ ] GO-351. HTTP-настройки OpenAI (следующий слой GO-349/036)
+
+- **Зависимости:**348 transport;349 key/catalog native SQL gate (41017566593/job123938605900: required AI key step success, без skips).
+- **Критерии:** authenticated/admin/source method/path/origin/bounded body; capture generation до body; public status/key-save/refresh и main wiring. Ошибки безопасны, legacy ciphertext не сбрасываются. Платный test endpoint явно503 до отдельного billing/provenance gate, OpenRouter routes и parser пока не включать. Mock HTTP/access/generation/cache tests, required source/native parents; не считать full provider readiness.
+
+- **Результат351:** authenticated/admin status/key-save/refresh подключены в main; safe errors и generation-before-body guards. Mock HTTP/cache tests pass; required native HTTP gate ждёт CI, текущий сервер не изменён. [Границы](../docs/dev/GO_OPENAI_SETTINGS_HTTP.md).
