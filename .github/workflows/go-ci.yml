@@ -55,6 +55,8 @@ jobs:
           node-version: '24.19.0'
       - name: Verify Go encryption with unchanged legacy JS decryption
         run: go test -race -tags legacyinterop ./internal/legacycrypto -count=1
+      - name: Проверить HTTP transport OpenAI/OpenRouter по actual source mocks
+        run: go test -race -tags legacyinterop ./internal/integrations/aihttp -count=1
       - name: Verify scheduler claim billing and exact JSON page keys against SQLite source
         run: go test -race -tags legacyinterop ./internal/parser -run '^TestScheduler(Claim|JSON|Score|Billing)Source$' -count=1
       - name: Verify stored scheduler settings preservation and public redaction against source
