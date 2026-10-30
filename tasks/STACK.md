@@ -599,3 +599,8 @@ GO-352: пользователь принял109/110/111, но main e4133cb со
 
 
 GO-353: codex/GO-353-openrouter-settings-http от recovery352/ab2004d. Source public oracle4 frames подготовлен; native required router settings gate добавлен. Local Go1.23 vet/race/source/default/tagged compile/build/web/source/docs358/API audit/actionlint pass. Local live SQL skip; CI positive ожидается. Новые leaf→main сохраняют ancestry352. /test/jev/parser ещё закрыты, deploy запрещён пользователем.
+
+
+GO-352: recovery[PR#112](https://github.com/meInteractive/it-map/pull/112), ab2004d→main. GO-353 d4e6232/[PR#113](https://github.com/meInteractive/it-map/pull/113)→main включает recovery ancestry. Public41026192944 и полный native41026192907 success,4 actual source public projection frames и native router cache/fence gate без skips.
+
+GO-354: codex/GO-354-ai-generation отd4e6232. Source8 OpenAI+6 Router generation frames; mock budget-deny/no-blind-retry и protected admin POST tests pass. Local vet/race/source/build/web/source/docs363/API audit/actionlint pass; native receipts+generation/key-rotation gate required, локальный skip не acceptance. Ручной test включается в коде, automatic требует existing billing interface; parser dispatcher/JEV/structured health отдельно. Сервер не менялся, deploy не выполнялся.

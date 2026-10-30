@@ -22,21 +22,26 @@ func aiSettingsError(w http.ResponseWriter, err error) {
 	code, status, message := "storage", 503, "Не удалось выполнить операцию OpenAI."
 	var input *aiproviders.InputError
 	var provider *aihttp.Error
+	var service *aiproviders.ServiceError
 	switch {
 	case errors.As(err, &input):
 		code, status, message = "input", input.Status, input.Error()
+	case errors.As(err, &service):
+		code, status, message = service.Code, service.Status, service.Error()
 	case errors.As(err, &provider):
 		code, status, message = provider.Code, provider.Status, provider.Error()
 	case errors.Is(err, aiproviders.ErrDecrypt):
 		code, status, message = "decrypt", 409, "Не удалось расшифровать ключ OpenAI. Сохраните его заново."
 	case errors.Is(err, aiproviders.ErrMissing):
 		code, status, message = "missing_key", 409, "Сохраните API-ключ OpenAI во вкладке «Нейросети» → «ChatGPT»."
+	case errors.Is(err, aiproviders.ErrChanged):
+		code, status, message = "changed", 409, "Настройки изменились во время запроса. Повторите действие."
 	case errors.Is(err, aiproviders.ErrGeneration):
 		code, status, message = "restored", 409, "Данные восстановлены во время операции. Повторите действие."
 	}
 	jsonReply(w, status, map[string]any{"error": message, "code": code})
 }
-func OpenAISettingsHandler(manager *auth.Manager, service OpenAISettingsService) http.HandlerFunc {
+func OpenAISettingsHandler(manager *auth.Manager, service OpenAISettingsService, tests ...AIConnectionTests) http.HandlerFunc {
 	return RequireSession(manager, func(w http.ResponseWriter, r *http.Request) {
 		user, ok := sessionFromRequest(manager, r)
 		if !ok {
@@ -67,9 +72,8 @@ func OpenAISettingsHandler(manager *auth.Manager, service OpenAISettingsService)
 			jsonReply(w, 403, map[string]string{"error": "Недопустимый источник запроса."})
 			return
 		}
-		// Платный smoke требует отдельного ledger/provenance gate GO-350.
 		if action == "/test" {
-			jsonReply(w, 503, map[string]string{"error": "Тестовый запрос OpenAI ещё не подключён.", "code": "backend_not_migrated"})
+			runAIConnectionTest(w, r, aihttp.OpenAI, tests)
 			return
 		}
 		if service == nil {

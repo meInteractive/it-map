@@ -405,8 +405,8 @@
     {
       "id": "openai",
       "implementation": "partial",
-      "level": "OpenAI status/key-save/refresh, source transport/catalog и native key storage",
-      "gap": "Платный test, timings, profile model validator и parser wiring ещё закрыты. OpenRouter HTTP отдельно; live keys/providers не проверялись.",
+      "level": "OpenAI status/key/refresh и явный admin connection-test; source transport/catalog/generation",
+      "gap": "Timings, profile model validator и parser orchestration ещё не подключены; live provider не проверялся.",
       "evidence": [
         {
           "file": "scripts/check-parser-settings-contract.mjs"
@@ -421,14 +421,22 @@
         {
           "file": "internal/httpapi/openai_settings_routes_test.go",
           "symbol": "TestOpenAIHTTPAccessAndGeneration"
+        },
+        {
+          "file": "internal/aiproviders/generation_source_test.go",
+          "symbol": "TestUnchangedGenerationSource"
+        },
+        {
+          "file": "internal/httpapi/ai_connection_tests_test.go",
+          "symbol": "TestAIConnectionTestsRequireExplicitAdminPost"
         }
       ]
     },
     {
       "id": "openrouter",
       "implementation": "partial",
-      "level": "Status/key/check/refresh/logs и source public projection на native MariaDB",
-      "gap": "Test/completion/JEV и parser ещё закрыты; runtime live keys/providers не проверялись.",
+      "level": "Status/key/check/refresh/logs и явный admin connection-test; source fallback/generation",
+      "gap": "JEV/structured health/model metrics writeback и parser orchestration ещё не подключены; live provider не проверялся.",
       "evidence": [
         {
           "file": "scripts/check-parser-budget-contract.mjs"
@@ -443,6 +451,14 @@
         {
           "file": "internal/storage/ai_router_settings_test.go",
           "symbol": "TestMariaDBRouterSettingsDisposable"
+        },
+        {
+          "file": "internal/aiproviders/generation_source_test.go",
+          "symbol": "TestUnchangedRouterGenerationSource"
+        },
+        {
+          "file": "internal/storage/ai_manual_tests_test.go",
+          "symbol": "TestMariaDBAIManualTestDisposable"
         }
       ]
     },
@@ -613,7 +629,7 @@
   ],
   "sourceHashes": {
     "frontend/api/client.ts": "4aa67ca55e0940c44fb74b6ab68fe876d294d2b56d15b83bc1686b95519e06a7",
-    "internal/httpapi/handler.go": "727630b8651f357d81ce2ae99eb34ee1e8c17885263c7567048644582b7bcaab",
+    "internal/httpapi/handler.go": "2f38d5250c7b977ef82bf83778451c672b038afe6d20518ae25412d46108bfa0",
     "server/routes/index.js": "6134004f682975cb51ea13cd2ec4de8e85a5957deff6a5392fbad3fd70ccb1e4"
   },
   "clientExports": [
