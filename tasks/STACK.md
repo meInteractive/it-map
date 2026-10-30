@@ -593,3 +593,6 @@ GO-348 опубликована:6d95363, [PR#109](https://github.com/meInteracti
 GO-349: [PR#110](https://github.com/meInteractive/it-map/pull/110), ключевой SQL checkpointee5fefe получил полный native41017566593 success, required AI-key step job123938605900 success без skips; полный regression pass. Latestb9ee6f5 добавляет mock cache, CI повторяется.
 
 GO-351: codex/GO-351-openai-settings-http отb9ee6f5/#110: admin status/key-save/refresh/main wiring, capture generation before body и explicit closed paid-test gate. Local vet/race/build/source/API audit/actionlint pass. Required native HTTP generation/body race добавлен; локальный skip не acceptance. Schema/data/current server не менялись; OpenRouter HTTP/parser ещё открыты. [Границы](../docs/dev/GO_OPENAI_SETTINGS_HTTP.md).
+
+
+GO-352: пользователь принял109/110/111, но main e4133cb содержит только348: дочерние merge попали в feature parents. Ветка codex/GO-352-ai-main-delivery сохраняет e8dcc0f и ancestry main; дерево совпадает с проверенной351. Native/full CI351 pass. Нужен отдельный recovery PR→main без auto merge. По текущему поручению пользователя deploy не выполнять; активный Publish41025077896 отменяется, независимые CI не затронуты. Дальнейшие leaf PR направлять main с сохранённой ancestry.
