@@ -175,8 +175,8 @@ func TestMariaDBLeafStageSourceDisposable(t *testing.T) {
 				}
 			}
 			runner := &leafStageRunner{content: content, model: model, provider: provider, failure: failure}
-			executor := &parser.AIStageExecutor{Store: parser.LeafStageStore{Owner: "CI_USER"}, Generator: runner, Handoff: &parser.CandidateHandoff{Planner: parser.SQLCandidateHandoffPlanner{Owner: "CI_USER"}}}
-			out, e := executor.Execute(f.ctx, lease)
+			dispatcher := parser.AIStageDispatcher{Owner: "CI_USER", Generator: runner}
+			out, e := dispatcher.Execute(f.ctx, lease)
 			if frame.OK && e != nil || !frame.OK && e == nil || runner.calls != 1 {
 				t.Fatal("source role result failed", e)
 			}
@@ -236,7 +236,7 @@ func TestMariaDBLeafStageSourceDisposable(t *testing.T) {
 			}
 			if frame.OK {
 				cached := leafStageLease(t, f)
-				out, e = executor.Execute(f.ctx, cached)
+				out, e = dispatcher.Execute(f.ctx, cached)
 				if e != nil || !out.Reused || runner.calls != 1 {
 					t.Fatal("role cache sent extra POST", e)
 				}
