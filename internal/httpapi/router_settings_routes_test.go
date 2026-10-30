@@ -81,3 +81,44 @@ func TestRouterHTTPAccessAndMethods(t *testing.T) {
 		t.Fatal("generation failure read body")
 	}
 }
+
+type jevHTTPProbe struct {
+	routerHTTPProbe
+	catalogCalls int
+}
+
+func (p *jevHTTPProbe) DecisionCatalog(context.Context) (map[string]any, error) {
+	p.catalogCalls++
+	return map[string]any{"id": aiproviders.JEVModelID}, nil
+}
+func TestJEVCatalogHTTPAdminReadOnly(t *testing.T) {
+	m, e := auth.NewManager(strings.Repeat("s", 64), map[string]string{"eugene": "CI_ADMIN", "demo": "CI_DEMO"})
+	if e != nil {
+		t.Fatal(e)
+	}
+	p := &jevHTTPProbe{}
+	h := RouterSettingsHandler(m, p)
+	for _, x := range []struct {
+		user, method string
+		status       int
+	}{{"", "GET", 401}, {"demo", "GET", 403}, {"eugene", "POST", 405}, {"eugene", "GET", 200}} {
+		r := httptest.NewRequest(x.method, "https://example.com/api/openrouter/jev", nil)
+		if x.user != "" {
+			password := "CI_ADMIN"
+			if x.user == "demo" {
+				password = "CI_DEMO"
+			}
+			u, _ := m.Authenticate(x.user, password)
+			v, _ := m.Issue(u, time.Now())
+			r.AddCookie(&http.Cookie{Name: auth.CookieName, Value: v})
+		}
+		w := httptest.NewRecorder()
+		h(w, r)
+		if w.Code != x.status {
+			t.Fatal(w.Code, x.status)
+		}
+	}
+	if p.catalogCalls != 1 || len(p.operations) != 0 {
+		t.Fatal("access guard or read-only contract")
+	}
+}

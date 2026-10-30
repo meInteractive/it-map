@@ -97,6 +97,15 @@ func New(provider Provider, key string) (*Client, error) {
 func (c *Client) Models(ctx context.Context) (json.RawMessage, error) {
 	return c.request(ctx, "models", nil)
 }
+func (c *Client) DecisionModels(ctx context.Context) (json.RawMessage, error) {
+	return c.routerRead(ctx, "models?output_modalities=decisions")
+}
+func (c *Client) Decisions(ctx context.Context, body json.RawMessage) (json.RawMessage, error) {
+	if c == nil || c.provider != OpenRouter {
+		return nil, &Error{Code: "configuration", Status: 503}
+	}
+	return c.post(ctx, "@alpha/decisions", body)
+}
 func (c *Client) RankedModels(ctx context.Context) (json.RawMessage, error) {
 	return c.routerRead(ctx, "models?context=262144&supported_parameters=reasoning&output_modalities=text&sort=intelligence-high-to-low")
 }
@@ -149,6 +158,10 @@ func (c *Client) request(ctx context.Context, path string, body json.RawMessage)
 	base := "https://api.openai.com/v1/"
 	if c.provider == OpenRouter {
 		base = "https://openrouter.ai/api/v1/"
+	}
+	if c.provider == OpenRouter && path == "@alpha/decisions" {
+		base = "https://openrouter.ai/api/alpha/"
+		path = "decisions"
 	}
 	req, e := http.NewRequestWithContext(call, method, base+path, bytes.NewReader(body))
 	if e != nil {

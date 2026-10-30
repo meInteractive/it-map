@@ -75,7 +75,21 @@ func RouterSettingsHandler(manager *auth.Manager, service RouterSettingsService,
 			return
 		}
 		if action == "/jev" {
-			jsonReply(w, 503, map[string]string{"error": "Эта операция OpenRouter ещё не подключена.", "code": "backend_not_migrated"})
+			catalog, ok := service.(interface {
+				DecisionCatalog(context.Context) (map[string]any, error)
+			})
+			if !ok {
+				jsonReply(w, 503, map[string]string{"error": "Каталог JEV ещё не подключён.", "code": "backend_not_migrated"})
+				return
+			}
+			ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+			defer cancel()
+			v, e := catalog.DecisionCatalog(ctx)
+			if e != nil {
+				routerSettingsError(w, e)
+				return
+			}
+			jsonReply(w, 200, v)
 			return
 		}
 		if service == nil {

@@ -1669,3 +1669,9 @@
 - **Критерии:** source validateOpenaiChoice и live-catalog availability gate на mocks, известные effort capabilities без выдуманных параметров; пустой каталог409. Подключить существующий ProfileModelCatalog; JEV оставить закрытым. Захватить generation до body/network и проверить под lock перед SaveModel, не изменить остальные profile contracts. Required disposable native generation race; сервер не менять.
 
 - **Результат355:** OpenAI model catalog подключён к profile API; unknown effort/отсутствующая модель/пустой каталог отвергаются source-compatible. Generation-before-body/network и guarded SaveModel подготовлены с native required race proof. Local tests pass; positive native CI ожидается. [Границы](../docs/dev/GO_AI_MODEL_CHOICE.md).
+
+### [ ] GO-356. JEV catalog и Decisions transport (GO-037/024)
+
+- **Критерии:** exact typesafe/jev-1.13, явный decisions catalog, положительная цена, фиксированный alpha/decisions endpoint, paid automatic billing и no blind POST replay; profile JEV choice и GET catalog. Source/mocks и guarded CI; real requests/server не трогать. Затем отдельное подключение classifier/leaf/relevance к parser.
+
+- **Результат356:** catalog/profile choice/admin GET и фиксированный Decisions transport реализованы. Local vet/race/full tagged build/source oracle/web/source/docs/API gates pass; native SQL gates сохраняются без изменений, local skip не SQL acceptance. Typed stages/dispatcher — следующая357. [Границы](../docs/dev/GO_JEV_DECISIONS.md).
