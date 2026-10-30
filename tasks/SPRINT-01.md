@@ -1719,3 +1719,9 @@
 - **Критерии:** source currentRawSnapshot/snapshotMarkdown на принадлежащем кандидату URL: последняя запись, valid content, сборка частей, hash integrity и rabota body. Безопасный отказ при неоднозначном времени latest и повреждении; actual source/isolated MariaDB proof. Не запускать providers/worker. Полный extraction cache/lease/save — отдельная364.
 
 - **Результат363:** repository снимков и source7/native fault gate подготовлены; локально SQL fixture пропущена по guard и не считается приёмкой. [Контракт](../docs/dev/GO_SNAPSHOT_REPOSITORY.md).
+
+### [ ] GO-364. SQL-стадия структурирования вакансии (GO-025/350)
+
+- **Критерии:** owned candidate/source/favorite/root-match, validated latest snapshot, source prompt/model config hashes, cache, durable candidate+2 LLM slots, existing Attempt billing; нормализация source output и атомарные extraction+attempt/job записи, failure/unknown guards. Source SQLite projection и required disposable MariaDB integration; без live provider, server или активации worker.
+
+- **Результат364:** concrete SQL extraction repository и preflight/failure/lease guards подготовлены; source URL/usage frames, actual extraction oracle и required native gate добавлены. [Границы](../docs/dev/GO_EXTRACTION_SQL_STAGE.md). Следующий слой — handoff и SQL конечных ролей.

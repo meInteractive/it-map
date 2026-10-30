@@ -76,7 +76,7 @@ jobs:
       - name: Verify settings revision CAS against actual SQLite JSON1
         run: go test -race -tags legacyinterop ./internal/parser -run '^TestSettingsRevisionCASSource$' -count=1
       - name: Проверить структуру вакансий по неизменённому source
-        run: go test -race -tags legacyinterop ./internal/parser -run '^TestUnchanged(Extraction(Source|RequestSource)|RabotaSnapshotSource)$' -count=1
+        run: go test -race -tags legacyinterop ./internal/parser -run '^TestUnchanged(Extraction(Source|RequestSource|StageSource)|RabotaSnapshotSource)$' -count=1
       - name: Verify bounded scheduler attempt history against unchanged source
         run: go test -race -tags legacyinterop ./internal/backup -run '^TestSchedulerAttemptProjectionSource$' -count=1
       - name: Verify Go v39 layout integrity and formatting against unchanged legacy JS

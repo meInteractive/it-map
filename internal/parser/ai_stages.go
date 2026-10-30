@@ -16,12 +16,13 @@ var ErrAIStageUnavailable = errors.New("scheduler AI stage is not configured")
 // План читается серверным repository, а не из HTTP body или job.payload.
 // Store повторно проверяет provenance, scope, настройки и hash перед Save.
 type AIStagePlan struct {
-	provenance any
-	Request    aiproviders.GenerationRequest
-	Config     profiles.ModelInput
-	Title      string
-	TitleRoles []aiproviders.TitleRole
-	Cached     *AIStageOutput
+	provenance     any
+	PreflightError error
+	Request        aiproviders.GenerationRequest
+	Config         profiles.ModelInput
+	Title          string
+	TitleRoles     []aiproviders.TitleRole
+	Cached         *AIStageOutput
 }
 type AIStageOutput struct {
 	Generation     aiproviders.AIResult
@@ -35,6 +36,9 @@ type AIStageStore interface {
 }
 type AIStageFailureStore interface {
 	SaveFailure(context.Context, *sql.Tx, Job, AIStagePlan, error) error
+}
+type AIStageAbortStore interface {
+	Abort(context.Context, *sql.Tx, Job, AIStagePlan) error
 }
 type AIStageGenerator interface {
 	Automatic(context.Context, aiproviders.GenerationRequest, profiles.ModelInput, aiproviders.Billing) (aiproviders.AIResult, error)
@@ -80,16 +84,18 @@ func (e *AIStageExecutor) Execute(ctx context.Context, lease *JobLease) (AIStage
 	if plan.Request.Task != task {
 		return AIStageOutput{}, ErrJobInput
 	}
-	if plan.Cached == nil && job.Type == "classify_title" {
-		if e.Classifier == nil {
-			return AIStageOutput{}, ErrAIStageUnavailable
+	abort := func() error {
+		if store, ok := e.Store.(AIStageAbortStore); ok {
+			return lease.WithinOwned(ctx, func(tx *sql.Tx) error { return store.Abort(ctx, tx, job, plan) })
 		}
-	} else if plan.Cached == nil && job.Type != "classify_title" && e.Generator == nil {
-		return AIStageOutput{}, ErrAIStageUnavailable
+		return nil
+	}
+	if plan.Cached == nil && plan.PreflightError == nil && ((job.Type == "classify_title" && e.Classifier == nil) || (job.Type != "classify_title" && e.Generator == nil)) {
+		return AIStageOutput{}, errors.Join(ErrAIStageUnavailable, abort())
 	}
 	attempt, err := lease.StartAttempt(ctx)
 	if err != nil {
-		return AIStageOutput{}, err
+		return AIStageOutput{}, errors.Join(err, abort())
 	}
 	check := func(ctx context.Context) error {
 		if err := ctx.Err(); err != nil {
@@ -106,7 +112,9 @@ func (e *AIStageExecutor) Execute(ctx context.Context, lease *JobLease) (AIStage
 		return AIStageOutput{}, err
 	}
 	output := AIStageOutput{}
-	if plan.Cached != nil {
+	if plan.PreflightError != nil {
+		err = plan.PreflightError
+	} else if plan.Cached != nil {
 		output = *plan.Cached
 		output.Reused = true
 	} else {

@@ -641,3 +641,7 @@ GO-362: codex/GO-362-raw-snapshot-contract от db83055: full raw snapshot assem
 GO-362:7720fd5/[PR#122](https://github.com/meInteractive/it-map/pull/122)→main включает361. Local vet/race/legacy source/mariadb-tagged/build/docs/API/actionlint pass; Public/native CI выполняются. Пользователь не просил очередной деплой; workflow Publish остаётся отключённым.
 
 GO-363: codex/GO-363-snapshot-repository от7720fd5: read-only MariaDB snapshot lookup, status/parts/hash/rabota guard и безопасный отказ при неоднозначном timestamp. Required disposable MariaDB source7+fault gate добавлен. Scope/owned TX обеспечивает будущая стадия; cache/settings/leases/save отдельно364, worker не запускается.
+
+Пользователь смержил121/122/123: main e561d7b содержит полное проверенное дерево cb10057. Public41054878925/full MariaDB41054878989 и родительские source/native gates pass; workflow Publish disabled_manually, сервер сохраняет прежний вручную разрешённый main1b1bfe4. Начата GO-364.
+
+GO-364: codex/GO-364-extraction-sql-stage от слитого e561d7b. Concrete SQL extraction stage: source scope/match/snapshot/settings/hash/cache, candidate+LLM slots, billing, normalized data/failure и atomic attempt/job; unused leases cleanup. Source URL/usage oracle и required disposable extraction gate подготовлены. Локальный SQL skip не acceptance; CI ожидается. Main runtime/worker/server не активированы.
