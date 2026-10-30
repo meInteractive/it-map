@@ -1743,3 +1743,7 @@
 - **Критерии:** source nextCandidateStage для новых кандидатов: title match/completeness, fulltext/refresh, extraction, leaf roles, empty-selection и import; точные ключи/sha, owner/source scope, без network/SQL writes/runtime. Actual SQLite source oracle. Импортированные вакансии/relevance и atomic enqueue отдельно.
 
 - **Результат367:** pure source candidate stage selection и ключи подготовлены,11 actual SQLite frames; неопределённая дата/imported relevance закрыты. [Границы](../docs/dev/GO_CANDIDATE_STAGE_PLAN.md). Атомарный enqueue и SQL-resolver ещё отдельно.
+
+### [ ] GO-368. Атомарная передача следующей стадии (GO-046)
+
+- **Критерии:** optional server-owned SQL planner, тот же owner/generation/candidate/source, source SHA dedupe/priority/payload, атомарное Save+enqueue+attempt/job finish; cache handoff и duplicate reuse, late rollback/replay guards. Required disposable MariaDB fixture, source stage-key oracle; без runtime worker и внешних вызовов. Concrete SQL resolver и импорт/relevance отдельно.
