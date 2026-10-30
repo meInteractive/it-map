@@ -190,6 +190,15 @@ func (r Repository) SavePrompt(ctx context.Context, kind string, input TextInput
 // SaveModel validates storage shape. Provider catalogs/capabilities must be
 // checked by the HTTP/service gate before calling it; no provider is called here.
 func (r Repository) SaveModel(ctx context.Context, kind string, input ModelInput) (Model, error) {
+	return r.saveModel(ctx, kind, input, "")
+}
+func (r Repository) SaveModelGeneration(ctx context.Context, generation, kind string, input ModelInput) (Model, error) {
+	if len(generation) != 36 {
+		return Model{}, ErrGeneration
+	}
+	return r.saveModel(ctx, kind, input, generation)
+}
+func (r Repository) saveModel(ctx context.Context, kind string, input ModelInput, generation string) (Model, error) {
 	if err := ValidateModel(kind, input); err != nil {
 		return Model{}, err
 	}
@@ -201,6 +210,15 @@ func (r Repository) SaveModel(ctx context.Context, kind string, input ModelInput
 		return Model{}, err
 	}
 	defer tx.Rollback()
+	if generation != "" {
+		var actual string
+		if e := tx.QueryRowContext(ctx, "SELECT generation FROM app_runtime_generation WHERE id=1 FOR UPDATE").Scan(&actual); e != nil {
+			return Model{}, ErrUnavailable
+		}
+		if actual != generation {
+			return Model{}, ErrGeneration
+		}
+	}
 	binding, err := bootstrapSetting(ctx, tx, kind, true)
 	if err != nil {
 		return Model{}, err

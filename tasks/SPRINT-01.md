@@ -1663,3 +1663,9 @@
 - **Критерии:** source Responses/chat-completions payload/выбор модели/effort/ответы/ошибки, no-retry оплачиваемого OpenAI POST, только бесплатные ranked OpenRouter candidates и серверный fallback; manual admin connection_test отдельно от automatic обязательного parser.Attempt-compatible billing. Никаких real provider calls в разработке. Mocks/source HTTP proof; generation/изменение ключей не должны сохранять старый результат. Не запускать parser/старую очередь и не выкладывать на сервер.
 
 - **Результат354:** реализованы проверка ответов и protected manual test/main wiring обоих провайдеров; source8+6 payload/result/error frames, no-repeat/budget-deny/context и HTTP access tests pass. Native metadata/generation/rotation gate ждёт CI; автоматический parser не включён. [Контракт и границы](../docs/dev/GO_AI_GENERATION.md).
+
+### [ ] GO-355. Выбор OpenAI модели для промтов (GO-036/349)
+
+- **Критерии:** source validateOpenaiChoice и live-catalog availability gate на mocks, известные effort capabilities без выдуманных параметров; пустой каталог409. Подключить существующий ProfileModelCatalog; JEV оставить закрытым. Захватить generation до body/network и проверить под lock перед SaveModel, не изменить остальные profile contracts. Required disposable native generation race; сервер не менять.
+
+- **Результат355:** OpenAI model catalog подключён к profile API; unknown effort/отсутствующая модель/пустой каталог отвергаются source-compatible. Generation-before-body/network и guarded SaveModel подготовлены с native required race proof. Local tests pass; positive native CI ожидается. [Границы](../docs/dev/GO_AI_MODEL_CHOICE.md).

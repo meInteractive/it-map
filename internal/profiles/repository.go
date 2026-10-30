@@ -7,6 +7,8 @@ import (
 	"strings"
 )
 
+var ErrGeneration = errors.New("profile model generation changed")
+
 var ErrConflict = errors.New("profile/settings revision conflict")
 var ErrUnavailable = errors.New("profile/settings storage or signed user unavailable")
 
@@ -88,4 +90,15 @@ func (r Repository) SaveResume(ctx context.Context, user string, input TextInput
 		return Resume{}, err
 	}
 	return saved, nil
+}
+
+func (r Repository) Generation(ctx context.Context) (string, error) {
+	if r.DB == nil {
+		return "", ErrUnavailable
+	}
+	var g string
+	if e := r.DB.QueryRowContext(ctx, "SELECT generation FROM app_runtime_generation WHERE id=1").Scan(&g); e != nil || len(g) != 36 {
+		return "", ErrUnavailable
+	}
+	return g, nil
 }

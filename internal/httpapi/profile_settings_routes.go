@@ -21,6 +21,11 @@ type ProfileSettingsStore interface {
 // Availability/capabilities are a separate dependency from syntax/storage. A
 // missing validator never silently accepts OpenAI or JEV choices. Runtime does
 // not wire provider catalogs in this migration slice; tests supply memory mocks.
+type ProfileModelGenerationStore interface {
+	Generation(context.Context) (string, error)
+	SaveModelGeneration(context.Context, string, string, profiles.ModelInput) (profiles.Model, error)
+}
+
 type ProfileModelValidator interface {
 	ValidateChoice(context.Context, string, profiles.ModelInput) error
 }
@@ -86,6 +91,17 @@ func ProfileSettingsHandler(manager *auth.Manager, store ProfileSettingsStore, c
 			jsonReply(w, 403, map[string]string{"error": "Недопустимый источник запроса."})
 			return
 		}
+		var modelGeneration string
+		if surface == "models" {
+			if guarded, ok := store.(ProfileModelGenerationStore); ok {
+				g, e := guarded.Generation(ctx)
+				if e != nil {
+					sharedSettingError(w, e, kind, true)
+					return
+				}
+				modelGeneration = g
+			}
+		}
 		limit := profiles.PromptBodyLimit(kind)
 		if surface == "models" {
 			limit = 4096
@@ -129,7 +145,12 @@ func ProfileSettingsHandler(manager *auth.Manager, store ProfileSettingsStore, c
 				return
 			}
 		}
-		saved, err := store.SaveModel(ctx, kind, input)
+		var saved profiles.Model
+		if guarded, ok := store.(ProfileModelGenerationStore); ok {
+			saved, err = guarded.SaveModelGeneration(ctx, modelGeneration, kind, input)
+		} else {
+			saved, err = store.SaveModel(ctx, kind, input)
+		}
 		if err != nil {
 			sharedSettingError(w, err, kind, true)
 			return
@@ -138,6 +159,10 @@ func ProfileSettingsHandler(manager *auth.Manager, store ProfileSettingsStore, c
 	})
 }
 func sharedSettingError(w http.ResponseWriter, err error, kind string, model bool) {
+	if errors.Is(err, profiles.ErrGeneration) {
+		jsonReply(w, 409, map[string]string{"error": "База восстановлена во время операции. Старый результат не сохранён. Обновите страницу и повторите запрос.", "code": "restored"})
+		return
+	}
 	if errors.Is(err, profiles.ErrConflict) {
 		message := "Настройки изменены в другой вкладке. Обновите страницу."
 		if kind == "cover_letter" || kind == "relevance" {
