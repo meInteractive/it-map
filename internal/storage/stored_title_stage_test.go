@@ -389,9 +389,9 @@ func TestMariaDBStoredTitleStageDisposable(t *testing.T) {
 	t.Run("prompt_changed", func(t *testing.T) {
 		lease := titleStageLease(t, f)
 		runner := &storedTitleRunner{answers: frames[0].Answers, after: func() { f.exec("UPDATE vacancy_role_classification SET revision=revision+1 WHERE role_id=990101") }}
-		executor := &parser.AIStageExecutor{Store: parser.TitleStageStore{Owner: "CI_USER"}, Classifier: runner}
+		executor := &parser.AIStageDispatcher{Owner: "CI_USER", Classifier: runner}
 		_, err := executor.Execute(f.ctx, lease)
-		if !errors.Is(err, parser.ErrCandidateChanged) || runner.calls != 1 || f.count("SELECT COUNT(*) FROM vacancy_classifications WHERE candidate_id=990001") != 0 {
+		if !errors.Is(err, parser.ErrCandidateChanged) || runner.calls != 1 || f.count("SELECT COUNT(*) FROM vacancy_classifications WHERE candidate_id=990001") != 0 || f.count("SELECT COUNT(*) FROM scheduler_jobs WHERE candidate_id=990001 AND type='fetch_full_text'") != 0 {
 			t.Fatal("stale prompt result saved", err)
 		}
 		f.exec("UPDATE vacancy_role_classification SET revision=1 WHERE role_id=990101")
