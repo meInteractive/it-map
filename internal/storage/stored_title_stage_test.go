@@ -302,6 +302,23 @@ func TestMariaDBStoredTitleStageDisposable(t *testing.T) {
 			}
 		})
 	}
+	t.Run("real_dispatcher_commits_classification_and_handoff", func(t *testing.T) {
+		f := f.sub(t)
+		f.exec("DELETE FROM vacancy_classification_attempts WHERE candidate_id=990001")
+		f.exec("UPDATE vacancy_candidates SET vacancy_url='https://example.com/ci' WHERE id=990001")
+		defer f.exec("UPDATE vacancy_candidates SET vacancy_url=NULL WHERE id=990001")
+		lease := titleStageLease(t, f)
+		runner := &storedTitleRunner{answers: frames[0].Answers}
+		out, err := (parser.AIStageDispatcher{Owner: "CI_USER", Classifier: runner}).Execute(f.ctx, lease)
+		if err != nil || out.Classification == nil || runner.calls != 1 {
+			t.Fatal("classification and SQL handoff failed", err)
+		}
+		if f.count("SELECT COUNT(*) FROM vacancy_classifications WHERE candidate_id=990001") != 2 ||
+			f.count("SELECT COUNT(*) FROM scheduler_jobs WHERE id='CI_TITLE_JOB' AND status='completed'") != 1 ||
+			f.count("SELECT COUNT(*) FROM scheduler_jobs WHERE candidate_id=990001 AND type='fetch_full_text' AND status='pending'") != 1 {
+			t.Fatal("classification and next job did not commit together")
+		}
+	})
 	t.Run("root_order", func(t *testing.T) {
 		f.exec("DELETE FROM vacancy_classification_attempts WHERE candidate_id=990001")
 		f.exec("UPDATE vacancy_roles SET sort_order=CASE WHEN id=990101 THEN 2 ELSE 1 END WHERE id IN (990101,990102)")
