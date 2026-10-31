@@ -49,7 +49,10 @@ test('PWA: установка worker, offline public assets, API не кэшир
     expect(privateReachable).toEqual([false, false, false]);
   } finally {
     await context.setOffline(false);
+    await expect.poll(() => page.evaluate(() => navigator.onLine)).toBe(true);
+    await page.evaluate(() => window.dispatchEvent(new Event('online')));
   }
+  await expect(page.getByRole('navigation', { name: 'Основные разделы' })).toBeVisible();
   // A concurrent session revalidation can abort page.goto during the logout redirect.
   // Trigger actual browser navigation, then assert the redirected login UI.
   await page.evaluate(() => { window.location.assign('/logout'); });
