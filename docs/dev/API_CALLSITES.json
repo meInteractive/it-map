@@ -264,7 +264,7 @@
     {
       "id": "3a13fd3d39d94a06",
       "file": "frontend/features/companies/CompanyDrawer.tsx",
-      "line": 139,
+      "line": 149,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -280,7 +280,7 @@
     {
       "id": "693a4e41e3758ddf",
       "file": "frontend/features/companies/CompanyDrawer.tsx",
-      "line": 141,
+      "line": 151,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -296,7 +296,7 @@
     {
       "id": "8c0b5828d1089e85",
       "file": "frontend/features/companies/CompanyDrawer.tsx",
-      "line": 145,
+      "line": 155,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
