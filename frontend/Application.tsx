@@ -77,10 +77,13 @@ function Workspace({ user }: {
     const onPop = () => {
         if (!approvedPop.current && !confirmNavigation()) { if (typeof history !== 'undefined' && ['http:', 'https:'].includes(location.protocol)) history.pushState(null, '', sectionPath(section as Section)); return; }
         approvedPop.current = false;
+        const closingDrawer = !!(currentView.current.company || currentView.current.vacancy || currentView.current.channel);
         const entry = typeof history === 'undefined' ? undefined : drawerEntries.current.get(history.state?.itmapDrawerToken);
         setSection(entry?.section ?? sectionFromPath(location.pathname));
         setCompany(entry?.company ?? null); setVacancy(entry?.vacancy ?? null); setChannel(entry?.channel ?? null); setEditor(null);
-        requestAnimationFrame(() => document.querySelector<HTMLButtonElement>('.app-nav-button[aria-current="page"]')?.focus({preventScroll: true}));
+        // Не перехватываем фокус при закрытии или восстановлении карточки.
+        if (!closingDrawer && !entry?.company && !entry?.vacancy && !entry?.channel)
+            requestAnimationFrame(() => document.querySelector<HTMLButtonElement>('.app-nav-button[aria-current="page"]')?.focus({preventScroll: true}));
     };
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
