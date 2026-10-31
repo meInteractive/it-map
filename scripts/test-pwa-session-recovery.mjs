@@ -25,9 +25,11 @@ const setGlobal = (key,value) => Object.defineProperty(globalThis,key,
 const matchMedia = () => ({matches:false,addEventListener(){},removeEventListener(){}});
 const flush = async () => act(async () => { await new Promise(r => setTimeout(r,0)); });
 try {
-  setGlobal('window',{addEventListener,removeEventListener,dispatchEvent,matchMedia});
-  setGlobal('document',{addEventListener(){},removeEventListener(){},visibilityState:'visible',
-    querySelector(){return null;}});
+  const documentMock={addEventListener(){},removeEventListener(){},visibilityState:'visible',
+    documentElement:{style:{}},createElement(){return {style:{},getContext(){return null;}};},
+    querySelector(){return null;}};
+  setGlobal('document',documentMock);
+  setGlobal('window',{addEventListener,removeEventListener,dispatchEvent,matchMedia,document:documentMock});
   setGlobal('navigator',{onLine:true});
   setGlobal('location',{pathname:'/',protocol:'http:'});
   setGlobal('history',{state:null,pushState(){},replaceState(){},back(){}});
