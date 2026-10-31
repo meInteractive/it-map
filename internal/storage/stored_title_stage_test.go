@@ -498,4 +498,19 @@ func TestMariaDBStoredTitleStageDisposable(t *testing.T) {
 		f.exec("DELETE FROM vacancy_candidate_classification_leases")
 		f.exec("DELETE FROM vacancy_classification_slots")
 	})
+	t.Run("generation_changed_blocks_real_handoff", func(t *testing.T) {
+		f := f.sub(t)
+		f.exec("DELETE FROM vacancy_classification_attempts WHERE candidate_id=990001")
+		lease := titleStageLease(t, f)
+		defer f.exec("UPDATE app_runtime_generation SET generation=? WHERE id=1", f.repo.Generation)
+		runner := &storedTitleRunner{answers: frames[0].Answers, after: func() {
+			f.exec("UPDATE app_runtime_generation SET generation='22222222-3333-4444-8555-666666666666' WHERE id=1")
+		}}
+		_, err := (parser.AIStageDispatcher{Owner: "CI_USER", Classifier: runner}).Execute(f.ctx, lease)
+		if err == nil || runner.calls != 1 || f.count("SELECT COUNT(*) FROM vacancy_classifications WHERE candidate_id=990001") != 0 || f.count("SELECT COUNT(*) FROM scheduler_jobs WHERE candidate_id=990001 AND type='fetch_full_text'") != 0 {
+			t.Fatal("generation change allowed classification or handoff", err)
+		}
+		f.exec("DELETE FROM vacancy_candidate_classification_leases WHERE candidate_id=990001")
+		f.exec("DELETE FROM vacancy_classification_slots")
+	})
 }
