@@ -129,7 +129,13 @@ func TestMariaDBLeafStageSourceDisposable(t *testing.T) {
 		f.exec("DELETE FROM company_identity WHERE id=990002")
 	})
 	t.Run("imported_without_extraction_is_not_planned", func(t *testing.T) {
+		f := f.sub(t)
 		leafStageLease(t, f)
+		if f.count("SELECT COUNT(*) FROM company_crm WHERE company_name='CI_STAGE_COMPANY'") != 0 {
+			t.Fatal("synthetic company collision")
+		}
+		f.exec("INSERT INTO company_crm(company_name) VALUES('CI_STAGE_COMPANY')")
+		defer f.exec("DELETE FROM company_crm WHERE company_name='CI_STAGE_COMPANY'")
 		f.exec("INSERT INTO company_vacancies(id,company_name,url,title) VALUES(990001,'CI_STAGE_COMPANY','https://example.com/ci-job','CI_TITLE')")
 		f.exec("UPDATE vacancy_candidates SET main_vacancy_id=990001 WHERE id=990001")
 		defer func() {
