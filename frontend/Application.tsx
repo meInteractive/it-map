@@ -1,6 +1,6 @@
 'use client';
 import { lazy, Suspense, useEffect, useState, useMemo, useRef } from 'react';
-import { ApiError, useApi, clearCache } from './api/client';
+import { ApiError, useApi, clearCache, invalidate } from './api/client';
 import { Icon, State } from './components/Common';
 import type { EntityType, Navigation, Session, VacancyDetail } from '../shared/contracts';
 import { levels } from '../shared/contracts';
