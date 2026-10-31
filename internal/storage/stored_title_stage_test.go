@@ -173,6 +173,11 @@ func TestMariaDBStoredTitleStageDisposable(t *testing.T) {
 			tx.Rollback()
 			t.Fatal("missing classification was not scheduled", err)
 		}
+		actual, err := (parser.SQLCandidateHandoffPlanner{Owner: "CI_USER"}).Next(f.ctx, tx, job)
+		if err != nil || actual == nil || actual.Type != "classify_title" {
+			tx.Rollback()
+			t.Fatal("SQL planner did not select classification", err)
+		}
 		tx.Rollback()
 		f.exec("UPDATE firecrawl_settings SET favorites_only=1 WHERE id=1")
 		tx, err = f.db.BeginTx(f.ctx, nil)
@@ -227,6 +232,17 @@ func TestMariaDBStoredTitleStageDisposable(t *testing.T) {
 					t.Fatal("snapshot differs from source decisions")
 				}
 			}
+			if frame.Name == "rejected" {
+				tx, err := f.db.BeginTx(f.ctx, nil)
+				if err != nil {
+					t.Fatal(err)
+				}
+				plan, err := (parser.SQLCandidateHandoffPlanner{Owner: "CI_USER"}).Next(f.ctx, tx, parser.Job{CompanyID: &company, CandidateID: &candidate, SourceID: &source})
+				tx.Rollback()
+				if err != nil || plan != nil {
+					t.Fatalf("rejected candidate received next stage: plan=%+v err=%v", plan, err)
+				}
+			}
 			if frame.Name == "complete" {
 				f.exec("UPDATE vacancy_candidates SET vacancy_url='https://example.com/ci',title_updated_at='2026-01-02T00:00:00Z' WHERE id=990001")
 				readFull := func() (parser.CandidateFullTextInput, error) {
@@ -241,6 +257,15 @@ func TestMariaDBStoredTitleStageDisposable(t *testing.T) {
 				plan, pe := parser.PlanCandidateStage(parser.CandidateStageInput(full))
 				if e != nil || pe != nil || plan == nil || plan.Type != "fetch_full_text" || plan.Payload["refresh"] != false {
 					t.Fatal("missing full text", e, pe)
+				}
+				tx, e := f.db.BeginTx(f.ctx, nil)
+				if e != nil {
+					t.Fatal(e)
+				}
+				actual, e := (parser.SQLCandidateHandoffPlanner{Owner: "CI_USER"}).Next(f.ctx, tx, parser.Job{CompanyID: &company, CandidateID: &candidate, SourceID: &source})
+				tx.Rollback()
+				if e != nil || actual == nil || actual.Type != "fetch_full_text" || actual.Payload["refresh"] != false {
+					t.Fatal("SQL planner did not select full text", e)
 				}
 				f.exec("INSERT INTO vacancy_raw_snapshots(id,candidate_id,source_url,final_url,markdown_raw,content_hash,fetched_at,firecrawl_mode,content_status,diagnostics,created_at) VALUES('CI_PLANNER_RAW',990001,'https://example.com/ci','https://example.com/ci','CI_BODY',?,'2026-01-01T00:00:00Z','free','valid','{}','2026-01-01T00:00:00Z')", testStageHash("CI_BODY"))
 				full, e = readFull()

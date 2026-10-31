@@ -132,6 +132,15 @@ func TestMariaDBExtractionStageSourceDisposable(t *testing.T) {
 			if err != nil || next == nil || next.Type != "extract_vacancy" {
 				t.Fatal("missing extraction not planned", err)
 			}
+			tx, err := f.db.BeginTx(f.ctx, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			planned, err := (parser.SQLCandidateHandoffPlanner{Owner: "CI_USER"}).Next(f.ctx, tx, parser.Job{CompanyID: &company, CandidateID: &candidate, SourceID: &source})
+			tx.Rollback()
+			if err != nil || planned == nil || planned.Type != "extract_vacancy" {
+				t.Fatal("SQL planner did not select extraction", err)
+			}
 			runner := &extractionRunner{content: frame.Value}
 			executor := &parser.AIStageExecutor{Store: parser.ExtractionStageStore{Owner: "CI_USER"}, Generator: runner}
 			out, e := executor.Execute(f.ctx, lease)
