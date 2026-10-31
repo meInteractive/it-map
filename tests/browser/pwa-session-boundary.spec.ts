@@ -36,6 +36,10 @@ test('24, 25, 30: offline скрывает приватный список, onli
     const verified = page.waitForResponse(response =>
       new URL(response.url()).pathname === '/api/session' && response.status() === 200);
     await context.setOffline(false);
+    // CDP network emulation may not deliver a native online event to every tab.
+    // Reproduce the platform event explicitly after confirming real connectivity.
+    await expect.poll(() => page.evaluate(() => navigator.onLine)).toBe(true);
+    await page.evaluate(() => window.dispatchEvent(new Event('online')));
     await verified;
   }
   await expect(page.getByRole('navigation', {name: 'Основные разделы'})).toBeVisible();
