@@ -1,6 +1,6 @@
 'use client';
 import { lazy, Suspense, useEffect, useState, useMemo } from 'react';
-import { ApiError, useApi, clearCache } from './api/client';
+import { ApiError, useApi, clearCache, invalidate } from './api/client';
 import { Icon, State } from './components/Common';
 import type { EntityType, Navigation, Session, VacancyDetail } from '../shared/contracts';
 import { levels } from '../shared/contracts';
@@ -73,5 +73,27 @@ function Workspace({ user }: {
     setCompany(null); }} onCreate={c => setEditor({ owner: { name: c.name, entityType: c.entityType } })} onEdit={(v, view) => { if (confirmNavigation()) { setVacancy(null); setEditor({ owner: { name: v.companyName, entityType: v.entityType }, record: v, view }); } }}/></PanelBoundary>} {vacancy && <PanelBoundary kind="vacancy" title="Загрузка вакансии…" onClose={() => { if (confirmNavigation()) setVacancy(null); }}><VacancyDrawer key={vacancy.id + ":" + vacancy.view} id={vacancy.id} view={vacancy.view} nav={nav} admin={user.isAdmin} onClose={() => { if (confirmNavigation())
     setVacancy(null); }} onEdit={v => { setEditor({ owner: { name: v.companyName, entityType: v.entityType }, record: v, view: vacancy.view }); setVacancy(null); }}/></PanelBoundary>}{channel && <PanelBoundary kind="channel" title="Telegram-канал" onClose={() => setChannel(null)}><ChannelDrawer key={channel} id={channel} nav={nav} admin={user.isAdmin} onClose={() => setChannel(null)}/></PanelBoundary>} {editor && user.isAdmin && <PanelBoundary kind="editor" title={editor.record ? "Редактирование вакансии" : "Новая вакансия"} onClose={() => setEditor(null)}><VacancyEditor key={editor.record?.id || editor.owner.name} {...editor} onClose={() => setEditor(null)} onSaved={id => { setEditor(null); if (id)
     setVacancy({ id, view: editor.view || editor.owner.entityType }); }}/></PanelBoundary>}</main></div>; }
-export default function Application() { const q = useApi<Session>('/api/session', {refreshIntervalMs: 60_000}); useEffect(() => { const expire = () => { allowSessionExit(); clearCache(); location.replace('/logout?expired=1'); }; window.addEventListener('session-expired', expire); return () => window.removeEventListener('session-expired', expire); }, []); if (q.error instanceof ApiError && q.error.status === 401)
-    return <Login />; return <State loading={!q.data && q.loading} error={q.error}>{q.data && <Workspace user={q.data}/>}</State>; }
+export default function Application() {
+    const q = useApi<Session>('/api/session', {refreshIntervalMs: 60_000});
+    const [offline, setOffline] = useState(() => typeof navigator !== 'undefined' && !navigator.onLine);
+    useEffect(() => {
+        const expire = () => { allowSessionExit(); clearCache(); location.replace('/logout?expired=1'); };
+        const disconnected = () => { clearCache(); setOffline(true); };
+        const connected = () => {
+            clearCache();
+            setOffline(false);
+            invalidate(key => key === '/api/session');
+        };
+        window.addEventListener('session-expired', expire);
+        window.addEventListener('offline', disconnected);
+        window.addEventListener('online', connected);
+        return () => {
+            window.removeEventListener('session-expired', expire);
+            window.removeEventListener('offline', disconnected);
+            window.removeEventListener('online', connected);
+        };
+    }, []);
+    if (offline) return <main className="login-page" role="status"><div className="login-card"><h1>Нет подключения к сети</h1><p>Приватные данные недоступны без проверки сессии. После восстановления соединения приложение проверит вход заново.</p></div></main>;
+    if (q.error instanceof ApiError && q.error.status === 401) return <Login />;
+    return <State loading={!q.data && q.loading} error={q.error}>{q.data && <Workspace user={q.data}/>}</State>;
+}
