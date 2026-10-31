@@ -4,6 +4,7 @@ package storage
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,6 +16,17 @@ import (
 	"strings"
 	"testing"
 )
+
+type titleHandoffWithLostLease struct{}
+
+func (titleHandoffWithLostLease) Next(ctx context.Context, tx *sql.Tx, job parser.Job) (*parser.CandidateStagePlan, error) {
+	plan, err := (parser.SQLCandidateHandoffPlanner{Owner: "CI_USER"}).Next(ctx, tx, job)
+	if err != nil {
+		return nil, err
+	}
+	_, err = tx.ExecContext(ctx, "UPDATE scheduler_jobs SET locked_by='CI_POISON' WHERE id=?", job.ID)
+	return plan, err
+}
 
 type storedTitleRunner struct {
 	requested []int64
@@ -318,6 +330,38 @@ func TestMariaDBStoredTitleStageDisposable(t *testing.T) {
 			f.count("SELECT COUNT(*) FROM scheduler_jobs WHERE candidate_id=990001 AND type='fetch_full_text' AND status='pending'") != 1 {
 			t.Fatal("classification and next job did not commit together")
 		}
+		var runID string
+		if err := f.db.QueryRowContext(f.ctx, "SELECT id FROM scheduler_runs WHERE status='running'").Scan(&runID); err != nil {
+			t.Fatal("running scheduler missing", err)
+		}
+		schedulerSeedJob(f, "CI_TITLE_REPLAY", 990001)
+		f.exec("UPDATE scheduler_jobs SET type='classify_title',company_id=990002,source_id='companySite' WHERE id='CI_TITLE_REPLAY'")
+		replayID := "CI_TITLE_REPLAY"
+		replay, err := f.repo.ClaimJob(f.ctx, runID, parser.ClaimOptions{JobID: &replayID})
+		if err != nil || replay == nil {
+			t.Fatal("replay job not claimed", err)
+		}
+		replayed, err := (parser.AIStageDispatcher{Owner: "CI_USER", Classifier: runner}).Execute(f.ctx, replay)
+		if err != nil || !replayed.Reused || runner.calls != 1 || f.count("SELECT COUNT(*) FROM scheduler_jobs WHERE candidate_id=990001 AND type='fetch_full_text'") != 1 {
+			t.Fatal("cached classification repeated provider call or duplicated handoff", err)
+		}
+	})
+	t.Run("real_planner_rolls_back_on_lost_lease", func(t *testing.T) {
+		f := f.sub(t)
+		f.exec("DELETE FROM vacancy_classification_attempts WHERE candidate_id=990001")
+		lease := titleStageLease(t, f)
+		runner := &storedTitleRunner{answers: frames[0].Answers}
+		executor := &parser.AIStageExecutor{Store: parser.TitleStageStore{Owner: "CI_USER"}, Classifier: runner, Handoff: &parser.CandidateHandoff{Planner: titleHandoffWithLostLease{}}}
+		_, err := executor.Execute(f.ctx, lease)
+		if !errors.Is(err, parser.ErrJobLeaseLost) || runner.calls != 1 || f.count("SELECT COUNT(*) FROM vacancy_classifications WHERE candidate_id=990001") != 0 || f.count("SELECT COUNT(*) FROM scheduler_jobs WHERE candidate_id=990001 AND type='fetch_full_text'") != 0 {
+			t.Fatal("lost lease committed classification or handoff", err)
+		}
+		_, err = executor.Execute(f.ctx, lease)
+		if err == nil || runner.calls != 1 {
+			t.Fatal("lost-lease retry repeated provider call", err)
+		}
+		f.exec("DELETE FROM vacancy_candidate_classification_leases WHERE candidate_id=990001")
+		f.exec("DELETE FROM vacancy_classification_slots")
 	})
 	t.Run("root_order", func(t *testing.T) {
 		f.exec("DELETE FROM vacancy_classification_attempts WHERE candidate_id=990001")
