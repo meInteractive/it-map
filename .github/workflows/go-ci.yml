@@ -180,4 +180,9 @@ jobs:
           node scripts/check-parser-budget-contract.mjs
           node scripts/check-scheduler-run-contract.mjs
           node scripts/check-apify-transport-contract.mjs
+      - name: Run session lifecycle regression with strict Node rejection handling
+        run: |
+          node scripts/test-session-lifecycle.mjs
+          node scripts/test-cache-subscriber-races.mjs
+          node scripts/test-dirty-navigation.mjs
       - run: npm run build:web
