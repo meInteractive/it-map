@@ -15,18 +15,26 @@ interface Entry {
     generation: number;
     fetchedAt: number;
 }
-let cacheEpoch = 0;
+let cacheEpoch = 0, sessionExpired = false;
 const entries = new Map<string, Entry>(), empty: Snapshot = { loading: true, stale: true };
 function entry(key: string) { let e = entries.get(key); if (!e) {
     e = { snapshot: empty, listeners: new Set(), generation: 0, fetchedAt: 0 };
     entries.set(key, e);
 } return e; }
 function emit(e: Entry, snapshot: Snapshot) { e.snapshot = snapshot; e.listeners.forEach(fn => fn()); }
-export async function request<T>(url: string, options: RequestInit = {}): Promise<T> { const startedEpoch = cacheEpoch; const response = await fetch(url, { credentials: 'same-origin', ...options, headers: { accept: 'application/json', ...(typeof options.body === 'string' ? { 'content-type': 'application/json' } : {}), ...options.headers } }); const data: unknown = response.headers.get('content-type')?.includes('application/json') ? await response.json().catch(() => null) : await response.text(); if (!response.ok) {
-    if (response.status === 401 && url !== '/api/session')
-        window.dispatchEvent(new Event('session-expired'));
-    throw new ApiError(data && typeof data === 'object' && 'error' in data ? String(data.error) : 'Не удалось выполнить запрос.', response.status, data);
-} if (options.method === 'POST' && /^\/api\/vacancies\/\d+\/relevance$/.test(url)) {
+export async function request<T>(url: string, options: RequestInit = {}): Promise<T> { const startedEpoch = cacheEpoch; const response = await fetch(url, { credentials: 'same-origin', ...options, headers: { accept: 'application/json', ...(typeof options.body === 'string' ? { 'content-type': 'application/json' } : {}), ...options.headers } }); const data: unknown = response.headers.get('content-type')?.includes('application/json') ? await response.json().catch(() => null) : await response.text();
+    // Отложенный ответ прежней сессии не может менять кэш или подтверждать запись.
+    if (startedEpoch !== cacheEpoch) throw new ApiError('Сеанс изменился. Повторите действие вручную.', 409);
+    if (!response.ok) {
+        if (response.status === 401 && url !== '/api/session' && !sessionExpired) {
+            sessionExpired = true;
+            clearCache();
+            window.dispatchEvent(new Event('session-expired'));
+        }
+        throw new ApiError(data && typeof data === 'object' && 'error' in data ? String(data.error) : 'Не удалось выполнить запрос.', response.status, data);
+    }
+    if (url === '/api/session') sessionExpired = false;
+    if (options.method === 'POST' && /^\/api\/vacancies\/\d+\/relevance$/.test(url)) {
     if (startedEpoch !== cacheEpoch) throw new ApiError('Сеанс изменился. Обновите список вакансий.', 409);
     applyRelevanceResult(url, data);
 } if (options.method && !['GET', 'HEAD'].includes(options.method))
