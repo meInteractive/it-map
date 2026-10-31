@@ -29,7 +29,7 @@ try{
  const select=()=>root.root.find(n=>n.type==='button'&&n.props.className==='result').props.onClick();
  const acceptedNav=props.nav;await update('Beta',{nav:{openCompany:()=>false}});await act(async()=>select());assert.equal(results().length,1,'cancel preserves suggestions');assert.equal(props.query,'Beta');
  await update('Beta',{nav:acceptedNav,onQueryChange:value=>{props.query=value;root.update(h(MapSection,props))}});
- const beforeSelect=calls.length;await act(async()=>select());assert.deepEqual(opened,['Company 1','company']);assert.equal(props.query,'Company 1');assert.equal(count,1,'выбранная компания остаётся на карте');assert.deepEqual(results(),[]);await debounce();assert.equal(calls.length,beforeSelect,'chosen name is not queried again while dismissed');
+ const beforeSelect=calls.length;await act(async()=>select());assert.deepEqual(opened,['Company 1','company']);assert.equal(props.query,'Company 1');assert.equal(count,5,'выбранная Company 1 и Company 10–14 остаются на карте: поиск по подстроке');assert.deepEqual(results(),[]);await debounce();assert.equal(calls.length,beforeSelect,'chosen name is not queried again while dismissed');
  await update('');await update('Beta');assert.equal(results().length,0);await debounce();assert.equal(results().length,1,'typing again reopens cached suggestions');
  await act(async()=>{for(const fn of clicks)fn({target:{closest:()=>true}})});assert.equal(results().length,1,'click inside search keeps suggestions');
  await act(async()=>{for(const fn of clicks)fn({target:{closest:()=>null}})});assert.deepEqual(results(),[],'outside click closes');
