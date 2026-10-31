@@ -183,6 +183,7 @@ jobs:
       - name: Run session lifecycle regression with strict Node rejection handling
         run: |
           node scripts/test-session-lifecycle.mjs
+          node scripts/test-pwa-session-recovery.mjs
           node scripts/test-cache-subscriber-races.mjs
           node scripts/test-dirty-navigation.mjs
       - name: Verify PWA source syntax and conditional task regressions with strict Node
