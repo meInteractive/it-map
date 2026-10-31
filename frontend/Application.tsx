@@ -1,6 +1,6 @@
 'use client';
 import { lazy, Suspense, useEffect, useState, useMemo, useRef } from 'react';
-import { ApiError, useApi, clearCache, invalidate } from './api/client';
+import { ApiError, useApi, clearCache } from './api/client';
 import { Icon, State } from './components/Common';
 import type { EntityType, Navigation, Session, VacancyDetail } from '../shared/contracts';
 import { levels } from '../shared/contracts';
@@ -46,6 +46,12 @@ function Workspace({ user }: {
  const drawerSequence = useRef(0);
  const approvedPop = useRef(false);
  const currentView = useRef({section, company, vacancy, channel}); currentView.current = {section, company, vacancy, channel};
+ const drawerFocusOrigin = useRef<HTMLElement | null>(null);
+ const rememberDrawerFocus = () => {
+   if (typeof document === 'undefined') return;
+   const el = document.activeElement as HTMLElement | null;
+   if (el && typeof el.focus === 'function' && !el.closest?.('[role="dialog"]')) drawerFocusOrigin.current = el;
+ };
  const saveDrawerHistory = (next: {company?: {name:string;type?:EntityType} | null; vacancy?: {id:number;view:EntityType} | null; channel?:number|null}) => {
    if (typeof history === 'undefined' || !['http:', 'https:'].includes(location.protocol)) return;
    const token = ++drawerSequence.current;
@@ -53,16 +59,19 @@ function Workspace({ user }: {
    history.pushState({itmapDrawerToken: token}, '', sectionPath(currentView.current.section as Section));
  };
  const nav = useMemo<Navigation>(() => ({ vacancyDeleted: id => { setVacancy(current => current?.id === id ? null : current); }, openCompany: (name, type) => { if (confirmNavigation()) {
+        rememberDrawerFocus();
         saveDrawerHistory({company:{name,type},vacancy:null,channel:null});
         setCompany({ name, type });
         setVacancy(null);
         setChannel(null);
         return true;
     } return false; }, openVacancy: (id, view = 'company') => { if (confirmNavigation()) {
+        rememberDrawerFocus();
         saveDrawerHistory({vacancy:{id,view},channel:null});
         setVacancy({ id, view });
         setChannel(null);
     } }, openChannel: id => { if (confirmNavigation()) {
+        rememberDrawerFocus();
         saveDrawerHistory({channel:id,vacancy:null});
         setChannel(id);
         setVacancy(null);
@@ -81,9 +90,15 @@ function Workspace({ user }: {
         const entry = typeof history === 'undefined' ? undefined : drawerEntries.current.get(history.state?.itmapDrawerToken);
         setSection(entry?.section ?? sectionFromPath(location.pathname));
         setCompany(entry?.company ?? null); setVacancy(entry?.vacancy ?? null); setChannel(entry?.channel ?? null); setEditor(null);
-        // Не перехватываем фокус при закрытии или восстановлении карточки.
-        if (!closingDrawer && !entry?.company && !entry?.vacancy && !entry?.channel)
-            requestAnimationFrame(() => document.querySelector<HTMLButtonElement>('.app-nav-button[aria-current="page"]')?.focus({preventScroll: true}));
+        // Focus is restored to the exact opener when history closes a drawer.
+        // On a section change without drawers, focus the active navigation item.
+        if (!entry?.company && !entry?.vacancy && !entry?.channel)
+            requestAnimationFrame(() => {
+                const origin = drawerFocusOrigin.current;
+                if (closingDrawer && origin?.isConnected && typeof origin.focus === 'function')
+                    origin.focus({preventScroll: true});
+                else document.querySelector<HTMLButtonElement>('.app-nav-button[aria-current="page"]')?.focus({preventScroll: true});
+            });
     };
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
