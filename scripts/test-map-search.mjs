@@ -20,7 +20,7 @@ try{
  globalThis.fetch=url=>{calls.push(url);if(url==='/api/companies/map')return Promise.resolve(Response.json({companies}));const term=new URL(url,'https://example.test').searchParams.get('q');return new Promise(resolve=>pending.set(term,resolve))};
  await act(async()=>{root=create(h(MapSection,props))});await flush();
  assert.equal(count,14);assert.deepEqual(calls,['/api/companies/map']);
- await update('Alpha');assert.equal(count,0,'поиск фильтрует маркеры');assert.match(label(root.root),/Поиск…/);assert.equal(count,14);await debounce();
+ await update('Alpha');assert.equal(count,0,'поиск фильтрует маркеры');assert.match(label(root.root),/Поиск…/);assert.equal(count,0,'маркеров нет при несовпадающем поиске');await debounce();
  await update('Beta');assert.equal(results().length,0);await debounce();
  await answer('beta',[{name:'Company 1',sector:'Banking'}]);assert.deepEqual(results(),['№ 2 Company 1Banking · Metro 1']);
  await answer('alpha',[{name:'Company 0',sector:'Old'}]);assert.deepEqual(results(),['№ 2 Company 1Banking · Metro 1'],'late response cannot replace current suggestions');assert.equal(count,0,'старый ответ не меняет фильтр маркеров');
@@ -33,7 +33,7 @@ try{
  await update('');await update('Beta');assert.equal(results().length,0);await debounce();assert.equal(results().length,1,'typing again reopens cached suggestions');
  await act(async()=>{for(const fn of clicks)fn({target:{closest:()=>true}})});assert.equal(results().length,1,'click inside search keeps suggestions');
  await act(async()=>{for(const fn of clicks)fn({target:{closest:()=>null}})});assert.deepEqual(results(),[],'outside click closes');
- await update('none');assert.deepEqual(results(),[]);await debounce();await answer('none',[]);assert.match(label(root.root),/Ничего не найдено в выбранных фильтрах/);assert.equal(count,14);
+ await update('none');assert.deepEqual(results(),[]);await debounce();await answer('none',[]);assert.match(label(root.root),/Ничего не найдено в выбранных фильтрах/);assert.equal(count,0,'нет результатов и маркеров');
  await update('fail');await debounce();await answer('fail',[],503);assert.match(label(root.root),/Search failed/);assert.doesNotMatch(label(root.root),/Ничего не найдено/);
  await act(async()=>root.root.findAllByType('button').find(b=>label(b)==='Повторить поиск').props.onClick());await answer('fail',companies.map(c=>({name:c.name,sector:'IT'})));assert.equal(results().length,12,'original suggestion limit');
  const before=calls.length;await update('fail',{filters:{...filters,favoriteOnly:true}});assert.equal(results().length,1);assert.equal(count,0,'несовпадающий запрос не оставляет старые маркеры');assert.equal(calls.length,before,'filters run locally');
