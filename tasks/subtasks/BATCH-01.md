@@ -30,7 +30,7 @@
 - [ ] S11-B01-19 · M · GO-006 — После смены раздела отложенный ответ старого раздела не подменяет новый экран.
 - [ ] S11-B01-20 · M · GO-006 — Клавиатурный переход по навигации сохраняет видимый фокус после смены раздела.
 
-**Отчёт B:** PR —; SHA —; подготовленные ID —; проверки/CI —; ограничения —.
+**Отчёт B:** PR https://github.com/meInteractive/it-map/pull/194 (stacked к `codex/GO-008-b01-a`, PR #193); SHA изменений `ff04723fade492f0c4ed4049ed113577b19e923e` (после него отдельный коммит отчёта). Подготовленные ID: `S11-B01-11`, `12`, `17`, `20` (маршруты и тесты; независимая приёмка не проведена); частично `13`, `14`, `19` (Back/Forward только между разделами, не drawer); существующие доказательства для `15`, `16`: `frontend/Application.tsx` (nav.openCompany/openVacancy), `frontend/features/vacancies/VacancyDrawer.tsx` (`vacancyContext` и `companyName`), для `18`: `frontend/components/PanelBoundary.tsx`, `frontend/api/client.ts`, `scripts/test-cache-subscriber-races.mjs` (ошибка/retry; самостоятельный UI retry не проверен). Проверки: `node scripts/test-route-state.mjs`, Playwright desktop/mobile, `npm run build:web`, Go, public-repo check **не запускались локально** (репозиторий недоступен для клонирования в окружении); CI для SHA на момент фиксации **не обнаружен / результат неизвестен**; нельзя считать пройденным. Ограничения: история drawer и её изоляция между аккаунтами (13–14) не реализована; 19 не имеет нового отдельного UI browser smoke; 15–18 требуют независимого поведенческого подтверждения. Сервер, схема/реальная БД, парсер и AI не изменялись; все `[ ]` сохранены.
 
 ### Группа C — установка и offline-границы PWA (21–30)
 
