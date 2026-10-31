@@ -43,3 +43,24 @@ test('13, 17, 20: Back/Forward сохраняют фильтр и видимый
   await expect(page.locator('.app')).toHaveAttribute('data-section', 'vacancies');
   await page.goto('/logout');
 });
+
+test('13–14: Back закрывает карточку компании, Forward возвращает ту же карточку без приватного URL', async ({page, activate}) => {
+  await login(page, activate);
+  await activate(page.getByRole('button', {name: 'Список', exact: true}));
+  const opener = page.getByRole('button', {name: 'CI Synthetic Employer', exact: true});
+  await opener.focus();
+  await page.keyboard.press('Enter');
+  const dialog = page.getByRole('dialog', {name: 'CI Synthetic Employer', exact: true});
+  await expect(dialog).toBeVisible();
+  expect(await page.evaluate(() => Object.keys(history.state || {}))).toEqual(['itmapDrawerToken']);
+  await page.goBack();
+  await expect(dialog).toHaveCount(0);
+  await expect(page.locator('.app')).toHaveAttribute('data-section', 'list');
+  await page.goForward();
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole('heading', {name: 'Работодатель', exact: true})).toBeVisible();
+  await activate(dialog.getByRole('button', {name: 'Закрыть карточку', exact: true}));
+  await expect(dialog).toHaveCount(0);
+  await expect(opener).toBeFocused();
+  await page.goto('/logout');
+});
