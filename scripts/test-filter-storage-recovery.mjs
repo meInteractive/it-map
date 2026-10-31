@@ -42,4 +42,43 @@ await scenario('недопустимый тип одного значения',
 await scenario('частично сохранённые допустимые параметры',
   JSON.stringify({ version: 1, rank101to150: false }),
   { ...defaultFilters, rank101to150: false });
-console.log('PASS: восстановление фильтров после отсутствия, повреждения, неизвестной версии и неверных типов');
+
+// Изменение одного фильтра сохраняет остальные после размонтирования/возврата.
+{
+  const previous = globalThis.localStorage;
+  const state = new Map();
+  let root;
+  globalThis.localStorage = {
+    getItem(key) { return state.get(key) ?? null; },
+    setItem(key, value) { state.set(key, value); },
+  };
+  function Interactive() {
+    const [filters, setFilters] = useFilters();
+    return h('output', {
+      'data-filters': filters,
+      toggle(key, value) { setFilters(current => ({...current, [key]: value})); },
+    });
+  }
+  const output = () => root.root.findByType('output').props;
+  try {
+    await act(async () => { root = create(h(Interactive)); });
+    await act(async () => output().toggle('favoriteOnly', true));
+    await act(async () => output().toggle('rankTop', false));
+    await act(async () => output().toggle('showHidden', true));
+    assert.equal(output()['data-filters'].favoriteOnly, true);
+    assert.equal(output()['data-filters'].rankTop, false);
+    assert.equal(output()['data-filters'].showHidden, true);
+    await act(async () => output().toggle('rankTop', true));
+    assert.equal(output()['data-filters'].favoriteOnly, true, 'Очистка одного фильтра не снимает избранное');
+    assert.equal(output()['data-filters'].showHidden, true, 'Очистка одного фильтра не снимает скрытые');
+    await act(async () => root.unmount()); root = null;
+    await act(async () => { root = create(h(Interactive)); });
+    assert.equal(output()['data-filters'].favoriteOnly, true, 'Возврат к разделу сохраняет активный фильтр');
+    assert.equal(output()['data-filters'].rankTop, true);
+    assert.equal(output()['data-filters'].showHidden, true);
+  } finally {
+    if (root) await act(async () => root.unmount());
+    globalThis.localStorage = previous;
+  }
+}
+console.log('PASS: восстановление, независимые переключения и сохранение нескольких фильтров');
