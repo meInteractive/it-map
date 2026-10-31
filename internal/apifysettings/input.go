@@ -109,9 +109,10 @@ func ValidateTransition(in SettingsInput, freeConfigured, starterConfigured, was
 }
 
 type StoredSettings struct {
-	Enabled, PaidAllowed                                       bool
-	Revision                                                   int64
-	FreeEncrypted, FreeSuffix, StarterEncrypted, StarterSuffix string
+	Enabled, PaidAllowed                                         bool
+	Revision                                                     int64
+	FreeEncrypted, FreeSuffix, StarterEncrypted, StarterSuffix   string
+	FreeAccountJSON, StarterAccountJSON, FreeError, StarterError string
 }
 type Limits struct {
 	Name       string `json:"name"`
@@ -133,15 +134,40 @@ type PublicView struct {
 }
 
 func PublicSettings(s StoredSettings) PublicView {
-	profile := func(encrypted, suffix string, limits Limits) PublicProfile {
-		p := PublicProfile{Configured: encrypted != "", Limits: limits}
-		if suffix != "" {
+	profile := func(encrypted, suffix, accountJSON, lastError string, limits Limits) PublicProfile {
+		p := PublicProfile{Configured: encrypted != "", Limits: limits, LastError: redact(lastError), Account: safeAccount(accountJSON)}
+		if regexp.MustCompile(`^[A-Za-z0-9_-]{4}$`).MatchString(suffix) {
 			p.KeyMask = "••••" + suffix
 		}
 		return p
 	}
 	return PublicView{Enabled: s.Enabled, PaidAllowed: s.PaidAllowed, Revision: s.Revision, Profiles: map[string]PublicProfile{
-		"free":    profile(s.FreeEncrypted, s.FreeSuffix, Limits{"Free", 0, 5}),
-		"starter": profile(s.StarterEncrypted, s.StarterSuffix, Limits{"Starter", 19, 19}),
+		"free":    profile(s.FreeEncrypted, s.FreeSuffix, s.FreeAccountJSON, s.FreeError, Limits{"Free", 0, 5}),
+		"starter": profile(s.StarterEncrypted, s.StarterSuffix, s.StarterAccountJSON, s.StarterError, Limits{"Starter", 19, 19}),
 	}}
+}
+
+var embeddedKey = regexp.MustCompile(`apify_api_[A-Za-z0-9_-]{12,512}`)
+
+func redact(s string) string { return embeddedKey.ReplaceAllString(s, "[скрыто]") }
+
+func safeAccount(raw string) any {
+	var fields map[string]json.RawMessage
+	if json.Unmarshal([]byte(raw), &fields) != nil || fields == nil {
+		return nil
+	}
+	out := map[string]any{}
+	for _, name := range []string{"accountId", "planName", "periodStart", "periodEnd"} {
+		var value string
+		if json.Unmarshal(fields[name], &value) == nil {
+			out[name] = redact(value)
+		}
+	}
+	for _, name := range []string{"planPriceUsd", "planCreditsUsd", "providerUsedUsd", "providerLimitUsd", "checkedAt"} {
+		var value float64
+		if len(fields[name]) > 0 && string(fields[name]) != "null" && json.Unmarshal(fields[name], &value) == nil && !math.IsInf(value, 0) && !math.IsNaN(value) {
+			out[name] = value
+		}
+	}
+	return out
 }

@@ -1,0 +1,110 @@
+package httpapi
+
+import (
+	"context"
+	"errors"
+	"io"
+	"itmap/internal/apifysettings"
+	"itmap/internal/auth"
+	"net/http"
+	"time"
+)
+
+type ApifySettingsService interface {
+	Read(context.Context) (apifysettings.PublicView, error)
+	Generation(context.Context) (string, error)
+	SaveKey(context.Context, string, apifysettings.KeyInput) (apifysettings.PublicView, error)
+	SaveSettings(context.Context, string, apifysettings.SettingsInput) (apifysettings.PublicView, error)
+}
+
+func apifySettingsError(w http.ResponseWriter, err error) {
+	code, status, message := "apify_storage", http.StatusServiceUnavailable, "Не удалось выполнить операцию Apify."
+	switch {
+	case errors.Is(err, apifysettings.ErrInput):
+		code, status, message = "apify_data", http.StatusBadRequest, "Некорректные настройки Apify."
+	case errors.Is(err, apifysettings.ErrDisabled):
+		code, status, message = "apify_disabled", http.StatusBadRequest, "Apify выключен или API-токен не настроен."
+	case errors.Is(err, apifysettings.ErrChanged):
+		code, status, message = "apify_changed", http.StatusConflict, "Настройки Apify изменились. Повторите действие."
+	case errors.Is(err, apifysettings.ErrGeneration):
+		code, status, message = "restored", http.StatusConflict, "Данные восстановлены во время операции. Повторите действие."
+	}
+	jsonReply(w, status, map[string]any{"error": message, "code": code})
+}
+
+func ApifySettingsHandler(manager *auth.Manager, service ApifySettingsService) http.HandlerFunc {
+	return RequireSession(manager, func(w http.ResponseWriter, r *http.Request) {
+		user, ok := sessionFromRequest(manager, r)
+		if !ok {
+			jsonReply(w, http.StatusUnauthorized, map[string]string{"error": "Требуется авторизация."})
+			return
+		}
+		if !user.IsAdmin {
+			jsonReply(w, http.StatusForbidden, map[string]string{"error": "Доступно только администратору."})
+			return
+		}
+		path := r.URL.EscapedPath()
+		if path != "/api/apify/settings" && path != "/api/apify/key" {
+			jsonReply(w, http.StatusNotFound, map[string]string{"error": "Метод API не найден."})
+			return
+		}
+		if (path == "/api/apify/key" && r.Method != http.MethodPut) || (path == "/api/apify/settings" && r.Method != http.MethodGet && r.Method != http.MethodPut) {
+			jsonReply(w, http.StatusMethodNotAllowed, map[string]string{"error": "Метод не поддерживается."})
+			return
+		}
+		if r.Method != http.MethodGet && !writeSameOrigin(r) {
+			jsonReply(w, http.StatusForbidden, map[string]string{"error": "Недопустимый источник запроса."})
+			return
+		}
+		if service == nil {
+			apifySettingsError(w, apifysettings.ErrStorage)
+			return
+		}
+		ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+		defer cancel()
+		if r.Method == http.MethodGet {
+			view, err := service.Read(ctx)
+			if err != nil {
+				apifySettingsError(w, err)
+				return
+			}
+			jsonReply(w, http.StatusOK, view)
+			return
+		}
+		generation, err := service.Generation(ctx)
+		if err != nil {
+			apifySettingsError(w, err)
+			return
+		}
+		r.Body = http.MaxBytesReader(w, r.Body, 4096)
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			var limit *http.MaxBytesError
+			if errors.As(err, &limit) {
+				jsonReply(w, http.StatusRequestEntityTooLarge, map[string]string{"error": "Слишком длинный запрос."})
+			} else {
+				apifySettingsError(w, apifysettings.ErrInput)
+			}
+			return
+		}
+		var view apifysettings.PublicView
+		if path == "/api/apify/key" {
+			var input apifysettings.KeyInput
+			input, err = apifysettings.ParseKey(body)
+			if err == nil {
+				view, err = service.SaveKey(ctx, generation, input)
+			}
+		} else {
+			var input apifysettings.SettingsInput
+			input, err = apifysettings.ParseSettings(body)
+			if err == nil {
+				view, err = service.SaveSettings(ctx, generation, input)
+			}
+		}
+		if err != nil {
+			apifySettingsError(w, err)
+			return
+		}
+		jsonReply(w, http.StatusOK, view)
+	})
+}

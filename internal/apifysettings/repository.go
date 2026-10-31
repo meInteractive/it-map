@@ -31,11 +31,11 @@ type sqlReader interface {
 func readStored(ctx context.Context, q sqlReader, lock bool) (StoredSettings, error) {
 	var s StoredSettings
 	var enabled, paid int64
-	query := "SELECT enabled,paid_allowed,revision,free_key_encrypted,free_key_suffix,starter_key_encrypted,starter_key_suffix FROM apify_settings WHERE id=1"
+	query := "SELECT enabled,paid_allowed,revision,free_key_encrypted,free_key_suffix,starter_key_encrypted,starter_key_suffix,free_account_json,starter_account_json,free_error,starter_error FROM apify_settings WHERE id=1"
 	if lock {
 		query += " FOR UPDATE"
 	}
-	err := q.QueryRowContext(ctx, query).Scan(&enabled, &paid, &s.Revision, &s.FreeEncrypted, &s.FreeSuffix, &s.StarterEncrypted, &s.StarterSuffix)
+	err := q.QueryRowContext(ctx, query).Scan(&enabled, &paid, &s.Revision, &s.FreeEncrypted, &s.FreeSuffix, &s.StarterEncrypted, &s.StarterSuffix, &s.FreeAccountJSON, &s.StarterAccountJSON, &s.FreeError, &s.StarterError)
 	if errors.Is(err, sql.ErrNoRows) {
 		return s, nil
 	}

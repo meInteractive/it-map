@@ -64,6 +64,7 @@ type Options struct {
 	Resumes              ResumeStore
 	ProfileSettings      ProfileSettingsStore
 	OpenAISettings       OpenAISettingsService
+	ApifySettings        ApifySettingsService
 	RouterSettings       RouterSettingsService
 	AIConnectionTests    AIConnectionTests
 	ProfileModelCatalog  ProfileModelValidator
@@ -108,6 +109,7 @@ func NewHandlerWithOptions(logger *slog.Logger, opts Options) http.Handler {
 		mux.HandleFunc("GET /api/session", SessionHandler(opts.Auth))
 		mux.HandleFunc("/api/openai", OpenAISettingsHandler(opts.Auth, opts.OpenAISettings, opts.AIConnectionTests))
 		mux.HandleFunc("/api/openai/", OpenAISettingsHandler(opts.Auth, opts.OpenAISettings, opts.AIConnectionTests))
+		mux.HandleFunc("/api/apify/", ApifySettingsHandler(opts.Auth, opts.ApifySettings))
 		mux.HandleFunc("/api/openrouter", RouterSettingsHandler(opts.Auth, opts.RouterSettings, opts.AIConnectionTests))
 		mux.HandleFunc("/api/openrouter/", RouterSettingsHandler(opts.Auth, opts.RouterSettings, opts.AIConnectionTests))
 		mux.HandleFunc("GET /api/scheduler/run", SchedulerRunReadHandler(opts.Auth, opts.SchedulerRunRead))

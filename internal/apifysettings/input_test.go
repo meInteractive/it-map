@@ -70,12 +70,13 @@ func TestSettingsInputAndPaidConsent(t *testing.T) {
 }
 
 func TestPublicSettingsNeverExposeCiphertext(t *testing.T) {
-	out := PublicSettings(StoredSettings{Revision: 2, FreeEncrypted: "CI_CIPHERTEXT", FreeSuffix: "1234"})
+	key := "apify_api_" + strings.Repeat("x", 16)
+	out := PublicSettings(StoredSettings{Revision: 2, FreeEncrypted: "CI_CIPHERTEXT", FreeSuffix: "1234", FreeAccountJSON: `{"accountId":"CI123","planName":"free","providerUsedUsd":1.5,"token":"` + key + `"}`, FreeError: "synthetic " + key})
 	b, err := json.Marshal(out)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(string(b), "CI_CIPHERTEXT") || !strings.Contains(string(b), "1234") {
+	if strings.Contains(string(b), "CI_CIPHERTEXT") || strings.Contains(string(b), key) || !strings.Contains(string(b), "1234") || !strings.Contains(string(b), "CI123") {
 		t.Fatalf("unsafe projection: %s", b)
 	}
 }
