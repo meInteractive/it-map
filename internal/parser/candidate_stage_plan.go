@@ -78,6 +78,9 @@ func PlanCandidateStage(in CandidateStageInput) (*CandidateStagePlan, error) {
 	if in.CompanyID != nil && (*in.CompanyID < 1 || *in.CompanyID > 9007199254740991) || in.AgencyID != nil && (*in.AgencyID < 1 || *in.AgencyID > 9007199254740991) {
 		return nil, ErrJobInput
 	}
+	if in.Imported {
+		return nil, ErrImportedCandidateResolution
+	}
 	if len(in.Roles) == 0 {
 		return nil, nil
 	}
@@ -146,9 +149,6 @@ func PlanCandidateStage(in CandidateStageInput) (*CandidateStagePlan, error) {
 	}
 	if len(in.Leaf.RoleIDs) == 0 {
 		return nil, nil
-	}
-	if in.Imported {
-		return nil, ErrImportedCandidateResolution
 	}
 	return makePlan("import_vacancy", in.LeafInputHash+":"+in.ExtractionID+":"+in.Leaf.ID+":auto-separate-v1", nil), nil
 }
