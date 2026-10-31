@@ -18,7 +18,8 @@ func TestKeyInput(t *testing.T) {
 		{"bad key", `{"profile":"free","apiKey":"short","revision":0}`, false},
 		{"unknown field", `{"profile":"free","apiKey":"` + key + `","revision":0,"owner":"x"}`, false},
 		{"missing revision", `{"profile":"free","apiKey":"` + key + `"}`, false},
-		{"negative revision", `{"profile":"free","apiKey":"` + key + `","revision":-1}`, false},
+		{"negative revision reaches CAS", `{"profile":"free","apiKey":"` + key + `","revision":-1}`, true},
+		{"BOM whitespace", `{"profile":"free","apiKey":"\ufeff` + key + `\ufeff","revision":0}`, true},
 		{"fractional revision", `{"profile":"free","apiKey":"` + key + `","revision":1.5}`, false},
 		{"unsafe revision", `{"profile":"free","apiKey":"` + key + `","revision":9007199254740992}`, false},
 	} {

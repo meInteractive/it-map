@@ -51,7 +51,7 @@ func revision(raw json.RawMessage) (int64, error) {
 		return 0, ErrInput
 	}
 	n, err := strconv.ParseFloat(string(raw), 64)
-	if err != nil || math.IsInf(n, 0) || math.IsNaN(n) || n < 0 || n > 9007199254740991 || math.Trunc(n) != n {
+	if err != nil || math.IsInf(n, 0) || math.IsNaN(n) || n < -9007199254740991 || n > 9007199254740991 || math.Trunc(n) != n {
 		return 0, ErrInput
 	}
 	return int64(n), nil
@@ -66,7 +66,9 @@ func ParseKey(body []byte) (KeyInput, error) {
 	if json.Unmarshal(f["profile"], &out.Profile) != nil || (out.Profile != "free" && out.Profile != "starter") || json.Unmarshal(f["apiKey"], &out.APIKey) != nil {
 		return KeyInput{}, ErrInput
 	}
-	out.APIKey = strings.TrimSpace(out.APIKey)
+	out.APIKey = strings.TrimFunc(out.APIKey, func(r rune) bool {
+		return r == '\ufeff' || strings.ContainsRune("\t\n\v\f\r \u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000", r)
+	})
 	if !keyPattern.MatchString(out.APIKey) {
 		return KeyInput{}, ErrInput
 	}
