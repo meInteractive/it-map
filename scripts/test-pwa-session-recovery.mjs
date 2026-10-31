@@ -29,7 +29,7 @@ try {
     documentElement:{style:{}},createElement(){return {style:{},getContext(){return null;}};},
     querySelector(){return null;}};
   setGlobal('document',documentMock);
-  setGlobal('window',{addEventListener,removeEventListener,dispatchEvent,matchMedia,document:documentMock});
+  setGlobal('window',{addEventListener,removeEventListener,dispatchEvent,matchMedia,document:documentMock,URL:{createObjectURL:()=> 'blob:synthetic-ci-map-worker'}});
   setGlobal('navigator',{onLine:true});
   setGlobal('location',{pathname:'/',protocol:'http:'});
   setGlobal('history',{state:null,pushState(){},replaceState(){},back(){}});
