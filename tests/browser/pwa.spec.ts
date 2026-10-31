@@ -50,6 +50,8 @@ test('PWA: установка worker, offline public assets, API не кэшир
   } finally {
     await context.setOffline(false);
   }
-  await page.goto('/logout');
+  // A concurrent session revalidation can abort page.goto during the logout redirect.
+  // Trigger actual browser navigation, then assert the redirected login UI.
+  await page.evaluate(() => { window.location.assign('/logout'); });
   await expect(page.getByRole('button', { name: 'Открыть карту', exact: true })).toBeVisible();
 });
