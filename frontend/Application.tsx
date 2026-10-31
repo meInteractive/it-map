@@ -7,7 +7,7 @@ import { levels } from '../shared/contracts';
 import { RankFilter, FilterMenu, useFilters } from './features/companies/Filters';
 import { defaultVacancyFilters } from './features/vacancies/model';
 import {RoleTreeOptions} from './features/vacancies/RoleTree';
-import { confirmNavigation } from './hooks/useDirty';
+import { confirmNavigation, allowSessionExit } from './hooks/useDirty';
 import Tasks from './features/tasks/Tasks';
 import {SettingsNavigation} from './components/SettingsNavigation';
 import {EntityNavigation} from './components/EntityNavigation';
@@ -62,5 +62,5 @@ function Workspace({ user }: {
     setCompany(null); }} onCreate={c => setEditor({ owner: { name: c.name, entityType: c.entityType } })} onEdit={(v, view) => { if (confirmNavigation()) { setVacancy(null); setEditor({ owner: { name: v.companyName, entityType: v.entityType }, record: v, view }); } }}/></PanelBoundary>} {vacancy && <PanelBoundary kind="vacancy" title="Загрузка вакансии…" onClose={() => { if (confirmNavigation()) setVacancy(null); }}><VacancyDrawer key={vacancy.id + ":" + vacancy.view} id={vacancy.id} view={vacancy.view} nav={nav} admin={user.isAdmin} onClose={() => { if (confirmNavigation())
     setVacancy(null); }} onEdit={v => { setEditor({ owner: { name: v.companyName, entityType: v.entityType }, record: v, view: vacancy.view }); setVacancy(null); }}/></PanelBoundary>}{channel && <PanelBoundary kind="channel" title="Telegram-канал" onClose={() => setChannel(null)}><ChannelDrawer key={channel} id={channel} nav={nav} admin={user.isAdmin} onClose={() => setChannel(null)}/></PanelBoundary>} {editor && user.isAdmin && <PanelBoundary kind="editor" title={editor.record ? "Редактирование вакансии" : "Новая вакансия"} onClose={() => setEditor(null)}><VacancyEditor key={editor.record?.id || editor.owner.name} {...editor} onClose={() => setEditor(null)} onSaved={id => { setEditor(null); if (id)
     setVacancy({ id, view: editor.view || editor.owner.entityType }); }}/></PanelBoundary>}</main></div>; }
-export default function Application() { const q = useApi<Session>('/api/session', {refreshIntervalMs: 60_000}); useEffect(() => { const expire = () => { clearCache(); location.replace('/logout?expired=1'); }; window.addEventListener('session-expired', expire); return () => window.removeEventListener('session-expired', expire); }, []); if (q.error instanceof ApiError && q.error.status === 401)
+export default function Application() { const q = useApi<Session>('/api/session', {refreshIntervalMs: 60_000}); useEffect(() => { const expire = () => { allowSessionExit(); clearCache(); location.replace('/logout?expired=1'); }; window.addEventListener('session-expired', expire); return () => window.removeEventListener('session-expired', expire); }, []); if (q.error instanceof ApiError && q.error.status === 401)
     return <Login />; return <State loading={!q.data && q.loading} error={q.error}>{q.data && <Workspace user={q.data}/>}</State>; }
