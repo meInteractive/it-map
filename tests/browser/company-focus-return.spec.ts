@@ -25,6 +25,9 @@ const bundle = await build({
 const source = bundle.outputFiles[0].text;
 
 test('28: после закрытия карточки компании фокус возвращается к исходной строке', async ({page}) => {
+  await page.goto('/'); // sessionStorage requires a non-opaque origin
+  const pageErrors: string[] = [];
+  page.on('pageerror', e => pageErrors.push(e.message));
   await page.setContent('<main id="root"></main>');
   await page.route('**/*', route => route.abort('blockedbyclient'));
   await page.evaluate(() => {
@@ -57,4 +60,5 @@ test('28: после закрытия карточки компании фоку
   await close.click();
   await expect(dialog).toHaveCount(0);
   await expect(opener).toBeFocused();
+  expect(pageErrors).toEqual([]);
 });
