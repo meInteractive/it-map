@@ -3,7 +3,6 @@ package parser
 import (
 	"regexp"
 	"strings"
-	"unicode/utf16"
 )
 
 const (
@@ -24,18 +23,52 @@ var fulltextListHeading = regexp.MustCompile(`(?im)^` + jsStageSpace + `*#` + js
 var fulltextHeadings = regexp.MustCompile(`(?m)^#{1,3} `)
 
 func fulltextPrefix(s string, units int) string {
-	encoded := utf16.Encode([]rune(s))
-	if len(encoded) > units {
-		encoded = encoded[:units]
+	if units <= 0 {
+		return ""
 	}
-	return string(utf16.Decode(encoded))
+	var prefix strings.Builder
+	prefix.Grow(min(len(s), units*3))
+	for _, r := range s {
+		width := 1
+		if r > 0xffff {
+			width = 2
+		}
+		if width > units {
+			// Срез внутри UTF-16 пары сохраняет прежнюю замену на U+FFFD.
+			prefix.WriteRune('\ufffd')
+			break
+		}
+		prefix.WriteRune(r)
+		units -= width
+		if units == 0 {
+			break
+		}
+	}
+	return prefix.String()
+}
+
+func fulltextAtLeastUTF16(s string, units int) bool {
+	if units <= 0 {
+		return true
+	}
+	count := 0
+	for _, r := range s {
+		count++
+		if r > 0xffff {
+			count++
+		}
+		if count >= units {
+			return true
+		}
+	}
+	return false
 }
 
 // CheckFulltextContent переносит только проверки текста и статуса источника.
 // URL, принадлежность rabota.ru и сохранение снимка требуют отдельных проверок.
 func CheckFulltextContent(markdown string, status int) []string {
 	errors := []string{}
-	if utf16Length(jsStageTrim(markdown)) < 250 {
+	if !fulltextAtLeastUTF16(jsStageTrim(markdown), 250) {
 		errors = append(errors, fulltextShort)
 	}
 	if status < 200 || status >= 300 {
