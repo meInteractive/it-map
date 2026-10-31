@@ -76,8 +76,23 @@ try{
  assert.deepEqual(paint['circle-radius'],['case',['get','selected'],8,6]);
  assert.deepEqual(paint['circle-stroke-width'],['case',['get','selected'],3,2]);
  const metroUpdates=maps[0].getSource('metro').updates;
+ // Фильтры управляют реальными GeoJSON-маркерами без нового запроса карты.
+ await click(buttons().find(b=>b.props.className==='rank-filter-button'));
+ const favoriteLabel=root.root.findAllByType('label').find(node=>label(node)==='Избранные');
+ assert.ok(favoriteLabel,'Фильтр избранного должен быть в действующем интерфейсе');
+ const favoriteInput=()=>root.root.findAllByType('label').find(node=>label(node)==='Избранные').findByType('input');
+ await act(async()=>favoriteInput().props.onChange({target:{checked:true}}));await flush();
+ assert.deepEqual(maps[0].getSource('companies').data.features,[],'Пустое пересечение немедленно удаляет старые маркеры');
+ assert.equal(calls.filter(url=>url==='/api/companies/map').length,1,'Фильтрация не делает новый запрос');
+ await act(async()=>favoriteInput().props.onChange({target:{checked:false}}));await flush();
+ assert.equal(maps[0].getSource('companies').data.features.length,3,'Снятие только избранного возвращает маркеры');
  const marker=async name=>{await act(async()=>maps[0].handlers.get('click:company-dots')({features:[{properties:{companyName:name}}]}));await flush()};
  await marker('Alpha');assert.deepEqual(selected(),['Alpha','Alpha']);
+ await act(async()=>favoriteInput().props.onChange({target:{checked:true}}));await flush();
+ assert.deepEqual(maps[0].getSource('companies').data.features,[],'Фильтр исключил выбранную компанию без подмены');
+ await act(async()=>favoriteInput().props.onChange({target:{checked:false}}));await flush();
+ assert.deepEqual(selected(),['Alpha','Alpha'],'Возврат фильтра выделяет прежнюю компанию, а не другую');
+ assert.equal(calls.filter(url=>url==='/api/companies/map').length,1);
  await marker('Beta');assert.deepEqual(selected(),['Beta']);
  await click(buttons().find(b=>b.props['aria-label']==='Закрыть карточку'));assert.deepEqual(selected(),[]);
  await marker('Alpha');
