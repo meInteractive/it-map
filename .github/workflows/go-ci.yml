@@ -199,4 +199,10 @@ jobs:
             node scripts/test-map-office-features.mjs
             node scripts/test-map-office-grouping.mjs
           fi
+      - name: Validate browser spec discovery and fixture TypeScript
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx playwright test --config=playwright.config.ts --list
+          ITMAP_COMPANY_BROWSER_WRITES=1 npx playwright test --config=playwright.company-flags.config.ts --list
       - run: npm run build:web
