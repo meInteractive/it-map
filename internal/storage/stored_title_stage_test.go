@@ -166,7 +166,7 @@ func TestMariaDBStoredTitleStageDisposable(t *testing.T) {
 	t.Run("candidate_title_snapshot", func(t *testing.T) {
 		f.exec(`UPDATE firecrawl_settings SET favorites_only=0,scheduler_json='{"enabled":true,"sourceIds":["companySite"],"ownerName":"CI_USER"}' WHERE id=1`)
 		company, candidate, source := int64(990002), int64(990001), "companySite"
-		job := parser.Job{CompanyID: &company, CandidateID: &candidate, SourceID: &source}
+		job := parser.Job{CompanyID: &company, CandidateID: &candidate, SourceID: &source, Payload: json.RawMessage(`{"owner":"CI_OTHER","companyId":999999,"candidateId":999999,"sourceId":"hh"}`)}
 		tx, err := f.db.BeginTx(f.ctx, nil)
 		if err != nil {
 			t.Fatal(err)
@@ -189,6 +189,17 @@ func TestMariaDBStoredTitleStageDisposable(t *testing.T) {
 		if err != nil || actual == nil || actual.Type != "classify_title" {
 			tx.Rollback()
 			t.Fatal("SQL planner did not select classification", err)
+		}
+		if actual.CandidateID != candidate || actual.CompanyID == nil || *actual.CompanyID != company || actual.SourceID != source {
+			tx.Rollback()
+			t.Fatal("job payload changed the trusted scope")
+		}
+		foreignSource := "hh"
+		foreign := job
+		foreign.SourceID = &foreignSource
+		if _, err = (parser.SQLCandidateHandoffPlanner{Owner: "CI_USER"}).Next(f.ctx, tx, foreign); !errors.Is(err, parser.ErrCandidateChanged) {
+			tx.Rollback()
+			t.Fatal("unselected source was accepted", err)
 		}
 		tx.Rollback()
 		f.exec("UPDATE firecrawl_settings SET favorites_only=1 WHERE id=1")
