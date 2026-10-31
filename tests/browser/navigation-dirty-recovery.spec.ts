@@ -26,6 +26,10 @@ const bundle = await build({
 const source = bundle.outputFiles[0].text;
 
 test('26–30: настоящие переходы с изменённой формой и подтверждением', async ({ page }) => {
+  // A real origin is required for Workspace sessionStorage. about:blank is opaque.
+  await page.goto('/');
+  const pageErrors: string[] = [];
+  page.on('pageerror', error => pageErrors.push(error.message));
   await page.setContent('<main id="root"></main>');
   await page.route('**/*', route => route.abort('blockedbyclient'));
   await page.evaluate(() => {
@@ -131,4 +135,5 @@ test('26–30: настоящие переходы с изменённой фо�
   // Параллельное состояние двух отдельных редакторов штатной навигацией
   // не создаётся; два независимых useDirty уже проверяет test-dirty-navigation.mjs.
   await page.evaluate(() => (window as any).__unmountApplication());
+  expect(pageErrors).toEqual([]);
 });
