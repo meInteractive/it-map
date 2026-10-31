@@ -1,5 +1,16 @@
 # it-map — генеральный план миграции на Go
 
+**Актуальное состояние на 31.10.2026:** владелец разрешил автоматическую доставку
+только `main` на временный staging-сервер. Проверены ручной запуск
+[#41187890505](https://github.com/meInteractive/it-map/actions/runs/41187890505)
+и полный цикл после push
+[#41190558448](https://github.com/meInteractive/it-map/actions/runs/41190558448):
+CI, `arm64` package, `publish`, серверный `current` на точном SHA и внешний
+live/SPA прошли. Workflow включён. Указания ниже «сервер не деплоить» и
+«Publish отключён» описывают прежний этап и больше не действуют для
+`main`/staging. Production cutover, перенос данных и платные вызовы парсера
+остаются отдельными решениями.
+
 **Уточнение пользователя после116/117/118:** сначала JEV, потом parser; main e2dc2d7 содержит проверенную ancestry358 (tree diff пуст). JEV catalog/typed adapters готовы и проверены source/mocks, GO-358 execution boundary в required CI; GO-359 подключает concrete stored-title repository/cache/ownership/slots. Остальные SQL stages/enqueue/ticks остаются открытыми. Сервер не деплоить; автоматически начатые Publish отменяются.
 
 **Текущее уточнение пользователя:** PR AI-стека приняты, но выкладку на сервер пока не выполнять. После проверкиmain обнаружена потеря110/111 в feature parents: recovery352 направленmain, дальнейшие leaf353/354/355 такжеmain с полной ancestry. Автоматический Publish41025077896 после прежнего merge отменён; реальный сервер не изменялся. В разработке: OpenRouter settings/cache/source projection и полный ручной test OpenAI/OpenRouter, затем profile model validator; automatic требует existing ledger, dispatcher/JEV/structured health orchestration остаются открытыми. Не путать manual test UI с готовностью автоматического parser.
@@ -43,8 +54,8 @@ Catalog read gap до реализации разделён315/316/317: legacy G
 | Старый сервер | JS `server/`, `build/sites-worker.ts`, Cloudflare/D1; рабочее окружение удалённо не проверено | Не изменять до cutover; оставить историческую ветку `gpt-site` |
 | Новый HTTP | Go `cmd/itmap`, `internal/httpapi`, стандартный `net/http`, частичный набор маршрутов | Полная совместимость действующих API, отработанная авторизация |
 | Новая БД | `database/sql`, MariaDB 10.11 synthetic schema/rollback/locking/бизнес-чтения подтверждены; согласованный снимок не проверен | MariaDB 10.11+, версионированные миграции и отдельные staging/production БД |
-| Парсер | В Go отсутствует; JS-парсер в `server/services/`, `server/integrations/` | Сначала Go-диспетчер на MariaDB, затем RabbitMQ в 1.3 |
-| Развёртывание | Go/React/security/MariaDB/API/browser CI; инструкция и native/Docker-шаблоны; реального деплоя нет | Контролируемый staging; production только после отдельного утверждения |
+| Парсер | В Go подготовлены отдельные стадии и SQL-снимки, но рабочий цикл worker ещё не включён; JS-парсер остаётся эталоном | Завершить Go-диспетчер на MariaDB, затем RabbitMQ в 1.3 |
+| Развёртывание | Go/React/security/MariaDB/API/browser CI; main на временном staging-сервере, полный автодеплой по push проверен | Production только после отдельного утверждения |
 
 Реальные модули и границы: [docs/dev/ARCHITECTURE.md](docs/dev/ARCHITECTURE.md). D1: [docs/user/DATABASE.md](docs/user/DATABASE.md) (без изменений); новая MariaDB: [docs/dev/MARIADB.md](docs/dev/MARIADB.md). Решения: [docs/dev/DECISIONS.md](docs/dev/DECISIONS.md).
 

@@ -73,5 +73,16 @@ main forced-command status и wrong-slot refusal проверены при по�
 Внешний HTTPS ответил live200, SPA200 и ready503 с
 `business_api_not_migrated`. Workflow оставлен включённым для следующих push
 в `main`. Это подтверждает Actions→server gate для текущего staging-релиза;
-live failed-release rollback и production cutover отдельно не проверены.
+
+Слияние [PR #188](https://github.com/meInteractive/it-map/pull/188) создало
+`push` в `main`: [run #41190558448](https://github.com/meInteractive/it-map/actions/runs/41190558448)
+полностью прошёл `register`, CI, `package` и `publish` для SHA
+`06ff3f4af31a896174fa647d0232c6f64eea3fc4`. Приёмник вернул `success`,
+sequence 261; серверный `current` указывает на
+`releases/261-06ff3f4af31a896174fa647d0232c6f64eea3fc4`,
+`itmap@main` активен. Внешний HTTPS после переключения ответил live200, SPA200
+и ожидаемым ready503 с `business_api_not_migrated`. Это подтверждает запуск
+и полный цикл именно по push в текущем staging. Остаются отдельными проверками
+live failed-release rollback, полноценные пользовательские сценарии и
+production cutover.
 Точные SHA/CI/PR — [STACK.md](../../../tasks/STACK.md).
