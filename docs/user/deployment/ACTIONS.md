@@ -24,9 +24,11 @@ APP_ENV=staging. Workflow `.github/workflows/publish.yml` принимает pus
    цель одна; перед двумя серверами архитектуру выбирать отдельно для target,
    не переносить глобальное значение автоматически на будущий основной сервер.
 6. **Проверить маршрут из Actions runner.** Tailscale в Codex не подключает
-   GitHub-hosted runner к Tailnet. Текущий workflow сам VPN не поднимает.
-   VPN Actions integration/соответствующий runner/публичный SSH-маршрут требуют
-   отдельной настройки; успешный SSH из чата не является этим gate.
+   GitHub-hosted runner к Tailnet. На текущем временном сервере `DEPLOY_HOST`
+   задаёт публичный IP или имя с доступным SSH-портом 22; runner не использует
+   VPN. Значение — без схемы, пользователя, порта и лишних пробелов. Для будущего
+   сервера только в Tailnet потребуется отдельный маршрут runner. Успешный SSH
+   из Codex не подтверждает маршрут Actions.
 7. Проверить main branch policy, forced command, sudo, schema/health/SPA,
    свободное место и rollback. Только затем установить repository variable
    ITMAP_DEPLOY_ENABLED=true. До этого не запускать реальную автоматику.
@@ -63,5 +65,13 @@ main, смена его Environment target, независимая БД и от�
 GO-345: unit/protocol suite27 и actionlint проверяют main-only context,
 feature/manual/tag/delete refusal, package/client/receiver regression. Реальный
 main forced-command status и wrong-slot refusal проверены при подготовке сервера.
-Это не выполненный Actions→server gate, не live failed-release rollback и не
-разрешение на production. Точные SHA/CI/PR — [STACK.md](../../../tasks/STACK.md).
+
+31.10.2026 [workflow run #41187890505](https://github.com/meInteractive/it-map/actions/runs/41187890505)
+выполнил `register`, обязательный CI, сборку `arm64` и `publish` для
+`main` SHA `7a26cd812d4a4fe9e1e671dd17f6be66ee56df97`. Приёмник вернул
+`success` с sequence 260; `current` указывает на этот SHA, служба активна.
+Внешний HTTPS ответил live200, SPA200 и ready503 с
+`business_api_not_migrated`. Workflow оставлен включённым для следующих push
+в `main`. Это подтверждает Actions→server gate для текущего staging-релиза;
+live failed-release rollback и production cutover отдельно не проверены.
+Точные SHA/CI/PR — [STACK.md](../../../tasks/STACK.md).
