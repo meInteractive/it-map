@@ -75,7 +75,7 @@ try{
  const paint=maps[0].layers.get('company-dots').paint;
  assert.deepEqual(paint['circle-radius'],['case',['get','selected'],8,6]);
  assert.deepEqual(paint['circle-stroke-width'],['case',['get','selected'],3,2]);
- const metroUpdates=maps[0].getSource('metro').updates;
+ let metroUpdates=maps[0].getSource('metro').updates;
  // Реальная строка поиска меняет GeoJSON, а не только UI-счётчик.
  const searchField=root.root.find(n=>n.type?.name==='SectionSearch');
  await act(async()=>searchField.props.onChange('Alpha'));await flush();
@@ -85,6 +85,7 @@ try{
  await act(async()=>searchField.props.onChange(''));await flush();
  assert.equal(maps[0].getSource('companies').data.features.length,3,'Очистка возвращает исходные офисы');
  assert.equal(calls.filter(url=>url==='/api/companies/map').length,1,'Поиск не вызывает новый GET карты');
+ metroUpdates=maps[0].getSource('metro').updates;
  // Фильтры управляют реальными GeoJSON-маркерами без нового запроса карты.
  await click(buttons().find(b=>b.props.className==='rank-filter-button'));
  const favoriteLabel=root.root.findAllByType('label').find(node=>label(node)==='Избранные');
