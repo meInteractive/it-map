@@ -73,7 +73,7 @@ test('26–30: настоящие переходы с изменённой фо�
   const editor = page.getByRole('dialog', { name: 'Редактирование вакансии' });
   const titleInput = () => editor.locator('input[maxlength="300"]').first();
   const enterVacancies = async () => {
-    await page.getByRole('button', { name: 'Вакансии', exact: true }).click();
+    await page.locator('.entity-nav[data-section-menu="vacancies"] > .settings-nav-trigger').click();
     await expect(section).toHaveAttribute('data-section', 'vacancies');
   };
   const openEditor = async () => {
