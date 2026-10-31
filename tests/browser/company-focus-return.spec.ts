@@ -25,11 +25,17 @@ const bundle = await build({
 const source = bundle.outputFiles[0].text;
 
 test('28: после закрытия карточки компании фокус возвращается к исходной строке', async ({page}) => {
-  await page.goto('/'); // sessionStorage requires a non-opaque origin
+  // Isolated same-origin document: sessionStorage works, production CSP unchanged.
+  const fixturePath = '/__ci_company_focus_fixture';
+  await page.route('**/*', route => {
+    if (new URL(route.request().url()).pathname === fixturePath)
+      return route.fulfill({status: 200, contentType: 'text/html',
+        body: '<!doctype html><html><body><main id="root"></main></body></html>'});
+    return route.abort('blockedbyclient');
+  });
+  await page.goto(fixturePath);
   const pageErrors: string[] = [];
   page.on('pageerror', e => pageErrors.push(e.message));
-  await page.setContent('<main id="root"></main>');
-  await page.route('**/*', route => route.abort('blockedbyclient'));
   await page.evaluate(() => {
     const company = {
       id: 1, name: 'Синтетическая Альфа', rank: 1, entityType: 'company',
