@@ -363,6 +363,62 @@ func TestMariaDBStoredTitleStageDisposable(t *testing.T) {
 		f.exec("DELETE FROM vacancy_candidate_classification_leases WHERE candidate_id=990001")
 		f.exec("DELETE FROM vacancy_classification_slots")
 	})
+	t.Run("concurrent_candidate_handoffs_do_not_duplicate", func(t *testing.T) {
+		f := f.sub(t)
+		f.exec("DELETE FROM vacancy_classification_attempts WHERE candidate_id=990001")
+		first := titleStageLease(t, f)
+		var runID string
+		if err := f.db.QueryRowContext(f.ctx, "SELECT id FROM scheduler_runs WHERE status='running'").Scan(&runID); err != nil {
+			t.Fatal("running scheduler missing", err)
+		}
+		schedulerSeedJob(f, "CI_TITLE_CONCURRENT", 990001)
+		f.exec("UPDATE scheduler_jobs SET type='classify_title',company_id=990002,source_id='companySite' WHERE id='CI_TITLE_CONCURRENT'")
+		secondID := "CI_TITLE_CONCURRENT"
+		started, release := make(chan struct{}), make(chan struct{}, 1)
+		defer func() {
+			select {
+			case release <- struct{}{}:
+			default:
+			}
+		}()
+		firstRunner := &storedTitleRunner{answers: frames[0].Answers, after: func() {
+			close(started)
+			select {
+			case <-release:
+			case <-f.ctx.Done():
+			}
+		}}
+		done := make(chan error, 1)
+		go func() {
+			_, err := (parser.AIStageDispatcher{Owner: "CI_USER", Classifier: firstRunner}).Execute(f.ctx, first)
+			done <- err
+		}()
+		select {
+		case <-started:
+		case <-f.ctx.Done():
+			t.Fatal("first classifier did not start", f.ctx.Err())
+		}
+		second, secondErr := f.repo.ClaimJob(f.ctx, runID, parser.ClaimOptions{JobID: &secondID})
+		if secondErr != nil || second != nil {
+			t.Fatal("concurrent job for busy candidate was claimed", secondErr)
+		}
+		release <- struct{}{}
+		var firstErr error
+		select {
+		case firstErr = <-done:
+		case <-f.ctx.Done():
+			t.Fatal("first classifier did not finish", f.ctx.Err())
+		}
+		second, secondErr = f.repo.ClaimJob(f.ctx, runID, parser.ClaimOptions{JobID: &secondID})
+		if secondErr != nil || second == nil {
+			t.Fatal("waiting candidate job was not claimable after completion", secondErr)
+		}
+		secondRunner := &storedTitleRunner{answers: frames[0].Answers}
+		secondOut, secondErr := (parser.AIStageDispatcher{Owner: "CI_USER", Classifier: secondRunner}).Execute(f.ctx, second)
+		if firstErr != nil || secondErr != nil || !secondOut.Reused || firstRunner.calls != 1 || secondRunner.calls != 0 || f.count("SELECT COUNT(*) FROM scheduler_jobs WHERE candidate_id=990001 AND type='fetch_full_text'") != 1 {
+			t.Fatalf("concurrent handoffs failed: first=%v second=%v", firstErr, secondErr)
+		}
+	})
 	t.Run("root_order", func(t *testing.T) {
 		f.exec("DELETE FROM vacancy_classification_attempts WHERE candidate_id=990001")
 		f.exec("UPDATE vacancy_roles SET sort_order=CASE WHEN id=990101 THEN 2 ELSE 1 END WHERE id IN (990101,990102)")
