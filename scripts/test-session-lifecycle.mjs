@@ -68,19 +68,22 @@ try {
 
   // 05: ответ старого GET после logout/reset не попадает в кэш.
   const oldRead = api.request('/api/companies/list');
+  const rejectedOldRead = assert.rejects(oldRead, error => error instanceof api.ApiError && error.status === 409);
   const pendingRead = next('/api/companies/list', 'GET', 2);
   api.clearCache();
   await answer(pendingRead, {privateValue: 'Просроченное чтение'});
-  await assert.rejects(oldRead, error => error instanceof api.ApiError && error.status === 409);
+  await rejectedOldRead;
 
   // 06: несколько одновременных 401 не создают каскадный выход.
   const countBefore = expirations;
   const first = api.request('/api/vacancies/71');
   const second = api.request('/api/channels');
+  const rejectedFirst = assert.rejects(first, error => error.status === 401);
+  const rejectedSecond = assert.rejects(second, error => error.status === 409);
   await answer(next('/api/vacancies/71', 'GET', 2), {error: 'Сессия истекла'}, 401);
-  await assert.rejects(first, error => error.status === 401);
+  await rejectedFirst;
   await answer(next('/api/channels'), {error: 'Сессия истекла'}, 401);
-  await assert.rejects(second, error => error.status === 409);
+  await rejectedSecond;
   assert.equal(expirations, countBefore + 1);
 
   // 07: 403 при записи не удаляет несохранённые поля и не сообщает об успехе.
@@ -114,10 +117,11 @@ try {
   // 08: успешный, но запоздалый ответ PUT после смены сессии отклоняется;
   // после нового входа нет скрытого повторного POST/PUT.
   const lateWrite = api.mutate('/api/vacancies/71', 'PUT', {title: 'Не повторять'});
+  const rejectedLateWrite = assert.rejects(lateWrite, error => error instanceof api.ApiError && error.status === 409);
   const pendingWrite = next('/api/vacancies/71', 'PUT', 1);
   api.clearCache();
   await answer(pendingWrite, {vacancies: [{id: 71}]});
-  await assert.rejects(lateWrite, error => error instanceof api.ApiError && error.status === 409);
+  await rejectedLateWrite;
   const beforeLoginWrites = count('/api/vacancies/71', 'PUT');
   const newSession = api.request('/api/session');
   await answer(next('/api/session', 'GET', 1), {name: 'Аккаунт А', isAdmin: true});
@@ -128,8 +132,9 @@ try {
   // реальное межвкладочное поведение требует отдельного браузерного smoke.
   // 10: первичная проверка сессии обязана вернуть 401 до чтения приватных разделов.
   const initial = api.request('/api/session');
+  const rejectedInitial = assert.rejects(initial, error => error instanceof api.ApiError && error.status === 401);
   await answer(next('/api/session', 'GET', 2), {error: 'Требуется вход'}, 401);
-  await assert.rejects(initial, error => error instanceof api.ApiError && error.status === 401);
+  await rejectedInitial;
   assert.equal(count('/api/companies/list'), 3, 'После 401 первичной сессии не читаются компании');
   console.log('PASS: сброс приватного кэша, однократный 401, 403 форма и защита от запоздалых записей');
 } finally {
