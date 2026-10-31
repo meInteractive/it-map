@@ -26,12 +26,19 @@ const bundle = await build({
 const source = bundle.outputFiles[0].text;
 
 test('26–30: настоящие переходы с изменённой формой и подтверждением', async ({ page }) => {
-  // A real origin is required for Workspace sessionStorage. about:blank is opaque.
-  await page.goto('/');
+  // Serve a minimal same-origin HTML fixture without the production CSP header.
+  // Unlike about:blank it allows sessionStorage; unlike the real app it permits
+  // this explicitly bundled synthetic test script (production CSP stays intact).
+  const fixturePath = '/__ci_navigation_dirty_fixture';
+  await page.route('**/*', route => {
+    if (new URL(route.request().url()).pathname === fixturePath)
+      return route.fulfill({status: 200, contentType: 'text/html',
+        body: '<!doctype html><html><body><main id="root"></main></body></html>'});
+    return route.abort('blockedbyclient');
+  });
+  await page.goto(fixturePath);
   const pageErrors: string[] = [];
   page.on('pageerror', error => pageErrors.push(error.message));
-  await page.setContent('<main id="root"></main>');
-  await page.route('**/*', route => route.abort('blockedbyclient'));
   await page.evaluate(() => {
     (window as any).__confirmAnswers = [];
     (window as any).__confirmMessages = [];
