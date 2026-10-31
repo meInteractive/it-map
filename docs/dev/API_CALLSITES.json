@@ -23,7 +23,7 @@
     {
       "id": "073edb066dcc58ad",
       "file": "frontend/Application.tsx",
-      "line": 76,
+      "line": 95,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
