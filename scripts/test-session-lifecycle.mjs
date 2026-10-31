@@ -24,8 +24,8 @@ const answer = async (call, body, status = 200) => {
   assert.ok(call && typeof call.resolve === 'function', 'Запрос должен реально начаться');
   await act(async () => { call.resolve(Response.json(body, {status})); await new Promise(resolve => setTimeout(resolve, 0)); });
 };
-const next = (url, method = 'GET', offset = 0) =>
-  calls.filter(call => call.url === url && call.method === method).at(offset);
+const next = (url, method = 'GET') =>
+  calls.filter(call => call.url === url && call.method === method).at(-1);
 const count = (url, method = 'GET') => calls.filter(call => call.url === url && call.method === method).length;
 function Probe({path, name}) {
   const {data, error} = api.useApi(path);
