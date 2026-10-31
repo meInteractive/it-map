@@ -8,6 +8,7 @@
 - `internal/httpapi/` — HTTP через стандартный `net/http` (`ServeMux`), **не Gin**; `internal/storage/` — `database/sql`, MariaDB-драйвер за build tag `mariadb`.
 - `frontend/`, `web/`, `vite.web.config.ts` — React/TypeScript и Vite. `server/`, `build/`, `db/schema.ts` — старый JavaScript/D1-код для сравнения контрактов, а не Go-production.
 - Прочитать `PLANS.md`, `docs/dev/ARCHITECTURE.md`, `docs/user/DATABASE.md` (историческая D1), `docs/dev/MARIADB.md` (целевая БД), `docs/dev/DECISIONS.md`, `tasks/README.md`; API: `docs/dev/LEGACY_API_BASELINE.md` и `docs/user/API.md`.
+- Текущий приоритет спринта 1.1 — сквозной парсер HH через Apify: открыть `tasks/SPRINT-01-PARSER-APIFY.md` и выполнять его очередь строго по зависимостям до проверенного импорта вакансии в MariaDB.
 - При запросе «Настройка сервера» открыть `.agents/skills/itmap-server-setup/SKILL.md`; он описывает доступ Codex через Tailscale и подготовку ограниченного релизного пользователя.
 
 ## Неприкосновенные ограничения
