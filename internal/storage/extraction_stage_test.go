@@ -227,6 +227,26 @@ func TestMariaDBExtractionStageSourceDisposable(t *testing.T) {
 			}
 		})
 	}
+	t.Run("real_dispatcher_commits_extraction_and_handoff", func(t *testing.T) {
+		f := f.sub(t)
+		if f.count("SELECT COUNT(*) FROM vacancy_roles WHERE id=990102") != 0 {
+			t.Fatal("synthetic leaf collision")
+		}
+		f.exec("INSERT INTO vacancy_roles(id,stable_key,name,parent_id,sort_order) VALUES(990102,'CI_LEAF','CI_LEAF',990101,1)")
+		defer f.exec("DELETE FROM vacancy_roles WHERE id=990102")
+		seed(0)
+		lease := extractionStageLease(t, f)
+		runner := &extractionRunner{content: frames[0].Value}
+		out, err := (parser.AIStageDispatcher{Owner: "CI_USER", Generator: runner}).Execute(f.ctx, lease)
+		if err != nil || out.Generation.Model != "gpt-6-luna" || runner.calls != 1 {
+			t.Fatal("extraction and SQL handoff failed", err)
+		}
+		if f.count("SELECT COUNT(*) FROM vacancy_extractions WHERE candidate_id=990001 AND status='success'") != 1 ||
+			f.count("SELECT COUNT(*) FROM scheduler_jobs WHERE id='CI_EXTRACTION_JOB' AND status='completed'") != 1 ||
+			f.count("SELECT COUNT(*) FROM scheduler_jobs WHERE candidate_id=990001 AND type='assign_roles' AND status='pending'") != 1 {
+			t.Fatal("extraction and next job did not commit together")
+		}
+	})
 	t.Run("missing_generator_releases_leases", func(t *testing.T) {
 		seed(0)
 		lease := extractionStageLease(t, f)
