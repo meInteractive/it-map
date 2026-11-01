@@ -3,6 +3,8 @@ package apifysettings
 import (
 	"context"
 	"database/sql"
+	"errors"
+	"itmap/internal/integrations/apify"
 	"unicode/utf8"
 
 	"itmap/internal/legacycrypto"
@@ -16,9 +18,20 @@ type OperationVersion struct {
 	SourceURL        string
 	SourceRevision   int64
 	Profile          string
+	CandidateID      int64  `json:",omitempty"`
+	TitleRevision    int64  `json:",omitempty"`
+	VacancyURL       string `json:",omitempty"`
 }
 
 func validateOperation(v OperationVersion, generation string, settings StoredSettings, source HHSource) error {
+	if v.CandidateID != 0 || v.TitleRevision != 0 || v.VacancyURL != "" {
+		if v.CandidateID < 1 || v.CandidateID > 9007199254740991 || v.TitleRevision < 1 || v.TitleRevision > 9007199254740991 || len(v.VacancyURL) > 2048 {
+			return ErrInput
+		}
+		if _, err := apify.HHInput(v.VacancyURL, apify.HHOptions{Detail: true}); err != nil {
+			return ErrInput
+		}
+	}
 	if v.Profile != "free" && v.Profile != "starter" {
 		return ErrInput
 	}
@@ -79,6 +92,25 @@ func (r Repository) resolveOperationTx(ctx context.Context, tx *sql.Tx, v Operat
 	}
 	if err = validateOperation(v, generation, s, source); err != nil {
 		return "", err
+	}
+	if v.CandidateID != 0 {
+		query := "SELECT company_id,agency_id,source_id,vacancy_url,title_revision,main_vacancy_id FROM vacancy_candidates WHERE id=?"
+		if lock {
+			query += " FOR UPDATE"
+		}
+		var company, agency, main sql.NullInt64
+		var source, url sql.NullString
+		var revision int64
+		err := tx.QueryRowContext(ctx, query, v.CandidateID).Scan(&company, &agency, &source, &url, &revision, &main)
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", ErrChanged
+		}
+		if err != nil {
+			return "", ErrStorage
+		}
+		if !company.Valid || company.Int64 != v.CompanyID || agency.Valid || main.Valid || !source.Valid || source.String != "hh" || !url.Valid || url.String != v.VacancyURL || revision != v.TitleRevision {
+			return "", ErrChanged
+		}
 	}
 	encrypted := s.FreeEncrypted
 	if v.Profile == "starter" {

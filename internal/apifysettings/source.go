@@ -233,3 +233,13 @@ func (r Repository) SaveHHSource(ctx context.Context, generation string, company
 	}
 	return out, nil
 }
+
+// ReadHHSourceTx проверяет текущий каталог и источник в owned-транзакции
+// вызывающей стадии. Чтение источника не выдаёт ключ и не разрешает платный вызов.
+func (r Repository) ReadHHSourceTx(ctx context.Context, tx *sql.Tx, companyID int64) (HHSource, error) {
+	if tx == nil {
+		return HHSource{}, ErrStorage
+	}
+	source, _, err := readHHSource(ctx, tx, companyID, true)
+	return source, err
+}
