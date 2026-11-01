@@ -473,9 +473,41 @@
       "dynamicURL": false
     },
     {
+      "id": "5006e486312542d3",
+      "file": "frontend/features/settings/Apify.tsx",
+      "line": 28,
+      "call": "mutate",
+      "method": "PUT",
+      "methodExpression": "'PUT'",
+      "urlExpression": "'/api/apify/hh-source?companyId='+source.companyId",
+      "literalFragments": [
+        "/api/apify/hh-source?companyId="
+      ],
+      "families": [
+        "apify"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "09abb7df931d88f0",
+      "file": "frontend/features/settings/Apify.tsx",
+      "line": 31,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/apify/hh-sources'",
+      "literalFragments": [
+        "/api/apify/hh-sources"
+      ],
+      "families": [
+        "apify"
+      ],
+      "dynamicURL": false
+    },
+    {
       "id": "97a6926cc087d3be",
       "file": "frontend/features/settings/Apify.tsx",
-      "line": 25,
+      "line": 34,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
