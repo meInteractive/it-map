@@ -18,6 +18,9 @@ class FakeMap {
  remove(){this.removed=true}
 }
 const originalMap=maplibregl.Map,originalFetch=fetch;
+const originalNavigatorDescriptor=Object.getOwnPropertyDescriptor(globalThis,'navigator');
+// Node 24 exposes navigator but not navigator.onLine; missing value is not offline.
+Object.defineProperty(globalThis,'navigator',{configurable:true,value:{onLine:true,standalone:false}});
 maplibregl.Map=FakeMap;
 const ui=await moduleFor('scripts/react-test-entry.tsx');
 const geometry=await moduleFor('frontend/features/map/geometry.ts');
@@ -75,17 +78,43 @@ try{
  const paint=maps[0].layers.get('company-dots').paint;
  assert.deepEqual(paint['circle-radius'],['case',['get','selected'],8,6]);
  assert.deepEqual(paint['circle-stroke-width'],['case',['get','selected'],3,2]);
- const metroUpdates=maps[0].getSource('metro').updates;
+ const metroUpdatesBeforeSearch=maps[0].getSource('metro').updates;
+ // Реальная строка поиска меняет GeoJSON, а не только UI-счётчик.
+ const searchField=root.root.find(n=>n.type?.name==='SectionSearch');
+ await act(async()=>searchField.props.onChange('Alpha'));await flush();
+ assert.deepEqual(maps[0].getSource('companies').data.features.map(f=>f.properties.companyName),['Alpha','Alpha'],'Поиск исключает чужие маркеры');
+ await act(async()=>searchField.props.onChange('Нет совпадений'));await flush();
+ assert.deepEqual(maps[0].getSource('companies').data.features,[],'Нулевой поиск удаляет все старые маркеры');
+ await act(async()=>searchField.props.onChange(''));await flush();
+ assert.equal(maps[0].getSource('companies').data.features.length,3,'Очистка возвращает исходные офисы');
+ assert.equal(calls.filter(url=>url==='/api/companies/map').length,1,'Поиск не вызывает новый GET карты');
+ assert.ok(maps[0].getSource('metro').updates>metroUpdatesBeforeSearch,'Поиск действительно обновляет GeoJSON метро');
+ // Фильтры управляют реальными GeoJSON-маркерами без нового запроса карты.
+ await click(buttons().find(b=>b.props.className==='rank-filter-button'));
+ const favoriteLabel=root.root.findAllByType('label').find(node=>label(node)==='Избранные');
+ assert.ok(favoriteLabel,'Фильтр избранного должен быть в действующем интерфейсе');
+ const favoriteInput=()=>root.root.findAllByType('label').find(node=>label(node)==='Избранные').findByType('input');
+ await act(async()=>favoriteInput().props.onChange({target:{checked:true}}));await flush();
+ assert.deepEqual(maps[0].getSource('companies').data.features,[],'Пустое пересечение немедленно удаляет старые маркеры');
+ assert.equal(calls.filter(url=>url==='/api/companies/map').length,1,'Фильтрация не делает новый запрос');
+ await act(async()=>favoriteInput().props.onChange({target:{checked:false}}));await flush();
+ assert.equal(maps[0].getSource('companies').data.features.length,3,'Снятие только избранного возвращает маркеры');
  const marker=async name=>{await act(async()=>maps[0].handlers.get('click:company-dots')({features:[{properties:{companyName:name}}]}));await flush()};
  await marker('Alpha');assert.deepEqual(selected(),['Alpha','Alpha']);
+ await act(async()=>favoriteInput().props.onChange({target:{checked:true}}));await flush();
+ assert.deepEqual(maps[0].getSource('companies').data.features,[],'Фильтр исключил выбранную компанию без подмены');
+ await act(async()=>favoriteInput().props.onChange({target:{checked:false}}));await flush();
+ assert.deepEqual(selected(),['Alpha','Alpha'],'Возврат фильтра выделяет прежнюю компанию, а не другую');
+ assert.equal(calls.filter(url=>url==='/api/companies/map').length,1);
  await marker('Beta');assert.deepEqual(selected(),['Beta']);
  await click(buttons().find(b=>b.props['aria-label']==='Закрыть карточку'));assert.deepEqual(selected(),[]);
  await marker('Alpha');
+ const metroUpdatesAtSelection=maps[0].getSource('metro').updates;
  const section=root.root.find(n=>n.type?.name==='MapSection');
  await act(async()=>section.props.nav.openCompany('Alpha','agency'));await flush();
  assert.deepEqual(selected(),[],'agency with the same name does not select company offices');
  assert.equal(maps.length,1,'selection does not recreate map');
- assert.equal(maps[0].getSource('metro').updates,metroUpdates,'selection does not recalculate metro');
+ assert.equal(maps[0].getSource('metro').updates,metroUpdatesAtSelection,'selection does not recalculate metro');
  assert.equal(calls.filter(u=>u==='/api/companies/map').length,1,'selection uses cached map projection');
  await act(async()=>root.unmount());root=null;assert.equal(maps[0].removed,true);
  assert.equal(observers[0].disconnected,true);
@@ -102,4 +131,4 @@ try{
  assert.doesNotThrow(()=>observers[1].callback(),'a delivered observer callback after disconnect must be ignored');
  assert.equal(frames.size,0,'unmount cancels the pending animation frame');
  console.log('Map selection: Application → marker click → all company offices, switch/close/agency guard, unchanged geometry, loading/API error, independent toggles, zoom/reset, resize/dispose and no reload/recreation/metro recomputation passed. WebGL appearance not tested.');
-}finally{if(root)await act(async()=>root.unmount());ui.clearCache();maplibregl.Map=originalMap;globalThis.fetch=originalFetch;}
+}finally{if(root)await act(async()=>root.unmount());ui.clearCache();maplibregl.Map=originalMap;globalThis.fetch=originalFetch;if(originalNavigatorDescriptor)Object.defineProperty(globalThis,'navigator',originalNavigatorDescriptor);else delete globalThis.navigator;}
