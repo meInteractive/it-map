@@ -203,6 +203,10 @@ func testConcurrentProfileResume(t *testing.T, existing bool) {
 		} else if errors.Is(err, profiles.ErrConflict) {
 			conflict++
 		} else {
+			var sqlErr *mysql.MySQLError
+			if errors.As(err, &sqlErr) {
+				t.Fatalf("unexpected profile race SQL outcome: number=%d state=%s", sqlErr.Number, sqlErr.SQLState)
+			}
 			t.Fatalf("unexpected profile race outcome: %T", err)
 		}
 	}
