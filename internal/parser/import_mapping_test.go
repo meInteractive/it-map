@@ -1,6 +1,8 @@
 package parser
 
 import (
+	"encoding/json"
+	"strings"
 	"testing"
 )
 
@@ -27,5 +29,27 @@ func TestImportExtractionMapping(t *testing.T) {
 	data["salary_from"] = 100.5
 	if _, err = mapImportExtraction("CI_COMPANY", "https://hh.ru/vacancy/123", "2026-10-02T00:00:00Z", []int64{2}, data); err == nil {
 		t.Fatal("fractional salary accepted")
+	}
+}
+
+func TestImportMappingUsesNormalizedNumbers(t *testing.T) {
+	data := map[string]any{"title": "CI Engineer", "description_md": strings.Repeat("CI vacancy detail ", 12), "level": "Senior"}
+	for _, key := range []string{"employer_name", "location", "work_format", "employment_type", "salary_from", "salary_to", "salary_currency", "salary_period", "salary_tax_type", "responsibilities", "requirements", "conditions", "published_at", "language"} {
+		data[key] = nil
+	}
+	data["salary_from"] = 100000
+	data["salary_currency"] = "RUB"
+	data["salary_period"] = "month"
+	raw, err := json.Marshal(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	normalized, err := NormalizeExtraction(string(raw), strings.Repeat("CI vacancy detail ", 12)+" зарплата 100000 рублей в месяц")
+	if err != nil || len(normalized.Corrections) != 0 {
+		t.Fatal("normalization", err)
+	}
+	input, err := mapImportExtraction("CI_COMPANY", "https://hh.ru/vacancy/123", "2026-10-02T00:00:00Z", []int64{2}, normalized.Data)
+	if err != nil || input.SalaryFrom == nil || *input.SalaryFrom != 100000 {
+		t.Fatal("normalized salary", err)
 	}
 }
