@@ -119,7 +119,7 @@ func acquireImportGlobal(ctx context.Context, tx *sql.Tx, job Job) (string, erro
 	if err != nil {
 		return "", ErrSettingsStorage
 	}
-	_, err = tx.ExecContext(ctx, `INSERT INTO vacancy_detail_leases(lease_key,generation,owner_token,expires_at) VALUES('import:global',?,?,?) ON DUPLICATE KEY UPDATE owner_token=IF(expires_at<=?,VALUES(owner_token),owner_token),generation=IF(owner_token=VALUES(owner_token),VALUES(generation),generation),expires_at=IF(owner_token=VALUES(owner_token),VALUES(expires_at),expires_at)`, job.Generation, token, now+int64((150*time.Second)/time.Millisecond), now)
+	_, err = tx.ExecContext(ctx, `INSERT INTO vacancy_detail_leases(lease_key,generation,owner_token,expires_at) VALUES('import:global',?,?,?) ON DUPLICATE KEY UPDATE owner_token=IF(generation<>VALUES(generation) OR expires_at<=?,VALUES(owner_token),owner_token),generation=IF(owner_token=VALUES(owner_token),VALUES(generation),generation),expires_at=IF(owner_token=VALUES(owner_token),VALUES(expires_at),expires_at)`, job.Generation, token, now+int64((150*time.Second)/time.Millisecond), now)
 	if err != nil {
 		return "", ErrSettingsStorage
 	}

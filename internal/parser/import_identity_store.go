@@ -4,9 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"strings"
 
-	"errors"
 	whatwg "github.com/nlnwa/whatwg-url/url"
 )
 

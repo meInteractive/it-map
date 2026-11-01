@@ -186,6 +186,13 @@ func TestMariaDBHHImportDisposable(t *testing.T) {
 			t.Fatal("expired import lease", err)
 		}
 	})
+	t.Run("previous generation import lease does not block", func(t *testing.T) {
+		s, lease, _, executor := hhImportFixture(t)
+		s.exec("INSERT INTO vacancy_detail_leases(lease_key,generation,owner_token,expires_at) VALUES('import:global','00000000-0000-4000-8000-000000000000','CI_OLD',?)", time.Now().Add(time.Minute).UnixMilli())
+		if _, err := executor.Execute(s.ctx, lease); err != nil {
+			t.Fatal("previous generation lease", err)
+		}
+	})
 	t.Run("existing publication preserves manual title", func(t *testing.T) {
 		s, lease, _, executor := hhImportFixture(t)
 		s.exec("INSERT INTO company_crm(company_name) VALUES('CI Apify Runtime')")
