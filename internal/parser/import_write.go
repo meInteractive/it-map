@@ -129,35 +129,6 @@ func writeHHImport(ctx context.Context, tx *sql.Tx, j Job, company, url, canonic
 			}
 		}
 	}
-	for i, field := range fields {
-		if plans[i].Managed && !importEmpty(incoming[i]) {
-			if _, err = tx.ExecContext(ctx, "INSERT INTO vacancy_parser_fields(vacancy_id,field,value_json,candidate_id) VALUES(?,?,?,?) ON DUPLICATE KEY UPDATE value_json=IF(manual=0,VALUES(value_json),value_json),candidate_id=IF(manual=0,VALUES(candidate_id),candidate_id)", target, field, importValueJSON(plans[i].Value), j.CandidateID); err != nil {
-				return HHImportResult{}, ErrSettingsStorage
-			}
-		}
-	}
-	metadata := map[string]any{}
-	for k, v := range normalized.Data {
-		switch k {
-		case "title", "description_md", "salary_from", "salary_to", "level", "published_at":
-		default:
-			metadata[k] = v
-		}
-	}
-	if input.Level == "" && normalized.Data["level"] != nil {
-		metadata["level"] = normalized.Data["level"]
-	}
-	if normalized.Data["salary_currency"] != "RUB" || normalized.Data["salary_period"] != "month" {
-		metadata["salary_from"] = normalized.Data["salary_from"]
-		metadata["salary_to"] = normalized.Data["salary_to"]
-	}
-	raw, err := json.Marshal(metadata)
-	if err != nil {
-		return HHImportResult{}, ErrSettingsStorage
-	}
-	if _, err = tx.ExecContext(ctx, "INSERT INTO vacancy_parser_fields(vacancy_id,field,value_json,candidate_id) VALUES(?,'source_metadata',?,?) ON DUPLICATE KEY UPDATE value_json=VALUES(value_json),candidate_id=VALUES(candidate_id)", target, string(raw), j.CandidateID); err != nil {
-		return HHImportResult{}, ErrSettingsStorage
-	}
 	rolesChanged, err := writeImportRoles(ctx, tx, target, *j.CandidateID, leaf.IDs)
 	if err != nil {
 		return HHImportResult{}, err
@@ -184,6 +155,37 @@ func writeHHImport(ctx context.Context, tx *sql.Tx, j Job, company, url, canonic
 			return HHImportResult{}, ErrImportIdentityConflict
 		}
 		if err != nil {
+			return HHImportResult{}, ErrSettingsStorage
+		}
+	}
+	if changed {
+		for i, field := range fields {
+			if plans[i].Managed && !importEmpty(incoming[i]) {
+				if _, err = tx.ExecContext(ctx, "INSERT INTO vacancy_parser_fields(vacancy_id,field,value_json,candidate_id) VALUES(?,?,?,?) ON DUPLICATE KEY UPDATE value_json=IF(manual=0,VALUES(value_json),value_json),candidate_id=IF(manual=0,VALUES(candidate_id),candidate_id)", target, field, importValueJSON(plans[i].Value), j.CandidateID); err != nil {
+					return HHImportResult{}, ErrSettingsStorage
+				}
+			}
+		}
+		metadata := map[string]any{}
+		for k, v := range normalized.Data {
+			switch k {
+			case "title", "description_md", "salary_from", "salary_to", "level", "published_at":
+			default:
+				metadata[k] = v
+			}
+		}
+		if input.Level == "" && normalized.Data["level"] != nil {
+			metadata["level"] = normalized.Data["level"]
+		}
+		if normalized.Data["salary_currency"] != "RUB" || normalized.Data["salary_period"] != "month" {
+			metadata["salary_from"] = normalized.Data["salary_from"]
+			metadata["salary_to"] = normalized.Data["salary_to"]
+		}
+		raw, err := json.Marshal(metadata)
+		if err != nil {
+			return HHImportResult{}, ErrSettingsStorage
+		}
+		if _, err = tx.ExecContext(ctx, "INSERT INTO vacancy_parser_fields(vacancy_id,field,value_json,candidate_id) VALUES(?,'source_metadata',?,?) ON DUPLICATE KEY UPDATE value_json=VALUES(value_json),candidate_id=VALUES(candidate_id)", target, string(raw), j.CandidateID); err != nil {
 			return HHImportResult{}, ErrSettingsStorage
 		}
 	}

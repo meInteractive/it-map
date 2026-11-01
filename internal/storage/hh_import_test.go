@@ -59,6 +59,7 @@ func hhImportFixture(t *testing.T) (*schedulerFixture, *parser.JobLease, int64, 
 	for _, k := range []string{"employer_name", "location", "work_format", "employment_type", "level", "salary_from", "salary_to", "salary_currency", "salary_period", "salary_tax_type", "responsibilities", "requirements", "conditions", "published_at", "language"} {
 		data[k] = nil
 	}
+	data["level"] = "Senior"
 	raw, err := json.Marshal(data)
 	if err != nil {
 		t.Fatal(err)
@@ -126,6 +127,21 @@ func TestMariaDBHHImportDisposable(t *testing.T) {
 		if _, err := executor.Execute(s.ctx, lease); err == nil {
 			t.Fatal("disabled source replay accepted")
 		}
+		s.exec("UPDATE vacancy_source_parsing SET enabled=1 WHERE company_id=991302 AND source_id='hh'")
+		s.exec("UPDATE vacancy_import_operations SET changes_json='{}' WHERE candidate_id=?", candidate)
+		if _, err := executor.Execute(s.ctx, lease); err == nil {
+			t.Fatal("invalid receipt replay accepted")
+		}
+	})
+	t.Run("changed role dependencies block import", func(t *testing.T) {
+		s, lease, candidate, executor := hhImportFixture(t)
+		s.exec("UPDATE vacancy_role_settings SET markdown='CI changed roles',prompt_revision=prompt_revision+1 WHERE id=1")
+		if _, err := executor.Execute(s.ctx, lease); err == nil {
+			t.Fatal("stale role result accepted")
+		}
+		if s.count("SELECT COUNT(*) FROM vacancy_candidates WHERE id=? AND main_vacancy_id IS NOT NULL", candidate) != 0 || s.count("SELECT COUNT(*) FROM vacancy_import_operations WHERE candidate_id=?", candidate) != 0 {
+			t.Fatal("stale import persisted")
+		}
 	})
 	t.Run("existing publication preserves manual title", func(t *testing.T) {
 		s, lease, _, executor := hhImportFixture(t)
@@ -143,7 +159,7 @@ func TestMariaDBHHImportDisposable(t *testing.T) {
 	t.Run("unchanged import preserves source timestamp", func(t *testing.T) {
 		s, lease, candidate, executor := hhImportFixture(t)
 		s.exec("INSERT INTO company_crm(company_name) VALUES('CI Apify Runtime')")
-		s.exec("INSERT INTO company_vacancies(id,company_name,url,title,description_md,role) VALUES(991305,'CI Apify Runtime','https://hh.ru/vacancy/123','CI_TITLE',?,'CI HH leaf')", hhDetailBody())
+		s.exec("INSERT INTO company_vacancies(id,company_name,url,title,description_md,role,level) VALUES(991305,'CI Apify Runtime','https://hh.ru/vacancy/123','CI_TITLE',?,'CI HH leaf','Senior')", hhDetailBody())
 		s.exec("INSERT INTO vacancy_role_assignments(vacancy_id,role_id) VALUES(991305,991304)")
 		s.exec("INSERT INTO vacancy_parser_roles(vacancy_id,role_id,candidate_id) VALUES(991305,991304,?)", candidate)
 		s.exec("INSERT INTO vacancy_publication_sources(candidate_id,vacancy_id,url,canonical_url,extraction_id,updated_at) SELECT ?,991305,'https://hh.ru/vacancy/123','https://hh.ru/vacancy/123',id,'CI_OLD' FROM vacancy_extractions WHERE candidate_id=? AND status='success'", candidate, candidate)

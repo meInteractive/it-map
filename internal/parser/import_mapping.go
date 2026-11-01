@@ -1,7 +1,7 @@
 package parser
 
 import (
-	"encoding/json"
+	"math"
 	"strings"
 
 	"itmap/internal/vacancies"
@@ -15,14 +15,11 @@ func mapImportExtraction(company, sourceURL, fetchedAt string, roleIDs []int64, 
 		if data[key] == nil {
 			return nil, nil
 		}
-		n, ok := data[key].(json.Number)
-		if !ok {
+		n, ok := data[key].(float64)
+		if !ok || math.IsNaN(n) || math.IsInf(n, 0) || n < 0 || n > 9007199254740991 || math.Trunc(n) != n {
 			return nil, ErrSnapshotInvalid
 		}
-		v, err := n.Int64()
-		if err != nil {
-			return nil, ErrSnapshotInvalid
-		}
+		v := int64(n)
 		return &v, nil
 	}
 	if len(fetchedAt) < 10 || len(roleIDs) == 0 {
