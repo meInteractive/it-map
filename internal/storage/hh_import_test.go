@@ -38,6 +38,9 @@ func hhImportFixture(t *testing.T) (*schedulerFixture, *parser.JobLease, int64, 
 	if _, err := (parser.HHFullTextExecutor{Settings: apifysettings.NewRepository(s.db, "CI_SECRET"), Owner: "CI_OWNER", Public: pub}).Execute(s.ctx, detail); err != nil {
 		t.Fatal("detail", err)
 	}
+	if err := detail.Finish(s.ctx, parser.FinishOptions{Status: "completed"}); err != nil {
+		t.Fatal("finish detail", err)
+	}
 	claim := func(kind string) *parser.JobLease {
 		var job, run string
 		if err := s.db.QueryRowContext(s.ctx, "SELECT id FROM scheduler_jobs WHERE candidate_id=? AND type=?", candidate, kind).Scan(&job); err != nil {
