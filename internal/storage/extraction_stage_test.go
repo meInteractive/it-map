@@ -270,7 +270,7 @@ func TestMariaDBExtractionStageSourceDisposable(t *testing.T) {
 	t.Run("budget_denial", func(t *testing.T) {
 		seed(0)
 		lease := extractionStageLease(t, f)
-		f.exec(`UPDATE firecrawl_settings SET scheduler_json='{"enabled":true,"sourceIds":["companySite"],"dayBudgetUsd":0,"monthBudgetUsd":0}' WHERE id=1`)
+		f.exec(`UPDATE firecrawl_settings SET scheduler_json='{"enabled":true,"sourceIds":["companySite"],"ownerName":"CI_USER","dayBudgetUsd":0,"monthBudgetUsd":0}' WHERE id=1`)
 		runner := &extractionRunner{content: frames[0].Value}
 		_, e := (&parser.AIStageExecutor{Store: parser.ExtractionStageStore{Owner: "CI_USER"}, Generator: runner}).Execute(f.ctx, lease)
 		if !errors.Is(e, parser.ErrBudgetLimit) || runner.calls != 0 || f.count("SELECT COUNT(*) FROM vacancy_detail_leases") != 0 {

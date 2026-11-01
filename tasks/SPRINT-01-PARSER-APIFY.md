@@ -54,6 +54,8 @@
 
 ### [ ] GO-401. Атомарный импорт вакансии
 
+- **В работе:** PR [#207](https://github.com/meInteractive/it-map/pull/207) строит owned-транзакцию импорта, проверку точной и межисточниковой идентичности, сохранение ручных полей, ролей, источника и receipt. Обязательный disposable MariaDB gate выполняется; до подтверждения create/update/concurrency/rollback/API и повторного ревью пункт не закрывать. PR [#206](https://github.com/meInteractive/it-map/pull/206) уже перенёс GO-399/400 в main; #207 перенаправлен в main.
+
 - **Зависимости:** GO-396 и GO-400; подготовленные extraction/leaf SQL-стадии GO-364/366.
 - **Результат:** `import_vacancy` повторно проверяет кандидата, extraction, непустые конечные роли и owner/source, создаёт либо обновляет основную вакансию и связывает `main_vacancy_id`, источник и историю в одной транзакции. Повтор job/конкурентный импорт не создаёт дублей и не перезаписывает ручные изменения; старый receipt позволяет безопасный replay.
 - **Приёмка:** одноразовая MariaDB: create/update/no-op, 2 конкурирующих worker, late failure/rollback, restart/replay, deleted/changed source и чтение созданной вакансии через существующий Go API.
