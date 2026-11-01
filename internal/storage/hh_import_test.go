@@ -162,6 +162,16 @@ func TestMariaDBHHImportDisposable(t *testing.T) {
 			t.Fatal("changed source imported")
 		}
 	})
+	t.Run("uninitialized legacy jobs block import", func(t *testing.T) {
+		s, lease, candidate, executor := hhImportFixture(t)
+		s.exec("UPDATE app_catalog SET data_json=JSON_SET(data_json,'$.companies[0].jobs',JSON_ARRAY(JSON_OBJECT('title',' ','url',' '))) WHERE id=1")
+		if _, err := executor.Execute(s.ctx, lease); err == nil {
+			t.Fatal("uninitialized catalog jobs accepted")
+		}
+		if s.count("SELECT COUNT(*) FROM vacancy_candidates WHERE id=? AND main_vacancy_id IS NOT NULL", candidate) != 0 || s.count("SELECT COUNT(*) FROM company_vacancy_state WHERE company_name='CI Apify Runtime'") != 0 {
+			t.Fatal("uninitialized catalog marked imported")
+		}
+	})
 	t.Run("active global import lease blocks and expired lease recovers", func(t *testing.T) {
 		s, lease, candidate, executor := hhImportFixture(t)
 		s.exec("INSERT INTO vacancy_detail_leases(lease_key,generation,owner_token,expires_at) VALUES('import:global',?,'CI_OTHER',?)", s.repo.Generation, time.Now().Add(time.Minute).UnixMilli())

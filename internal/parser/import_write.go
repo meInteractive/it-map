@@ -267,7 +267,7 @@ func checkImportCatalog(ctx context.Context, tx *sql.Tx, company string) error {
 			}
 			found = true
 			for _, job := range c.Jobs {
-				if strings.TrimSpace(job.Title) != "" && strings.TrimSpace(job.URL) != "" {
+				if job.Title != "" && job.URL != "" {
 					jobs = true
 				}
 			}
