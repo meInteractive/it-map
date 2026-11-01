@@ -1,3 +1,5 @@
+//go:build legacyinterop
+
 package parser
 
 import (

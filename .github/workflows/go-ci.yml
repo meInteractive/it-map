@@ -53,6 +53,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '24.19.0'
+      - name: Сверить совпадение вакансий с исходным JavaScript
+        run: go test -race -tags legacyinterop ./internal/parser -run '^TestImportContentSourceParity$' -count=1
       - name: Verify Go encryption with unchanged legacy JS decryption
         run: go test -race -tags legacyinterop ./internal/legacycrypto -count=1
       - name: Проверить HTTP transport OpenAI/OpenRouter по actual source mocks
