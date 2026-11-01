@@ -38,6 +38,8 @@
 
 ### [ ] GO-399. HH-листинг и сохранение кандидатов
 
+- **В работе (01.11.2026):** в `codex/GO-399-hh-listing` добавлены source-equivalent HH title filter/нормализация, fenced raw dataset reads, durable cursor и bounded executor на уже полученной lease. Candidate/provenance/classification и cursor сохраняются одной SQL-транзакцией. Локальные source/unit/race/vet/build успешны; SQL-сценарии только скомпилированы и пропущены guard. Обязательный CI должен подтвердить raw slices, две HH-страницы, карантин/повтор/конкуренцию/rollback и смену source/favorites; до этого задачу не закрывать. Автоматический worker и реальные провайдеры не включены.
+
 - **Зависимости:** GO-398; HH URL/input из Apify-клиента и старый `apify-discovery` как контракт.
 - **Результат:** `scan_source` строит title-фильтр из актуальных корневых ролей, запускает разрешённый Actor, постранично читает dataset, валидирует/карантинирует записи и сохраняет новых или обновлённых `vacancy_candidates` с source/owner/provenance. Cursor, page/offset и run ID переживают рестарт; повтор страницы не создаёт дублей и не теряет обновление заголовка. После записи атомарно ставится классификация.
 - **Приёмка:** source fixtures + mock Apify + одноразовая MariaDB: минимум две страницы, ошибочная запись, пустой/изменённый dataset, restart/resume, concurrent scan, duplicate URL и смена source revision. Первый рубеж: **кандидаты реально видны в БД**, без AI и импорта.
