@@ -184,4 +184,23 @@ jobs:
           node scripts/check-parser-budget-contract.mjs
           node scripts/check-scheduler-run-contract.mjs
           node scripts/check-apify-transport-contract.mjs
+      - name: Run session lifecycle regression with strict Node rejection handling
+        run: |
+          node scripts/test-session-lifecycle.mjs
+          node scripts/test-cache-subscriber-races.mjs
+          node scripts/test-dirty-navigation.mjs
+      - name: Verify PWA source syntax and conditional task regressions with strict Node
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check public/service-worker.js
+          if test -f scripts/test-route-state.mjs; then node scripts/test-route-state.mjs; fi
+          if test -f scripts/test-company-search-parity.mjs; then
+            node scripts/test-company-search-parity.mjs
+            node scripts/test-map-search.mjs
+            node scripts/test-map-selection.mjs
+            node scripts/test-filter-storage-recovery.mjs
+            node scripts/test-map-office-features.mjs
+            node scripts/test-map-office-grouping.mjs
+          fi
       - run: npm run build:web
