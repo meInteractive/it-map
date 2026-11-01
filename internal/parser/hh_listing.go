@@ -17,6 +17,9 @@ type HHListingRuntime interface {
 	Execute(context.Context, apifysettings.OperationVersion, string, apify.HHOptions) (apifyruns.Record, error)
 	ReadDataset(context.Context, apifysettings.OperationVersion, string, apify.HHOptions, int64) (apifyruns.DatasetSlice, error)
 }
+type hhCheckedRuntime interface {
+	WithCheck(func(context.Context) error) apifyruns.Service
+}
 type HHListingProgress struct {
 	Page, Offset, Candidates, Created, Quarantined int64
 	Done                                           bool
@@ -73,8 +76,28 @@ func (e HHListingExecutor) Execute(ctx context.Context, lease *JobLease) (HHList
 	}
 	workCtx, cancel := context.WithDeadline(ctx, time.UnixMilli(job.LockedUntil))
 	defer cancel()
+
+	runtime := e.Runtime
+	check := func(active context.Context) error {
+		return lease.WithinOwned(active, func(tx *sql.Tx) error {
+			_, hash, _, err := e.hhScope(active, tx, job, cur.Operation)
+			if err != nil {
+				return err
+			}
+			if hash != cur.SchedulerHash {
+				return ErrHHListingChanged
+			}
+			return nil
+		})
+	}
+	if scoped, ok := runtime.(hhCheckedRuntime); ok {
+		runtime = scoped.WithCheck(check)
+	}
+	if err := check(workCtx); err != nil {
+		return hhListingProgress(cur), err
+	}
 	key := fmt.Sprintf("listing:%s:%d", plan.ID, cur.Page)
-	record, err := e.Runtime.Execute(workCtx, cur.Operation, key, cur.options())
+	record, err := runtime.Execute(workCtx, cur.Operation, key, cur.options())
 	if errors.Is(err, apifyruns.ErrBudget) && cur.Profile == "free" && cfg.PaidAllowed && cfg.Profiles["starter"].Configured {
 		// ErrBudget не выдаёт право POST и не создаёт резерв. Выбор разрешённого
 		// Starter сохраняется до сети; при неизвестном исходе переход запрещён.
@@ -97,7 +120,10 @@ func (e HHListingExecutor) Execute(ctx context.Context, lease *JobLease) (HHList
 		if err != nil {
 			return hhListingProgress(cur), err
 		}
-		record, err = e.Runtime.Execute(workCtx, cur.Operation, key, cur.options())
+		if err := check(workCtx); err != nil {
+			return hhListingProgress(cur), err
+		}
+		record, err = runtime.Execute(workCtx, cur.Operation, key, cur.options())
 	}
 	if err != nil {
 		return hhListingProgress(cur), err
@@ -105,7 +131,7 @@ func (e HHListingExecutor) Execute(ctx context.Context, lease *JobLease) (HHList
 	if record.State != "succeeded" && record.State != "failed" {
 		return hhListingProgress(cur), nil
 	}
-	slice, err := e.Runtime.ReadDataset(workCtx, cur.Operation, key, cur.options(), cur.Offset)
+	slice, err := runtime.ReadDataset(workCtx, cur.Operation, key, cur.options(), cur.Offset)
 	if err != nil {
 		return hhListingProgress(cur), err
 	}

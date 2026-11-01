@@ -12,6 +12,9 @@ import (
 // ResolveProfile продолжает профиль уже существующей денежной операции. Выбор
 // нового профиля сам по себе не резервирует бюджет и не разрешает отправку POST.
 func (s Service) ResolveProfile(ctx context.Context, v apifysettings.OperationVersion, key string, options apify.HHOptions) (string, error) {
+	if err := s.checkActive(ctx); err != nil {
+		return "", err
+	}
 	r := s.Repository
 	if r.DB == nil || r.Settings.DB != r.DB {
 		return "", ErrStorage

@@ -123,12 +123,18 @@ func TestMariaDBHHDetailDisposable(t *testing.T) {
 
 type hhDetailProvider struct {
 	starts, reads int
+	accounts      int
+	afterAccount  func()
 	item          json.RawMessage
 	pending, lost bool
 	afterRead     func()
 }
 
 func (p *hhDetailProvider) Account(ctx context.Context) (apify.BillingAccount, error) {
+	p.accounts++
+	if p.afterAccount != nil {
+		p.afterAccount()
+	}
 	return (&runtimeProvider{}).Account(ctx)
 }
 func (p *hhDetailProvider) Start(_ context.Context, source string, o apify.HHOptions) (apify.ActorRun, error) {
@@ -278,7 +284,7 @@ func TestMariaDBHHDetailKeyRotationDisposable(t *testing.T) {
 }
 
 func TestMariaDBHHDetailAdmissionDisposable(t *testing.T) {
-	for _, kind := range []string{"roles", "scheduler"} {
+	for _, kind := range []string{"roles", "scheduler", "favorites"} {
 		t.Run("public delay then "+kind+" change sends no paid request", func(t *testing.T) {
 			_, s, lease, candidate := hhDetailFixture(t)
 			before := s.count("SELECT COUNT(*) FROM apify_runs")
@@ -287,6 +293,8 @@ func TestMariaDBHHDetailAdmissionDisposable(t *testing.T) {
 			public.after = func() {
 				if kind == "roles" {
 					s.exec("UPDATE vacancy_role_classification SET markdown='CI stale preflight',revision=revision+1 WHERE role_id=991303")
+				} else if kind == "favorites" {
+					s.exec("UPDATE firecrawl_settings SET favorites_only=1 WHERE id=1")
 				} else {
 					s.exec(`UPDATE firecrawl_settings SET scheduler_json='{"enabled":false,"sourceIds":["hh"]}' WHERE id=1`)
 				}
@@ -295,6 +303,31 @@ func TestMariaDBHHDetailAdmissionDisposable(t *testing.T) {
 			_, err := executor.Execute(s.ctx, lease)
 			if err == nil || p.starts != 0 || s.count("SELECT COUNT(*) FROM apify_runs") != before || s.count("SELECT COUNT(*) FROM vacancy_raw_snapshots WHERE candidate_id=?", candidate) != 0 {
 				t.Fatal("stale preflight admitted paid Actor", err, p.starts)
+			}
+		})
+	}
+}
+
+func TestMariaDBHHDetailAccountAdmissionDisposable(t *testing.T) {
+	for _, kind := range []string{"roles", "scheduler", "favorites"} {
+		t.Run(kind+" change during account refresh sends no paid request", func(t *testing.T) {
+			_, s, lease, candidate := hhDetailFixture(t)
+			before := s.count("SELECT COUNT(*) FROM apify_runs")
+			p := &hhDetailProvider{item: hhDetailItem(hhDetailBody())}
+			p.afterAccount = func() {
+				switch kind {
+				case "roles":
+					s.exec("UPDATE vacancy_role_classification SET markdown='CI stale account preflight',revision=revision+1 WHERE role_id=991303")
+				case "favorites":
+					s.exec("UPDATE firecrawl_settings SET favorites_only=1 WHERE id=1")
+				default:
+					s.exec(`UPDATE firecrawl_settings SET scheduler_json='{"enabled":false,"sourceIds":["hh"]}' WHERE id=1`)
+				}
+			}
+			executor := parser.HHFullTextExecutor{Settings: apifysettings.NewRepository(s.db, "CI_SECRET"), Runtime: hhDetailRuntime(s, p), Public: &hhPublicFixture{}, Owner: "CI_OWNER"}
+			_, err := executor.Execute(s.ctx, lease)
+			if err == nil || p.accounts != 1 || p.starts != 0 || s.count("SELECT COUNT(*) FROM apify_runs") != before || s.count("SELECT COUNT(*) FROM vacancy_raw_snapshots WHERE candidate_id=?", candidate) != 0 {
+				t.Fatal("stale account refresh admitted paid Actor", err, p.starts, p.accounts)
 			}
 		})
 	}

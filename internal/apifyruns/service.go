@@ -19,8 +19,36 @@ type Provider interface {
 }
 
 type Service struct {
-	Repository Repository
-	NewClient  func(string) (Provider, error)
+	Repository  Repository
+	NewClient   func(string) (Provider, error)
+	CheckActive func(context.Context) error
+}
+
+// WithCheck возвращает отдельную копию для текущей стадии. Callback выполняется
+// только вне денежных транзакций и не меняет identity оплаченной операции.
+func (s Service) WithCheck(check func(context.Context) error) Service {
+	previous := s.CheckActive
+	s.CheckActive = func(ctx context.Context) error {
+		if previous != nil {
+			if err := previous(ctx); err != nil {
+				return err
+			}
+		}
+		if check != nil {
+			return check(ctx)
+		}
+		return nil
+	}
+	return s
+}
+func (s Service) checkActive(ctx context.Context) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if s.CheckActive != nil {
+		return s.CheckActive(ctx)
+	}
+	return nil
 }
 
 func (s Service) client(token string) (Provider, error) {
@@ -69,6 +97,9 @@ func operationKey(v apifysettings.OperationVersion, key string, options apify.HH
 // Execute выполняет один старт либо продолжает известную операцию. Восстановленный
 // starting/uncertain без run ID никогда не получает повторный POST.
 func (s Service) Execute(ctx context.Context, v apifysettings.OperationVersion, key string, options apify.HHOptions) (Record, error) {
+	if err := s.checkActive(ctx); err != nil {
+		return Record{}, err
+	}
 	scoped, e := operationKey(v, key, options)
 	if e != nil {
 		return Record{}, e
@@ -98,8 +129,14 @@ func (s Service) Execute(ctx context.Context, v apifysettings.OperationVersion, 
 	if e != nil {
 		return Record{}, e
 	}
+	if err := s.checkActive(ctx); err != nil {
+		return Record{}, err
+	}
 	if _, e = s.Repository.StoreAccount(ctx, v, account); e != nil {
 		return Record{}, e
+	}
+	if err := s.checkActive(ctx); err != nil {
+		return Record{}, err
 	}
 	reserved, e := s.Repository.Reserve(ctx, v, scoped)
 	if e != nil {
@@ -115,6 +152,9 @@ func (s Service) Execute(ctx context.Context, v apifysettings.OperationVersion, 
 		}
 		return s.reconcile(ctx, v, scoped)
 	}
+	if err := s.checkActive(ctx); err != nil {
+		return Record{}, err
+	}
 	row, token, e = s.Repository.claimStart(ctx, v, scoped)
 	if e != nil {
 		return row, e
@@ -126,6 +166,9 @@ func (s Service) Execute(ctx context.Context, v apifysettings.OperationVersion, 
 	client, e = s.client(token)
 	if e != nil {
 		return row, e
+	}
+	if err := s.checkActive(ctx); err != nil {
+		return row, err
 	}
 	run, e := client.Start(ctx, operationTarget(v), options)
 	if e != nil {
@@ -144,6 +187,9 @@ func (s Service) Reconcile(ctx context.Context, v apifysettings.OperationVersion
 	return s.reconcile(ctx, v, scoped)
 }
 func (s Service) reconcile(ctx context.Context, v apifysettings.OperationVersion, key string) (Record, error) {
+	if err := s.checkActive(ctx); err != nil {
+		return Record{}, err
+	}
 	row, e := s.Repository.readOperation(ctx, v, key)
 	if e != nil {
 		return Record{}, e
@@ -158,6 +204,9 @@ func (s Service) reconcile(ctx context.Context, v apifysettings.OperationVersion
 	client, e := s.client(token)
 	if e != nil {
 		return row, e
+	}
+	if err := s.checkActive(ctx); err != nil {
+		return row, err
 	}
 	run, e := client.Run(ctx, row.RunID)
 	if e != nil {

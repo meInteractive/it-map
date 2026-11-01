@@ -123,10 +123,19 @@ func (e HHFullTextExecutor) Execute(ctx context.Context, lease *JobLease) (resul
 		valid = err == nil
 	}
 	var version *apifysettings.OperationVersion
+	check := func(active context.Context) error {
+		return lease.WithinOwned(active, func(tx *sql.Tx) error { return e.validateHHFullTextPlan(active, tx, job, plan) })
+	}
 	if !valid {
+		if err := check(bounded); err != nil {
+			return result, err
+		}
 		runtime := e.Runtime
 		if runtime == nil {
 			runtime = apifyruns.Service{Repository: apifyruns.Repository{DB: e.Settings.DB, Settings: e.Settings}}
+		}
+		if scoped, ok := runtime.(hhCheckedRuntime); ok {
+			runtime = scoped.WithCheck(check)
 		}
 		cfg, err := e.Settings.Read(bounded)
 		if err != nil {
@@ -146,8 +155,14 @@ func (e HHFullTextExecutor) Execute(ctx context.Context, lease *JobLease) (resul
 		if err != nil {
 			return result, err
 		}
+		if err := check(bounded); err != nil {
+			return result, err
+		}
 		run, err := runtime.Execute(bounded, v, key, options)
 		if errors.Is(err, apifyruns.ErrBudget) && v.Profile == "free" && cfg.PaidAllowed && cfg.Profiles["starter"].Configured {
+			if err := check(bounded); err != nil {
+				return result, err
+			}
 			v.Profile = "starter"
 			run, err = runtime.Execute(bounded, v, key, options)
 		}
@@ -160,6 +175,9 @@ func (e HHFullTextExecutor) Execute(ctx context.Context, lease *JobLease) (resul
 		provider, profile, runID = "apify", v.Profile, run.RunID
 		version = &v
 		if run.State == "succeeded" {
+			if err := check(bounded); err != nil {
+				return result, err
+			}
 			slice, err := runtime.ReadDataset(bounded, v, key, options, 0)
 			if err != nil {
 				return result, err
