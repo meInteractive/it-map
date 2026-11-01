@@ -128,6 +128,20 @@ func TestMariaDBApifyHHSourceDisposable(t *testing.T) {
 	if err != nil || !source.Enabled || source.Revision != 1 {
 		t.Fatal("save HH source", err)
 	}
+	if _, err = db.ExecContext(ctx, "UPDATE vacancy_source_parsing SET config_json='[]' WHERE company_id=991201 AND source_id='hh'"); err != nil {
+		t.Fatal(err)
+	}
+	broken, readErr := r.ReadHHSource(ctx, 991201)
+	if readErr != nil || broken.Enabled {
+		t.Fatal("invalid stored config enabled source", readErr)
+	}
+	badInput := apifysettings.HHSourceInput{SourceURL: source.URL, Enabled: true, Revision: 1, Config: []byte(`{"allowedHosts":["127.0.0.1"]}`)}
+	if _, err = r.SaveHHSource(ctx, generation, 991201, badInput); !errors.Is(err, apifysettings.ErrInput) {
+		t.Fatal("unsafe config accepted", err)
+	}
+	if _, err = db.ExecContext(ctx, "UPDATE vacancy_source_parsing SET config_json='{}' WHERE company_id=991201 AND source_id='hh'"); err != nil {
+		t.Fatal(err)
+	}
 	if _, err = r.SaveHHSource(ctx, generation, 991201, input); !errors.Is(err, apifysettings.ErrChanged) {
 		t.Fatal("stale source revision accepted", err)
 	}

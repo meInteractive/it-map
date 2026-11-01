@@ -69,16 +69,21 @@ type HHSourceInput struct {
 	SourceURL string
 	Enabled   bool
 	Revision  int64
+	Config    json.RawMessage
 }
 
 func ParseHHSource(body []byte) (HHSourceInput, error) {
 	var out HHSourceInput
-	f, err := inputObject(body, "sourceUrl", "enabled", "revision")
+	f, err := inputObject(body, "sourceUrl", "enabled", "revision", "config")
 	if err != nil {
 		return out, err
 	}
 	if json.Unmarshal(f["sourceUrl"], &out.SourceURL) != nil || out.SourceURL == "" || len(out.SourceURL) > 4096 || len(f["enabled"]) == 0 || string(f["enabled"]) == "null" || json.Unmarshal(f["enabled"], &out.Enabled) != nil {
 		return HHSourceInput{}, ErrInput
+	}
+	out.Config, err = normalizeListingConfig(f["config"])
+	if err != nil {
+		return HHSourceInput{}, err
 	}
 	out.Revision, err = revision(f["revision"])
 	if err != nil {
@@ -88,13 +93,14 @@ func ParseHHSource(body []byte) (HHSourceInput, error) {
 }
 
 type HHSource struct {
-	CompanyID   int64  `json:"companyId"`
-	SourceID    string `json:"sourceId"`
-	URL         string `json:"url"`
-	Enabled     bool   `json:"enabled"`
-	Supported   bool   `json:"supported"`
-	Revision    int64  `json:"revision"`
-	AutoEnabled bool   `json:"autoEnabled"`
+	CompanyID   int64           `json:"companyId"`
+	SourceID    string          `json:"sourceId"`
+	URL         string          `json:"url"`
+	Enabled     bool            `json:"enabled"`
+	Supported   bool            `json:"supported"`
+	Revision    int64           `json:"revision"`
+	AutoEnabled bool            `json:"autoEnabled"`
+	Config      json.RawMessage `json:"config"`
 }
 
 func readHHSource(ctx context.Context, tx *sql.Tx, companyID int64, lock bool) (HHSource, bool, error) {
@@ -123,23 +129,33 @@ func readHHSource(ctx context.Context, tx *sql.Tx, companyID int64, lock bool) (
 	if err != nil {
 		return HHSource{}, false, err
 	}
-	out := HHSource{CompanyID: companyID, SourceID: "hh", URL: url}
+	defaults, _ := normalizeListingConfig(nil)
+	out := HHSource{CompanyID: companyID, SourceID: "hh", URL: url, Config: defaults}
 	_, err = apify.HHInput(url, apify.HHOptions{})
 	out.Supported = err == nil
 	var storedURL string
+	var storedConfig []byte
 	var enabled, auto int64
-	query = "SELECT source_url,enabled,revision,auto_enabled FROM vacancy_source_parsing WHERE company_id=? AND source_id='hh'"
+	query = "SELECT source_url,enabled,revision,auto_enabled,config_json FROM vacancy_source_parsing WHERE company_id=? AND source_id='hh'"
 	if lock {
 		query += " FOR UPDATE"
 	}
-	err = tx.QueryRowContext(ctx, query, companyID).Scan(&storedURL, &enabled, &out.Revision, &auto)
+	err = tx.QueryRowContext(ctx, query, companyID).Scan(&storedURL, &enabled, &out.Revision, &auto, &storedConfig)
 	if errors.Is(err, sql.ErrNoRows) {
 		return out, false, nil
 	}
 	if err != nil || (enabled != 0 && enabled != 1) || (auto != 0 && auto != 1) {
 		return HHSource{}, false, ErrStorage
 	}
-	out.Enabled = storedURL == url && enabled == 1 && out.Supported
+	validConfig := true
+	if storedURL == url {
+		normalized, configErr := normalizeListingConfig(storedConfig)
+		validConfig = configErr == nil
+		if validConfig {
+			out.Config = normalized
+		}
+	}
+	out.Enabled = storedURL == url && enabled == 1 && out.Supported && validConfig
 	out.AutoEnabled = storedURL == url && auto == 1 && out.Enabled
 	return out, true, nil
 }
@@ -189,12 +205,16 @@ func (r Repository) SaveHHSource(ctx context.Context, generation string, company
 	if err = validateHHSource(current.URL, in.SourceURL, in.Enabled); err != nil {
 		return HHSource{}, err
 	}
+	config, err := normalizeListingConfig(in.Config)
+	if err != nil {
+		return HHSource{}, err
+	}
 	if !exists {
-		_, err = tx.ExecContext(ctx, "INSERT INTO vacancy_source_parsing(company_id,source_id,source_url,enabled,config_json,revision) VALUES(?,'hh',?,?, '{}',1)", companyID, current.URL, in.Enabled)
+		_, err = tx.ExecContext(ctx, "INSERT INTO vacancy_source_parsing(company_id,source_id,source_url,enabled,config_json,revision) VALUES(?,'hh',?,?,?,1)", companyID, current.URL, in.Enabled, string(config))
 	} else {
 		// MariaDB вычисляет SET слева направо: сравнения должны предшествовать изменению source_url.
 		var result sql.Result
-		result, err = tx.ExecContext(ctx, "UPDATE vacancy_source_parsing SET auto_enabled=CASE WHEN source_url=? THEN auto_enabled ELSE 0 END,next_run_at=CASE WHEN source_url=? THEN next_run_at ELSE NULL END,source_url=?,enabled=?,revision=revision+1,last_error='',last_success_at=NULL WHERE company_id=? AND source_id='hh' AND revision=?", current.URL, current.URL, current.URL, in.Enabled, companyID, in.Revision)
+		result, err = tx.ExecContext(ctx, "UPDATE vacancy_source_parsing SET auto_enabled=CASE WHEN source_url=? THEN auto_enabled ELSE 0 END,next_run_at=CASE WHEN source_url=? THEN next_run_at ELSE NULL END,source_url=?,enabled=?,config_json=?,revision=revision+1,last_error='',last_success_at=NULL WHERE company_id=? AND source_id='hh' AND revision=?", current.URL, current.URL, current.URL, in.Enabled, string(config), companyID, in.Revision)
 		if err == nil {
 			if n, e := result.RowsAffected(); e != nil || n != 1 {
 				return HHSource{}, ErrChanged
