@@ -78,6 +78,15 @@ func hhImportFixture(t *testing.T) (*schedulerFixture, *parser.JobLease, int64, 
 func TestMariaDBHHImportDisposable(t *testing.T) {
 	t.Run("create concurrent replay and current source", func(t *testing.T) {
 		s, lease, candidate, executor := hhImportFixture(t)
+		var run string
+		if err := s.db.QueryRowContext(s.ctx, "SELECT id FROM scheduler_runs WHERE status='running'").Scan(&run); err != nil {
+			t.Fatal(err)
+		}
+		jobID := lease.Job().ID
+		second, err := s.repo.ClaimJob(s.ctx, run, parser.ClaimOptions{JobID: &jobID})
+		if err != nil || second != nil {
+			t.Fatal("second worker acquired running job", err)
+		}
 		var wg sync.WaitGroup
 		results := make([]parser.HHImportResult, 2)
 		errs := make([]error, 2)
@@ -166,7 +175,7 @@ func TestMariaDBHHImportDisposable(t *testing.T) {
 		s.exec("INSERT INTO vacancy_publication_keys(identity_key,vacancy_id) SELECT identity_key,991305 FROM vacancy_candidate_identities WHERE candidate_id=?", candidate)
 		s.exec("INSERT INTO vacancy_publication_keys(identity_key,vacancy_id) VALUES(?,991305) ON DUPLICATE KEY UPDATE vacancy_id=VALUES(vacancy_id)", "url:"+testStageHash("https://hh.ru/vacancy/123"))
 		result, err := executor.Execute(s.ctx, lease)
-		if err != nil || result.Action != "unchanged" || result.VacancyID != 991305 || s.count("SELECT COUNT(*) FROM vacancy_publication_sources WHERE candidate_id=? AND updated_at='CI_OLD'", candidate) != 1 {
+		if err != nil || result.Action != "unchanged" || result.VacancyID != 991305 || s.count("SELECT COUNT(*) FROM vacancy_publication_sources WHERE candidate_id=? AND updated_at='CI_OLD'", candidate) != 1 || s.count("SELECT COUNT(*) FROM vacancy_parser_fields WHERE vacancy_id=991305") != 0 {
 			t.Fatal("unchanged import", result, err)
 		}
 	})
