@@ -36,3 +36,21 @@ func TestOperationRejectsChangedAuthorization(t *testing.T) {
 		})
 	}
 }
+
+func TestOperationRejectsPartialDetailIdentity(t *testing.T) {
+	const g = "11111111-2222-4333-8444-555555555555"
+	base := OperationVersion{Generation: g, SettingsRevision: 2, CompanyID: 1, SourceURL: "https://hh.ru/employer/123", SourceRevision: 3, Profile: "free"}
+	settings := StoredSettings{Enabled: true, Revision: 2}
+	source := HHSource{CompanyID: 1, URL: base.SourceURL, Revision: 3, Enabled: true, Supported: true}
+	for _, change := range []func(*OperationVersion){func(v *OperationVersion) { v.CandidateID = 1 }, func(v *OperationVersion) { v.TitleRevision = 1 }, func(v *OperationVersion) { v.VacancyURL = "https://hh.ru/vacancy/1" }, func(v *OperationVersion) {
+		v.CandidateID = 1
+		v.TitleRevision = 1
+		v.VacancyURL = "https://ci.invalid/vacancy/1"
+	}} {
+		v := base
+		change(&v)
+		if err := validateOperation(v, g, settings, source); !errors.Is(err, ErrInput) {
+			t.Fatal("partial detail grant accepted", err)
+		}
+	}
+}
