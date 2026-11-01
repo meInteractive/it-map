@@ -124,7 +124,7 @@ func TestMariaDBApifyHHSourceDisposable(t *testing.T) {
 	if settingsErr != nil && !errors.Is(settingsErr, sql.ErrNoRows) {
 		t.Fatal(settingsErr)
 	}
-	if _, err := db.ExecContext(ctx, "INSERT INTO firecrawl_settings(id,favorites_only) VALUES(1,1) ON DUPLICATE KEY UPDATE favorites_only=1"); err != nil {
+	if _, err := db.ExecContext(ctx, "INSERT INTO firecrawl_settings(id,favorites_only,scheduler_json) VALUES(1,1,'{}') ON DUPLICATE KEY UPDATE favorites_only=1"); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
