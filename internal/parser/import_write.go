@@ -49,14 +49,6 @@ func writeHHImport(ctx context.Context, tx *sql.Tx, j Job, company, url, canonic
 	if err != nil {
 		return HHImportResult{}, err
 	}
-	var main importMain
-	existing := target != 0
-	if existing {
-		err = tx.QueryRowContext(ctx, "SELECT id,company_name,entity_type,url,title,description_md,salary_from,salary_to,level,published_at FROM company_vacancies WHERE id=? FOR UPDATE", target).Scan(&main.ID, &main.Company, &main.Entity, &main.URL, &main.Title, &main.Description, &main.SalaryFrom, &main.SalaryTo, &main.Level, &main.Published)
-		if err != nil || main.Company != company || main.Entity != "company" {
-			return HHImportResult{}, ErrImportIdentityConflict
-		}
-	}
 	if err = checkImportCatalog(ctx, tx, company); err != nil {
 		return HHImportResult{}, err
 	}
@@ -67,6 +59,20 @@ func writeHHImport(ctx context.Context, tx *sql.Tx, j Job, company, url, canonic
 	input, err := mapImportExtraction(company, url, s.Extraction.Snapshot.FetchedAt, leaf.IDs, normalized.Data)
 	if err != nil {
 		return HHImportResult{}, err
+	}
+	if target == 0 {
+		target, err = readImportContentTarget(ctx, tx, company, canonical, input.Title, input.DescriptionMD)
+		if err != nil {
+			return HHImportResult{}, err
+		}
+	}
+	var main importMain
+	existing := target != 0
+	if existing {
+		err = tx.QueryRowContext(ctx, "SELECT id,company_name,entity_type,url,title,description_md,salary_from,salary_to,level,published_at FROM company_vacancies WHERE id=? FOR UPDATE", target).Scan(&main.ID, &main.Company, &main.Entity, &main.URL, &main.Title, &main.Description, &main.SalaryFrom, &main.SalaryTo, &main.Level, &main.Published)
+		if err != nil || main.Company != company || main.Entity != "company" {
+			return HHImportResult{}, ErrImportIdentityConflict
+		}
 	}
 	fields := []string{"url", "title", "description_md", "salary_from", "salary_to", "level", "published_at"}
 	incoming := []any{input.URL, input.Title, input.DescriptionMD, ptrSalary(input.SalaryFrom), ptrSalary(input.SalaryTo), importNonempty(input.Level), importNonempty(input.PublishedAt)}

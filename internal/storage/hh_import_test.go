@@ -6,10 +6,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"itmap/internal/apifysettings"
+	"itmap/internal/auth"
+	"itmap/internal/httpapi"
 	"itmap/internal/integrations/hhpublic"
 	"itmap/internal/parser"
 	"itmap/internal/vacancies"
@@ -92,6 +98,27 @@ func TestMariaDBHHImportDisposable(t *testing.T) {
 		if err != nil || detail.Vacancy.Title != "CI_TITLE" || detail.Vacancy.DescriptionMD == "" || len(detail.Vacancy.PublicationSources) != 1 {
 			t.Fatal("Go detail readback", err)
 		}
+		manager, err := auth.NewManager(strings.Repeat("s", 64), map[string]string{"eugene": "admin-secret", "demo": "demoPassword"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		user, ok := manager.Authenticate("demo", "demoPassword")
+		if !ok {
+			t.Fatal("synthetic login")
+		}
+		token, err := manager.Issue(user, time.Now())
+		if err != nil {
+			t.Fatal(err)
+		}
+		handler := httpapi.NewHandlerWithOptions(nil, httpapi.Options{Auth: manager, VacancyDetails: vacancies.Repository{DB: s.db}})
+		request := httptest.NewRequest("GET", fmt.Sprintf("/api/vacancies/%d", results[0].VacancyID), nil)
+		request.AddCookie(&http.Cookie{Name: auth.CookieName, Value: token})
+		response := httptest.NewRecorder()
+		handler.ServeHTTP(response, request)
+		var api vacancies.DetailResponse
+		if response.Code != http.StatusOK || json.Unmarshal(response.Body.Bytes(), &api) != nil || api.Vacancy.ID != results[0].VacancyID || api.Vacancy.Title != "CI_TITLE" {
+			t.Fatal("authenticated API readback", response.Code)
+		}
 		s.exec("UPDATE vacancy_source_parsing SET enabled=0 WHERE company_id=991302 AND source_id='hh'")
 		if _, err := executor.Execute(s.ctx, lease); err == nil {
 			t.Fatal("disabled source replay accepted")
@@ -108,6 +135,26 @@ func TestMariaDBHHImportDisposable(t *testing.T) {
 		}
 		if s.count("SELECT COUNT(*) FROM company_vacancies WHERE id=991305 AND title='CI manual title' AND description_md<>''") != 1 {
 			t.Fatal("manual title was not preserved or description missing")
+		}
+	})
+	t.Run("cross source content links existing vacancy", func(t *testing.T) {
+		s, lease, _, executor := hhImportFixture(t)
+		s.exec("INSERT INTO company_crm(company_name) VALUES('CI Apify Runtime')")
+		s.exec("INSERT INTO company_vacancies(id,company_name,url,title,description_md) VALUES(991305,'CI Apify Runtime','https://career.example.org/jobs/1','CI_TITLE',?)", hhDetailBody())
+		result, err := executor.Execute(s.ctx, lease)
+		if err != nil || result.VacancyID != 991305 || s.count("SELECT COUNT(*) FROM company_vacancies WHERE company_name='CI Apify Runtime'") != 1 {
+			t.Fatal("cross source match", result, err)
+		}
+	})
+	t.Run("ambiguous cross source content fails closed", func(t *testing.T) {
+		s, lease, candidate, executor := hhImportFixture(t)
+		s.exec("INSERT INTO company_crm(company_name) VALUES('CI Apify Runtime')")
+		s.exec("INSERT INTO company_vacancies(id,company_name,url,title,description_md) VALUES(991305,'CI Apify Runtime','https://career.example.org/jobs/1','CI_TITLE',?),(991306,'CI Apify Runtime','https://other.example.org/jobs/2','CI_TITLE',?)", hhDetailBody(), hhDetailBody())
+		if _, err := executor.Execute(s.ctx, lease); err == nil {
+			t.Fatal("ambiguous publications accepted")
+		}
+		if s.count("SELECT COUNT(*) FROM vacancy_candidates WHERE id=? AND main_vacancy_id IS NOT NULL", candidate) != 0 || s.count("SELECT COUNT(*) FROM vacancy_import_operations WHERE candidate_id=?", candidate) != 0 {
+			t.Fatal("ambiguous import persisted")
 		}
 	})
 	t.Run("late failure rolls back new vacancy", func(t *testing.T) {
