@@ -15,6 +15,11 @@ func ReadCandidateLeafInput(ctx context.Context, tx *sql.Tx, job Job, owner stri
 		return CandidateLeafInput{}, err
 	}
 	input := CandidateStageInput(extracted)
+	var imported sql.NullInt64
+	if err = tx.QueryRowContext(ctx, "SELECT main_vacancy_id FROM vacancy_candidates WHERE id=? FOR UPDATE", input.CandidateID).Scan(&imported); err != nil {
+		return CandidateLeafInput{}, ErrSettingsStorage
+	}
+	input.Imported = imported.Valid && imported.Int64 != 0
 	if input.ExtractionID == "" {
 		return CandidateLeafInput(input), nil
 	}
@@ -35,10 +40,5 @@ func ReadCandidateLeafInput(ctx context.Context, tx *sql.Tx, job Job, owner stri
 	if cache != nil {
 		input.Leaf = &CandidateStageLeaf{ID: cache.ID, InputHash: leaf.InputHash, RoleIDs: cache.IDs}
 	}
-	var imported sql.NullInt64
-	if err = tx.QueryRowContext(ctx, "SELECT main_vacancy_id FROM vacancy_candidates WHERE id=? FOR UPDATE", input.CandidateID).Scan(&imported); err != nil {
-		return CandidateLeafInput{}, ErrSettingsStorage
-	}
-	input.Imported = imported.Valid && imported.Int64 != 0
 	return CandidateLeafInput(input), nil
 }

@@ -70,6 +70,23 @@ func TestCandidateStageImportedFailsClosed(t *testing.T) {
 	}
 }
 
+func TestImportedCandidateNeverPlansEarlierStages(t *testing.T) {
+	company := int64(1)
+	match := "match"
+	base := CandidateStageInput{CandidateID: 1, TitleRevision: 1, TitleHash: "CI", CompanyID: &company, SourceID: "companySite", SourceSelected: true, ScopeAllowed: true, Imported: true}
+	for _, roles := range [][]CandidateStageRole{
+		{{ID: 1, PromptVersion: "CI", ModelKey: "CI"}},
+		{{ID: 1, PromptVersion: "CI", ModelKey: "CI", Decision: &match}},
+	} {
+		in := base
+		in.Roles = roles
+		plan, err := PlanCandidateStage(in)
+		if plan != nil || !errors.Is(err, ErrImportedCandidateResolution) {
+			t.Fatalf("imported candidate planned another stage: plan=%+v err=%v", plan, err)
+		}
+	}
+}
+
 func TestCandidateStageUncertainRefreshDoesNotProceed(t *testing.T) {
 	company := int64(1)
 	decision := "match"
