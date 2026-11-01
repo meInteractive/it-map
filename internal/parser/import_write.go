@@ -207,7 +207,32 @@ func writeHHImport(ctx context.Context, tx *sql.Tx, j Job, company, url, canonic
 	if _, err = tx.ExecContext(ctx, "DELETE FROM vacancy_import_write_context WHERE vacancy_id=? AND owner_token=?", target, token); err != nil {
 		return HHImportResult{}, ErrSettingsStorage
 	}
-	receipt := importReceipt{j.Generation, j.DedupeKey, s.InputHash, s.Extraction.Snapshot.ID, s.ExtractCache.ID, leaf.ID}
+	receipt := importReceipt{Generation: j.Generation, DedupeKey: j.DedupeKey, LeafInputHash: s.InputHash, SnapshotID: s.Extraction.Snapshot.ID, ExtractionID: s.ExtractCache.ID, RoleResultID: leaf.ID, Fields: []string{}, ProtectedFields: []string{}, RoleIDs: []int64{}}
+	for i, field := range fields {
+		if plans[i].Changed {
+			receipt.Fields = append(receipt.Fields, field)
+		} else if existing && !plans[i].Managed && !importEmpty(incoming[i]) && current[i] != incoming[i] {
+			receipt.ProtectedFields = append(receipt.ProtectedFields, field)
+		}
+	}
+	rows, err := tx.QueryContext(ctx, "SELECT role_id FROM vacancy_role_assignments WHERE vacancy_id=? ORDER BY role_id FOR UPDATE", target)
+	if err != nil {
+		return HHImportResult{}, ErrSettingsStorage
+	}
+	for rows.Next() {
+		var id int64
+		if err = rows.Scan(&id); err != nil {
+			break
+		}
+		receipt.RoleIDs = append(receipt.RoleIDs, id)
+	}
+	if err == nil {
+		err = rows.Err()
+	}
+	rows.Close()
+	if err != nil {
+		return HHImportResult{}, ErrSettingsStorage
+	}
 	receiptBytes, err := json.Marshal(receipt)
 	if err != nil {
 		return HHImportResult{}, ErrSettingsStorage

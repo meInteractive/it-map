@@ -21,7 +21,17 @@ type HHImportExecutor struct {
 	Settings apifysettings.Repository
 	Owner    string
 }
-type importReceipt struct{ Generation, DedupeKey, LeafInputHash, SnapshotID, ExtractionID, RoleResultID string }
+type importReceipt struct {
+	Generation      string   `json:"generation"`
+	DedupeKey       string   `json:"dedupeKey"`
+	LeafInputHash   string   `json:"roleInputHash"`
+	SnapshotID      string   `json:"snapshotId"`
+	ExtractionID    string   `json:"extractionId"`
+	RoleResultID    string   `json:"roleResultId"`
+	Fields          []string `json:"fields"`
+	ProtectedFields []string `json:"protectedFields"`
+	RoleIDs         []int64  `json:"roleIds"`
+}
 
 // Execute сохраняет результат только внутри принадлежащей заданию транзакции.
 func (e HHImportExecutor) Execute(ctx context.Context, lease *JobLease) (result HHImportResult, err error) {
@@ -63,7 +73,7 @@ func (e HHImportExecutor) Execute(ctx context.Context, lease *JobLease) (result 
 			return ErrSettingsStorage
 		}
 		var receipt importReceipt
-		if exists && (receiptStatus != "success" || !receiptCandidate.Valid || receiptCandidate.Int64 != *job.CandidateID || !receiptVacancy.Valid || receiptVacancy.Int64 <= 0 || json.Unmarshal([]byte(receiptData), &receipt) != nil || receipt.Generation != job.Generation || receipt.DedupeKey != job.DedupeKey || receipt.LeafInputHash != receiptHash) {
+		if exists && (receiptStatus != "success" || (receiptAction != "create" && receiptAction != "update" && receiptAction != "unchanged") || !receiptCandidate.Valid || receiptCandidate.Int64 != *job.CandidateID || !receiptVacancy.Valid || receiptVacancy.Int64 <= 0 || json.Unmarshal([]byte(receiptData), &receipt) != nil || receipt.Generation != job.Generation || receipt.DedupeKey != job.DedupeKey || receipt.LeafInputHash != receiptHash) {
 			return ErrImportReceiptConflict
 		}
 		snapshot, leaf, err := readImportStageSnapshot(ctx, tx, job, e.Owner, exists)
