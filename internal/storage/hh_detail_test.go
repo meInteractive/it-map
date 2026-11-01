@@ -276,3 +276,26 @@ func TestMariaDBHHDetailKeyRotationDisposable(t *testing.T) {
 		t.Fatal("key rotation accepted stale detail", err)
 	}
 }
+
+func TestMariaDBHHDetailAdmissionDisposable(t *testing.T) {
+	for _, kind := range []string{"roles", "scheduler"} {
+		t.Run("public delay then "+kind+" change sends no paid request", func(t *testing.T) {
+			_, s, lease, candidate := hhDetailFixture(t)
+			before := s.count("SELECT COUNT(*) FROM apify_runs")
+			p := &hhDetailProvider{item: hhDetailItem(hhDetailBody())}
+			public := &hhPublicFixture{}
+			public.after = func() {
+				if kind == "roles" {
+					s.exec("UPDATE vacancy_role_classification SET markdown='CI stale preflight',revision=revision+1 WHERE role_id=991303")
+				} else {
+					s.exec(`UPDATE firecrawl_settings SET scheduler_json='{"enabled":false,"sourceIds":["hh"]}' WHERE id=1`)
+				}
+			}
+			executor := parser.HHFullTextExecutor{Settings: apifysettings.NewRepository(s.db, "CI_SECRET"), Runtime: hhDetailRuntime(s, p), Public: public, Owner: "CI_OWNER"}
+			_, err := executor.Execute(s.ctx, lease)
+			if err == nil || p.starts != 0 || s.count("SELECT COUNT(*) FROM apify_runs") != before || s.count("SELECT COUNT(*) FROM vacancy_raw_snapshots WHERE candidate_id=?", candidate) != 0 {
+				t.Fatal("stale preflight admitted paid Actor", err, p.starts)
+			}
+		})
+	}
+}

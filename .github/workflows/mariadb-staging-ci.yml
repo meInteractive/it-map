@@ -1353,11 +1353,11 @@ jobs:
           set -euo pipefail
           result_file="$(mktemp)"
           trap 'rm -f "$result_file"' EXIT
-          go test -race -tags mariadb,schedulerwrites,schedulerbilling ./internal/storage -run '^TestMariaDBHHDetail(Authorization|ProfileRecovery|Recovery|KeyRotation)?Disposable$' -count=1 -json | tee "$result_file"
+          go test -race -tags mariadb,schedulerwrites,schedulerbilling ./internal/storage -run '^TestMariaDBHHDetail(Authorization|ProfileRecovery|Recovery|KeyRotation|Admission)?Disposable$' -count=1 -json | tee "$result_file"
           python3 - "$result_file" <<'PYCODE'
           import json,sys
           events=[json.loads(line) for line in open(sys.argv[1],encoding='utf8')]
-          for target in ['TestMariaDBHHDetailAuthorizationDisposable','TestMariaDBHHDetailProfileRecoveryDisposable','TestMariaDBHHDetailDisposable','TestMariaDBHHDetailRecoveryDisposable','TestMariaDBHHDetailKeyRotationDisposable']:
+          for target in ['TestMariaDBHHDetailAuthorizationDisposable','TestMariaDBHHDetailProfileRecoveryDisposable','TestMariaDBHHDetailDisposable','TestMariaDBHHDetailRecoveryDisposable','TestMariaDBHHDetailKeyRotationDisposable','TestMariaDBHHDetailAdmissionDisposable']:
               assert any(e.get('Test')==target and e.get('Action')=='pass' for e in events), f'{target} did not pass'
           assert not any(e.get('Action')=='skip' for e in events), 'HH detail gate skipped'
           PYCODE
