@@ -46,3 +46,7 @@
 - [ ] S11-B01-30 · M · GO-006 — Browser smoke на desktop/mobile различает online и offline после восстановления сети.
 
 **Отчёт C:** PR —; SHA —; подготовленные ID —; проверки/CI —; ограничения —.
+
+## Повторная проверка Codex: группа B
+
+Исправлена отмена browser Back при несохранённой форме: вместо pushState история возвращается к исходной позиции через history.go, сохраняя записи Forward и токен карточки. Новый сценарий в navigation-dirty-recovery воспроизвёл дефект до исправления, после исправления прошёл в Chromium desktop/mobile. Локально прошли test-route-state, test-session-lifecycle, test-dirty-navigation, build:web и API-инвентарь. CI обновлённого PR #194 ещё требуется; полный набор пунктов группы автоматически не закрывается.
