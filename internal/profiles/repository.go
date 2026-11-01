@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"itmap/internal/dbretry"
 	"strings"
 )
 
@@ -54,6 +55,12 @@ func (r Repository) SaveResume(ctx context.Context, user string, input TextInput
 	if r.DB == nil || strings.TrimSpace(user) == "" {
 		return Resume{}, ErrUnavailable
 	}
+	// Повторяем целую транзакцию только после подтверждённого MariaDB deadlock rollback.
+	// Исходная revision повторно проверяется под блокировкой на каждой попытке.
+	return dbretry.Run(ctx, func() (Resume, error) { return r.saveResumeOnce(ctx, user, input) })
+}
+
+func (r Repository) saveResumeOnce(ctx context.Context, user string, input TextInput) (Resume, error) {
 	tx, err := r.DB.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
 	if err != nil {
 		return Resume{}, err
