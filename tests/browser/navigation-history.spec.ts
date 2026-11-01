@@ -52,7 +52,11 @@ test('13–14: Back закрывает карточку компании, Forwar
   await page.keyboard.press('Enter');
   const dialog = page.getByRole('dialog', {name: 'CI Synthetic Employer', exact: true});
   await expect(dialog).toBeVisible();
-  expect(await page.evaluate(() => Object.keys(history.state || {}))).toEqual(['itmapDrawerToken']);
+  const drawerState = await page.evaluate(() => history.state);
+  expect(Object.keys(drawerState).sort()).toEqual(['itmapDrawerToken', 'itmapPosition']);
+  expect(typeof drawerState.itmapDrawerToken).toBe('string');
+  expect(Number.isSafeInteger(drawerState.itmapPosition)).toBe(true);
+  await expect(page).toHaveURL(/\/list$/);
   await page.goBack();
   await expect(dialog).toHaveCount(0);
   await expect(page.locator('.app')).toHaveAttribute('data-section', 'list');
