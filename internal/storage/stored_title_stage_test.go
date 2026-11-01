@@ -4,6 +4,7 @@ package storage
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,6 +16,17 @@ import (
 	"strings"
 	"testing"
 )
+
+type titleHandoffWithLostLease struct{}
+
+func (titleHandoffWithLostLease) Next(ctx context.Context, tx *sql.Tx, job parser.Job) (*parser.CandidateStagePlan, error) {
+	plan, err := (parser.SQLCandidateHandoffPlanner{Owner: "CI_USER"}).Next(ctx, tx, job)
+	if err != nil {
+		return nil, err
+	}
+	_, err = tx.ExecContext(ctx, "UPDATE scheduler_jobs SET locked_by='CI_POISON' WHERE id=?", job.ID)
+	return plan, err
+}
 
 type storedTitleRunner struct {
 	requested []int64
@@ -154,7 +166,7 @@ func TestMariaDBStoredTitleStageDisposable(t *testing.T) {
 	t.Run("candidate_title_snapshot", func(t *testing.T) {
 		f.exec(`UPDATE firecrawl_settings SET favorites_only=0,scheduler_json='{"enabled":true,"sourceIds":["companySite"],"ownerName":"CI_USER"}' WHERE id=1`)
 		company, candidate, source := int64(990002), int64(990001), "companySite"
-		job := parser.Job{CompanyID: &company, CandidateID: &candidate, SourceID: &source}
+		job := parser.Job{CompanyID: &company, CandidateID: &candidate, SourceID: &source, Payload: json.RawMessage(`{"owner":"CI_OTHER","companyId":999999,"candidateId":999999,"sourceId":"hh"}`)}
 		tx, err := f.db.BeginTx(f.ctx, nil)
 		if err != nil {
 			t.Fatal(err)
@@ -172,6 +184,22 @@ func TestMariaDBStoredTitleStageDisposable(t *testing.T) {
 		if err != nil || plan == nil || plan.Type != "classify_title" {
 			tx.Rollback()
 			t.Fatal("missing classification was not scheduled", err)
+		}
+		actual, err := (parser.SQLCandidateHandoffPlanner{Owner: "CI_USER"}).Next(f.ctx, tx, job)
+		if err != nil || actual == nil || actual.Type != "classify_title" {
+			tx.Rollback()
+			t.Fatal("SQL planner did not select classification", err)
+		}
+		if actual.CandidateID != candidate || actual.CompanyID == nil || *actual.CompanyID != company || actual.SourceID != source {
+			tx.Rollback()
+			t.Fatal("job payload changed the trusted scope")
+		}
+		foreignSource := "hh"
+		foreign := job
+		foreign.SourceID = &foreignSource
+		if _, err = (parser.SQLCandidateHandoffPlanner{Owner: "CI_USER"}).Next(f.ctx, tx, foreign); !errors.Is(err, parser.ErrCandidateChanged) {
+			tx.Rollback()
+			t.Fatal("unselected source was accepted", err)
 		}
 		tx.Rollback()
 		f.exec("UPDATE firecrawl_settings SET favorites_only=1 WHERE id=1")
@@ -227,6 +255,17 @@ func TestMariaDBStoredTitleStageDisposable(t *testing.T) {
 					t.Fatal("snapshot differs from source decisions")
 				}
 			}
+			if frame.Name == "rejected" {
+				tx, err := f.db.BeginTx(f.ctx, nil)
+				if err != nil {
+					t.Fatal(err)
+				}
+				plan, err := (parser.SQLCandidateHandoffPlanner{Owner: "CI_USER"}).Next(f.ctx, tx, parser.Job{CompanyID: &company, CandidateID: &candidate, SourceID: &source})
+				tx.Rollback()
+				if err != nil || plan != nil {
+					t.Fatalf("rejected candidate received next stage: plan=%+v err=%v", plan, err)
+				}
+			}
 			if frame.Name == "complete" {
 				f.exec("UPDATE vacancy_candidates SET vacancy_url='https://example.com/ci',title_updated_at='2026-01-02T00:00:00Z' WHERE id=990001")
 				readFull := func() (parser.CandidateFullTextInput, error) {
@@ -241,6 +280,15 @@ func TestMariaDBStoredTitleStageDisposable(t *testing.T) {
 				plan, pe := parser.PlanCandidateStage(parser.CandidateStageInput(full))
 				if e != nil || pe != nil || plan == nil || plan.Type != "fetch_full_text" || plan.Payload["refresh"] != false {
 					t.Fatal("missing full text", e, pe)
+				}
+				tx, e := f.db.BeginTx(f.ctx, nil)
+				if e != nil {
+					t.Fatal(e)
+				}
+				actual, e := (parser.SQLCandidateHandoffPlanner{Owner: "CI_USER"}).Next(f.ctx, tx, parser.Job{CompanyID: &company, CandidateID: &candidate, SourceID: &source})
+				tx.Rollback()
+				if e != nil || actual == nil || actual.Type != "fetch_full_text" || actual.Payload["refresh"] != false {
+					t.Fatal("SQL planner did not select full text", e)
 				}
 				f.exec("INSERT INTO vacancy_raw_snapshots(id,candidate_id,source_url,final_url,markdown_raw,content_hash,fetched_at,firecrawl_mode,content_status,diagnostics,created_at) VALUES('CI_PLANNER_RAW',990001,'https://example.com/ci','https://example.com/ci','CI_BODY',?,'2026-01-01T00:00:00Z','free','valid','{}','2026-01-01T00:00:00Z')", testStageHash("CI_BODY"))
 				full, e = readFull()
@@ -277,6 +325,111 @@ func TestMariaDBStoredTitleStageDisposable(t *testing.T) {
 			}
 		})
 	}
+	t.Run("real_dispatcher_commits_classification_and_handoff", func(t *testing.T) {
+		f := f.sub(t)
+		f.exec("DELETE FROM vacancy_classification_attempts WHERE candidate_id=990001")
+		f.exec("UPDATE vacancy_candidates SET vacancy_url='https://example.com/ci' WHERE id=990001")
+		defer f.exec("UPDATE vacancy_candidates SET vacancy_url=NULL WHERE id=990001")
+		lease := titleStageLease(t, f)
+		runner := &storedTitleRunner{answers: frames[0].Answers}
+		out, err := (parser.AIStageDispatcher{Owner: "CI_USER", Classifier: runner}).Execute(f.ctx, lease)
+		if err != nil || out.Classification == nil || runner.calls != 1 {
+			t.Fatal("classification and SQL handoff failed", err)
+		}
+		if f.count("SELECT COUNT(*) FROM vacancy_classifications WHERE candidate_id=990001") != 2 ||
+			f.count("SELECT COUNT(*) FROM scheduler_jobs WHERE id='CI_TITLE_JOB' AND status='completed'") != 1 ||
+			f.count("SELECT COUNT(*) FROM scheduler_jobs WHERE candidate_id=990001 AND type='fetch_full_text' AND status='pending'") != 1 {
+			t.Fatal("classification and next job did not commit together")
+		}
+		var runID string
+		if err := f.db.QueryRowContext(f.ctx, "SELECT id FROM scheduler_runs WHERE status='running'").Scan(&runID); err != nil {
+			t.Fatal("running scheduler missing", err)
+		}
+		schedulerSeedJob(f, "CI_TITLE_REPLAY", 990001)
+		f.exec("UPDATE scheduler_jobs SET type='classify_title',company_id=990002,source_id='companySite' WHERE id='CI_TITLE_REPLAY'")
+		replayID := "CI_TITLE_REPLAY"
+		replay, err := f.repo.ClaimJob(f.ctx, runID, parser.ClaimOptions{JobID: &replayID})
+		if err != nil || replay == nil {
+			t.Fatal("replay job not claimed", err)
+		}
+		replayed, err := (parser.AIStageDispatcher{Owner: "CI_USER", Classifier: runner}).Execute(f.ctx, replay)
+		if err != nil || !replayed.Reused || runner.calls != 1 || f.count("SELECT COUNT(*) FROM scheduler_jobs WHERE candidate_id=990001 AND type='fetch_full_text'") != 1 {
+			t.Fatal("cached classification repeated provider call or duplicated handoff", err)
+		}
+	})
+	t.Run("real_planner_rolls_back_on_lost_lease", func(t *testing.T) {
+		f := f.sub(t)
+		f.exec("DELETE FROM vacancy_classification_attempts WHERE candidate_id=990001")
+		lease := titleStageLease(t, f)
+		runner := &storedTitleRunner{answers: frames[0].Answers}
+		executor := &parser.AIStageExecutor{Store: parser.TitleStageStore{Owner: "CI_USER"}, Classifier: runner, Handoff: &parser.CandidateHandoff{Planner: titleHandoffWithLostLease{}}}
+		_, err := executor.Execute(f.ctx, lease)
+		if !errors.Is(err, parser.ErrJobLeaseLost) || runner.calls != 1 || f.count("SELECT COUNT(*) FROM vacancy_classifications WHERE candidate_id=990001") != 0 || f.count("SELECT COUNT(*) FROM scheduler_jobs WHERE candidate_id=990001 AND type='fetch_full_text'") != 0 {
+			t.Fatal("lost lease committed classification or handoff", err)
+		}
+		_, err = executor.Execute(f.ctx, lease)
+		if err == nil || runner.calls != 1 {
+			t.Fatal("lost-lease retry repeated provider call", err)
+		}
+		f.exec("DELETE FROM vacancy_candidate_classification_leases WHERE candidate_id=990001")
+		f.exec("DELETE FROM vacancy_classification_slots")
+	})
+	t.Run("concurrent_candidate_handoffs_do_not_duplicate", func(t *testing.T) {
+		f := f.sub(t)
+		f.exec("DELETE FROM vacancy_classification_attempts WHERE candidate_id=990001")
+		first := titleStageLease(t, f)
+		var runID string
+		if err := f.db.QueryRowContext(f.ctx, "SELECT id FROM scheduler_runs WHERE status='running'").Scan(&runID); err != nil {
+			t.Fatal("running scheduler missing", err)
+		}
+		schedulerSeedJob(f, "CI_TITLE_CONCURRENT", 990001)
+		f.exec("UPDATE scheduler_jobs SET type='classify_title',company_id=990002,source_id='companySite' WHERE id='CI_TITLE_CONCURRENT'")
+		secondID := "CI_TITLE_CONCURRENT"
+		started, release := make(chan struct{}), make(chan struct{}, 1)
+		defer func() {
+			select {
+			case release <- struct{}{}:
+			default:
+			}
+		}()
+		firstRunner := &storedTitleRunner{answers: frames[0].Answers, after: func() {
+			close(started)
+			select {
+			case <-release:
+			case <-f.ctx.Done():
+			}
+		}}
+		done := make(chan error, 1)
+		go func() {
+			_, err := (parser.AIStageDispatcher{Owner: "CI_USER", Classifier: firstRunner}).Execute(f.ctx, first)
+			done <- err
+		}()
+		select {
+		case <-started:
+		case <-f.ctx.Done():
+			t.Fatal("first classifier did not start", f.ctx.Err())
+		}
+		second, secondErr := f.repo.ClaimJob(f.ctx, runID, parser.ClaimOptions{JobID: &secondID})
+		if secondErr != nil || second != nil {
+			t.Fatal("concurrent job for busy candidate was claimed", secondErr)
+		}
+		release <- struct{}{}
+		var firstErr error
+		select {
+		case firstErr = <-done:
+		case <-f.ctx.Done():
+			t.Fatal("first classifier did not finish", f.ctx.Err())
+		}
+		second, secondErr = f.repo.ClaimJob(f.ctx, runID, parser.ClaimOptions{JobID: &secondID})
+		if secondErr != nil || second == nil {
+			t.Fatal("waiting candidate job was not claimable after completion", secondErr)
+		}
+		secondRunner := &storedTitleRunner{answers: frames[0].Answers}
+		secondOut, secondErr := (parser.AIStageDispatcher{Owner: "CI_USER", Classifier: secondRunner}).Execute(f.ctx, second)
+		if firstErr != nil || secondErr != nil || !secondOut.Reused || firstRunner.calls != 1 || secondRunner.calls != 0 || f.count("SELECT COUNT(*) FROM scheduler_jobs WHERE candidate_id=990001 AND type='fetch_full_text'") != 1 {
+			t.Fatalf("concurrent handoffs failed: first=%v second=%v", firstErr, secondErr)
+		}
+	})
 	t.Run("root_order", func(t *testing.T) {
 		f.exec("DELETE FROM vacancy_classification_attempts WHERE candidate_id=990001")
 		f.exec("UPDATE vacancy_roles SET sort_order=CASE WHEN id=990101 THEN 2 ELSE 1 END WHERE id IN (990101,990102)")
@@ -347,13 +500,28 @@ func TestMariaDBStoredTitleStageDisposable(t *testing.T) {
 	t.Run("prompt_changed", func(t *testing.T) {
 		lease := titleStageLease(t, f)
 		runner := &storedTitleRunner{answers: frames[0].Answers, after: func() { f.exec("UPDATE vacancy_role_classification SET revision=revision+1 WHERE role_id=990101") }}
-		executor := &parser.AIStageExecutor{Store: parser.TitleStageStore{Owner: "CI_USER"}, Classifier: runner}
+		executor := &parser.AIStageDispatcher{Owner: "CI_USER", Classifier: runner}
 		_, err := executor.Execute(f.ctx, lease)
-		if !errors.Is(err, parser.ErrCandidateChanged) || runner.calls != 1 || f.count("SELECT COUNT(*) FROM vacancy_classifications WHERE candidate_id=990001") != 0 {
+		if !errors.Is(err, parser.ErrCandidateChanged) || runner.calls != 1 || f.count("SELECT COUNT(*) FROM vacancy_classifications WHERE candidate_id=990001") != 0 || f.count("SELECT COUNT(*) FROM scheduler_jobs WHERE candidate_id=990001 AND type='fetch_full_text'") != 0 {
 			t.Fatal("stale prompt result saved", err)
 		}
 		f.exec("UPDATE vacancy_role_classification SET revision=1 WHERE role_id=990101")
 		f.exec("DELETE FROM vacancy_candidate_classification_leases")
+		f.exec("DELETE FROM vacancy_classification_slots")
+	})
+	t.Run("generation_changed_blocks_real_handoff", func(t *testing.T) {
+		f := f.sub(t)
+		f.exec("DELETE FROM vacancy_classification_attempts WHERE candidate_id=990001")
+		lease := titleStageLease(t, f)
+		defer f.exec("UPDATE app_runtime_generation SET generation=? WHERE id=1", f.repo.Generation)
+		runner := &storedTitleRunner{answers: frames[0].Answers, after: func() {
+			f.exec("UPDATE app_runtime_generation SET generation='22222222-3333-4444-8555-666666666666' WHERE id=1")
+		}}
+		_, err := (parser.AIStageDispatcher{Owner: "CI_USER", Classifier: runner}).Execute(f.ctx, lease)
+		if err == nil || runner.calls != 1 || f.count("SELECT COUNT(*) FROM vacancy_classifications WHERE candidate_id=990001") != 0 || f.count("SELECT COUNT(*) FROM scheduler_jobs WHERE candidate_id=990001 AND type='fetch_full_text'") != 0 {
+			t.Fatal("generation change allowed classification or handoff", err)
+		}
+		f.exec("DELETE FROM vacancy_candidate_classification_leases WHERE candidate_id=990001")
 		f.exec("DELETE FROM vacancy_classification_slots")
 	})
 }
