@@ -37,6 +37,10 @@ func (p *apifySettingsProbe) SaveSettings(_ context.Context, g string, _ apifyse
 	p.writes++
 	return apifysettings.PublicSettings(apifysettings.StoredSettings{}), nil
 }
+func (p *apifySettingsProbe) ListHHSources(_ context.Context, user string) ([]apifysettings.NamedHHSource, error) {
+	return []apifysettings.NamedHHSource{}, nil
+}
+
 func (p *apifySettingsProbe) ReadHHSource(_ context.Context, id int64) (apifysettings.HHSource, error) {
 	return apifysettings.HHSource{CompanyID: id, SourceID: "hh", URL: "https://hh.ru/employer/123"}, nil
 }
@@ -84,6 +88,9 @@ func TestApifySettingsHTTPAccessAndValidation(t *testing.T) {
 		status                            int
 	}{
 		{"GET", "/api/apify/settings", "", "", "", 401}, {"GET", "/api/apify/settings", "demo", "", "", 403},
+		{"GET", "/api/apify/hh-sources", "eugene", "", "", 200},
+		{"PUT", "/api/apify/hh-sources", "eugene", "", "{}", 405},
+		{"GET", "/api/apify/hh-sources", "demo", "", "", 403},
 		{"GET", "/api/apify/settings", "eugene", "", "", 200}, {"POST", "/api/apify/settings", "eugene", "", "{}", 405},
 		{"PUT", "/api/apify/key", "eugene", "https://foreign.invalid", `{}`, 403},
 		{"PUT", "/api/apify/key", "eugene", "https://example.com", `{"profile":"free","apiKey":"` + key + `","revision":0}`, 200},

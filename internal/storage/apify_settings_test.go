@@ -119,6 +119,33 @@ func TestMariaDBApifyHHSourceDisposable(t *testing.T) {
 	}
 	r := apifysettings.NewRepository(db, "CI_SECRET")
 	generation := os.Getenv("ITMAP_TEST_DISPOSABLE_GENERATION")
+	var previousFavorites int
+	settingsErr := db.QueryRowContext(ctx, "SELECT favorites_only FROM firecrawl_settings WHERE id=1").Scan(&previousFavorites)
+	if settingsErr != nil && !errors.Is(settingsErr, sql.ErrNoRows) {
+		t.Fatal(settingsErr)
+	}
+	if _, err := db.ExecContext(ctx, "INSERT INTO firecrawl_settings(id,favorites_only) VALUES(1,1) ON DUPLICATE KEY UPDATE favorites_only=1"); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		db.ExecContext(context.Background(), "DELETE FROM company_user_state WHERE user_name='CI HH Scope' AND company_name='CI HH Company'")
+		if errors.Is(settingsErr, sql.ErrNoRows) {
+			db.ExecContext(context.Background(), "DELETE FROM firecrawl_settings WHERE id=1")
+		} else {
+			db.ExecContext(context.Background(), "UPDATE firecrawl_settings SET favorites_only=? WHERE id=1", previousFavorites)
+		}
+	})
+	if _, err := db.ExecContext(ctx, "INSERT INTO company_user_state(user_name,company_name,favorite) VALUES('CI HH Scope','CI HH Company',1)"); err != nil {
+		t.Fatal(err)
+	}
+	visible, listErr := r.ListHHSources(ctx, "CI HH Scope")
+	if listErr != nil || len(visible) != 1 || visible[0].CompanyID != 991201 || visible[0].CompanyName != "CI HH Company" {
+		t.Fatal("HH list owner scope", listErr)
+	}
+	invisible, listErr := r.ListHHSources(ctx, "CI HH Other")
+	if listErr != nil || len(invisible) != 0 {
+		t.Fatal("HH favorites leaked", listErr)
+	}
 	source, err := r.ReadHHSource(ctx, 991201)
 	if err != nil || source.URL != "https://hh.ru/employer/123" || source.Revision != 0 || source.Enabled {
 		t.Fatal("initial HH source", err)

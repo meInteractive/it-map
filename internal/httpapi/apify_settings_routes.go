@@ -18,6 +18,7 @@ type ApifySettingsService interface {
 	Generation(context.Context) (string, error)
 	SaveKey(context.Context, string, apifysettings.KeyInput) (apifysettings.PublicView, error)
 	SaveSettings(context.Context, string, apifysettings.SettingsInput) (apifysettings.PublicView, error)
+	ListHHSources(context.Context, string) ([]apifysettings.NamedHHSource, error)
 	ReadHHSource(context.Context, int64) (apifysettings.HHSource, error)
 	SaveHHSource(context.Context, string, int64, apifysettings.HHSourceInput) (apifysettings.HHSource, error)
 }
@@ -67,11 +68,11 @@ func ApifySettingsHandler(manager *auth.Manager, service ApifySettingsService) h
 			legacyCompany = parts[0]
 			path = "/api/apify/hh-source"
 		}
-		if path != "/api/apify/settings" && path != "/api/apify/key" && path != "/api/apify/hh-source" {
+		if path != "/api/apify/settings" && path != "/api/apify/key" && path != "/api/apify/hh-source" && path != "/api/apify/hh-sources" {
 			jsonReply(w, http.StatusNotFound, map[string]string{"error": "Метод API не найден."})
 			return
 		}
-		if (path == "/api/apify/key" && r.Method != http.MethodPut) || (path != "/api/apify/key" && r.Method != http.MethodGet && r.Method != http.MethodPut) {
+		if (path == "/api/apify/hh-sources" && r.Method != http.MethodGet) || (path == "/api/apify/key" && r.Method != http.MethodPut) || (path != "/api/apify/key" && r.Method != http.MethodGet && r.Method != http.MethodPut) {
 			jsonReply(w, http.StatusMethodNotAllowed, map[string]string{"error": "Метод не поддерживается."})
 			return
 		}
@@ -105,6 +106,15 @@ func ApifySettingsHandler(manager *auth.Manager, service ApifySettingsService) h
 		ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 		defer cancel()
 		if r.Method == http.MethodGet {
+			if path == "/api/apify/hh-sources" {
+				sources, err := service.ListHHSources(ctx, user.Name)
+				if err != nil {
+					apifySettingsError(w, err)
+					return
+				}
+				jsonReply(w, http.StatusOK, map[string]any{"sources": sources})
+				return
+			}
 			if path == "/api/apify/hh-source" {
 				view, err := service.ReadHHSource(ctx, companyID)
 				if err != nil {
