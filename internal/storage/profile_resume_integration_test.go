@@ -5,6 +5,7 @@ package storage
 import (
 	"context"
 	"errors"
+	"fmt"
 	"reflect"
 	"strings"
 	"sync"
@@ -122,7 +123,12 @@ func TestMariaDBProfileResumeDisposable(t *testing.T) {
 			if existing {
 				name = "existing profile"
 			}
-			t.Run(name, func(t *testing.T) { testConcurrentProfileResume(t, existing) })
+			t.Run(name, func(t *testing.T) {
+				// Повторяем независимые SQL-гонки: порядок выдачи блокировок после rollback различается.
+				for attempt := 0; attempt < 30; attempt++ {
+					t.Run(fmt.Sprintf("attempt_%02d", attempt), func(t *testing.T) { testConcurrentProfileResume(t, existing) })
+				}
+			})
 		}
 	})
 }
@@ -203,6 +209,10 @@ func testConcurrentProfileResume(t *testing.T, existing bool) {
 		} else if errors.Is(err, profiles.ErrConflict) {
 			conflict++
 		} else {
+			var sqlErr *mysql.MySQLError
+			if errors.As(err, &sqlErr) {
+				t.Fatalf("unexpected profile race SQL outcome: number=%d state=%s", sqlErr.Number, sqlErr.SQLState)
+			}
 			t.Fatalf("unexpected profile race outcome: %T", err)
 		}
 	}
