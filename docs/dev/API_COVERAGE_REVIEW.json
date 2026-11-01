@@ -485,8 +485,8 @@
     {
       "id": "apify",
       "implementation": "partial",
-      "level": "Go settings/key HTTP unit + disposable MariaDB settings CAS",
-      "gap": "Подключены только GET/PUT settings и PUT key; check/usage, HH source и provider-run wiring ещё не подтверждены.",
+      "level": "Go settings/key and company HH source HTTP + disposable MariaDB CAS",
+      "gap": "Подключены settings/key и новый узкий HH source; legacy firecrawl sources, check/usage и provider-run wiring не перенесены.",
       "evidence": [
         {
           "file": "scripts/check-apify-transport-contract.mjs"
@@ -498,6 +498,11 @@
         {
           "file": "internal/storage/apify_settings_test.go",
           "symbol": "TestMariaDBApifySettingsDisposable",
+          "required": true
+        },
+        {
+          "file": "internal/storage/apify_settings_test.go",
+          "symbol": "TestMariaDBApifyHHSourceDisposable",
           "required": true
         }
       ]

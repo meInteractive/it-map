@@ -7,6 +7,8 @@ import (
 	"itmap/internal/apifysettings"
 	"itmap/internal/auth"
 	"net/http"
+	"net/url"
+	"strconv"
 	"time"
 )
 
@@ -15,6 +17,8 @@ type ApifySettingsService interface {
 	Generation(context.Context) (string, error)
 	SaveKey(context.Context, string, apifysettings.KeyInput) (apifysettings.PublicView, error)
 	SaveSettings(context.Context, string, apifysettings.SettingsInput) (apifysettings.PublicView, error)
+	ReadHHSource(context.Context, int64) (apifysettings.HHSource, error)
+	SaveHHSource(context.Context, string, int64, apifysettings.HHSourceInput) (apifysettings.HHSource, error)
 }
 
 func apifySettingsError(w http.ResponseWriter, err error) {
@@ -28,6 +32,8 @@ func apifySettingsError(w http.ResponseWriter, err error) {
 		code, status, message = "apify_changed", http.StatusConflict, "Настройки Apify изменились. Повторите действие."
 	case errors.Is(err, apifysettings.ErrGeneration):
 		code, status, message = "restored", http.StatusConflict, "Данные восстановлены во время операции. Повторите действие."
+	case errors.Is(err, apifysettings.ErrSourceMissing):
+		code, status, message = "source_missing", http.StatusNotFound, "Источник HH организации не найден."
 	}
 	jsonReply(w, status, map[string]any{"error": message, "code": code})
 }
@@ -44,11 +50,11 @@ func ApifySettingsHandler(manager *auth.Manager, service ApifySettingsService) h
 			return
 		}
 		path := r.URL.EscapedPath()
-		if path != "/api/apify/settings" && path != "/api/apify/key" {
+		if path != "/api/apify/settings" && path != "/api/apify/key" && path != "/api/apify/hh-source" {
 			jsonReply(w, http.StatusNotFound, map[string]string{"error": "Метод API не найден."})
 			return
 		}
-		if (path == "/api/apify/key" && r.Method != http.MethodPut) || (path == "/api/apify/settings" && r.Method != http.MethodGet && r.Method != http.MethodPut) {
+		if (path == "/api/apify/key" && r.Method != http.MethodPut) || (path != "/api/apify/key" && r.Method != http.MethodGet && r.Method != http.MethodPut) {
 			jsonReply(w, http.StatusMethodNotAllowed, map[string]string{"error": "Метод не поддерживается."})
 			return
 		}
@@ -60,9 +66,31 @@ func ApifySettingsHandler(manager *auth.Manager, service ApifySettingsService) h
 			apifySettingsError(w, apifysettings.ErrStorage)
 			return
 		}
+		var companyID int64
+		if path == "/api/apify/hh-source" {
+			params, err := url.ParseQuery(r.URL.RawQuery)
+			if err != nil || len(params) != 1 || len(params["companyId"]) != 1 {
+				apifySettingsError(w, apifysettings.ErrInput)
+				return
+			}
+			companyID, err = strconv.ParseInt(params.Get("companyId"), 10, 64)
+			if err != nil || companyID < 1 || companyID > 9007199254740991 {
+				apifySettingsError(w, apifysettings.ErrInput)
+				return
+			}
+		}
 		ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 		defer cancel()
 		if r.Method == http.MethodGet {
+			if path == "/api/apify/hh-source" {
+				view, err := service.ReadHHSource(ctx, companyID)
+				if err != nil {
+					apifySettingsError(w, err)
+					return
+				}
+				jsonReply(w, http.StatusOK, view)
+				return
+			}
 			view, err := service.Read(ctx)
 			if err != nil {
 				apifySettingsError(w, err)
@@ -85,6 +113,20 @@ func ApifySettingsHandler(manager *auth.Manager, service ApifySettingsService) h
 			} else {
 				apifySettingsError(w, apifysettings.ErrInput)
 			}
+			return
+		}
+		if path == "/api/apify/hh-source" {
+			input, err := apifysettings.ParseHHSource(body)
+			if err != nil {
+				apifySettingsError(w, err)
+				return
+			}
+			view, err := service.SaveHHSource(ctx, generation, companyID, input)
+			if err != nil {
+				apifySettingsError(w, err)
+				return
+			}
+			jsonReply(w, http.StatusOK, view)
 			return
 		}
 		var view apifysettings.PublicView

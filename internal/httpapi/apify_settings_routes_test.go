@@ -37,6 +37,16 @@ func (p *apifySettingsProbe) SaveSettings(_ context.Context, g string, _ apifyse
 	p.writes++
 	return apifysettings.PublicSettings(apifysettings.StoredSettings{}), nil
 }
+func (p *apifySettingsProbe) ReadHHSource(_ context.Context, id int64) (apifysettings.HHSource, error) {
+	return apifysettings.HHSource{CompanyID: id, SourceID: "hh", URL: "https://hh.ru/employer/123"}, nil
+}
+func (p *apifySettingsProbe) SaveHHSource(_ context.Context, g string, id int64, _ apifysettings.HHSourceInput) (apifysettings.HHSource, error) {
+	if g != "CI_GENERATION" {
+		return apifysettings.HHSource{}, apifysettings.ErrGeneration
+	}
+	p.writes++
+	return apifysettings.HHSource{CompanyID: id, SourceID: "hh"}, nil
+}
 
 func TestApifySettingsHTTPAccessAndValidation(t *testing.T) {
 	m, err := auth.NewManager(strings.Repeat("s", 64), map[string]string{"eugene": "CI_ADMIN", "demo": "CI_DEMO"})
@@ -79,6 +89,11 @@ func TestApifySettingsHTTPAccessAndValidation(t *testing.T) {
 		{"PUT", "/api/apify/key", "eugene", "https://example.com", `{"profile":"free","apiKey":"` + key + `","revision":0}`, 200},
 		{"PUT", "/api/apify/key", "eugene", "", `{"profile":"free","apiKey":"bad","revision":0}`, 400},
 		{"PUT", "/api/apify/settings", "eugene", "", `{"enabled":true,"paidAllowed":false,"revision":0}`, 200},
+		{"GET", "/api/apify/hh-source?companyId=1", "demo", "", "", 403},
+		{"GET", "/api/apify/hh-source?companyId=1", "eugene", "", "", 200},
+		{"GET", "/api/apify/hh-source?companyId=1&other=1", "eugene", "", "", 400},
+		{"PUT", "/api/apify/hh-source?companyId=1", "eugene", "https://example.com", `{"sourceUrl":"https://hh.ru/employer/123","enabled":true,"revision":0}`, 200},
+		{"PUT", "/api/apify/hh-source?companyId=0", "eugene", "", `{"sourceUrl":"https://hh.ru/employer/123","enabled":true,"revision":0}`, 400},
 		{"PUT", "/api/apify/key", "eugene", "", strings.Repeat("x", 4097), 413},
 		{"GET", "/api/apify/check", "eugene", "", "", 404},
 	} {
@@ -87,7 +102,7 @@ func TestApifySettingsHTTPAccessAndValidation(t *testing.T) {
 			t.Fatalf("%s %s: status=%d expected=%d", tc.method, tc.path, w.Code, tc.status)
 		}
 	}
-	if p.writes != 2 || !p.generation {
+	if p.writes != 3 || !p.generation {
 		t.Fatalf("unexpected writes=%d generation=%v", p.writes, p.generation)
 	}
 }
