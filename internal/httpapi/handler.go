@@ -110,6 +110,7 @@ func NewHandlerWithOptions(logger *slog.Logger, opts Options) http.Handler {
 		mux.HandleFunc("/api/openai", OpenAISettingsHandler(opts.Auth, opts.OpenAISettings, opts.AIConnectionTests))
 		mux.HandleFunc("/api/openai/", OpenAISettingsHandler(opts.Auth, opts.OpenAISettings, opts.AIConnectionTests))
 		mux.HandleFunc("/api/apify/", ApifySettingsHandler(opts.Auth, opts.ApifySettings))
+		mux.HandleFunc("/api/firecrawl/sources/", ApifySettingsHandler(opts.Auth, opts.ApifySettings))
 		mux.HandleFunc("/api/openrouter", RouterSettingsHandler(opts.Auth, opts.RouterSettings, opts.AIConnectionTests))
 		mux.HandleFunc("/api/openrouter/", RouterSettingsHandler(opts.Auth, opts.RouterSettings, opts.AIConnectionTests))
 		mux.HandleFunc("GET /api/scheduler/run", SchedulerRunReadHandler(opts.Auth, opts.SchedulerRunRead))

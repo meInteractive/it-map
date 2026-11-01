@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -50,6 +51,22 @@ func ApifySettingsHandler(manager *auth.Manager, service ApifySettingsService) h
 			return
 		}
 		path := r.URL.EscapedPath()
+		legacySource := false
+		legacyCompany := ""
+		if strings.HasPrefix(path, "/api/firecrawl/sources/") {
+			parts := strings.Split(strings.TrimPrefix(path, "/api/firecrawl/sources/"), "/")
+			if len(parts) != 2 || parts[1] != "hh" {
+				jsonReply(w, http.StatusServiceUnavailable, map[string]string{"error": "backend_not_migrated"})
+				return
+			}
+			if r.Method != http.MethodPut {
+				jsonReply(w, http.StatusMethodNotAllowed, map[string]string{"error": "Метод не поддерживается."})
+				return
+			}
+			legacySource = true
+			legacyCompany = parts[0]
+			path = "/api/apify/hh-source"
+		}
 		if path != "/api/apify/settings" && path != "/api/apify/key" && path != "/api/apify/hh-source" {
 			jsonReply(w, http.StatusNotFound, map[string]string{"error": "Метод API не найден."})
 			return
@@ -69,6 +86,12 @@ func ApifySettingsHandler(manager *auth.Manager, service ApifySettingsService) h
 		var companyID int64
 		if path == "/api/apify/hh-source" {
 			params, err := url.ParseQuery(r.URL.RawQuery)
+			if legacySource && err == nil && len(params) == 0 {
+				params = url.Values{"companyId": {legacyCompany}}
+			} else if legacySource {
+				apifySettingsError(w, apifysettings.ErrInput)
+				return
+			}
 			if err != nil || len(params) != 1 || len(params["companyId"]) != 1 {
 				apifySettingsError(w, apifysettings.ErrInput)
 				return

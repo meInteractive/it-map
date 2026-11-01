@@ -95,6 +95,9 @@ func TestApifySettingsHTTPAccessAndValidation(t *testing.T) {
 		{"PUT", "/api/apify/hh-source?companyId=1", "eugene", "https://example.com", `{"sourceUrl":"https://hh.ru/employer/123","enabled":true,"revision":0}`, 200},
 		{"PUT", "/api/apify/hh-source?companyId=0", "eugene", "", `{"sourceUrl":"https://hh.ru/employer/123","enabled":true,"revision":0}`, 400},
 		{"PUT", "/api/apify/key", "eugene", "", strings.Repeat("x", 4097), 413},
+		{"PUT", "/api/firecrawl/sources/1/hh", "eugene", "https://example.com", `{"sourceUrl":"https://hh.ru/employer/123","enabled":true,"revision":0,"config":{}}`, 200},
+		{"PUT", "/api/firecrawl/sources/1/hh", "demo", "", `{}`, 403},
+		{"GET", "/api/firecrawl/sources/1/hh", "eugene", "", "", 405},
 		{"GET", "/api/apify/check", "eugene", "", "", 404},
 	} {
 		w := call(tc.method, tc.path, tc.login, tc.origin, tc.body)
@@ -102,7 +105,7 @@ func TestApifySettingsHTTPAccessAndValidation(t *testing.T) {
 			t.Fatalf("%s %s: status=%d expected=%d", tc.method, tc.path, w.Code, tc.status)
 		}
 	}
-	if p.writes != 3 || !p.generation {
+	if p.writes != 4 || !p.generation {
 		t.Fatalf("unexpected writes=%d generation=%v", p.writes, p.generation)
 	}
 }
