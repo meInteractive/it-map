@@ -105,7 +105,7 @@ func TestMariaDBLeafStageSourceDisposable(t *testing.T) {
 	if extractionStored.ConfigHash == "" {
 		t.Fatal("source config hash")
 	}
-	for _, q := range []string{"SELECT COUNT(*) FROM vacancy_candidates WHERE id=990001", "SELECT COUNT(*) FROM company_identity WHERE id=990002", "SELECT COUNT(*) FROM vacancy_roles WHERE id IN (990101,990102,990103)", "SELECT COUNT(*) FROM vacancy_detail_settings", "SELECT COUNT(*) FROM vacancy_role_settings", "SELECT COUNT(*) FROM vacancy_detail_leases"} {
+	for _, q := range []string{"SELECT COUNT(*) FROM vacancy_candidates WHERE id=990001", "SELECT COUNT(*) FROM company_vacancies WHERE id=990001", "SELECT COUNT(*) FROM company_identity WHERE id=990002", "SELECT COUNT(*) FROM vacancy_roles WHERE id IN (990101,990102,990103)", "SELECT COUNT(*) FROM vacancy_detail_settings", "SELECT COUNT(*) FROM vacancy_role_settings", "SELECT COUNT(*) FROM vacancy_detail_leases"} {
 		if f.count(q) != 0 {
 			t.Fatal("synthetic namespace not empty")
 		}
@@ -127,6 +127,31 @@ func TestMariaDBLeafStageSourceDisposable(t *testing.T) {
 		f.exec("DELETE FROM vacancy_roles WHERE id IN (990102,990103)")
 		f.exec("DELETE FROM vacancy_roles WHERE id=990101")
 		f.exec("DELETE FROM company_identity WHERE id=990002")
+	})
+	t.Run("imported_without_extraction_is_not_planned", func(t *testing.T) {
+		f := f.sub(t)
+		leafStageLease(t, f)
+		if f.count("SELECT COUNT(*) FROM company_crm WHERE company_name='CI_STAGE_COMPANY'") != 0 {
+			t.Fatal("synthetic company collision")
+		}
+		f.exec("INSERT INTO company_crm(company_name) VALUES('CI_STAGE_COMPANY')")
+		defer f.exec("DELETE FROM company_crm WHERE company_name='CI_STAGE_COMPANY'")
+		f.exec("INSERT INTO company_vacancies(id,company_name,url,title) VALUES(990001,'CI_STAGE_COMPANY','https://example.com/ci-job','CI_TITLE')")
+		f.exec("UPDATE vacancy_candidates SET main_vacancy_id=990001 WHERE id=990001")
+		defer func() {
+			f.exec("UPDATE vacancy_candidates SET main_vacancy_id=NULL WHERE id=990001")
+			f.exec("DELETE FROM company_vacancies WHERE id=990001")
+		}()
+		company, candidate, source := int64(990002), int64(990001), "companySite"
+		tx, err := f.db.BeginTx(f.ctx, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer tx.Rollback()
+		plan, err := (parser.SQLCandidateHandoffPlanner{Owner: "CI_USER"}).Next(f.ctx, tx, parser.Job{CompanyID: &company, CandidateID: &candidate, SourceID: &source})
+		if plan != nil || !errors.Is(err, parser.ErrImportedCandidateResolution) {
+			t.Fatalf("imported candidate received plan=%+v err=%v", plan, err)
+		}
 	})
 	seed := func(i int) {
 		f.exec("DELETE FROM vacancy_raw_snapshots WHERE candidate_id=990001")

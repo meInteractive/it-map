@@ -101,6 +101,19 @@ test('26–30: настоящие переходы с изменённой фо�
   await enterVacancies();
   await openEditor();
   await titleInput().fill('Мой несохранённый заголовок');
+  // Отмена Back сохраняет позицию истории; следующий Back/Forward возвращает ту же карточку.
+  await nextConfirm(false);
+  await page.goBack();
+  await expect(titleInput()).toHaveValue('Мой несохранённый заголовок');
+  await nextConfirm(true);
+  await page.goBack();
+  await expect(editor).toHaveCount(0);
+  await page.goForward();
+  await expect(page.getByRole('dialog', {name:'Синтетическая вакансия',exact:true})).toBeVisible();
+  await page.getByRole('dialog', {name:'Синтетическая вакансия',exact:true}).getByRole('button',{name:'Редактировать'}).click();
+  await expect(editor).toBeVisible();
+  await titleInput().fill('Мой несохранённый заголовок');
+  await page.evaluate(() => { (window as any).__confirmMessages=[]; });
   // 26. Отказ блокирует реальный переход по кнопке раздела.
   await nextConfirm(false);
   await page.getByRole('button', { name: 'Задачи', exact: true }).click();

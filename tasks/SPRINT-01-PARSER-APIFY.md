@@ -10,11 +10,12 @@
 
 ## Строгая очередь
 
-### [ ] GO-396. Замкнуть SQL-планирование кандидата
+### [x] GO-396. Замкнуть SQL-планирование кандидата
 
 - **Зависимости:** существующие GO-368…372 и GO-392/393; их фактический код и CI проверить первым делом.
 - **Результат:** одна owned-транзакция после сохранения результата стадии повторно читает актуальные owner/source/title/raw/extraction/roles, выбирает ровно следующую стадию и атомарно ставит задание. Проверить переходы `classify_title → fetch_full_text → extract_vacancy → assign_roles → import_vacancy`, отсутствие задания при reject/пустых ролях, отказ на stale generation/config и imported-кандидате. Не доверять `job.payload` для scope.
 - **Приёмка:** source parity для ключей и решений плюс обязательная одноразовая MariaDB с cache/replay/concurrency/rollback; положительный CI без skips. Если всё уже подтверждено, зафиксировать доказательства без повторной реализации. Runtime и внешняя сеть остаются выключены.
+- **Проверено:** PR [#200](https://github.com/meInteractive/it-map/pull/200), код `47bd7aaecd50a427127ec03f1bc41363ac1ae45d`: все обязательные CI успешны. Disposable MariaDB проверила реальный SQL-планировщик и handoff после классификации, extraction и выбора ролей, отсутствие задания при reject/пустых ролях, повтор, конкуренцию, поздний rollback, смену правил и поколения, ограничения source и подменённый payload. Source-oracle сравнивает решения и ключи со старым JavaScript. Импортированный кандидат блокируется до выбора стадии. Локально прошли `go test -race ./...`, `go vet ./...`, сборка Go и `TestUnchangedCandidateStageSource`. Исполнители `fetch_full_text` и `import_vacancy` относятся к GO-400/401; runtime здесь не включён.
 
 ### [ ] GO-397. Настройки, ключ и права Apify
 
