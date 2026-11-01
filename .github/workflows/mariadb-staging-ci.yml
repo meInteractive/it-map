@@ -1321,11 +1321,11 @@ jobs:
           set -euo pipefail
           result_file="$(mktemp)"
           trap 'rm -f "$result_file"' EXIT
-          go test -race -tags mariadb,schedulerwrites ./internal/storage -run '^TestMariaDBApify(Settings|HHSource)Disposable$' -count=1 -json | tee "$result_file"
+          go test -race -tags mariadb,schedulerwrites ./internal/storage -run '^TestMariaDBApify(Settings|HHSource|Reservation)Disposable$' -count=1 -json | tee "$result_file"
           python3 - "$result_file" <<'PYCODE'
           import json,sys
           events=[json.loads(line) for line in open(sys.argv[1],encoding='utf8')]
-          for target in ['TestMariaDBApifySettingsDisposable','TestMariaDBApifyHHSourceDisposable']:
+          for target in ['TestMariaDBApifySettingsDisposable','TestMariaDBApifyHHSourceDisposable','TestMariaDBApifyReservationDisposable']:
               assert any(e.get('Test')==target and e.get('Action')=='pass' for e in events), f'{target} did not pass'
           assert not any(e.get('Action')=='skip' for e in events), 'Apify settings gate skipped'
           PYCODE

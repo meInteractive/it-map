@@ -45,15 +45,35 @@ func (r Repository) ResolveOperation(ctx context.Context, v OperationVersion) (s
 		return "", ErrStorage
 	}
 	defer tx.Rollback()
+	token, err := r.resolveOperationTx(ctx, tx, v, false)
+	if err != nil {
+		return "", err
+	}
+	if tx.Commit() != nil {
+		return "", ErrStorage
+	}
+	return token, nil
+}
+
+// Вызывающий денежный журнал удерживает блокировку поколения и настроек
+// до фиксации резерва; сетевые операции внутри этой транзакции запрещены.
+func (r Repository) ResolveOperationTx(ctx context.Context, tx *sql.Tx, v OperationVersion) (string, error) {
+	return r.resolveOperationTx(ctx, tx, v, true)
+}
+
+func (r Repository) resolveOperationTx(ctx context.Context, tx *sql.Tx, v OperationVersion, lock bool) (string, error) {
+	if tx == nil {
+		return "", ErrStorage
+	}
 	var generation string
 	if tx.QueryRowContext(ctx, "SELECT generation FROM app_runtime_generation WHERE id=1").Scan(&generation) != nil {
 		return "", ErrStorage
 	}
-	s, err := readStored(ctx, tx, false)
+	s, err := readStored(ctx, tx, lock)
 	if err != nil {
 		return "", err
 	}
-	source, _, err := readHHSource(ctx, tx, v.CompanyID, false)
+	source, _, err := readHHSource(ctx, tx, v.CompanyID, lock)
 	if err != nil {
 		return "", err
 	}
@@ -74,9 +94,6 @@ func (r Repository) ResolveOperation(ctx context.Context, v OperationVersion) (s
 	token, err := codec.Decrypt(encrypted)
 	if err != nil || !keyPattern.MatchString(token) {
 		return "", ErrDecrypt
-	}
-	if tx.Commit() != nil {
-		return "", ErrStorage
 	}
 	return token, nil
 }
