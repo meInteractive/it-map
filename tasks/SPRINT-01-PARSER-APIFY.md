@@ -44,7 +44,9 @@
 - **Результат:** `scan_source` строит title-фильтр из актуальных корневых ролей, запускает разрешённый Actor, постранично читает dataset, валидирует/карантинирует записи и сохраняет новых или обновлённых `vacancy_candidates` с source/owner/provenance. Cursor, page/offset и run ID переживают рестарт; повтор страницы не создаёт дублей и не теряет обновление заголовка. После записи атомарно ставится классификация.
 - **Приёмка:** source fixtures + mock Apify + одноразовая MariaDB: минимум две страницы, ошибочная запись, пустой/изменённый dataset, restart/resume, concurrent scan, duplicate URL и смена source revision. Первый рубеж: **кандидаты реально видны в БД**, без AI и импорта.
 
-### [ ] GO-400. Полный текст HH и проверенный снимок
+### [x] GO-400. Полный текст HH и проверенный снимок
+
+- **Проверено:** PR [#204](https://github.com/meInteractive/it-map/pull/204), код `5c0d2477e616b51eabdd074a991841dc63f842cc`: все три обязательных CI успешны, включая [MariaDB 41319840273](https://github.com/meInteractive/it-map/actions/runs/41319840273). Публичный HH transport/JSON-LD, source/candidate-bound Apify detail, inline/composite snapshots и extraction handoff проверены с mock transport и disposable SQL. Cache и бесплатный HH доступны без Apify; неизвестный paid outcome не повторяется. Проверка актуальности перед платным запуском исправлена по воспроизведённому SQL-регрессом дефекту; повторное ревью без замечаний. Локально прошли race/vet/build и source/security gates. Worker, реальные провайдеры и сервер не включены.
 
 - **Зависимости:** GO-399 и существующая проверка GO-395.
 - **Результат:** `fetch_full_text` для принятого HH-кандидата использует сохранённый снимок либо безопасное получение detail (включая предусмотренный старым контрактом бесплатный HH-путь и Apify fallback), проверяет URL/статус/содержимое, пишет hash, provenance, диагностику и историю fetch. Не передавать модели неполный/повреждённый текст, не тратить бюджет при cache hit; после успеха планировать извлечение.

@@ -17,14 +17,23 @@ import (
 )
 
 type hhScanProvider struct {
-	mu        sync.Mutex
-	starts    int
-	rows      [][]json.RawMessage
-	afterRead func()
-	modified  bool
+	mu           sync.Mutex
+	starts       int
+	accounts     int
+	afterAccount func()
+	rows         [][]json.RawMessage
+	afterRead    func()
+	modified     bool
 }
 
 func (p *hhScanProvider) Account(ctx context.Context) (apify.BillingAccount, error) {
+	p.mu.Lock()
+	p.accounts++
+	hook := p.afterAccount
+	p.mu.Unlock()
+	if hook != nil {
+		hook()
+	}
 	return (&runtimeProvider{}).Account(ctx)
 }
 func (p *hhScanProvider) Start(_ context.Context, source string, o apify.HHOptions) (apify.ActorRun, error) {
@@ -224,6 +233,25 @@ func TestMariaDBHHListingRecoveryDisposable(t *testing.T) {
 			}
 			if _, err := e.Execute(f.ctx, lease); err == nil || s.count("SELECT COUNT(*) FROM vacancy_candidates WHERE company_id=991302") != 0 || s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='classify_title'") != 0 {
 				t.Fatal("late change accepted", err)
+			}
+		})
+	}
+}
+
+func TestMariaDBHHListingAdmissionDisposable(t *testing.T) {
+	for _, kind := range []string{"scheduler", "favorites"} {
+		t.Run(kind+" change during account refresh blocks listing", func(t *testing.T) {
+			p := &hhScanProvider{rows: [][]json.RawMessage{{hhScanItem(9000, "CI stale listing")}}}
+			f, s, lease, e := hhScanFixture(t, p)
+			p.afterAccount = func() {
+				if kind == "favorites" {
+					s.exec("UPDATE firecrawl_settings SET favorites_only=1 WHERE id=1")
+				} else {
+					s.exec(`UPDATE firecrawl_settings SET scheduler_json='{"enabled":false,"sourceIds":["hh"]}' WHERE id=1`)
+				}
+			}
+			if _, err := e.Execute(f.ctx, lease); err == nil || p.accounts != 1 || p.starts != 0 || s.count("SELECT COUNT(*) FROM apify_runs") != 0 || s.count("SELECT COUNT(*) FROM vacancy_candidates WHERE company_id=991302") != 0 {
+				t.Fatal("stale listing admitted Actor", err, p.starts, p.accounts)
 			}
 		})
 	}

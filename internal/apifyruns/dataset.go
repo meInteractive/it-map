@@ -31,6 +31,9 @@ func (s Service) ReadDataset(ctx context.Context, v apifysettings.OperationVersi
 	if e != nil {
 		return DatasetSlice{}, e
 	}
+	if err := s.checkActive(ctx); err != nil {
+		return DatasetSlice{}, err
+	}
 	row, e := s.Repository.readOperation(ctx, v, scoped)
 	if e != nil {
 		return DatasetSlice{}, e
@@ -50,13 +53,22 @@ func (s Service) ReadDataset(ctx context.Context, v apifysettings.OperationVersi
 	if !ok {
 		return DatasetSlice{}, ErrStorage
 	}
+	if err := s.checkActive(ctx); err != nil {
+		return DatasetSlice{}, err
+	}
 	before, e := dataset.DatasetInfo(ctx, row.DatasetID)
 	if e != nil {
 		return DatasetSlice{}, e
 	}
+	if err := s.checkActive(ctx); err != nil {
+		return DatasetSlice{}, err
+	}
 	items, e := dataset.DatasetItems(ctx, row.DatasetID, offset, false)
 	if e != nil {
 		return DatasetSlice{}, e
+	}
+	if err := s.checkActive(ctx); err != nil {
+		return DatasetSlice{}, err
 	}
 	after, e := dataset.DatasetInfo(ctx, row.DatasetID)
 	if e != nil {
@@ -70,6 +82,9 @@ func (s Service) ReadDataset(ctx context.Context, v apifysettings.OperationVersi
 	}
 	if _, e = s.Repository.Settings.ResolveOperation(ctx, v); e != nil {
 		return DatasetSlice{}, e
+	}
+	if err := s.checkActive(ctx); err != nil {
+		return DatasetSlice{}, err
 	}
 	return DatasetSlice{Record: row, Metadata: after, Items: items}, nil
 }
