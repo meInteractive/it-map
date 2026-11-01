@@ -1,7 +1,7 @@
 {
   "scope": "Current frontend/web direct transport sites and reviewed JSX/download bindings; no runtime/golden coverage inferred",
   "typescript": "5.9.3",
-  "files": 62,
+  "files": 63,
   "transportModule": "frontend/api/client.ts",
   "sites": [
     {
@@ -23,7 +23,7 @@
     {
       "id": "073edb066dcc58ad",
       "file": "frontend/Application.tsx",
-      "line": 132,
+      "line": 133,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -264,7 +264,7 @@
     {
       "id": "3a13fd3d39d94a06",
       "file": "frontend/features/companies/CompanyDrawer.tsx",
-      "line": 139,
+      "line": 149,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -280,7 +280,7 @@
     {
       "id": "693a4e41e3758ddf",
       "file": "frontend/features/companies/CompanyDrawer.tsx",
-      "line": 141,
+      "line": 151,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -296,7 +296,7 @@
     {
       "id": "8c0b5828d1089e85",
       "file": "frontend/features/companies/CompanyDrawer.tsx",
-      "line": 145,
+      "line": 155,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
@@ -312,7 +312,7 @@
     {
       "id": "3b05cfaa7a4b4fda",
       "file": "frontend/features/companies/CompanyList.tsx",
-      "line": 21,
+      "line": 22,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -379,7 +379,7 @@
     {
       "id": "d51c33f8e5f656ba",
       "file": "frontend/features/map/Map.tsx",
-      "line": 30,
+      "line": 31,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -395,7 +395,7 @@
     {
       "id": "489fe06c5acb3c6a",
       "file": "frontend/features/map/MapSearch.tsx",
-      "line": 42,
+      "line": 43,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
