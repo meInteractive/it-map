@@ -25,12 +25,12 @@ func validateImportStageJob(job Job, input CandidateStageInput, receiptVerified 
 
 // readImportStageSnapshot вызывается внутри owned TX; внешние данные job.payload
 // не участвуют в выборе роли, извлечения или проверке версии задания.
-func readImportStageSnapshot(ctx context.Context, tx *sql.Tx, job Job, owner string) (leafSnapshot, *leafCache, error) {
+func readImportStageSnapshot(ctx context.Context, tx *sql.Tx, job Job, owner string, receiptVerified bool) (leafSnapshot, *leafCache, error) {
 	input, err := ReadCandidateLeafInput(ctx, tx, job, owner)
 	if err != nil {
 		return leafSnapshot{}, nil, err
 	}
-	if err = validateImportStageJob(job, CandidateStageInput(input), false); err != nil {
+	if err = validateImportStageJob(job, CandidateStageInput(input), receiptVerified); err != nil {
 		return leafSnapshot{}, nil, err
 	}
 	shadow := job

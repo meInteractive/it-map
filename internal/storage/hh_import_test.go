@@ -1,0 +1,128 @@
+//go:build mariadb && schedulerwrites && schedulerbilling
+
+package storage
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"sync"
+	"testing"
+
+	"itmap/internal/apifysettings"
+	"itmap/internal/integrations/hhpublic"
+	"itmap/internal/parser"
+	"itmap/internal/vacancies"
+)
+
+func hhImportFixture(t *testing.T) (*schedulerFixture, *parser.JobLease, int64, parser.HHImportExecutor) {
+	t.Helper()
+	_, s, detail, candidate := hhDetailFixture(t)
+	s.exec("INSERT INTO vacancy_roles(id,name,stable_key,parent_id,sort_order) VALUES(991304,'CI HH leaf','ci-hh-leaf',991303,1)")
+	s.exec("INSERT INTO vacancy_detail_settings(id,markdown,prompt_revision,provider,openai_model,reasoning_effort,model_revision) VALUES(1,'CI extraction prompt',1,'openai','gpt-6-luna','medium',1)")
+	s.exec("INSERT INTO vacancy_role_settings(id,markdown,prompt_revision,provider,openai_model,openrouter_model,reasoning_effort,model_revision) VALUES(1,'CI roles prompt',1,'openai','gpt-6-luna','best_free','medium',1)")
+	t.Cleanup(func() {
+		for _, q := range []string{"DELETE FROM vacancy_import_write_context", "DELETE FROM company_vacancies WHERE company_name='CI Apify Runtime'", "DELETE FROM company_vacancy_state WHERE company_name='CI Apify Runtime'", "DELETE FROM company_crm WHERE company_name='CI Apify Runtime'", "DELETE FROM vacancy_detail_settings WHERE id=1", "DELETE FROM vacancy_role_settings WHERE id=1", "DELETE FROM vacancy_roles WHERE id=991304"} {
+			if _, err := s.db.ExecContext(context.Background(), q); err != nil {
+				t.Error("import cleanup", err)
+			}
+		}
+	})
+	pub := &hhPublicFixture{job: &hhpublic.Job{ID: "123", URL: "https://hh.ru/vacancy/123", Title: "CI_TITLE", Description: hhDetailBody()}}
+	if _, err := (parser.HHFullTextExecutor{Settings: apifysettings.NewRepository(s.db, "CI_SECRET"), Owner: "CI_OWNER", Public: pub}).Execute(s.ctx, detail); err != nil {
+		t.Fatal("detail", err)
+	}
+	claim := func(kind string) *parser.JobLease {
+		var job, run string
+		if err := s.db.QueryRowContext(s.ctx, "SELECT id FROM scheduler_jobs WHERE candidate_id=? AND type=?", candidate, kind).Scan(&job); err != nil {
+			t.Fatal("job", kind, err)
+		}
+		if err := s.db.QueryRowContext(s.ctx, "SELECT id FROM scheduler_runs WHERE status='running'").Scan(&run); err != nil {
+			t.Fatal(err)
+		}
+		lease, err := s.repo.ClaimJob(s.ctx, run, parser.ClaimOptions{JobID: &job})
+		if err != nil || lease == nil {
+			t.Fatal("claim", kind, err)
+		}
+		return lease
+	}
+	data := map[string]any{"title": "CI_TITLE", "description_md": hhDetailBody()}
+	for _, k := range []string{"employer_name", "location", "work_format", "employment_type", "level", "salary_from", "salary_to", "salary_currency", "salary_period", "salary_tax_type", "responsibilities", "requirements", "conditions", "published_at", "language"} {
+		data[k] = nil
+	}
+	raw, err := json.Marshal(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	extract := parser.AIStageDispatcher{Owner: "CI_OWNER", Generator: &extractionRunner{content: raw}}
+	if _, err = extract.Execute(s.ctx, claim("extract_vacancy")); err != nil {
+		t.Fatal("extract", err)
+	}
+	leaf := parser.AIStageDispatcher{Owner: "CI_OWNER", Generator: &leafStageRunner{content: json.RawMessage(`{"role_ids":[991304]}`), model: "gpt-6-luna", provider: "openai"}}
+	if _, err = leaf.Execute(s.ctx, claim("assign_roles")); err != nil {
+		t.Fatal("roles", err)
+	}
+	return s, claim("import_vacancy"), candidate, parser.HHImportExecutor{Settings: apifysettings.NewRepository(s.db, "CI_SECRET"), Owner: "CI_OWNER"}
+}
+
+func TestMariaDBHHImportDisposable(t *testing.T) {
+	t.Run("create concurrent replay and current source", func(t *testing.T) {
+		s, lease, candidate, executor := hhImportFixture(t)
+		var wg sync.WaitGroup
+		results := make([]parser.HHImportResult, 2)
+		errs := make([]error, 2)
+		for i := range results {
+			wg.Add(1)
+			go func(i int) { defer wg.Done(); results[i], errs[i] = executor.Execute(s.ctx, lease) }(i)
+		}
+		wg.Wait()
+		for i := range results {
+			if errs[i] != nil {
+				t.Fatal("import", i, errs[i])
+			}
+		}
+		if results[0].VacancyID != results[1].VacancyID || results[0].Reused == results[1].Reused || s.count("SELECT COUNT(*) FROM company_vacancies WHERE company_name='CI Apify Runtime'") != 1 || s.count("SELECT COUNT(*) FROM vacancy_import_operations WHERE candidate_id=? AND status='success'", candidate) != 1 || s.count("SELECT COUNT(*) FROM vacancy_role_assignments WHERE vacancy_id=? AND role_id=991304", results[0].VacancyID) != 1 {
+			t.Fatalf("unexpected concurrent result %+v", results)
+		}
+		var title string
+		if err := s.db.QueryRowContext(s.ctx, "SELECT title FROM company_vacancies WHERE id=?", results[0].VacancyID).Scan(&title); err != nil || title != "CI_TITLE" {
+			t.Fatal("vacancy readback", err)
+		}
+		detail, err := (vacancies.Repository{DB: s.db}).DetailByID(s.ctx, "CI_OWNER", results[0].VacancyID)
+		if err != nil || detail.Vacancy.Title != "CI_TITLE" || detail.Vacancy.DescriptionMD == "" || len(detail.Vacancy.PublicationSources) != 1 {
+			t.Fatal("Go detail readback", err)
+		}
+		s.exec("UPDATE vacancy_source_parsing SET enabled=0 WHERE company_id=991302 AND source_id='hh'")
+		if _, err := executor.Execute(s.ctx, lease); err == nil {
+			t.Fatal("disabled source replay accepted")
+		}
+	})
+	t.Run("existing publication preserves manual title", func(t *testing.T) {
+		s, lease, _, executor := hhImportFixture(t)
+		s.exec("INSERT INTO company_crm(company_name) VALUES('CI Apify Runtime')")
+		s.exec("INSERT INTO company_vacancies(id,company_name,url,title,description_md) VALUES(991305,'CI Apify Runtime','https://moscow.hh.ru/vacancy/123?utm_source=old','CI manual title','')")
+		s.exec("INSERT INTO vacancy_parser_fields(vacancy_id,field,value_json,manual) VALUES(991305,'title','\"CI old title\"',1)")
+		result, err := executor.Execute(s.ctx, lease)
+		if err != nil || result.VacancyID != 991305 || result.Action != "update" {
+			t.Fatal("exact identity update", result, err)
+		}
+		if s.count("SELECT COUNT(*) FROM company_vacancies WHERE id=991305 AND title='CI manual title' AND description_md<>''") != 1 {
+			t.Fatal("manual title was not preserved or description missing")
+		}
+	})
+	t.Run("late failure rolls back new vacancy", func(t *testing.T) {
+		s, lease, candidate, executor := hhImportFixture(t)
+		// Следующий AUTO_INCREMENT известен только внутри одноразовой CI-БД.
+		var next int64
+		if err := s.db.QueryRowContext(s.ctx, "SELECT AUTO_INCREMENT FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='company_vacancies'").Scan(&next); err != nil {
+			t.Fatal(err)
+		}
+		s.exec("INSERT INTO vacancy_import_write_context(vacancy_id,generation,owner_token) VALUES(?,?,?)", next, s.repo.Generation, "CI_CONFLICT")
+		if _, err := executor.Execute(s.ctx, lease); err == nil {
+			t.Fatal("late write failure accepted")
+		}
+		if s.count("SELECT COUNT(*) FROM company_vacancies WHERE company_name='CI Apify Runtime'") != 0 || s.count("SELECT COUNT(*) FROM vacancy_import_operations WHERE candidate_id=?", candidate) != 0 || s.count("SELECT COUNT(*) FROM vacancy_candidates WHERE id=? AND main_vacancy_id IS NOT NULL", candidate) != 0 {
+			t.Fatal("partial import survived rollback", fmt.Sprint(next))
+		}
+	})
+}
