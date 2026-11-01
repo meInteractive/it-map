@@ -9,6 +9,7 @@ const cases=[
  {title:'Head of Engineering',body,otherTitle:'Head of Engineering Platform',otherBody:body.replace('## Задачи','## Основные задачи'),url:'https://company.example/jobs/2'},
  {title:'Head of Engineering',body,otherTitle:'Head of Engineering Platform',otherBody:body.replace('## Задачи','## Задачи??'),url:'https://company.example/jobs/2'},
  {title:'Head of Engineering',body,otherTitle:'Head of Engineering Platform',otherBody:'1 января 2026\n'+body,url:'https://company.example/jobs/2'},
+ {title:'Head of Engineering',body,otherTitle:'Head of Engineering Platform',otherBody:body.replace(req,'Компьютерное зрение обучение нейросетей математика физика графические ускорители обработка изображений исследовательская работа CUDA Python'),url:'https://company.example/jobs/2'},
  {title:'Head of Engineering',body,otherTitle:'Junior Analyst',otherBody:body,url:'https://company.example/jobs/2'},
  {title:'Head of Engineering',body,otherTitle:'Head of Engineering',otherBody:body+' truncated for model',url:'https://company.example/jobs/2'},
  {title:'Head of Engineering',body,otherTitle:'Head of Engineering',otherBody:body,url:'https://hh.ru/vacancy/11'},
