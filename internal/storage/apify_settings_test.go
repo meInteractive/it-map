@@ -135,6 +135,14 @@ func TestMariaDBApifyHHSourceDisposable(t *testing.T) {
 			db.ExecContext(context.Background(), "UPDATE firecrawl_settings SET favorites_only=? WHERE id=1", previousFavorites)
 		}
 	})
+	if _, err := db.ExecContext(ctx, "INSERT INTO company_crm(company_name) VALUES('CI HH Company')"); err != nil {
+		t.Fatal("favorite parent fixture", err)
+	}
+	t.Cleanup(func() {
+		if _, e := db.ExecContext(context.Background(), "DELETE FROM company_crm WHERE company_name='CI HH Company'"); e != nil {
+			t.Error("favorite parent cleanup")
+		}
+	})
 	if _, err := db.ExecContext(ctx, "INSERT INTO company_user_state(user_name,company_name,favorite) VALUES('CI HH Scope','CI HH Company',1)"); err != nil {
 		t.Fatal(err)
 	}
@@ -155,10 +163,39 @@ func TestMariaDBApifyHHSourceDisposable(t *testing.T) {
 	if err != nil || !source.Enabled || source.Revision != 1 {
 		t.Fatal("save HH source", err)
 	}
+	key := "apify_api_" + strings.Repeat("z", 16)
+	if _, err = r.SaveKey(ctx, generation, apifysettings.KeyInput{Profile: "free", APIKey: key, Revision: 0}); err != nil {
+		t.Fatal("operation key fixture", err)
+	}
+	t.Cleanup(func() {
+		if _, e := db.ExecContext(context.Background(), "DELETE FROM apify_settings WHERE id=1"); e != nil {
+			t.Error("operation settings cleanup")
+		}
+	})
+	if _, err = r.SaveSettings(ctx, generation, apifysettings.SettingsInput{Enabled: true, Revision: 1}); err != nil {
+		t.Fatal(err)
+	}
+	version := apifysettings.OperationVersion{Generation: generation, SettingsRevision: 2, CompanyID: 991201, SourceURL: source.URL, SourceRevision: 1, Profile: "free"}
+	if token, e := r.ResolveOperation(ctx, version); e != nil || token != key {
+		t.Fatal("operation authorization", e)
+	}
+	stale := version
+	stale.SettingsRevision = 1
+	if _, e := r.ResolveOperation(ctx, stale); !errors.Is(e, apifysettings.ErrChanged) {
+		t.Fatal("stale key settings accepted", e)
+	}
+	stale = version
+	stale.Generation = "11111111-2222-4333-8444-555555555555"
+	if _, e := r.ResolveOperation(ctx, stale); !errors.Is(e, apifysettings.ErrGeneration) {
+		t.Fatal("old operation generation accepted", e)
+	}
 	if _, err = db.ExecContext(ctx, "UPDATE vacancy_source_parsing SET config_json='[]' WHERE company_id=991201 AND source_id='hh'"); err != nil {
 		t.Fatal(err)
 	}
 	broken, readErr := r.ReadHHSource(ctx, 991201)
+	if _, e := r.ResolveOperation(ctx, version); !errors.Is(e, apifysettings.ErrDisabled) {
+		t.Fatal("broken source authorized", e)
+	}
 	if readErr != nil || broken.Enabled {
 		t.Fatal("invalid stored config enabled source", readErr)
 	}
