@@ -19,8 +19,36 @@ type Provider interface {
 }
 
 type Service struct {
-	Repository Repository
-	NewClient  func(string) (Provider, error)
+	Repository  Repository
+	NewClient   func(string) (Provider, error)
+	CheckActive func(context.Context) error
+}
+
+// WithCheck возвращает отдельную копию для текущей стадии. Callback выполняется
+// только вне денежных транзакций и не меняет identity оплаченной операции.
+func (s Service) WithCheck(check func(context.Context) error) Service {
+	previous := s.CheckActive
+	s.CheckActive = func(ctx context.Context) error {
+		if previous != nil {
+			if err := previous(ctx); err != nil {
+				return err
+			}
+		}
+		if check != nil {
+			return check(ctx)
+		}
+		return nil
+	}
+	return s
+}
+func (s Service) checkActive(ctx context.Context) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if s.CheckActive != nil {
+		return s.CheckActive(ctx)
+	}
+	return nil
 }
 
 func (s Service) client(token string) (Provider, error) {
@@ -36,9 +64,20 @@ func operationKey(v apifysettings.OperationVersion, key string, options apify.HH
 	if key == "" || len(key) > 1024 {
 		return "", apifysettings.ErrInput
 	}
-	input, e := apify.HHInput(v.SourceURL, options)
+	if v.CandidateID != 0 && !options.Detail {
+		return "", apifysettings.ErrInput
+	}
+	input, e := apify.HHInput(operationTarget(v), options)
 	if e != nil {
 		return "", e
+	}
+	type detailIdentity struct {
+		CandidateID, TitleRevision int64
+		VacancyURL                 string
+	}
+	var detail *detailIdentity
+	if v.CandidateID != 0 {
+		detail = &detailIdentity{v.CandidateID, v.TitleRevision, v.VacancyURL}
 	}
 	raw, e := json.Marshal(struct {
 		CompanyID      int64
@@ -46,7 +85,8 @@ func operationKey(v apifysettings.OperationVersion, key string, options apify.HH
 		SourceURL      string
 		Key            string
 		Input          apify.StartInput
-	}{v.CompanyID, v.SourceRevision, v.SourceURL, key, input})
+		Detail         *detailIdentity `json:",omitempty"`
+	}{v.CompanyID, v.SourceRevision, v.SourceURL, key, input, detail})
 	if e != nil {
 		return "", apifysettings.ErrInput
 	}
@@ -57,6 +97,9 @@ func operationKey(v apifysettings.OperationVersion, key string, options apify.HH
 // Execute выполняет один старт либо продолжает известную операцию. Восстановленный
 // starting/uncertain без run ID никогда не получает повторный POST.
 func (s Service) Execute(ctx context.Context, v apifysettings.OperationVersion, key string, options apify.HHOptions) (Record, error) {
+	if err := s.checkActive(ctx); err != nil {
+		return Record{}, err
+	}
 	scoped, e := operationKey(v, key, options)
 	if e != nil {
 		return Record{}, e
@@ -86,8 +129,14 @@ func (s Service) Execute(ctx context.Context, v apifysettings.OperationVersion, 
 	if e != nil {
 		return Record{}, e
 	}
+	if err := s.checkActive(ctx); err != nil {
+		return Record{}, err
+	}
 	if _, e = s.Repository.StoreAccount(ctx, v, account); e != nil {
 		return Record{}, e
+	}
+	if err := s.checkActive(ctx); err != nil {
+		return Record{}, err
 	}
 	reserved, e := s.Repository.Reserve(ctx, v, scoped)
 	if e != nil {
@@ -103,6 +152,9 @@ func (s Service) Execute(ctx context.Context, v apifysettings.OperationVersion, 
 		}
 		return s.reconcile(ctx, v, scoped)
 	}
+	if err := s.checkActive(ctx); err != nil {
+		return Record{}, err
+	}
 	row, token, e = s.Repository.claimStart(ctx, v, scoped)
 	if e != nil {
 		return row, e
@@ -115,7 +167,10 @@ func (s Service) Execute(ctx context.Context, v apifysettings.OperationVersion, 
 	if e != nil {
 		return row, e
 	}
-	run, e := client.Start(ctx, v.SourceURL, options)
+	if err := s.checkActive(ctx); err != nil {
+		return row, err
+	}
+	run, e := client.Start(ctx, operationTarget(v), options)
 	if e != nil {
 		return row, ErrUncertain
 	}
@@ -132,6 +187,9 @@ func (s Service) Reconcile(ctx context.Context, v apifysettings.OperationVersion
 	return s.reconcile(ctx, v, scoped)
 }
 func (s Service) reconcile(ctx context.Context, v apifysettings.OperationVersion, key string) (Record, error) {
+	if err := s.checkActive(ctx); err != nil {
+		return Record{}, err
+	}
 	row, e := s.Repository.readOperation(ctx, v, key)
 	if e != nil {
 		return Record{}, e
@@ -147,9 +205,19 @@ func (s Service) reconcile(ctx context.Context, v apifysettings.OperationVersion
 	if e != nil {
 		return row, e
 	}
+	if err := s.checkActive(ctx); err != nil {
+		return row, err
+	}
 	run, e := client.Run(ctx, row.RunID)
 	if e != nil {
 		return row, e
 	}
 	return s.Repository.record(ctx, v, key, run)
+}
+
+func operationTarget(v apifysettings.OperationVersion) string {
+	if v.CandidateID != 0 {
+		return v.VacancyURL
+	}
+	return v.SourceURL
 }
