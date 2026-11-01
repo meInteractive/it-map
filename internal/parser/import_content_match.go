@@ -18,7 +18,7 @@ var (
 	importLead         = regexp.MustCompile(`team\s*lead`)
 	importCross        = regexp.MustCompile(`кросс[ -]?функциональ`)
 	importWrapper      = regexp.MustCompile(`^(компания|дата публикации|опубликовано|зарплата|место работы|локация|формат|график)\s*:`)
-	importDate         = regexp.MustCompile(`^\d{1,2}\s+(января|февраля|марта|апреля|мая|июня|июля|августа|сентября|октября|ноября|декабря)(\s|$)`)
+	importDate         = regexp.MustCompile(`^\d{1,2}\s+(января|февраля|марта|апреля|мая|июня|июля|августа|сентября|октября|ноября|декабря)[A-Za-z0-9_]`)
 )
 var importTasks = map[string]bool{"основные задачи": true, "задачи": true, "обязанности": true, "чем предстоит заниматься": true, "что предстоит делать": true, "чем заниматься": true, "вам предстоит": true, "тебе предстоит": true, "что нужно делать": true, "предстоит заниматься": true}
 var importRequirements = map[string]bool{"основные требования": true, "требования": true, "требования к кандидату": true, "требования к соискателю": true, "мы ожидаем": true, "мы ждем": true, "что мы ждем": true, "что мы ожидаем": true, "что мы ждем от вас": true, "что мы ожидаем от вас": true, "мы ожидаем от вас": true, "мы ждем от вас": true, "для нас важно": true, "наши ожидания": true, "ожидания": true, "необходимые навыки": true, "что нужно знать": true, "наш кандидат": true}
@@ -95,7 +95,10 @@ func importSections(text, title string) map[string]string {
 		if line == "" {
 			continue
 		}
-		heading := strings.TrimSpace(strings.TrimRight(line, ":?"))
+		heading := line
+		if strings.HasSuffix(heading, ":") || strings.HasSuffix(heading, "?") {
+			heading = strings.TrimSpace(heading[:len(heading)-1])
+		}
 		if importTasks[heading] {
 			section = "tasks"
 			continue
