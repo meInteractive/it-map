@@ -13,6 +13,7 @@ import (
 
 	"itmap/internal/apifyruns"
 	"itmap/internal/apifysettings"
+	"itmap/internal/integrations/apify"
 )
 
 func TestMariaDBApifyReservationDisposable(t *testing.T) {
@@ -58,6 +59,20 @@ func TestMariaDBApifyReservationDisposable(t *testing.T) {
 	saveAccount()
 	repo := apifyruns.Repository{DB: db, Settings: settings}
 	version := apifysettings.OperationVersion{Generation: generation, SettingsRevision: 2, CompanyID: 991301, SourceURL: "https://hh.ru/employer/123", SourceRevision: 1, Profile: "free"}
+	accountRaw, _ := json.Marshal(account)
+	var snapshot apify.BillingAccount
+	if e = json.Unmarshal(accountRaw, &snapshot); e != nil {
+		t.Fatal(e)
+	}
+	snapshot.ProviderUsedUSD = 2
+	snapshot.CheckedAt = time.Now().UnixMilli()
+	if _, e = repo.StoreAccount(ctx, version, snapshot); e != nil {
+		t.Fatal("store account", e)
+	}
+	snapshot.ProviderUsedUSD = 1
+	if saved, e := repo.StoreAccount(ctx, version, snapshot); e != nil || saved.ProviderUsedUSD != 2 {
+		t.Fatal("account usage decreased", e)
+	}
 	type result struct {
 		r apifyruns.Reservation
 		e error
