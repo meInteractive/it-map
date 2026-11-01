@@ -484,15 +484,21 @@
     },
     {
       "id": "apify",
-      "implementation": "unported",
-      "level": "Mock/source transport and budget contracts",
-      "gap": "Settings/key/check/usage HTTP/provider-run wiring не зарегистрированы.",
+      "implementation": "partial",
+      "level": "Go settings/key HTTP unit + disposable MariaDB settings CAS",
+      "gap": "Подключены только GET/PUT settings и PUT key; check/usage, HH source и provider-run wiring ещё не подтверждены.",
       "evidence": [
         {
           "file": "scripts/check-apify-transport-contract.mjs"
         },
         {
-          "file": "internal/httpapi/handler.go"
+          "file": "internal/httpapi/apify_settings_routes_test.go",
+          "symbol": "TestApifySettingsHTTPAccessAndValidation"
+        },
+        {
+          "file": "internal/storage/apify_settings_test.go",
+          "symbol": "TestMariaDBApifySettingsDisposable",
+          "required": true
         }
       ]
     },
@@ -649,7 +655,7 @@
   ],
   "sourceHashes": {
     "frontend/api/client.ts": "4aa67ca55e0940c44fb74b6ab68fe876d294d2b56d15b83bc1686b95519e06a7",
-    "internal/httpapi/handler.go": "2f38d5250c7b977ef82bf83778451c672b038afe6d20518ae25412d46108bfa0",
+    "internal/httpapi/handler.go": "8a065e3667cc635618ed23f9a4922dc098a9c06a2520efdb500d70d260c1fcc9",
     "server/routes/index.js": "6134004f682975cb51ea13cd2ec4de8e85a5957deff6a5392fbad3fd70ccb1e4"
   },
   "clientExports": [
