@@ -26,8 +26,19 @@ const bundle = await build({
 const source = bundle.outputFiles[0].text;
 
 test('26–30: настоящие переходы с изменённой формой и подтверждением', async ({ page }) => {
-  await page.setContent('<main id="root"></main>');
-  await page.route('**/*', route => route.abort('blockedbyclient'));
+  // Serve a minimal same-origin HTML fixture without the production CSP header.
+  // Unlike about:blank it allows sessionStorage; unlike the real app it permits
+  // this explicitly bundled synthetic test script (production CSP stays intact).
+  const fixturePath = '/__ci_navigation_dirty_fixture';
+  await page.route('**/*', route => {
+    if (new URL(route.request().url()).pathname === fixturePath)
+      return route.fulfill({status: 200, contentType: 'text/html',
+        body: '<!doctype html><html><body><main id="root"></main></body></html>'});
+    return route.abort('blockedbyclient');
+  });
+  await page.goto(fixturePath);
+  const pageErrors: string[] = [];
+  page.on('pageerror', error => pageErrors.push(error.message));
   await page.evaluate(() => {
     (window as any).__confirmAnswers = [];
     (window as any).__confirmMessages = [];
@@ -73,7 +84,7 @@ test('26–30: настоящие переходы с изменённой фо�
   const editor = page.getByRole('dialog', { name: 'Редактирование вакансии' });
   const titleInput = () => editor.locator('input[maxlength="300"]').first();
   const enterVacancies = async () => {
-    await page.getByRole('button', { name: 'Вакансии', exact: true }).click();
+    await page.locator('.entity-nav[data-section-menu="vacancies"] > .settings-nav-trigger').click();
     await expect(section).toHaveAttribute('data-section', 'vacancies');
   };
   const openEditor = async () => {
@@ -90,6 +101,19 @@ test('26–30: настоящие переходы с изменённой фо�
   await enterVacancies();
   await openEditor();
   await titleInput().fill('Мой несохранённый заголовок');
+  // Отмена Back сохраняет позицию истории; следующий Back/Forward возвращает ту же карточку.
+  await nextConfirm(false);
+  await page.goBack();
+  await expect(titleInput()).toHaveValue('Мой несохранённый заголовок');
+  await nextConfirm(true);
+  await page.goBack();
+  await expect(editor).toHaveCount(0);
+  await page.goForward();
+  await expect(page.getByRole('dialog', {name:'Синтетическая вакансия',exact:true})).toBeVisible();
+  await page.getByRole('dialog', {name:'Синтетическая вакансия',exact:true}).getByRole('button',{name:'Редактировать'}).click();
+  await expect(editor).toBeVisible();
+  await titleInput().fill('Мой несохранённый заголовок');
+  await page.evaluate(() => { (window as any).__confirmMessages=[]; });
   // 26. Отказ блокирует реальный переход по кнопке раздела.
   await nextConfirm(false);
   await page.getByRole('button', { name: 'Задачи', exact: true }).click();
@@ -131,4 +155,5 @@ test('26–30: настоящие переходы с изменённой фо�
   // Параллельное состояние двух отдельных редакторов штатной навигацией
   // не создаётся; два независимых useDirty уже проверяет test-dirty-navigation.mjs.
   await page.evaluate(() => (window as any).__unmountApplication());
+  expect(pageErrors).toEqual([]);
 });

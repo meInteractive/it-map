@@ -1,13 +1,13 @@
 {
   "scope": "Current frontend/web direct transport sites and reviewed JSX/download bindings; no runtime/golden coverage inferred",
   "typescript": "5.9.3",
-  "files": 61,
+  "files": 62,
   "transportModule": "frontend/api/client.ts",
   "sites": [
     {
       "id": "be54e9adfe9f6137",
       "file": "frontend/Application.tsx",
-      "line": 31,
+      "line": 32,
       "call": "form",
       "method": "POST",
       "methodExpression": "POST",
@@ -23,7 +23,7 @@
     {
       "id": "073edb066dcc58ad",
       "file": "frontend/Application.tsx",
-      "line": 65,
+      "line": 132,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
