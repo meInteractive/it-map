@@ -47,3 +47,14 @@ func TestHHListingCursorHonorsCostFailureAndPageLimit(t *testing.T) {
 		t.Fatal("unknown charge authorized next page", next, e)
 	}
 }
+
+func TestHHListingUnderfilledDatasetFailsWithoutAdvancing(t *testing.T) {
+	cost := 0.02
+	c := hhListingCursor{Version: 1, Profile: "free"}
+	slice := apifyruns.DatasetSlice{Record: apifyruns.Record{State: "succeeded", RunID: "CIRun", DatasetID: "CIData", ChargedUSD: &cost}, Metadata: apify.DatasetMetadata{ItemCount: 11, ModifiedAt: "2020-01-01T00:00:00Z"}}
+	for _, count := range []int{0, 1} {
+		if _, err := advanceHHListingCursor(c, slice, count, "prefix", time.Now().UnixMilli()); err == nil {
+			t.Fatal("incomplete short slice reported success", count)
+		}
+	}
+}

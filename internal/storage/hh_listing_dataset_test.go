@@ -13,14 +13,18 @@ import (
 
 type hhDatasetProvider struct {
 	*runtimeProvider
-	infos   int
-	changed bool
-	reads   int
+	infos       int
+	changed     bool
+	underfilled bool
+	reads       int
 }
 
 func (p *hhDatasetProvider) DatasetInfo(context.Context, string) (apify.DatasetMetadata, error) {
 	p.infos++
 	count := int64(1)
+	if p.underfilled {
+		count = 2
+	}
 	if p.changed && p.infos%2 == 0 {
 		count = 2
 	}
@@ -53,6 +57,11 @@ func TestMariaDBHHListingDatasetDisposable(t *testing.T) {
 	dataset.infos = 0
 	if _, e := s.ReadDataset(f.ctx, f.v, "CI dataset", apify.HHOptions{}, 0); e == nil {
 		t.Fatal("changing dataset accepted")
+	}
+	dataset.changed = false
+	dataset.underfilled = true
+	if _, err := s.ReadDataset(f.ctx, f.v, "CI dataset", apify.HHOptions{}, 0); !errors.Is(err, apifyruns.ErrDatasetChanged) {
+		t.Fatal("underfilled raw page accepted", err)
 	}
 	reads := dataset.reads
 	if _, e := s.ReadDataset(f.ctx, f.v, "CI dataset", apify.HHOptions{}, -1); e == nil || dataset.reads != reads {

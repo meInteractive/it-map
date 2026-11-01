@@ -65,6 +65,9 @@ func (s Service) ReadDataset(ctx context.Context, v apifysettings.OperationVersi
 	if before.ItemCount != after.ItemCount || before.ModifiedAt != after.ModifiedAt || before.ItemCount < 0 || before.ItemCount > 9007199254740991 || len(items) > 10 || offset > before.ItemCount || int64(len(items)) > before.ItemCount-offset {
 		return DatasetSlice{}, ErrDatasetChanged
 	}
+	if len(items) < 10 && offset+int64(len(items)) != before.ItemCount {
+		return DatasetSlice{}, ErrDatasetChanged
+	}
 	if _, e = s.Repository.Settings.ResolveOperation(ctx, v); e != nil {
 		return DatasetSlice{}, e
 	}

@@ -39,6 +39,9 @@ func advanceHHListingCursor(c hhListingCursor, slice apifyruns.DatasetSlice, cou
 	if c.Version != 1 || count < 0 || count > 10 || c.Offset < 0 || c.Page < 0 || c.Page > 99 || c.Offset+int64(count) > slice.Metadata.ItemCount || c.RunID != "" && c.RunID != slice.Record.RunID || c.DatasetID != "" && c.DatasetID != slice.Record.DatasetID {
 		return c, ErrHHListingChanged
 	}
+	if count < 10 && c.Offset+int64(count) != slice.Metadata.ItemCount {
+		return c, apifyruns.ErrDatasetChanged
+	}
 	if c.Metadata != nil && (c.Metadata.ItemCount != slice.Metadata.ItemCount || c.Metadata.ModifiedAt != slice.Metadata.ModifiedAt) {
 		return c, apifyruns.ErrDatasetChanged
 	}
