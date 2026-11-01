@@ -28,6 +28,8 @@
 
 ### [ ] GO-398. Устойчивый запуск Apify с бюджетом
 
+- **В работе (01.11.2026, PR #202):** добавлены серверный оркестратор refresh/reserve/start/reconcile, атомарный `starting → uncertain` до POST и fenced запись run/dataset/стоимости. 45 source-oracle случаев подтверждают прежнюю политику стоимости и terminal-state. Новые SQL/HTTP/concurrency/unknown-COMMIT/SIGKILL/rotation тесты включены в обязательный disposable CI; локально SQL исполнение пропущено guard и не считается доказательством. Задача остаётся открытой до выполнения CI и review. Worker и реальные провайдеры выключены.
+
 - **Порядок реализации:** (1) чистый расчёт бюджета и source parity с apify-budget.js; (2) обновление account/limits с generation/revision и монотонным usage; (3) атомарный резерв и single flight в MariaDB до POST; (4) однократный старт, запись run/dataset и uncertain без слепого повтора; (5) опрос/стоимость/reconcile с проверкой ключа и владельца; (6) mock HTTP и disposable MariaDB с concurrency/crash/rollback. Частичная реализация не разрешает реальные запуски.
 
 - **Зависимости:** GO-397; изолированный Go-клиент GO-081/039 и существующий денежный ledger.
