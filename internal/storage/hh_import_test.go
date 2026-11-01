@@ -28,7 +28,7 @@ func hhImportFixture(t *testing.T) (*schedulerFixture, *parser.JobLease, int64, 
 	s.exec("INSERT INTO vacancy_detail_settings(id,markdown,prompt_revision,provider,openai_model,reasoning_effort,model_revision) VALUES(1,'CI extraction prompt',1,'openai','gpt-6-luna','medium',1)")
 	s.exec("INSERT INTO vacancy_role_settings(id,markdown,prompt_revision,provider,openai_model,openrouter_model,reasoning_effort,model_revision) VALUES(1,'CI roles prompt',1,'openai','gpt-6-luna','best_free','medium',1)")
 	t.Cleanup(func() {
-		for _, q := range []string{"DELETE FROM vacancy_import_write_context", "DELETE FROM company_vacancies WHERE company_name='CI Apify Runtime'", "DELETE FROM company_vacancy_state WHERE company_name='CI Apify Runtime'", "DELETE FROM company_crm WHERE company_name='CI Apify Runtime'", "DELETE FROM vacancy_detail_settings WHERE id=1", "DELETE FROM vacancy_role_settings WHERE id=1", "DELETE FROM vacancy_roles WHERE id=991304"} {
+		for _, q := range []string{"DELETE FROM vacancy_detail_leases WHERE lease_key='import:global'", "DELETE FROM vacancy_import_write_context", "DELETE FROM company_vacancies WHERE company_name='CI Apify Runtime'", "DELETE FROM company_vacancy_state WHERE company_name='CI Apify Runtime'", "DELETE FROM company_crm WHERE company_name='CI Apify Runtime'", "DELETE FROM vacancy_detail_settings WHERE id=1", "DELETE FROM vacancy_role_settings WHERE id=1", "DELETE FROM vacancy_roles WHERE id=991304"} {
 			if _, err := s.db.ExecContext(context.Background(), q); err != nil {
 				t.Error("import cleanup", err)
 			}
@@ -150,6 +150,30 @@ func TestMariaDBHHImportDisposable(t *testing.T) {
 		}
 		if s.count("SELECT COUNT(*) FROM vacancy_candidates WHERE id=? AND main_vacancy_id IS NOT NULL", candidate) != 0 || s.count("SELECT COUNT(*) FROM vacancy_import_operations WHERE candidate_id=?", candidate) != 0 {
 			t.Fatal("stale import persisted")
+		}
+	})
+	t.Run("changed source blocks queued import", func(t *testing.T) {
+		s, lease, candidate, executor := hhImportFixture(t)
+		s.exec("UPDATE vacancy_source_parsing SET source_url='https://hh.ru/employer/999',revision=revision+1 WHERE company_id=991302 AND source_id='hh'")
+		if _, err := executor.Execute(s.ctx, lease); err == nil {
+			t.Fatal("changed source accepted")
+		}
+		if s.count("SELECT COUNT(*) FROM vacancy_candidates WHERE id=? AND main_vacancy_id IS NOT NULL", candidate) != 0 {
+			t.Fatal("changed source imported")
+		}
+	})
+	t.Run("active global import lease blocks and expired lease recovers", func(t *testing.T) {
+		s, lease, candidate, executor := hhImportFixture(t)
+		s.exec("INSERT INTO vacancy_detail_leases(lease_key,generation,owner_token,expires_at) VALUES('import:global',?,'CI_OTHER',?)", s.repo.Generation, time.Now().Add(time.Minute).UnixMilli())
+		if _, err := executor.Execute(s.ctx, lease); err == nil {
+			t.Fatal("active import lease ignored")
+		}
+		if s.count("SELECT COUNT(*) FROM vacancy_candidates WHERE id=? AND main_vacancy_id IS NOT NULL", candidate) != 0 {
+			t.Fatal("busy import persisted")
+		}
+		s.exec("UPDATE vacancy_detail_leases SET expires_at=1 WHERE lease_key='import:global'")
+		if _, err := executor.Execute(s.ctx, lease); err != nil {
+			t.Fatal("expired import lease", err)
 		}
 	})
 	t.Run("existing publication preserves manual title", func(t *testing.T) {
