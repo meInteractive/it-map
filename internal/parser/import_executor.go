@@ -47,6 +47,18 @@ func (e HHImportExecutor) Execute(ctx context.Context, lease *JobLease) (result 
 		if err != nil {
 			return err
 		}
+		settingsRow, err := readSettingsRow(ctx, tx, true)
+		if err != nil {
+			return ErrSettingsStorage
+		}
+		settingsView, err := settingsView(ctx, tx, settingsRow)
+		if err != nil {
+			return ErrSettingsStorage
+		}
+		var settings Settings
+		if json.Unmarshal(settingsView.PublicJSON(), &settings) != nil || !settings.Enabled || settings.OwnerName != e.Owner {
+			return ErrCandidateChanged
+		}
 		source, err := e.Settings.ReadHHSourceTx(ctx, tx, *job.CompanyID)
 		if err != nil {
 			return err

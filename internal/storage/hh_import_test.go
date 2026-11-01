@@ -24,6 +24,7 @@ import (
 func hhImportFixture(t *testing.T) (*schedulerFixture, *parser.JobLease, int64, parser.HHImportExecutor) {
 	t.Helper()
 	_, s, detail, candidate := hhDetailFixture(t)
+	s.exec("UPDATE firecrawl_settings SET scheduler_json=JSON_SET(scheduler_json,'$.ownerName','CI_OWNER') WHERE id=1")
 	s.exec("INSERT INTO vacancy_roles(id,name,stable_key,parent_id,sort_order) VALUES(991304,'CI HH leaf','ci-hh-leaf',991303,1)")
 	s.exec("INSERT INTO vacancy_detail_settings(id,markdown,prompt_revision,provider,openai_model,reasoning_effort,model_revision) VALUES(1,'CI extraction prompt',1,'openai','gpt-6-luna','medium',1)")
 	s.exec("INSERT INTO vacancy_role_settings(id,markdown,prompt_revision,provider,openai_model,openrouter_model,reasoning_effort,model_revision) VALUES(1,'CI roles prompt',1,'openai','gpt-6-luna','best_free','medium',1)")
@@ -160,6 +161,16 @@ func TestMariaDBHHImportDisposable(t *testing.T) {
 		}
 		if s.count("SELECT COUNT(*) FROM vacancy_candidates WHERE id=? AND main_vacancy_id IS NOT NULL", candidate) != 0 {
 			t.Fatal("changed source imported")
+		}
+	})
+	t.Run("changed scheduler owner blocks queued import", func(t *testing.T) {
+		s, lease, candidate, executor := hhImportFixture(t)
+		s.exec("UPDATE firecrawl_settings SET scheduler_json=JSON_SET(scheduler_json,'$.ownerName','CI_OTHER') WHERE id=1")
+		if _, err := executor.Execute(s.ctx, lease); err == nil {
+			t.Fatal("stale scheduler owner accepted")
+		}
+		if s.count("SELECT COUNT(*) FROM vacancy_candidates WHERE id=? AND main_vacancy_id IS NOT NULL", candidate) != 0 {
+			t.Fatal("stale owner imported")
 		}
 	})
 	t.Run("uninitialized legacy jobs block import", func(t *testing.T) {

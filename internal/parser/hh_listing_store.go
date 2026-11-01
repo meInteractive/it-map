@@ -34,7 +34,7 @@ func (e HHListingExecutor) hhScope(ctx context.Context, tx *sql.Tx, job Job, v a
 		return "", "", nil, ErrSettingsStorage
 	}
 	var settings Settings
-	if json.Unmarshal(view.PublicJSON(), &settings) != nil || !settings.Enabled {
+	if json.Unmarshal(view.PublicJSON(), &settings) != nil || !settings.Enabled || settings.OwnerName != e.Owner {
 		return "", "", nil, ErrSettingsChanged
 	}
 	selected := false
