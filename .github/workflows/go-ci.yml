@@ -187,6 +187,7 @@ jobs:
       - name: Run session lifecycle regression with strict Node rejection handling
         run: |
           node scripts/test-session-lifecycle.mjs
+          node scripts/test-pwa-session-recovery.mjs
           node scripts/test-cache-subscriber-races.mjs
           node scripts/test-dirty-navigation.mjs
       - name: Verify PWA source syntax and conditional task regressions with strict Node
@@ -203,4 +204,10 @@ jobs:
             node scripts/test-map-office-features.mjs
             node scripts/test-map-office-grouping.mjs
           fi
+      - name: Validate browser spec discovery and fixture TypeScript
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx playwright test --config=playwright.config.ts --list
+          ITMAP_COMPANY_BROWSER_WRITES=1 npx playwright test --config=playwright.company-flags.config.ts --list
       - run: npm run build:web
