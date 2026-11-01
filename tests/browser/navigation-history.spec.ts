@@ -54,7 +54,7 @@ test('13–14: Back закрывает карточку компании, Forwar
   await expect(dialog).toBeVisible();
   const drawerState = await page.evaluate(() => history.state);
   expect(Object.keys(drawerState).sort()).toEqual(['itmapDrawerToken', 'itmapPosition']);
-  expect(typeof drawerState.itmapDrawerToken).toBe('string');
+  expect(Number.isSafeInteger(drawerState.itmapDrawerToken)).toBe(true);
   expect(Number.isSafeInteger(drawerState.itmapPosition)).toBe(true);
   await expect(page).toHaveURL(/\/list$/);
   await page.goBack();
