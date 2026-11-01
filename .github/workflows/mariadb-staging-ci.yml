@@ -1345,6 +1345,22 @@ jobs:
               assert any(e.get('Test')==target and e.get('Action')=='pass' for e in events), f'{target} did not pass'
           assert not any(e.get('Action')=='skip' for e in events), 'HH listing gate skipped'
           PYCODE
+      - name: Проверить полный текст HH только в одноразовой CI БД
+        env:
+          ITMAP_REQUIRE_MARIADB_INTEGRATION: '1'
+          ITMAP_TEST_MARIADB_WRITE_DSN: 'itmap_ci:ci_only_disposable_writer@tcp(127.0.0.1:3306)/itmap_ci?parseTime=true&clientFoundRows=true&collation=utf8mb4_bin'
+        run: |
+          set -euo pipefail
+          result_file="$(mktemp)"
+          trap 'rm -f "$result_file"' EXIT
+          go test -race -tags mariadb,schedulerwrites,schedulerbilling ./internal/storage -run '^TestMariaDBHHDetail(Authorization|ProfileRecovery|Recovery|KeyRotation)?Disposable$' -count=1 -json | tee "$result_file"
+          python3 - "$result_file" <<'PYCODE'
+          import json,sys
+          events=[json.loads(line) for line in open(sys.argv[1],encoding='utf8')]
+          for target in ['TestMariaDBHHDetailAuthorizationDisposable','TestMariaDBHHDetailProfileRecoveryDisposable','TestMariaDBHHDetailDisposable','TestMariaDBHHDetailRecoveryDisposable','TestMariaDBHHDetailKeyRotationDisposable']:
+              assert any(e.get('Test')==target and e.get('Action')=='pass' for e in events), f'{target} did not pass'
+          assert not any(e.get('Action')=='skip' for e in events), 'HH detail gate skipped'
+          PYCODE
       - name: Verify scheduler billing reservation and recovery ONLY in disposable CI
         env:
           ITMAP_REQUIRE_MARIADB_INTEGRATION: '1'

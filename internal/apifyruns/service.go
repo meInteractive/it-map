@@ -36,9 +36,20 @@ func operationKey(v apifysettings.OperationVersion, key string, options apify.HH
 	if key == "" || len(key) > 1024 {
 		return "", apifysettings.ErrInput
 	}
-	input, e := apify.HHInput(v.SourceURL, options)
+	if v.CandidateID != 0 && !options.Detail {
+		return "", apifysettings.ErrInput
+	}
+	input, e := apify.HHInput(operationTarget(v), options)
 	if e != nil {
 		return "", e
+	}
+	type detailIdentity struct {
+		CandidateID, TitleRevision int64
+		VacancyURL                 string
+	}
+	var detail *detailIdentity
+	if v.CandidateID != 0 {
+		detail = &detailIdentity{v.CandidateID, v.TitleRevision, v.VacancyURL}
 	}
 	raw, e := json.Marshal(struct {
 		CompanyID      int64
@@ -46,7 +57,8 @@ func operationKey(v apifysettings.OperationVersion, key string, options apify.HH
 		SourceURL      string
 		Key            string
 		Input          apify.StartInput
-	}{v.CompanyID, v.SourceRevision, v.SourceURL, key, input})
+		Detail         *detailIdentity `json:",omitempty"`
+	}{v.CompanyID, v.SourceRevision, v.SourceURL, key, input, detail})
 	if e != nil {
 		return "", apifysettings.ErrInput
 	}
@@ -115,7 +127,7 @@ func (s Service) Execute(ctx context.Context, v apifysettings.OperationVersion, 
 	if e != nil {
 		return row, e
 	}
-	run, e := client.Start(ctx, v.SourceURL, options)
+	run, e := client.Start(ctx, operationTarget(v), options)
 	if e != nil {
 		return row, ErrUncertain
 	}
@@ -152,4 +164,11 @@ func (s Service) reconcile(ctx context.Context, v apifysettings.OperationVersion
 		return row, e
 	}
 	return s.Repository.record(ctx, v, key, run)
+}
+
+func operationTarget(v apifysettings.OperationVersion) string {
+	if v.CandidateID != 0 {
+		return v.VacancyURL
+	}
+	return v.SourceURL
 }

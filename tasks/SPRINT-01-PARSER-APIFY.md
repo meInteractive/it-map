@@ -46,6 +46,8 @@
 
 ### [ ] GO-400. Полный текст HH и проверенный снимок
 
+- **В работе (01.11.2026):** `codex/GO-400-hh-fulltext` добавляет изолированный публичный HH transport/JSON-LD, проверку описания до metadata, source/candidate-bound Apify detail, inline/composite snapshots и extraction handoff на acquired lease. Кэш и бесплатный HH доступны без включённого Apify; неизвестный paid outcome не повторяется. Локальные race/vet/Go+web build/source oracles/API audit/public/doc checks успешны. SQL-тесты пока только скомпилированы и пропущены guard, новый обязательный gate ожидает CI; задачу не закрывать. Worker/реальные провайдеры/сервер не включены.
+
 - **Зависимости:** GO-399 и существующая проверка GO-395.
 - **Результат:** `fetch_full_text` для принятого HH-кандидата использует сохранённый снимок либо безопасное получение detail (включая предусмотренный старым контрактом бесплатный HH-путь и Apify fallback), проверяет URL/статус/содержимое, пишет hash, provenance, диагностику и историю fetch. Не передавать модели неполный/повреждённый текст, не тратить бюджет при cache hit; после успеха планировать извлечение.
 - **Приёмка:** recorded detail fixtures, mock transport, SQL rollback/retry/stale source tests и чтение полного текста из MariaDB, в том числе составного снимка. Другие источники и Firecrawl не блокируют маршрут HH.
