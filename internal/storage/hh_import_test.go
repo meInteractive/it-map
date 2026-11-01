@@ -140,6 +140,20 @@ func TestMariaDBHHImportDisposable(t *testing.T) {
 			t.Fatal("manual title was not preserved or description missing")
 		}
 	})
+	t.Run("unchanged import preserves source timestamp", func(t *testing.T) {
+		s, lease, candidate, executor := hhImportFixture(t)
+		s.exec("INSERT INTO company_crm(company_name) VALUES('CI Apify Runtime')")
+		s.exec("INSERT INTO company_vacancies(id,company_name,url,title,description_md,role) VALUES(991305,'CI Apify Runtime','https://hh.ru/vacancy/123','CI_TITLE',?,'CI HH leaf')", hhDetailBody())
+		s.exec("INSERT INTO vacancy_role_assignments(vacancy_id,role_id) VALUES(991305,991304)")
+		s.exec("INSERT INTO vacancy_parser_roles(vacancy_id,role_id,candidate_id) VALUES(991305,991304,?)", candidate)
+		s.exec("INSERT INTO vacancy_publication_sources(candidate_id,vacancy_id,url,canonical_url,extraction_id,updated_at) SELECT ?,991305,'https://hh.ru/vacancy/123','https://hh.ru/vacancy/123',id,'CI_OLD' FROM vacancy_extractions WHERE candidate_id=? AND status='success'", candidate, candidate)
+		s.exec("INSERT INTO vacancy_publication_keys(identity_key,vacancy_id) SELECT identity_key,991305 FROM vacancy_candidate_identities WHERE candidate_id=?", candidate)
+		s.exec("INSERT INTO vacancy_publication_keys(identity_key,vacancy_id) VALUES(?,991305) ON DUPLICATE KEY UPDATE vacancy_id=VALUES(vacancy_id)", "url:"+testStageHash("https://hh.ru/vacancy/123"))
+		result, err := executor.Execute(s.ctx, lease)
+		if err != nil || result.Action != "unchanged" || result.VacancyID != 991305 || s.count("SELECT COUNT(*) FROM vacancy_publication_sources WHERE candidate_id=? AND updated_at='CI_OLD'", candidate) != 1 {
+			t.Fatal("unchanged import", result, err)
+		}
+	})
 	t.Run("cross source content links existing vacancy", func(t *testing.T) {
 		s, lease, _, executor := hhImportFixture(t)
 		s.exec("INSERT INTO company_crm(company_name) VALUES('CI Apify Runtime')")

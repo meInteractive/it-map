@@ -174,10 +174,6 @@ func writeHHImport(ctx context.Context, tx *sql.Tx, j Job, company, url, canonic
 	} else if err != nil {
 		return HHImportResult{}, ErrSettingsStorage
 	}
-	_, err = tx.ExecContext(ctx, "INSERT INTO vacancy_publication_sources(candidate_id,vacancy_id,url,canonical_url,source_namespace,external_job_id,extraction_id,updated_at) VALUES(?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE url=VALUES(url),canonical_url=VALUES(canonical_url),extraction_id=VALUES(extraction_id),updated_at=VALUES(updated_at)", j.CandidateID, target, url, canonical, namespace, external, s.ExtractCache.ID, at)
-	if err != nil {
-		return HHImportResult{}, ErrSettingsStorage
-	}
 	for _, key := range keys {
 		var known int64
 		err = tx.QueryRowContext(ctx, "SELECT vacancy_id FROM vacancy_publication_keys WHERE identity_key=? FOR UPDATE", key).Scan(&known)
@@ -187,6 +183,12 @@ func writeHHImport(ctx context.Context, tx *sql.Tx, j Job, company, url, canonic
 		} else if err == nil && known != target {
 			return HHImportResult{}, ErrImportIdentityConflict
 		}
+		if err != nil {
+			return HHImportResult{}, ErrSettingsStorage
+		}
+	}
+	if changed {
+		_, err = tx.ExecContext(ctx, "INSERT INTO vacancy_publication_sources(candidate_id,vacancy_id,url,canonical_url,source_namespace,external_job_id,extraction_id,updated_at) VALUES(?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE url=VALUES(url),canonical_url=VALUES(canonical_url),extraction_id=VALUES(extraction_id),updated_at=VALUES(updated_at)", j.CandidateID, target, url, canonical, namespace, external, s.ExtractCache.ID, at)
 		if err != nil {
 			return HHImportResult{}, ErrSettingsStorage
 		}
