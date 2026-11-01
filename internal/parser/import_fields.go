@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 )
 
-// importFieldPlan mirrors the legacy import's ownership check. Values are
-// limited to database NULL, strings and int64 by the caller.
+// importFieldPlan сохраняет решение о происхождении поля. Вызывающий код
+// передаёт только SQL NULL, строки и int64.
 type importFieldPlan struct {
 	Value            any
 	Managed, Changed bool
@@ -34,7 +34,7 @@ func planImportField(current, incoming any, existing, manual bool, ledger string
 	return p
 }
 
-// A partially managed range must never become invalid by updating one end.
+// Частичное обновление не должно создавать противоречивую вилку.
 func protectImportSalary(from, to importFieldPlan, oldFrom, oldTo any) (importFieldPlan, importFieldPlan) {
 	a, aok := from.Value.(int64)
 	b, bok := to.Value.(int64)
