@@ -23,6 +23,7 @@ type Service struct {
 	NewClient     func(string) (Provider, error)
 	CheckActive   func(context.Context) error
 	BeforeReserve func() error
+	AfterReserve  func()
 }
 
 // WithCheck возвращает отдельную копию для текущей стадии. Callback выполняется
@@ -147,6 +148,9 @@ func (s Service) Execute(ctx context.Context, v apifysettings.OperationVersion, 
 	reserved, e := s.Repository.Reserve(ctx, v, scoped)
 	if e != nil {
 		return Record{}, e
+	}
+	if !reserved.Existing && s.AfterReserve != nil {
+		s.AfterReserve()
 	}
 	if reserved.Existing {
 		row, e = s.Repository.readOperation(ctx, v, scoped)

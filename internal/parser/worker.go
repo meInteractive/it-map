@@ -98,17 +98,25 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 	owner := settings.OwnerName
 	var actorStarts atomic.Int32
 	admit := func() error {
-		if actorStarts.Add(1) > 1 {
+		if actorStarts.Load() >= 1 {
 			return ErrHHCycleLimit
 		}
 		return nil
 	}
-	service := apifyruns.Service{Repository: apifyruns.Repository{DB: w.Settings.DB, Settings: w.Settings}, BeforeReserve: admit}
+	count := func() { actorStarts.Add(1) }
+	service := apifyruns.Service{Repository: apifyruns.Repository{DB: w.Settings.DB, Settings: w.Settings}, BeforeReserve: admit, AfterReserve: count}
 	listingRuntime := w.ListingRuntime
 	if listingRuntime == nil {
 		listingRuntime = service
 	} else if existing, ok := listingRuntime.(apifyruns.Service); ok {
 		previous := existing.BeforeReserve
+		previousAfter := existing.AfterReserve
+		existing.AfterReserve = func() {
+			if previousAfter != nil {
+				previousAfter()
+			}
+			count()
+		}
 		existing.BeforeReserve = func() error {
 			if previous != nil {
 				if err := previous(); err != nil {
@@ -124,6 +132,13 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 		detailRuntime = service
 	} else if existing, ok := detailRuntime.(apifyruns.Service); ok {
 		previous := existing.BeforeReserve
+		previousAfter := existing.AfterReserve
+		existing.AfterReserve = func() {
+			if previousAfter != nil {
+				previousAfter()
+			}
+			count()
+		}
 		existing.BeforeReserve = func() error {
 			if previous != nil {
 				if err := previous(); err != nil {
