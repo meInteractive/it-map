@@ -1427,6 +1427,7 @@ jobs:
           ITMAP_TEST_MARIADB_WRITE_DSN: 'itmap_ci:ci_only_disposable_writer@tcp(127.0.0.1:3306)/itmap_ci?parseTime=true&clientFoundRows=true&collation=utf8mb4_bin'
         run: |
           set -euo pipefail
+          go build -tags mariadb -o /tmp/itmap-parser-staging-ci ./cmd/itmap-parser-staging
           result_file="$(mktemp)"
           trap 'rm -f "$result_file"' EXIT
           go test -race -tags mariadb,schedulerwrites,schedulerbilling ./internal/storage -run '^TestMariaDBParser(E2E|StagingMock)Disposable$' -count=1 -json | tee "$result_file"

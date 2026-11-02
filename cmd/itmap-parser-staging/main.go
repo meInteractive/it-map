@@ -9,8 +9,6 @@ import (
 	"os"
 	"time"
 
-	_ "github.com/go-sql-driver/mysql"
-
 	"itmap/internal/auth"
 	"itmap/internal/httpapi"
 	"itmap/internal/parser"
