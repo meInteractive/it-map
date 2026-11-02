@@ -90,6 +90,7 @@ func configureScheduler(opts *httpapi.Options, db *sql.DB) {
 	}
 	control := parser.NewCycleControl(db, os.Getenv("SESSION_SECRET"), os.Getenv("OPENAI_API_KEY"))
 	opts.SchedulerCycle = control
+	opts.SchedulerProbe = control
 	if token := os.Getenv("SCHEDULER_TOKEN"); token != "" {
 		opts.SchedulerTick = control
 		opts.SchedulerToken = token

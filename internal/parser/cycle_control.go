@@ -64,7 +64,7 @@ func (c CycleControl) PrepareCycle(ctx context.Context) (func(context.Context, s
 }
 
 // PrepareTick фиксирует поколение до проверки входного сигнала.
-func (c CycleControl) PrepareTick(ctx context.Context) (func(context.Context, string) (json.RawMessage, error), error) {
+func (c CycleControl) PrepareTick(ctx context.Context) (func(context.Context, string, bool) (json.RawMessage, error), error) {
 	if c.DB == nil {
 		return nil, ErrSettingsStorage
 	}
@@ -72,7 +72,10 @@ func (c CycleControl) PrepareTick(ctx context.Context) (func(context.Context, st
 	if err := c.DB.QueryRowContext(ctx, "SELECT generation FROM app_runtime_generation WHERE id=1").Scan(&generation); err != nil || !generationPattern.MatchString(generation) {
 		return nil, settingsFailure(ctx, ErrSettingsStorage)
 	}
-	return func(ctx context.Context, id string) (json.RawMessage, error) {
+	return func(ctx context.Context, id string, diagnostic bool) (json.RawMessage, error) {
+		if diagnostic {
+			return c.probe(generation)(ctx, id)
+		}
 		if len(utf16.Encode([]rune(id))) > 100 {
 			return nil, &SettingsError{Message: "Некорректный сигнал."}
 		}

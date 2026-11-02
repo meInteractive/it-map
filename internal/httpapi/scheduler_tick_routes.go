@@ -15,7 +15,7 @@ import (
 )
 
 type SchedulerTickRunner interface {
-	PrepareTick(context.Context) (func(context.Context, string) (json.RawMessage, error), error)
+	PrepareTick(context.Context) (func(context.Context, string, bool) (json.RawMessage, error), error)
 }
 
 func SchedulerTickHandler(runner SchedulerTickRunner, token string) http.HandlerFunc {
@@ -80,18 +80,14 @@ func SchedulerTickHandler(runner SchedulerTickRunner, token string) http.Handler
 				return
 			}
 		}
+		diagnostic := false
 		if v, ok := fields["diagnostic"]; ok {
-			var diagnostic bool
 			if string(v) == "null" || json.Unmarshal(v, &diagnostic) != nil {
 				schedulerSettingsFailure(w, &parser.SettingsError{Message: "Некорректный сигнал."})
 				return
 			}
-			if diagnostic {
-				jsonReply(w, 503, map[string]string{"error": "Диагностический запуск ещё не подключён."})
-				return
-			}
 		}
-		result, err := run(r.Context(), id)
+		result, err := run(r.Context(), id, diagnostic)
 		if errors.Is(err, parser.ErrRunBusy) {
 			jsonReply(w, 409, map[string]string{"error": "Другой цикл диспетчера ещё выполняется.", "code": "scheduler_busy"})
 			return

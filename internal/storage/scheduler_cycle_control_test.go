@@ -36,13 +36,28 @@ func TestMariaDBSchedulerCycleControlDisposable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	raw, err = tick(f.ctx, "CI_DISABLED_TICK")
+	raw, err = tick(f.ctx, "CI_DISABLED_TICK", false)
 	if err != nil || json.Unmarshal(raw, &result) != nil || result.Status != "paused" {
 		t.Fatal("disabled tick", err)
 	}
-	replay, err := tick(f.ctx, "CI_DISABLED_TICK")
+	replay, err := tick(f.ctx, "CI_DISABLED_TICK", false)
 	if err != nil || !strings.Contains(string(replay), `"reused":true`) || f.count("SELECT COUNT(*) FROM scheduler_jobs") != 0 {
 		t.Fatal("tick replay", err)
+	}
+	probe, err := control.PrepareProbe(f.ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	probeBody, err := probe(f.ctx, "CI_PROBE")
+	if err != nil || !strings.Contains(string(probeBody), `"externalRequests":0`) {
+		t.Fatal("diagnostic probe", err)
+	}
+	if f.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='diagnostic' AND status='completed'") != 1 || f.count("SELECT COUNT(*) FROM scheduler_attempts WHERE type='diagnostic' AND reserved_usd=0 AND cost_usd=0") != 1 {
+		t.Fatal("probe made external request or missed receipt")
+	}
+	probeBody, err = probe(f.ctx, "CI_PROBE")
+	if err != nil || !strings.Contains(string(probeBody), `"reused":true`) || f.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='diagnostic'") != 1 {
+		t.Fatal("probe replay", err)
 	}
 	stale, err := control.PrepareCycle(f.ctx)
 	if err != nil {
