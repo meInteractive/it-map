@@ -78,6 +78,10 @@ func TestSchedulerCycleHTTPAuthorization(t *testing.T) {
 	if w.Code != 200 || p.calls != 1 || p.requestID != "12345678-1234-4234-8234-123456789abc" || !strings.Contains(w.Body.String(), `"status":"completed"`) {
 		t.Fatal("authorized cycle", w.Code, p.calls)
 	}
+	w = call(admin, "", "\ufeff"+valid)
+	if w.Code != 200 || p.calls != 2 {
+		t.Fatal("BOM cycle", w.Code)
+	}
 	p.err = parser.ErrRunBusy
 	w = call(admin, "", valid)
 	if w.Code != 409 || !strings.Contains(w.Body.String(), `"scheduler_busy"`) {

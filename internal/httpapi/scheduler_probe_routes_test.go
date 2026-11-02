@@ -61,4 +61,8 @@ func TestSchedulerProbeHTTPAuthorization(t *testing.T) {
 	if w.Code != 200 || p.calls != 1 || !strings.Contains(w.Body.String(), `"externalRequests":0`) {
 		t.Fatal("probe", w.Code, p.calls)
 	}
+	w = call(admin, "", "\ufeff{}")
+	if w.Code != 200 || p.calls != 2 {
+		t.Fatal("BOM probe", w.Code)
+	}
 }

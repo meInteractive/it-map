@@ -50,8 +50,12 @@ func TestSchedulerTickHTTPAuthorization(t *testing.T) {
 	if w.Code != 200 || p.calls != 1 || p.id != "CI_TICK" {
 		t.Fatal("authorized tick", w.Code, p.calls)
 	}
+	w = call("Bearer CI_TOKEN", "\ufeff"+`{"requestId":"CI_BOM"}`)
+	if w.Code != 200 || p.calls != 2 {
+		t.Fatal("BOM tick", w.Code)
+	}
 	w = call("Bearer CI_TOKEN", `{"diagnostic":true}`)
-	if w.Code != 200 || p.calls != 2 || !p.diagnostic {
+	if w.Code != 200 || p.calls != 3 || !p.diagnostic {
 		t.Fatal("diagnostic tick", w.Code, p.calls)
 	}
 }

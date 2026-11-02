@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -63,6 +64,7 @@ func SchedulerCycleHandler(manager *auth.Manager, runner SchedulerCycleRunner) h
 			}
 			return
 		}
+		raw = bytes.TrimPrefix(raw, []byte{0xef, 0xbb, 0xbf})
 		var input map[string]json.RawMessage
 		if json.Unmarshal(raw, &input) != nil || input == nil {
 			schedulerSettingsFailure(w, parser.ErrSettingsStorage)
