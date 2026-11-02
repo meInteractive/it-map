@@ -123,7 +123,7 @@ func scheduleHH(ctx context.Context, runs RunRepository, settingsRepo apifysetti
 		if known != 0 {
 			continue
 		}
-		if _, e = tx.ExecContext(ctx, `UPDATE vacancy_source_parsing SET interval_days=?,next_run_at=? WHERE company_id=? AND source_id='hh' AND revision=? AND source_url=?`, settings.IntervalDays, candidate.next, candidate.id, source.Revision, source.URL); e != nil {
+		if _, e = tx.ExecContext(ctx, `UPDATE vacancy_source_parsing SET auto_enabled=1,interval_days=?,next_run_at=? WHERE company_id=? AND source_id='hh' AND revision=? AND source_url=?`, settings.IntervalDays, candidate.next, candidate.id, source.Revision, source.URL); e != nil {
 			return ErrSettingsStorage
 		}
 		payload, e := json.Marshal(map[string]any{"sourceRevision": source.Revision, "sourceUrl": source.URL, "manual": false, "scheduleRevision": settings.Revision, "dueAt": candidate.next})
