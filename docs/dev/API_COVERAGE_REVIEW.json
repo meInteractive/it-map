@@ -444,6 +444,10 @@
         {
           "file": "internal/httpapi/scheduler_cycle_routes_test.go",
           "symbol": "TestSchedulerCycleStreamDisconnectCancelsWork"
+        },
+        {
+          "file": "internal/httpapi/scheduler_cycle_routes_test.go",
+          "symbol": "TestSchedulerCycleStreamPanicIsRedacted"
         }
       ]
     },

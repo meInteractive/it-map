@@ -41,7 +41,15 @@ func streamSchedulerCycle(w http.ResponseWriter, r *http.Request, id string, run
 		return
 	}
 	done := make(chan cycleStreamResult, 1)
-	go func() { body, err := run(ctx, id); done <- cycleStreamResult{body, err} }()
+	go func() {
+		defer func() {
+			if recover() != nil {
+				done <- cycleStreamResult{err: errors.New("scheduler cycle panic")}
+			}
+		}()
+		body, err := run(ctx, id)
+		done <- cycleStreamResult{body, err}
+	}()
 	ticker := time.NewTicker(8 * time.Second)
 	defer ticker.Stop()
 	query, _ := json.Marshal(map[string]string{"requestId": id})

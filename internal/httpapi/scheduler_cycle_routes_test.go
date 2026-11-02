@@ -162,3 +162,28 @@ func TestSchedulerCycleStreamDisconnectCancelsWork(t *testing.T) {
 		t.Fatal("stream handler did not stop")
 	}
 }
+
+type schedulerPanicCycle struct{}
+
+func (schedulerPanicCycle) PrepareCycle(context.Context) (func(context.Context, string) (json.RawMessage, error), error) {
+	return func(context.Context, string) (json.RawMessage, error) { panic("CI_PRIVATE_ERROR") }, nil
+}
+func TestSchedulerCycleStreamPanicIsRedacted(t *testing.T) {
+	m, e := auth.NewManager(strings.Repeat("s", 64), map[string]string{"eugene": "CI_pw", "demo": "CI_pw"})
+	if e != nil {
+		t.Fatal(e)
+	}
+	user, _ := m.Authenticate("eugene", "CI_pw")
+	token, e := m.Issue(user, time.Now())
+	if e != nil {
+		t.Fatal(e)
+	}
+	request := httptest.NewRequest("POST", "https://example.invalid/api/scheduler/run", strings.NewReader(`{"requestId":"12345678-1234-4234-8234-123456789abc"}`))
+	request.AddCookie(&http.Cookie{Name: auth.CookieName, Value: token})
+	request.Header.Set("Accept", "application/x-ndjson")
+	response := httptest.NewRecorder()
+	NewHandlerWithOptions(nil, Options{Auth: m, SchedulerCycle: schedulerPanicCycle{}}).ServeHTTP(response, request)
+	if !strings.Contains(response.Body.String(), `"type":"error"`) || strings.Contains(response.Body.String(), "CI_PRIVATE_ERROR") {
+		t.Fatal("panic stream not safely reported")
+	}
+}
