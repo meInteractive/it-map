@@ -3,6 +3,7 @@ import { useApi } from '../../api/client';
 import { ErrorText } from '../../components/Common';
 import type { Entity, Navigation } from '../../../shared/contracts';
 import { mapCompanyLabel } from './labels';
+import {normalizeCompanySearch} from '../companies/companySearch';
 
 interface SearchResult {
     matches: { name: string; sector: string }[];
@@ -15,7 +16,7 @@ export function MapSearch({ query, entities, nav, onQueryChange }: {
     entities: Entity[];
     nav: Navigation;
 }) {
-    const term = query.trim().toLowerCase();
+    const term = normalizeCompanySearch(query);
     const [search, setSearch] = useState('');
     const [dismissedQuery, setDismissedQuery] = useState<string | null>(null);
     useEffect(() => {
@@ -32,7 +33,7 @@ export function MapSearch({ query, entities, nav, onQueryChange }: {
     function selectCompany(name: string) {
         // Application owns the unsaved-edit confirmation. Do not alter search on cancel.
         if (nav.openCompany(name, 'company') === false) return;
-        setDismissedQuery(onQueryChange ? name.trim().toLowerCase() : term);
+        setDismissedQuery(onQueryChange ? normalizeCompanySearch(name) : term);
         onQueryChange?.(name);
     }
     useEffect(() => {

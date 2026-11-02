@@ -18,7 +18,7 @@ test('PWA: установка worker, offline public assets, API не кэшир
     ['/api/session', '/api/tasks', '/'].map(async url => (await fetch(url)).status),
   ));
   expect(online).toEqual([200, 200, 200]);
-  const publicPaths = ['/icons/apple-touch-icon.png', '/icons/icon-192.png', '/icons/icon-512.png', '/manifest.webmanifest'];
+  const publicPaths = ['/icons/apple-touch-icon.png', '/icons/icon-192.png', '/icons/icon-512.png', '/manifest.webmanifest', '/offline.html'];
   const cachedPaths = await page.evaluate(async () => {
     const paths: string[] = [];
     for (const name of await caches.keys()) {
@@ -28,7 +28,7 @@ test('PWA: установка worker, offline public assets, API не кэшир
     }
     return paths.sort();
   });
-  // No HTML, session, task notes, auth responses, or arbitrary assets in caches.
+  // Только публичная offline-страница и иконки; нет API, сессии или пользовательского HTML.
   expect(cachedPaths).toEqual(publicPaths);
   await context.setOffline(true);
   try {
@@ -49,7 +49,12 @@ test('PWA: установка worker, offline public assets, API не кэшир
     expect(privateReachable).toEqual([false, false, false]);
   } finally {
     await context.setOffline(false);
+    await expect.poll(() => page.evaluate(() => navigator.onLine)).toBe(true);
+    await page.evaluate(() => window.dispatchEvent(new Event('online')));
   }
-  await page.goto('/logout');
+  await expect(page.getByRole('navigation', { name: 'Основные разделы' })).toBeVisible();
+  // A concurrent session revalidation can abort page.goto during the logout redirect.
+  // Trigger actual browser navigation, then assert the redirected login UI.
+  await page.evaluate(() => { window.location.assign('/logout'); });
   await expect(page.getByRole('button', { name: 'Открыть карту', exact: true })).toBeVisible();
 });

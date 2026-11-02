@@ -14,7 +14,14 @@ export const test = base.extend<{ browserErrors: string[]; activate: (target: Lo
   },
   browserErrors: [async ({ page, context, baseURL }, use) => {
     const errors: string[] = [];
-    page.on('pageerror', () => errors.push('Uncaught browser exception'));
+    page.on('pageerror', error => {
+      // CI uses disposable test data. Preserve the error type and a redacted
+      // diagnostic, never URLs, query strings, credentials or arbitrary payloads.
+      const safeMessage = String(error.message).slice(0, 160).split(' ')
+        .map(word => word.length > 35 || word.includes('/') || word.includes('=') || word.includes('@') ? '[redacted]' : word)
+        .join(' ');
+      errors.push('Uncaught browser exception (' + error.name + '): ' + safeMessage);
+    });
     await context.route('**/*', route => {
       const url = new URL(route.request().url());
       if (url.origin !== new URL(baseURL!).origin) {
