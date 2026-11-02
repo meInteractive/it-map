@@ -23,13 +23,19 @@ func (d AIStageDispatcher) executor(kind string) (*AIStageExecutor, error) {
 		store = ExtractionStageStore{Owner: d.Owner}
 	case "assign_roles":
 		store = LeafStageStore{Owner: d.Owner}
+	case "score_relevance":
+		store = RelevanceStageStore{Owner: d.Owner}
 	default:
 		return nil, ErrAIStageUnavailable
 	}
-	return &AIStageExecutor{
+	executor := &AIStageExecutor{
 		Store: store, Generator: d.Generator, Classifier: d.Classifier,
 		Handoff: &CandidateHandoff{Planner: SQLCandidateHandoffPlanner{Owner: d.Owner}},
-	}, nil
+	}
+	if kind == "score_relevance" {
+		executor.Handoff = nil
+	}
+	return executor, nil
 }
 
 // Execute не получает задание из очереди и не повторяет платные запросы.

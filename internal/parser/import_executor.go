@@ -111,6 +111,9 @@ func (e HHImportExecutor) Execute(ctx context.Context, lease *JobLease) (result 
 				return err
 			}
 		}
+		if err = enqueueHHRelevance(ctx, tx, job, e.Owner); err != nil {
+			return err
+		}
 		if _, err = tx.ExecContext(ctx, "DELETE FROM vacancy_detail_leases WHERE lease_key='import:global' AND generation=? AND owner_token=?", job.Generation, token); err != nil {
 			return ErrSettingsStorage
 		}

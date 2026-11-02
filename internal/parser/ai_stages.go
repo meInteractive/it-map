@@ -161,6 +161,9 @@ func (e *AIStageExecutor) Execute(ctx context.Context, lease *JobLease) (AIStage
 		}
 	}
 	receipt, _ := json.Marshal(map[string]any{"model": output.Generation.Model, "reused": output.Reused})
+	if x, ok := plan.provenance.(relevanceSnapshot); ok && job.Type == "score_relevance" {
+		receipt, _ = json.Marshal(map[string]any{"model": output.Generation.Model, "reused": output.Reused, "relevanceInputHash": x.BaseHash, "relevanceRolesHash": x.RolesHash})
+	}
 	if output.Classification != nil {
 		receipt, _ = json.Marshal(map[string]any{"model": output.Classification.Model, "reused": output.Reused})
 	}

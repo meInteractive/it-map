@@ -27,7 +27,11 @@ func TestAIStageDispatcherRouting(t *testing.T) {
 			}
 		})
 	}
-	for _, kind := range []string{"", "fetch_full_text", "import_vacancy", "score_relevance"} {
+	score, err := d.executor("score_relevance")
+	if err != nil || score.Store != (RelevanceStageStore{Owner: d.Owner}) || score.Handoff != nil {
+		t.Fatal("relevance dispatcher", err)
+	}
+	for _, kind := range []string{"", "fetch_full_text", "import_vacancy"} {
 		if _, err := d.executor(kind); !errors.Is(err, ErrAIStageUnavailable) {
 			t.Fatalf("unsupported type %q: %v", kind, err)
 		}
