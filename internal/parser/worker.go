@@ -48,7 +48,7 @@ var ErrHHCycleLimit = errors.New("HH cycle actor start limit reached")
 var workerTypes = []string{"scan_source", "classify_title", "fetch_full_text", "extract_vacancy", "assign_roles", "import_vacancy", "score_relevance"}
 
 func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result WorkerResult, failure error) {
-	if w.Runs.DB == nil || w.Settings.DB != w.Runs.DB || options.MaxJobs < 1 || options.MaxJobs > 1000 || options.Run.Diagnostic {
+	if w.Runs.DB == nil || w.Settings.DB != w.Runs.DB || options.MaxJobs < 1 || options.MaxJobs > 50 || options.Run.Diagnostic {
 		return result, ErrRunInput
 	}
 	duration := options.Run.Duration
