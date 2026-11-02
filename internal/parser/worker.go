@@ -106,6 +106,13 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 	count := func() { actorStarts.Add(1) }
 	service := apifyruns.Service{Repository: apifyruns.Repository{DB: w.Settings.DB, Settings: w.Settings}, BeforeReserve: admit, AfterReserve: count}
 	listingRuntime := w.ListingRuntime
+	if existing, ok := listingRuntime.(*apifyruns.Service); ok {
+		if existing == nil {
+			listingRuntime = nil
+		} else {
+			listingRuntime = *existing
+		}
+	}
 	if listingRuntime == nil {
 		listingRuntime = service
 	} else if existing, ok := listingRuntime.(apifyruns.Service); ok {
@@ -128,6 +135,13 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 		listingRuntime = existing
 	}
 	detailRuntime := w.DetailRuntime
+	if existing, ok := detailRuntime.(*apifyruns.Service); ok {
+		if existing == nil {
+			detailRuntime = nil
+		} else {
+			detailRuntime = *existing
+		}
+	}
 	if detailRuntime == nil {
 		detailRuntime = service
 	} else if existing, ok := detailRuntime.(apifyruns.Service); ok {
