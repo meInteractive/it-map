@@ -189,4 +189,29 @@ func TestMariaDBHHRelevanceDisposable(t *testing.T) {
 			t.Fatal("reconciled retry", err)
 		}
 	})
+	t.Run("uncertain receipt survives job replacement", func(t *testing.T) {
+		s, lease, _, vacancy := hhRelevanceFixture(t)
+		runner := &relevanceRunner{failure: errors.New("CI uncertain outcome")}
+		dispatcher := parser.AIStageDispatcher{Owner: "CI_OWNER", Generator: runner}
+		if _, err := dispatcher.Execute(s.ctx, lease); err == nil || runner.calls != 1 {
+			t.Fatal("unknown outcome", err)
+		}
+		oldID := lease.Job().ID
+		if s.count("SELECT COUNT(*) FROM scheduler_attempts WHERE job_id=? AND cost_usd IS NULL AND reserved_usd>0 AND JSON_EXTRACT(result_json,'$.relevanceVacancyId')=? AND result_json NOT LIKE '%CI synthetic resume%'", oldID, vacancy) != 1 {
+			t.Fatal("durable relevance scope missing")
+		}
+		s.exec("UPDATE scheduler_jobs SET id='CI_REPLACED_SCORE',status='pending',locked_by='',locked_until=0,run_after=0 WHERE id=?", oldID)
+		var run string
+		if err := s.db.QueryRowContext(s.ctx, "SELECT id FROM scheduler_runs WHERE status='running'").Scan(&run); err != nil {
+			t.Fatal(err)
+		}
+		id := "CI_REPLACED_SCORE"
+		retry, err := s.repo.ClaimJob(s.ctx, run, parser.ClaimOptions{JobID: &id})
+		if err != nil || retry == nil {
+			t.Fatal("replacement claim", err)
+		}
+		if _, err = dispatcher.Execute(s.ctx, retry); !errors.Is(err, parser.ErrMoneyUncertain) || runner.calls != 1 {
+			t.Fatal("replacement bypassed unknown outcome", err)
+		}
+	})
 }

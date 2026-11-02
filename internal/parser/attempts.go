@@ -139,6 +139,7 @@ func (s *attemptState) reserve(ctx context.Context, upper float64, provider, mod
 		return e
 	}
 	defer tx.Rollback()
+	var relevanceScope string
 	if upper > 0 {
 		var unresolved int
 		if e = tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM scheduler_attempts WHERE job_id=? AND id<>? AND cost_usd IS NULL AND reserved_usd>0", s.lease.jobID, s.id).Scan(&unresolved); e != nil {
@@ -153,12 +154,25 @@ func (s *attemptState) reserve(ctx context.Context, upper float64, provider, mod
 			if s.lease.job.CandidateID == nil {
 				return ErrJobInput
 			}
-			err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM scheduler_attempts a JOIN scheduler_jobs prior_job ON prior_job.id=a.job_id JOIN vacancy_candidates prior_candidate ON prior_candidate.id=prior_job.candidate_id JOIN vacancy_candidates current_candidate ON current_candidate.id=? WHERE prior_job.type='score_relevance' AND prior_candidate.main_vacancy_id IS NOT NULL AND prior_candidate.main_vacancy_id=current_candidate.main_vacancy_id AND a.id<>? AND a.cost_usd IS NULL AND a.reserved_usd>0`, s.lease.job.CandidateID, s.id).Scan(&unresolved)
+			var vacancyID sql.NullInt64
+			var created sql.NullString
+			err := tx.QueryRowContext(ctx, `SELECT c.main_vacancy_id,v.created_at FROM vacancy_candidates c LEFT JOIN company_vacancies v ON v.id=c.main_vacancy_id WHERE c.id=? FOR UPDATE`, s.lease.job.CandidateID).Scan(&vacancyID, &created)
 			if err != nil {
 				return storageError(ctx)
 			}
-			if unresolved != 0 {
-				return ErrMoneyUncertain
+			if vacancyID.Valid && created.Valid {
+				err = tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM scheduler_attempts a LEFT JOIN scheduler_jobs prior_job ON prior_job.id=a.job_id LEFT JOIN vacancy_candidates prior_candidate ON prior_candidate.id=prior_job.candidate_id WHERE a.type='score_relevance' AND a.id<>? AND a.cost_usd IS NULL AND a.reserved_usd>0 AND ((JSON_UNQUOTE(JSON_EXTRACT(a.result_json,'$.relevanceVacancyId'))=CAST(? AS CHAR) AND JSON_UNQUOTE(JSON_EXTRACT(a.result_json,'$.relevanceVacancyCreatedAt'))=?) OR (prior_job.type='score_relevance' AND prior_candidate.main_vacancy_id=?))`, s.id, vacancyID.Int64, created.String, vacancyID.Int64).Scan(&unresolved)
+				if err != nil {
+					return storageError(ctx)
+				}
+				if unresolved != 0 {
+					return ErrMoneyUncertain
+				}
+				scope, err := json.Marshal(map[string]any{"relevanceVacancyId": vacancyID.Int64, "relevanceVacancyCreatedAt": created.String})
+				if err != nil {
+					return ErrJobInput
+				}
+				relevanceScope = string(scope)
 			}
 		}
 		var raw []byte
@@ -184,7 +198,7 @@ func (s *attemptState) reserve(ctx context.Context, upper float64, provider, mod
 			return ErrBudgetLimit
 		}
 	}
-	if _, e = tx.ExecContext(ctx, "UPDATE scheduler_attempts SET reserved_usd=reserved_usd+?,provider=?,model=? WHERE id=?", upper, provider, model, s.id); e != nil {
+	if _, e = tx.ExecContext(ctx, "UPDATE scheduler_attempts SET reserved_usd=reserved_usd+?,provider=?,model=?,result_json=CASE WHEN ?='' THEN result_json ELSE ? END WHERE id=?", upper, provider, model, relevanceScope, relevanceScope, s.id); e != nil {
 		return storageError(ctx)
 	}
 	if e = tx.Commit(); e != nil {
@@ -320,7 +334,7 @@ func (a *Attempt) FinishWithin(ctx context.Context, options AttemptFinish, fn fu
 			return e
 		}
 	}
-	if _, e = tx.ExecContext(ctx, "UPDATE scheduler_attempts SET finished_at=?,status=?,reason_code=?,message=?,cost_usd=CASE WHEN ? THEN NULL ELSE reserved_usd END,credits=?,result_json=? WHERE id=?", now, job.Status, job.Code, job.Message, s.unknown.Load(), options.Credits, string(result), s.id); e != nil {
+	if _, e = tx.ExecContext(ctx, "UPDATE scheduler_attempts SET finished_at=?,status=?,reason_code=?,message=?,cost_usd=CASE WHEN ? THEN NULL ELSE reserved_usd END,credits=?,result_json=CASE WHEN ? AND type='score_relevance' THEN result_json ELSE ? END WHERE id=?", now, job.Status, job.Code, job.Message, s.unknown.Load(), options.Credits, s.unknown.Load(), string(result), s.id); e != nil {
 		return storageError(ctx)
 	}
 	if e = s.lease.finishLocked(ctx, tx, now, job, payload); e != nil {
