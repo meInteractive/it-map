@@ -17,10 +17,30 @@ import (
 type CycleControl struct {
 	DB                   *sql.DB
 	secret, openAIEnvKey string
+	workerFactory        func(RunRepository) (Worker, error)
 }
 
 func NewCycleControl(db *sql.DB, secret, openAIEnvKey string) CycleControl {
 	return CycleControl{DB: db, secret: secret, openAIEnvKey: openAIEnvKey}
+}
+
+// NewCycleControlWithFactory позволяет серверу подставить изолированные провайдеры.
+func NewCycleControlWithFactory(db *sql.DB, factory func(RunRepository) (Worker, error)) CycleControl {
+	return CycleControl{DB: db, workerFactory: factory}
+}
+func (c CycleControl) worker(generation string) (Worker, error) {
+	runs := RunRepository{DB: c.DB, Generation: generation}
+	if c.workerFactory != nil {
+		w, err := c.workerFactory(runs)
+		if err != nil {
+			return Worker{}, err
+		}
+		if w.Runs.DB != c.DB || w.Runs.Generation != generation || w.Settings.DB != c.DB {
+			return Worker{}, ErrRunInput
+		}
+		return w, nil
+	}
+	return NewWorker(runs, apifysettings.NewRepository(c.DB, c.secret), aiproviders.NewRepository(c.DB, c.secret, c.openAIEnvKey))
 }
 func (c CycleControl) String() string   { return "CycleControl{credentials:redacted}" }
 func (c CycleControl) GoString() string { return c.String() }
@@ -36,8 +56,7 @@ func (c CycleControl) PrepareCycle(ctx context.Context) (func(context.Context, s
 		if !generationPattern.MatchString(id) {
 			return nil, &SettingsError{Message: "Передайте UUID запуска."}
 		}
-		runs := RunRepository{DB: c.DB, Generation: generation}
-		w, err := NewWorker(runs, apifysettings.NewRepository(c.DB, c.secret), aiproviders.NewRepository(c.DB, c.secret, c.openAIEnvKey))
+		w, err := c.worker(generation)
 		if err != nil {
 			return nil, err
 		}
@@ -82,8 +101,7 @@ func (c CycleControl) PrepareTick(ctx context.Context) (func(context.Context, st
 		if id == "" {
 			id = fmt.Sprintf("hour:%d", time.Now().UnixMilli()/3600000)
 		}
-		runs := RunRepository{DB: c.DB, Generation: generation}
-		w, err := NewWorker(runs, apifysettings.NewRepository(c.DB, c.secret), aiproviders.NewRepository(c.DB, c.secret, c.openAIEnvKey))
+		w, err := c.worker(generation)
 		if err != nil {
 			return nil, err
 		}
