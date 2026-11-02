@@ -135,6 +135,16 @@ func TestMariaDBParserE2EDisposable(t *testing.T) {
 				Errors    int    `json:"errors"`
 			}
 			if first.Code != http.StatusOK || json.Unmarshal(first.Body, &result) != nil || result.Status != "completed" || result.Processed != 8 || result.Errors != 0 {
+				rows, err := s.db.QueryContext(s.ctx, "SELECT type,reason_code,status FROM scheduler_jobs WHERE status<>'completed' ORDER BY type")
+				if err == nil {
+					for rows.Next() {
+						var kind, code, status string
+						if rows.Scan(&kind, &code, &status) == nil {
+							t.Log("synthetic job", kind, code, status)
+						}
+					}
+					rows.Close()
+				}
 				t.Fatal("e2e cycle", first.Code, result)
 			}
 			titles, relevanceCalls, extractCalls, roleCalls := fake.counts()
