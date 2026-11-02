@@ -80,3 +80,62 @@ func TestMariaDBSchedulerControlHTTPDisposable(t *testing.T) {
 		})
 	}
 }
+
+func TestMariaDBSchedulerConcurrentDisposable(t *testing.T) {
+	provider := &hhScanProvider{rows: [][]json.RawMessage{{}}}
+	_, s, lease, listing := hhScanFixture(t, provider)
+	var oldRun string
+	if err := s.db.QueryRowContext(s.ctx, "SELECT id FROM scheduler_runs WHERE status='running'").Scan(&oldRun); err != nil {
+		t.Fatal(err)
+	}
+	if err := lease.Finish(s.ctx, parser.FinishOptions{Status: "cancelled"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.repo.Finish(s.ctx, oldRun, "completed"); err != nil {
+		t.Fatal(err)
+	}
+	s.exec("DELETE FROM scheduler_jobs WHERE id='CI_HH_SCAN'")
+	started, release := make(chan struct{}), make(chan struct{})
+	provider.afterAccount = func() { close(started); <-release }
+	control := parser.NewCycleControlWithFactory(s.db, func(r parser.RunRepository) (parser.Worker, error) {
+		return parser.Worker{Runs: r, Settings: apifysettings.NewRepository(s.db, "CI_SECRET"), ListingRuntime: listing.Runtime}, nil
+	})
+	manager, err := auth.NewManager(strings.Repeat("s", 64), map[string]string{"eugene": "CI_pw", "demo": "CI_pw"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	user, _ := manager.Authenticate("eugene", "CI_pw")
+	token, err := manager.Issue(user, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler := httpapi.NewHandlerWithOptions(nil, httpapi.Options{Auth: manager, SchedulerCycle: control})
+	call := func(id string) *httptest.ResponseRecorder {
+		request := httptest.NewRequest("POST", "https://example.invalid/api/scheduler/run", strings.NewReader(fmt.Sprintf(`{"requestId":%q}`, id)))
+		request.AddCookie(&http.Cookie{Name: auth.CookieName, Value: token})
+		response := httptest.NewRecorder()
+		handler.ServeHTTP(response, request)
+		return response
+	}
+	first := make(chan *httptest.ResponseRecorder, 1)
+	go func() { first <- call("12345678-1234-4234-8234-123456789abc") }()
+	select {
+	case <-started:
+	case <-time.After(15 * time.Second):
+		close(release)
+		t.Fatal("first cycle not started")
+	}
+	second := call("12345678-1234-4234-8234-123456789abd")
+	close(release)
+	if second.Code != http.StatusConflict || !strings.Contains(second.Body.String(), `"scheduler_busy"`) {
+		t.Fatal("parallel cycle accepted", second.Code)
+	}
+	select {
+	case result := <-first:
+		if result.Code != http.StatusOK || provider.starts != 1 {
+			t.Fatal("first cycle", result.Code, provider.starts)
+		}
+	case <-time.After(15 * time.Second):
+		t.Fatal("first cycle did not finish")
+	}
+}
