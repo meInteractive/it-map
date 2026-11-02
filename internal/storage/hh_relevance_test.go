@@ -127,14 +127,23 @@ func TestMariaDBHHRelevanceDisposable(t *testing.T) {
 			t.Fatal("stale model admitted", err)
 		}
 	})
-	t.Run("changed role during provider work blocks save", func(t *testing.T) {
-		s, lease, _, vacancy := hhRelevanceFixture(t)
-		runner := &relevanceRunner{after: func() { s.exec("UPDATE vacancy_roles SET name='CI changed leaf' WHERE id=991304") }}
-		_, err := (parser.AIStageDispatcher{Owner: "CI_OWNER", Generator: runner}).Execute(s.ctx, lease)
-		if err == nil || runner.calls != 1 || s.count("SELECT COUNT(*) FROM company_vacancy_user_state WHERE user_name='CI_OWNER' AND vacancy_id=? AND relevance IS NOT NULL", vacancy) != 0 {
-			t.Fatal("stale roles saved", err)
-		}
-	})
+	for name, mutation := range map[string]string{
+		"role":   "UPDATE vacancy_roles SET name='CI changed leaf' WHERE id=991304",
+		"prompt": "UPDATE system_prompts SET markdown='CI changed prompt',revision=revision+1 WHERE kind='relevance'",
+		"model":  "UPDATE prompt_model_settings SET revision=revision+1 WHERE kind='relevance'",
+		"resume": "UPDATE user_profiles SET resume_md='CI changed resume',revision=revision+1 WHERE user_name='CI_OWNER'",
+		"key":    "UPDATE openrouter_settings SET revision=revision+1 WHERE id=1",
+		"owner":  "UPDATE firecrawl_settings SET scheduler_json=JSON_SET(scheduler_json,'$.ownerName','CI_OTHER') WHERE id=1",
+	} {
+		t.Run("changed "+name+" during provider work blocks save", func(t *testing.T) {
+			s, lease, _, vacancy := hhRelevanceFixture(t)
+			runner := &relevanceRunner{after: func() { s.exec(mutation) }}
+			_, err := (parser.AIStageDispatcher{Owner: "CI_OWNER", Generator: runner}).Execute(s.ctx, lease)
+			if err == nil || runner.calls != 1 || s.count("SELECT COUNT(*) FROM company_vacancy_user_state WHERE user_name='CI_OWNER' AND vacancy_id=? AND relevance IS NOT NULL", vacancy) != 0 || s.count("SELECT COUNT(*) FROM company_vacancies WHERE id=?", vacancy) != 1 {
+				t.Fatal("stale relevance saved or vacancy lost", err)
+			}
+		})
+	}
 	t.Run("budget refusal spends nothing", func(t *testing.T) {
 		s, lease, _, vacancy := hhRelevanceFixture(t)
 		s.exec("UPDATE firecrawl_settings SET scheduler_json=JSON_SET(scheduler_json,'$.dayBudgetUsd',0,'$.monthBudgetUsd',0) WHERE id=1")
