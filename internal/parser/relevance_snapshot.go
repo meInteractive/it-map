@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
 
 	"itmap/internal/apifysettings"
 	"itmap/internal/profiles"
@@ -189,6 +188,6 @@ func readRelevanceSnapshot(ctx context.Context, tx *sql.Tx, job Job, owner strin
 		return x, err
 	}
 	x.Key = fmt.Sprintf("relevance:%s:%d:%s", owner, x.VacancyID, x.InputHash)
-	x.Eligible = !x.Score.Valid && len(x.Roles) > 0 && strings.TrimSpace(x.Resume) != "" && strings.TrimSpace(x.Prompt) != "" && strings.TrimSpace(x.Title) != "" && strings.TrimSpace(x.Markdown) != "" && x.Config.Provider == "openrouter" && x.Config.OpenRouterModel == "jev" && profiles.ValidateModel("relevance", x.Config) == nil
+	x.Eligible = !x.Score.Valid && len(x.Roles) > 0 && jsStageTrim(x.Resume) != "" && jsStageTrim(x.Prompt) != "" && jsStageTrim(x.Title) != "" && jsStageTrim(x.Markdown) != "" && x.Config.Provider == "openrouter" && x.Config.OpenRouterModel == "jev" && profiles.ValidateModel("relevance", x.Config) == nil
 	return x, nil
 }
