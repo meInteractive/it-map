@@ -44,7 +44,7 @@ func run() error {
 	}
 	providers := &stagingmock.Providers{}
 	control := parser.NewCycleControlWithFactory(db, func(r parser.RunRepository) (parser.Worker, error) { return stagingmock.Worker(r, s.secret, providers) })
-	handler := httpapi.NewHandlerWithOptions(nil, httpapi.Options{Auth: manager, SchedulerCycle: control, SchedulerProbe: control, VacancyDetails: vacancies.Repository{DB: db}})
+	handler := httpapi.NewHandlerWithOptions(nil, httpapi.Options{DB: db, Auth: manager, SchedulerCycle: control, SchedulerProbe: control, VacancyDetails: vacancies.Repository{DB: db}})
 	server := &http.Server{Addr: "127.0.0.1:18081", Handler: handler, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 30 * time.Second, WriteTimeout: 120 * time.Second, IdleTimeout: 120 * time.Second}
 	return server.ListenAndServe()
 }

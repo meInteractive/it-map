@@ -24,7 +24,7 @@ const SourceURL = "https://hh.ru/employer/456"
 const acceptedTitle = "STAGING_SYNTHETIC_TITLE"
 const rejectedTitle = "STAGING_SYNTHETIC_REJECTED"
 
-var description = "Синтетическое описание вакансии для проверки парсера. " + strings.Repeat("Разработка, анализ требований и взаимодействие с командой. ", 15)
+var description = "Задачи: развивать продукт и управлять командой. Требования: опыт управления, навыки планирования. " + strings.Repeat("Синтетическое описание вакансии для проверки парсера. ", 15)
 
 var errUnexpected = errors.New("неожиданный запрос синтетическому провайдеру")
 

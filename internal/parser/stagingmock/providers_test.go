@@ -33,6 +33,9 @@ func TestFixturesRejectUnknownSourcesAndReturnStableData(t *testing.T) {
 	if _, err := p.Fetch(ctx, "https://hh.ru/vacancy/123"); err != nil {
 		t.Fatal(err)
 	}
+	if issues := parser.CheckFulltextContent(description, 200); len(issues) != 0 {
+		t.Fatal("invalid synthetic vacancy description", issues)
+	}
 }
 
 func TestSyntheticAIRejectsUnknownRequests(t *testing.T) {
