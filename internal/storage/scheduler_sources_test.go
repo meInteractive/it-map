@@ -16,10 +16,15 @@ func TestMariaDBSchedulerSourcesDisposable(t *testing.T) {
 		favorites bool
 		shortened bool
 		known     bool
+		partial   bool
 		want      int
-	}{{"eligible source", false, false, false, 1}, {"outside favorites", true, false, false, 0}, {"shortened interval", false, true, false, 1}, {"known failed scan", false, false, true, 0}} {
+	}{{"eligible source", false, false, false, false, 1}, {"outside favorites", true, false, false, false, 0}, {"shortened interval", false, true, false, false, 1}, {"known failed scan", false, false, true, false, 0}, {"partial source", false, false, false, true, 1}} {
 		t.Run(tc.name, func(t *testing.T) {
-			provider := &hhScanProvider{rows: [][]json.RawMessage{{}}}
+			items := []json.RawMessage{}
+			if tc.partial {
+				items = append(items, json.RawMessage(`{}`))
+			}
+			provider := &hhScanProvider{rows: [][]json.RawMessage{items}}
 			_, s, lease, listing := hhScanFixture(t, provider)
 			var run string
 			if err := s.db.QueryRowContext(s.ctx, "SELECT id FROM scheduler_runs WHERE status='running'").Scan(&run); err != nil {
@@ -50,8 +55,17 @@ func TestMariaDBSchedulerSourcesDisposable(t *testing.T) {
 			if s.count("SELECT COUNT(*) FROM scheduler_runs WHERE id=? AND processed=? AND succeeded=?", first.Run.ID, tc.want, tc.want) != 1 {
 				t.Fatal("cycle counters missing")
 			}
-			if tc.want == 1 && s.count("SELECT COUNT(*) FROM vacancy_source_parsing WHERE company_id=991302 AND source_id='hh' AND next_run_at>CAST(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000 AS SIGNED) AND last_result='success' AND auto_enabled=1") != 1 {
-				t.Fatal("next source run not recorded")
+			if tc.want == 1 {
+				result := "success"
+				if tc.partial {
+					result = "partial"
+				}
+				if s.count("SELECT COUNT(*) FROM vacancy_source_parsing WHERE company_id=991302 AND source_id='hh' AND next_run_at>CAST(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000 AS SIGNED) AND last_result=? AND auto_enabled=1", result) != 1 {
+					t.Fatal("next source run not recorded")
+				}
+				if tc.partial && s.count("SELECT COUNT(*) FROM vacancy_source_parsing WHERE company_id=991302 AND source_id='hh' AND last_error<>'' AND last_success_at IS NULL") != 1 {
+					t.Fatal("partial source diagnostic missing")
+				}
 			}
 			second, err := w.Cycle(s.ctx, parser.WorkerOptions{Run: parser.RunOptions{RequestID: "CI_SOURCE_TICK_2"}, MaxJobs: 20})
 			if err != nil || second.Processed != 0 || provider.starts != tc.want {

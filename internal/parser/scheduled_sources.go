@@ -184,12 +184,12 @@ func completeScheduledHH(ctx context.Context, tx *sql.Tx, job Job, owner string,
 	if err != nil {
 		return ErrSettingsStorage
 	}
-	result := "success"
+	result, message := "success", ""
 	if code != "" {
-		result = "partial"
+		result, message = "partial", "Полнота списка не подтверждена."
 	}
 	successAt := time.UnixMilli(now).UTC().Format("2006-01-02T15:04:05.000Z")
-	update, err := tx.ExecContext(ctx, `UPDATE vacancy_source_parsing SET next_run_at=?,last_attempt_at=?,last_result=?,last_error=?,last_success_at=CASE WHEN ?='success' THEN ? ELSE last_success_at END,interval_days=? WHERE company_id=? AND source_id='hh' AND enabled=1 AND revision=? AND source_url=?`, now+int64(settings.IntervalDays)*86400000, now, result, "", result, successAt, settings.IntervalDays, job.CompanyID, cursor.Operation.SourceRevision, cursor.Operation.SourceURL)
+	update, err := tx.ExecContext(ctx, `UPDATE vacancy_source_parsing SET next_run_at=?,last_attempt_at=?,last_result=?,last_error=?,last_success_at=CASE WHEN ?='success' THEN ? ELSE last_success_at END,interval_days=? WHERE company_id=? AND source_id='hh' AND enabled=1 AND revision=? AND source_url=?`, now+int64(settings.IntervalDays)*86400000, now, result, message, result, successAt, settings.IntervalDays, job.CompanyID, cursor.Operation.SourceRevision, cursor.Operation.SourceURL)
 	if err != nil {
 		return ErrSettingsStorage
 	}
