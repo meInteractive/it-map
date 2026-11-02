@@ -6,6 +6,7 @@ import (
 	"errors"
 	"time"
 
+	"itmap/internal/aiproviders"
 	"itmap/internal/apifyruns"
 	"itmap/internal/apifysettings"
 )
@@ -20,6 +21,17 @@ type Worker struct {
 	Generator      AIStageGenerator
 	Classifier     AIStageClassifier
 }
+
+// NewWorker связывает провайдеры только с серверным хранилищем конфигурации.
+func NewWorker(runs RunRepository, settings apifysettings.Repository, providers aiproviders.Repository) (Worker, error) {
+	if runs.DB == nil || settings.DB != runs.DB || providers.DB != runs.DB {
+		return Worker{}, ErrRunInput
+	}
+	router := aiproviders.NewRouterService(providers)
+	openAI := aiproviders.NewOpenAIService(providers)
+	return Worker{Runs: runs, Settings: settings, Generator: aiproviders.NewGenerator(openAI, router), Classifier: router}, nil
+}
+
 type WorkerOptions struct {
 	Run     RunOptions
 	MaxJobs int
