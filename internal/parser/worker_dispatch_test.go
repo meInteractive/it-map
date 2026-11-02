@@ -94,3 +94,37 @@ func TestWorkerDispatchRetainsListingDiagnostic(t *testing.T) {
 		t.Fatalf("partial result: %+v %v", result, err)
 	}
 }
+
+type workerFailListing struct{ err error }
+
+func (s workerFailListing) Execute(context.Context, *JobLease) (HHListingProgress, error) {
+	return HHListingProgress{}, s.err
+}
+
+type workerFailDetail struct{ err error }
+
+func (s workerFailDetail) Execute(context.Context, *JobLease) (HHFullTextResult, error) {
+	return HHFullTextResult{}, s.err
+}
+
+type workerFailImport struct{ err error }
+
+func (s workerFailImport) Execute(context.Context, *JobLease) (HHImportResult, error) {
+	return HHImportResult{}, s.err
+}
+
+type workerFailAI struct{ err error }
+
+func (s workerFailAI) Execute(context.Context, *JobLease) (AIStageOutput, error) {
+	return AIStageOutput{}, s.err
+}
+func TestWorkerDispatchPropagatesStageFailures(t *testing.T) {
+	failure := errors.New("CI stage failed")
+	d := workerDispatch{listing: workerFailListing{failure}, detail: workerFailDetail{failure}, importer: workerFailImport{failure}, ai: workerFailAI{failure}}
+	for _, kind := range []string{"scan_source", "classify_title", "fetch_full_text", "extract_vacancy", "assign_roles", "import_vacancy", "score_relevance"} {
+		result, err := d.execute(context.Background(), &JobLease{job: Job{Type: kind}})
+		if !errors.Is(err, failure) || result.finished {
+			t.Fatalf("%s: %+v %v", kind, result, err)
+		}
+	}
+}
