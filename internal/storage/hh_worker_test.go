@@ -269,3 +269,54 @@ func TestMariaDBHHWorkerGenerationDisposable(t *testing.T) {
 		t.Fatal("stale generation wrote score")
 	}
 }
+
+type workerCancelPublic struct{ started chan struct{} }
+
+func (p workerCancelPublic) Fetch(ctx context.Context, _ string) (*hhpublic.Job, error) {
+	close(p.started)
+	<-ctx.Done()
+	return nil, ctx.Err()
+}
+func TestMariaDBHHWorkerCancelDisposable(t *testing.T) {
+	_, s, lease, _ := hhDetailFixture(t)
+	job := lease.Job().ID
+	var run string
+	if err := s.db.QueryRowContext(s.ctx, "SELECT id FROM scheduler_runs WHERE status='running'").Scan(&run); err != nil {
+		t.Fatal(err)
+	}
+	if err := lease.Finish(s.ctx, parser.FinishOptions{Status: "pending", Deferred: true}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.repo.Finish(s.ctx, run, "completed"); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(s.ctx)
+	defer cancel()
+	started := make(chan struct{})
+	w := parser.Worker{Runs: s.repo, Settings: apifysettings.NewRepository(s.db, "CI_SECRET"), Public: workerCancelPublic{started}}
+	finished := make(chan error, 1)
+	go func() {
+		_, err := w.Cycle(ctx, parser.WorkerOptions{Run: parser.RunOptions{RequestID: "CI_WORKER_CANCEL"}, MaxJobs: 20})
+		finished <- err
+	}()
+	select {
+	case <-started:
+	case <-time.After(15 * time.Second):
+		t.Fatal("worker did not start")
+	}
+	cancel()
+	select {
+	case err := <-finished:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatal("cancellation result", err)
+		}
+	case <-time.After(15 * time.Second):
+		t.Fatal("worker did not cancel")
+	}
+	if s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE id=? AND status='pending' AND locked_by=''", job) != 1 {
+		t.Fatal("cancelled job not released")
+	}
+	if s.count("SELECT COUNT(*) FROM scheduler_runs WHERE status='interrupted' AND id<>?", run) != 1 {
+		t.Fatal("cancelled run not interrupted")
+	}
+}

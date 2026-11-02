@@ -1399,11 +1399,11 @@ jobs:
           set -euo pipefail
           result_file="$(mktemp)"
           trap 'rm -f "$result_file"' EXIT
-          go test -race -tags mariadb,schedulerwrites,schedulerbilling ./internal/storage -run '^TestMariaDBHHWorker(Disposable|UncertainDisposable|CrashDisposable|GenerationDisposable)$' -count=1 -json | tee "$result_file"
+          go test -race -tags mariadb,schedulerwrites,schedulerbilling ./internal/storage -run '^TestMariaDBHHWorker(Disposable|UncertainDisposable|CrashDisposable|GenerationDisposable|CancelDisposable)$' -count=1 -json | tee "$result_file"
           python3 - "$result_file" <<'PYCODE'
           import json,sys
           events=[json.loads(line) for line in open(sys.argv[1],encoding='utf8')]
-          assert all(any(e.get('Test')==name and e.get('Action')=='pass' for e in events) for name in ('TestMariaDBHHWorkerDisposable','TestMariaDBHHWorkerUncertainDisposable','TestMariaDBHHWorkerCrashDisposable','TestMariaDBHHWorkerGenerationDisposable')), 'HH worker gate did not pass'
+          assert all(any(e.get('Test')==name and e.get('Action')=='pass' for e in events) for name in ('TestMariaDBHHWorkerDisposable','TestMariaDBHHWorkerUncertainDisposable','TestMariaDBHHWorkerCrashDisposable','TestMariaDBHHWorkerGenerationDisposable','TestMariaDBHHWorkerCancelDisposable')), 'HH worker gate did not pass'
           assert not any(e.get('Action')=='skip' for e in events), 'HH worker gate skipped'
           PYCODE
       - name: Verify scheduler billing reservation and recovery ONLY in disposable CI
