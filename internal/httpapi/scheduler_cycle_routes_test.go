@@ -88,3 +88,77 @@ func TestSchedulerCycleHTTPAuthorization(t *testing.T) {
 		t.Fatal("busy run", w.Code)
 	}
 }
+
+func TestSchedulerCycleStreamContract(t *testing.T) {
+	m, e := auth.NewManager(strings.Repeat("s", 64), map[string]string{"eugene": "CI_pw", "demo": "CI_pw"})
+	if e != nil {
+		t.Fatal(e)
+	}
+	user, _ := m.Authenticate("eugene", "CI_pw")
+	token, e := m.Issue(user, time.Now())
+	if e != nil {
+		t.Fatal(e)
+	}
+	p := &schedulerCycleProbe{}
+	request := httptest.NewRequest("POST", "https://example.invalid/api/scheduler/run", strings.NewReader(`{"requestId":"12345678-1234-4234-8234-123456789abc"}`))
+	request.AddCookie(&http.Cookie{Name: auth.CookieName, Value: token})
+	request.Header.Set("Accept", "application/x-ndjson")
+	response := httptest.NewRecorder()
+	NewHandlerWithOptions(nil, Options{Auth: m, SchedulerCycle: p}).ServeHTTP(response, request)
+	if response.Code != 200 || !strings.Contains(response.Header().Get("Content-Type"), "application/x-ndjson") || !strings.Contains(response.Body.String(), `"type":"progress"`) || !strings.Contains(response.Body.String(), `"type":"done"`) {
+		t.Fatal("stream contract", response.Code, response.Header().Get("Content-Type"))
+	}
+}
+
+type schedulerBlockingCycle struct {
+	started chan struct{}
+	stopped chan struct{}
+}
+
+func (p schedulerBlockingCycle) PrepareCycle(context.Context) (func(context.Context, string) (json.RawMessage, error), error) {
+	return func(ctx context.Context, _ string) (json.RawMessage, error) {
+		close(p.started)
+		<-ctx.Done()
+		close(p.stopped)
+		return nil, ctx.Err()
+	}, nil
+}
+func TestSchedulerCycleStreamDisconnectCancelsWork(t *testing.T) {
+	m, e := auth.NewManager(strings.Repeat("s", 64), map[string]string{"eugene": "CI_pw", "demo": "CI_pw"})
+	if e != nil {
+		t.Fatal(e)
+	}
+	user, _ := m.Authenticate("eugene", "CI_pw")
+	token, e := m.Issue(user, time.Now())
+	if e != nil {
+		t.Fatal(e)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	p := schedulerBlockingCycle{started: make(chan struct{}), stopped: make(chan struct{})}
+	request := httptest.NewRequest("POST", "https://example.invalid/api/scheduler/run", strings.NewReader(`{"requestId":"12345678-1234-4234-8234-123456789abc"}`)).WithContext(ctx)
+	request.AddCookie(&http.Cookie{Name: auth.CookieName, Value: token})
+	request.Header.Set("Accept", "application/x-ndjson")
+	response := httptest.NewRecorder()
+	finished := make(chan struct{})
+	go func() {
+		NewHandlerWithOptions(nil, Options{Auth: m, SchedulerCycle: p}).ServeHTTP(response, request)
+		close(finished)
+	}()
+	select {
+	case <-p.started:
+	case <-time.After(3 * time.Second):
+		t.Fatal("stream did not start")
+	}
+	cancel()
+	select {
+	case <-p.stopped:
+	case <-time.After(3 * time.Second):
+		t.Fatal("stream did not cancel worker")
+	}
+	select {
+	case <-finished:
+	case <-time.After(3 * time.Second):
+		t.Fatal("stream handler did not stop")
+	}
+}

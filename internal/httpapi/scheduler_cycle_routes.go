@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"regexp"
+	"strings"
 	"time"
 
 	"itmap/internal/auth"
@@ -73,6 +74,16 @@ func SchedulerCycleHandler(manager *auth.Manager, runner SchedulerCycleRunner) h
 		var id string
 		if len(input) != 1 || json.Unmarshal(input["requestId"], &id) != nil || !schedulerCycleUUID.MatchString(id) {
 			schedulerSettingsFailure(w, &parser.SettingsError{Message: "Передайте UUID запуска."})
+			return
+		}
+		if strings.Contains(r.Header.Get("Accept"), "application/x-ndjson") {
+			var read func(context.Context, json.RawMessage) (json.RawMessage, error)
+			if reader, ok := runner.(SchedulerRunReader); ok {
+				snapshot, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+				read, _ = reader.PrepareRunRead(snapshot)
+				cancel()
+			}
+			streamSchedulerCycle(w, r, id, run, read)
 			return
 		}
 		result, err := run(r.Context(), id)

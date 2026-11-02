@@ -44,6 +44,11 @@ func (c CycleControl) worker(generation string) (Worker, error) {
 }
 func (c CycleControl) String() string   { return "CycleControl{credentials:redacted}" }
 func (c CycleControl) GoString() string { return c.String() }
+
+// PrepareRunRead позволяет потоку читать только публичный сохранённый прогресс.
+func (c CycleControl) PrepareRunRead(ctx context.Context) (func(context.Context, json.RawMessage) (json.RawMessage, error), error) {
+	return (RunReadRepository{DB: c.DB}).PrepareRunRead(ctx)
+}
 func (c CycleControl) PrepareCycle(ctx context.Context) (func(context.Context, string) (json.RawMessage, error), error) {
 	if c.DB == nil {
 		return nil, ErrSettingsStorage

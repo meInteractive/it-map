@@ -289,8 +289,8 @@
     {
       "id": "scheduler",
       "implementation": "partial",
-      "level": "Settings/dashboard/retry/cancel/queue/GET saved run; ручной запуск, probe и tick за серверным флагом, mock SQL/HTTP приёмка GO-404",
-      "gap": "Cloud-owner, issues/funnel, потоковый NDJSON и полный source HTTP golden остаются открыты; планирование ограничено разрешёнными HH-источниками. Реальные провайдеры и автоматический timer не включены.",
+      "level": "Settings/dashboard/retry/cancel/queue/GET saved run; ручной запуск с NDJSON, probe и tick за серверным флагом, mock SQL/HTTP приёмка GO-404",
+      "gap": "Cloud-owner, issues/funnel и полный source HTTP golden, включая timing потока, остаются открыты; планирование ограничено разрешёнными HH-источниками. Реальные провайдеры и автоматический timer не включены.",
       "evidence": [
         {
           "file": "internal/storage/scheduler_jobs_integration_test.go",
@@ -436,6 +436,14 @@
           "file": "internal/storage/scheduler_control_http_test.go",
           "symbol": "TestMariaDBSchedulerConcurrentDisposable",
           "required": true
+        },
+        {
+          "file": "internal/httpapi/scheduler_cycle_routes_test.go",
+          "symbol": "TestSchedulerCycleStreamContract"
+        },
+        {
+          "file": "internal/httpapi/scheduler_cycle_routes_test.go",
+          "symbol": "TestSchedulerCycleStreamDisconnectCancelsWork"
         }
       ]
     },
