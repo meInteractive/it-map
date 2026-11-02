@@ -133,6 +133,16 @@ func TestMariaDBHHImportDisposable(t *testing.T) {
 		if response.Code != http.StatusOK || json.Unmarshal(response.Body.Bytes(), &api) != nil || api.Vacancy.ID != results[0].VacancyID || api.Vacancy.Title != "CI_TITLE" {
 			t.Fatal("authenticated API readback", response.Code)
 		}
+		// Восстановление имитирует прерывание после COMMIT и до завершения job.
+		s.exec("UPDATE scheduler_runs SET lease_until=1 WHERE id=?", run)
+		s.exec("UPDATE scheduler_jobs SET locked_until=1 WHERE id=?", jobID)
+		restartedRun := s.begin("CI_IMPORT_RESTART")
+		lease = schedulerRequireLease(t, s, restartedRun, jobID)
+		restarted := parser.HHImportExecutor{Settings: apifysettings.NewRepository(s.db, "CI_SECRET"), Owner: "CI_OWNER"}
+		replayed, err := restarted.Execute(s.ctx, lease)
+		if err != nil || !replayed.Reused || replayed.VacancyID != results[0].VacancyID || s.count("SELECT COUNT(*) FROM vacancy_import_operations WHERE candidate_id=? AND status='success'", candidate) != 1 {
+			t.Fatal("restart replay", replayed, err)
+		}
 		s.exec("UPDATE vacancy_source_parsing SET enabled=0 WHERE company_id=991302 AND source_id='hh'")
 		if _, err := executor.Execute(s.ctx, lease); err == nil {
 			t.Fatal("disabled source replay accepted")
@@ -161,6 +171,16 @@ func TestMariaDBHHImportDisposable(t *testing.T) {
 		}
 		if s.count("SELECT COUNT(*) FROM vacancy_candidates WHERE id=? AND main_vacancy_id IS NOT NULL", candidate) != 0 {
 			t.Fatal("changed source imported")
+		}
+	})
+	t.Run("deleted source blocks queued import", func(t *testing.T) {
+		s, lease, candidate, executor := hhImportFixture(t)
+		s.exec("DELETE FROM vacancy_source_parsing WHERE company_id=991302 AND source_id='hh'")
+		if _, err := executor.Execute(s.ctx, lease); err == nil {
+			t.Fatal("deleted source accepted")
+		}
+		if s.count("SELECT COUNT(*) FROM vacancy_candidates WHERE id=? AND main_vacancy_id IS NOT NULL", candidate) != 0 {
+			t.Fatal("deleted source imported")
 		}
 	})
 	t.Run("changed scheduler owner blocks queued import", func(t *testing.T) {
