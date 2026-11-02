@@ -15,8 +15,9 @@ func TestMariaDBSchedulerSourcesDisposable(t *testing.T) {
 		name      string
 		favorites bool
 		shortened bool
+		known     bool
 		want      int
-	}{{"eligible source", false, false, 1}, {"outside favorites", true, false, 0}, {"shortened interval", false, true, 1}} {
+	}{{"eligible source", false, false, false, 1}, {"outside favorites", true, false, false, 0}, {"shortened interval", false, true, false, 1}, {"known failed scan", false, false, true, 0}} {
 		t.Run(tc.name, func(t *testing.T) {
 			provider := &hhScanProvider{rows: [][]json.RawMessage{{}}}
 			_, s, lease, listing := hhScanFixture(t, provider)
@@ -31,6 +32,9 @@ func TestMariaDBSchedulerSourcesDisposable(t *testing.T) {
 				t.Fatal(err)
 			}
 			s.exec("DELETE FROM scheduler_jobs WHERE id='CI_HH_SCAN'")
+			if tc.known {
+				s.exec(`INSERT INTO scheduler_jobs(id,generation,dedupe_key,type,company_id,source_id,payload,status,priority,run_after,created_at,updated_at) VALUES('CI_KNOWN_SCAN',?,?,'scan_source',991302,'hh','{}','failed',20,0,0,0)`, s.repo.Generation, testStageHash("scan:991302:hh:1:0:0"))
+			}
 			if tc.favorites {
 				s.exec("UPDATE firecrawl_settings SET favorites_only=1 WHERE id=1")
 			}
