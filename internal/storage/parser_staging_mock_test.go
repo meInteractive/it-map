@@ -86,3 +86,30 @@ func TestMariaDBParserStagingMockDisposable(t *testing.T) {
 		t.Fatal("mock relevance missing")
 	}
 }
+
+func TestMariaDBParserStagingSeedDisposable(t *testing.T) {
+	ctx, db := schedulerDB(t)
+	t.Cleanup(func() {
+		for _, q := range []string{
+			"DELETE FROM vacancy_source_parsing WHERE company_id=991302", "DELETE FROM apify_settings WHERE id=1",
+			"DELETE FROM vacancy_role_classification WHERE role_id=991303", "DELETE FROM vacancy_roles WHERE id=991304", "DELETE FROM vacancy_roles WHERE id=991303",
+			"DELETE FROM vacancy_detail_settings WHERE id=1", "DELETE FROM vacancy_role_settings WHERE id=1", "DELETE FROM user_profiles WHERE user_name='CI_OWNER'",
+			"DELETE FROM system_prompts WHERE kind='relevance'", "DELETE FROM prompt_model_settings WHERE kind='relevance'", "DELETE FROM openrouter_settings WHERE id=1",
+			"DELETE FROM firecrawl_settings WHERE id=1", "DELETE FROM app_catalog WHERE id=1", "DELETE FROM company_identity WHERE id=991302",
+		} {
+			if _, err := db.ExecContext(context.Background(), q); err != nil {
+				t.Error("synthetic seed cleanup", err)
+			}
+		}
+	})
+	if err := stagingmock.Seed(ctx, db, "CI_SECRET", "itmap_ci"); err != nil {
+		t.Fatal(err)
+	}
+	var count int
+	if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM vacancy_source_parsing WHERE company_id=991302 AND source_id='hh' AND enabled=1").Scan(&count); err != nil || count != 1 {
+		t.Fatal("synthetic HH source missing", err)
+	}
+	if err := stagingmock.Seed(ctx, db, "CI_SECRET", "itmap_ci"); err == nil {
+		t.Fatal("repeated seed accepted")
+	}
+}

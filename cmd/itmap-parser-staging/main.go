@@ -38,6 +38,16 @@ func run() error {
 		return err
 	}
 	defer db.Close()
+	if len(os.Args) == 2 && os.Args[1] == "seed" {
+		if err := stagingmock.Seed(ctx, db, s.secret, "itmap_parser_staging"); err != nil {
+			return err
+		}
+		slog.Info("staging mock synthetic data initialized")
+		return nil
+	}
+	if len(os.Args) != 1 {
+		return errors.New("staging mock: неизвестная команда")
+	}
 	manager, err := auth.NewManager(s.secret, map[string]string{"eugene": s.sitePassword})
 	if err != nil {
 		return errors.New("staging mock: неверные настройки авторизации")
