@@ -15,14 +15,15 @@ import (
 
 // Worker запускается только явным вызовом Cycle; таймеров и фоновых задач нет.
 type Worker struct {
-	Runs            RunRepository
-	Settings        apifysettings.Repository
-	ListingRuntime  HHListingRuntime
-	DetailRuntime   HHDetailRuntime
-	Public          HHPublicFetcher
-	Generator       AIStageGenerator
-	Classifier      AIStageClassifier
-	ScheduleSources bool
+	Runs                   RunRepository
+	Settings               apifysettings.Repository
+	ListingRuntime         HHListingRuntime
+	DetailRuntime          HHDetailRuntime
+	Public                 HHPublicFetcher
+	Generator              AIStageGenerator
+	Classifier             AIStageClassifier
+	ScheduleSources        bool
+	ContinueOnStageFailure bool
 }
 
 // NewWorker связывает провайдеры только с серверным хранилищем конфигурации.
@@ -212,6 +213,16 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 		reportErr := w.Runs.reportCycle(reportCtx, start.Run.ID, result.Processed, false)
 		reportCancel()
 		if executeErr != nil || reportErr != nil {
+			if executeErr != nil && reportErr == nil && w.ContinueOnStageFailure {
+				checkCtx, checkCancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+				finished, checkErr := w.Runs.finishedWorkerStep(checkCtx, lease)
+				checkCancel()
+				if checkErr == nil && finished {
+					status = "partial"
+					continue
+				}
+				reportErr = errors.Join(reportErr, checkErr)
+			}
 			releaseRun = false
 			status = "partial"
 			return result, errors.Join(executeErr, reportErr)

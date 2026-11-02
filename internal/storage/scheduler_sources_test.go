@@ -73,9 +73,9 @@ func TestMariaDBSchedulerStopDisposable(t *testing.T) {
 	provider.afterAccount = func() {
 		s.exec(`UPDATE firecrawl_settings SET scheduler_json=JSON_SET(scheduler_json,'$.enabled',false) WHERE id=1`)
 	}
-	w := parser.Worker{Runs: s.repo, Settings: apifysettings.NewRepository(s.db, "CI_SECRET"), ListingRuntime: listing.Runtime, ScheduleSources: true}
-	_, err := w.Cycle(s.ctx, parser.WorkerOptions{Run: parser.RunOptions{RequestID: "CI_STOP_DURING_ACCOUNT"}, MaxJobs: 20})
-	if err == nil || provider.starts != 0 || s.count("SELECT COUNT(*) FROM apify_runs") != 0 {
+	w := parser.Worker{Runs: s.repo, Settings: apifysettings.NewRepository(s.db, "CI_SECRET"), ListingRuntime: listing.Runtime, ScheduleSources: true, ContinueOnStageFailure: true}
+	result, err := w.Cycle(s.ctx, parser.WorkerOptions{Run: parser.RunOptions{RequestID: "CI_STOP_DURING_ACCOUNT"}, MaxJobs: 20})
+	if err != nil || result.Run.Status != "partial" || provider.starts != 0 || s.count("SELECT COUNT(*) FROM apify_runs") != 0 {
 		t.Fatal("disabled scheduler started actor", err, provider.starts)
 	}
 }

@@ -1414,11 +1414,11 @@ jobs:
           set -euo pipefail
           result_file="$(mktemp)"
           trap 'rm -f "$result_file"' EXIT
-          go test -race -tags mariadb,schedulerwrites,schedulerbilling ./internal/storage -run '^TestMariaDBScheduler(CycleControl|Sources|ControlHTTP|Stop|Concurrent)Disposable$' -count=1 -json | tee "$result_file"
+          go test -race -tags mariadb,schedulerwrites,schedulerbilling ./internal/storage -run '^TestMariaDBScheduler(CycleControl|Sources|ControlHTTP|Stop|Concurrent|FailureHTTP)Disposable$' -count=1 -json | tee "$result_file"
           python3 - "$result_file" <<'PYCODE'
           import json,sys
           events=[json.loads(line) for line in open(sys.argv[1],encoding='utf8')]
-          assert all(any(e.get('Test')==name and e.get('Action')=='pass' for e in events) for name in ('TestMariaDBSchedulerCycleControlDisposable','TestMariaDBSchedulerSourcesDisposable','TestMariaDBSchedulerControlHTTPDisposable','TestMariaDBSchedulerStopDisposable','TestMariaDBSchedulerConcurrentDisposable')), 'scheduler cycle control gate did not pass'
+          assert all(any(e.get('Test')==name and e.get('Action')=='pass' for e in events) for name in ('TestMariaDBSchedulerCycleControlDisposable','TestMariaDBSchedulerSourcesDisposable','TestMariaDBSchedulerControlHTTPDisposable','TestMariaDBSchedulerStopDisposable','TestMariaDBSchedulerConcurrentDisposable','TestMariaDBSchedulerFailureHTTPDisposable')), 'scheduler cycle control gate did not pass'
           assert not any(e.get('Action')=='skip' for e in events), 'scheduler cycle control gate skipped'
           PYCODE
       - name: Verify scheduler billing reservation and recovery ONLY in disposable CI

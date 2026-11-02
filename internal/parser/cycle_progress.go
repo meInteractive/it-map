@@ -33,3 +33,28 @@ func (r RunRepository) reportCycle(ctx context.Context, runID string, processed 
 	}
 	return nil
 }
+
+// finishedWorkerStep подтверждает receipt именно этой lease перед продолжением цикла.
+func (r RunRepository) finishedWorkerStep(ctx context.Context, lease *JobLease) (bool, error) {
+	tx, err := r.lockGeneration(ctx)
+	if err != nil {
+		return false, err
+	}
+	defer tx.Rollback()
+	if _, err = activeRun(ctx, tx, r.Generation, lease.runID); err != nil {
+		return false, err
+	}
+	var status, owner string
+	if err = tx.QueryRowContext(ctx, "SELECT status,locked_by FROM scheduler_jobs WHERE id=? AND generation=? FOR UPDATE", lease.jobID, r.Generation).Scan(&status, &owner); err != nil {
+		return false, storageError(ctx)
+	}
+	var count int
+	if err = tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM scheduler_attempts WHERE id=? AND job_id=? AND run_id=? AND finished_at IS NOT NULL AND status IN ('completed','failed','interrupted')", attemptIdentity(lease), lease.jobID, lease.runID).Scan(&count); err != nil {
+		return false, storageError(ctx)
+	}
+	finished := (status == "completed" || status == "failed" || status == "cancelled") && owner == "" && count == 1
+	if err = tx.Commit(); err != nil {
+		return false, storageError(ctx)
+	}
+	return finished, nil
+}

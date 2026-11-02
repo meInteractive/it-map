@@ -61,6 +61,7 @@ func (c CycleControl) PrepareCycle(ctx context.Context) (func(context.Context, s
 			return nil, err
 		}
 		w.ScheduleSources = true
+		w.ContinueOnStageFailure = true
 		result, err := w.Cycle(ctx, WorkerOptions{Run: RunOptions{RequestID: id, Trigger: "manual"}, MaxJobs: 50})
 		if err != nil {
 			return nil, err
@@ -106,6 +107,7 @@ func (c CycleControl) PrepareTick(ctx context.Context) (func(context.Context, st
 			return nil, err
 		}
 		w.ScheduleSources = true
+		w.ContinueOnStageFailure = true
 		result, err := w.Cycle(ctx, WorkerOptions{Run: RunOptions{RequestID: id, Trigger: "automatic"}, MaxJobs: 50})
 		if err != nil {
 			return nil, err

@@ -139,3 +139,45 @@ func TestMariaDBSchedulerConcurrentDisposable(t *testing.T) {
 		t.Fatal("first cycle did not finish")
 	}
 }
+
+func TestMariaDBSchedulerFailureHTTPDisposable(t *testing.T) {
+	provider := &hhScanProvider{rows: [][]json.RawMessage{{}}}
+	_, s, lease, listing := hhScanFixture(t, provider)
+	var oldRun string
+	if err := s.db.QueryRowContext(s.ctx, "SELECT id FROM scheduler_runs WHERE status='running'").Scan(&oldRun); err != nil {
+		t.Fatal(err)
+	}
+	if err := lease.Finish(s.ctx, parser.FinishOptions{Status: "pending", Deferred: true}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.repo.Finish(s.ctx, oldRun, "completed"); err != nil {
+		t.Fatal(err)
+	}
+	provider.afterAccount = func() {
+		s.exec(`UPDATE firecrawl_settings SET scheduler_json=JSON_SET(scheduler_json,'$.enabled',false) WHERE id=1`)
+	}
+	control := parser.NewCycleControlWithFactory(s.db, func(r parser.RunRepository) (parser.Worker, error) {
+		return parser.Worker{Runs: r, Settings: apifysettings.NewRepository(s.db, "CI_SECRET"), ListingRuntime: listing.Runtime}, nil
+	})
+	manager, err := auth.NewManager(strings.Repeat("s", 64), map[string]string{"eugene": "CI_pw", "demo": "CI_pw"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	user, _ := manager.Authenticate("eugene", "CI_pw")
+	token, err := manager.Issue(user, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler := httpapi.NewHandlerWithOptions(nil, httpapi.Options{Auth: manager, SchedulerCycle: control})
+	request := httptest.NewRequest("POST", "https://example.invalid/api/scheduler/run", strings.NewReader(`{"requestId":"12345678-1234-4234-8234-123456789abc"}`))
+	request.AddCookie(&http.Cookie{Name: auth.CookieName, Value: token})
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	var result struct {
+		Status string `json:"status"`
+		Errors int    `json:"errors"`
+	}
+	if response.Code != http.StatusOK || json.Unmarshal(response.Body.Bytes(), &result) != nil || result.Status != "partial" || result.Errors != 1 || provider.starts != 0 {
+		t.Fatal("failure receipt", response.Code, result, provider.starts)
+	}
+}
