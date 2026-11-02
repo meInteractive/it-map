@@ -14,8 +14,9 @@ func TestMariaDBSchedulerSourcesDisposable(t *testing.T) {
 	for _, tc := range []struct {
 		name      string
 		favorites bool
+		shortened bool
 		want      int
-	}{{"eligible source", false, 1}, {"outside favorites", true, 0}} {
+	}{{"eligible source", false, false, 1}, {"outside favorites", true, false, 0}, {"shortened interval", false, true, 1}} {
 		t.Run(tc.name, func(t *testing.T) {
 			provider := &hhScanProvider{rows: [][]json.RawMessage{{}}}
 			_, s, lease, listing := hhScanFixture(t, provider)
@@ -32,6 +33,10 @@ func TestMariaDBSchedulerSourcesDisposable(t *testing.T) {
 			s.exec("DELETE FROM scheduler_jobs WHERE id='CI_HH_SCAN'")
 			if tc.favorites {
 				s.exec("UPDATE firecrawl_settings SET favorites_only=1 WHERE id=1")
+			}
+			if tc.shortened {
+				s.exec(`UPDATE firecrawl_settings SET scheduler_json=JSON_SET(scheduler_json,'$.intervalDays',1) WHERE id=1`)
+				s.exec(`UPDATE vacancy_source_parsing SET interval_days=7,last_success_at='2000-01-01T00:00:00.000Z',next_run_at=CAST(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000 AS SIGNED)+432000000 WHERE company_id=991302 AND source_id='hh'`)
 			}
 			w := parser.Worker{Runs: s.repo, Settings: apifysettings.NewRepository(s.db, "CI_SECRET"), ListingRuntime: listing.Runtime, ScheduleSources: true}
 			first, err := w.Cycle(s.ctx, parser.WorkerOptions{Run: parser.RunOptions{RequestID: "CI_SOURCE_TICK_1"}, MaxJobs: 20})

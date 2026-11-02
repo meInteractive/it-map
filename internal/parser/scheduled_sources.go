@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
+	"time"
 
 	"itmap/internal/apifysettings"
 )
@@ -13,6 +15,8 @@ import (
 // scheduleHH добавляет только ранее разрешённые источники текущего владельца.
 // Блокировки поколения и run не выпускаются до записи заданий.
 func scheduleHH(ctx context.Context, runs RunRepository, settingsRepo apifysettings.Repository, runID, owner string) error {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
 	tx, err := runs.lockGeneration(ctx)
 	if err != nil {
 		return err
@@ -33,6 +37,9 @@ func scheduleHH(ctx context.Context, runs RunRepository, settingsRepo apifysetti
 	var settings Settings
 	if json.Unmarshal(view.PublicJSON(), &settings) != nil || !settings.Enabled || settings.OwnerName != owner {
 		return ErrSettingsChanged
+	}
+	if settings.IntervalDays != 1 && settings.IntervalDays != 3 && settings.IntervalDays != 7 {
+		return ErrSettingsStorage
 	}
 	selected := false
 	for _, id := range settings.SourceIDs {
@@ -56,24 +63,45 @@ func scheduleHH(ctx context.Context, runs RunRepository, settingsRepo apifysetti
 		}
 		return nil
 	}
-	rows, err := tx.QueryContext(ctx, `SELECT s.company_id,COALESCE(s.next_run_at,0) FROM vacancy_source_parsing s JOIN company_identity c ON c.id=s.company_id WHERE s.source_id='hh' AND s.enabled=1 AND COALESCE(s.next_run_at,0)<=? AND (?=0 OR EXISTS(SELECT 1 FROM company_user_state u WHERE u.company_name=c.company_name AND u.user_name=? AND u.favorite=1)) AND NOT EXISTS(SELECT 1 FROM scheduler_jobs j WHERE j.generation=? AND j.company_id=s.company_id AND j.source_id='hh' AND j.type='scan_source' AND j.status IN ('pending','running')) ORDER BY COALESCE(s.next_run_at,0),COALESCE(s.last_attempt_at,0),s.company_id LIMIT 5 FOR UPDATE`, now, row.favorite, owner, runs.Generation)
+	rows, err := tx.QueryContext(ctx, `SELECT s.company_id,COALESCE(s.next_run_at,0),s.interval_days,s.last_success_at,COALESCE(s.last_attempt_at,0) FROM vacancy_source_parsing s JOIN company_identity c ON c.id=s.company_id WHERE s.source_id='hh' AND s.enabled=1 AND (COALESCE(s.next_run_at,0)<=? OR s.interval_days<>?) AND (?=0 OR EXISTS(SELECT 1 FROM company_user_state u WHERE u.company_name=c.company_name AND u.user_name=? AND u.favorite=1)) AND NOT EXISTS(SELECT 1 FROM scheduler_jobs j WHERE j.generation=? AND j.company_id=s.company_id AND j.source_id='hh' AND j.type='scan_source' AND j.status IN ('pending','running')) FOR UPDATE`, now, settings.IntervalDays, row.favorite, owner, runs.Generation)
 	if err != nil {
 		return ErrSettingsStorage
 	}
-	type dueSource struct{ id, next int64 }
+	type dueSource struct{ id, next, lastAttempt int64 }
 	sources := []dueSource{}
 	for rows.Next() {
 		var source dueSource
-		if rows.Scan(&source.id, &source.next) != nil {
+		var interval int64
+		var lastSuccess sql.NullString
+		if rows.Scan(&source.id, &source.next, &interval, &lastSuccess, &source.lastAttempt) != nil {
 			rows.Close()
 			return ErrSettingsStorage
 		}
-		sources = append(sources, source)
+		if interval != int64(settings.IntervalDays) && lastSuccess.Valid {
+			if last, err := time.Parse(time.RFC3339Nano, lastSuccess.String); err == nil && last.UnixMilli() != 0 {
+				source.next = last.UnixMilli() + int64(settings.IntervalDays)*86400000
+			}
+		}
+		if source.next <= now {
+			sources = append(sources, source)
+		}
 	}
 	err = rows.Err()
 	rows.Close()
 	if err != nil {
 		return ErrSettingsStorage
+	}
+	sort.Slice(sources, func(i, j int) bool {
+		if sources[i].next != sources[j].next {
+			return sources[i].next < sources[j].next
+		}
+		if sources[i].lastAttempt != sources[j].lastAttempt {
+			return sources[i].lastAttempt < sources[j].lastAttempt
+		}
+		return sources[i].id < sources[j].id
+	})
+	if len(sources) > 5 {
+		sources = sources[:5]
 	}
 	for _, candidate := range sources {
 		source, e := settingsRepo.ReadHHSourceTx(ctx, tx, candidate.id)
@@ -85,6 +113,9 @@ func scheduleHH(ctx context.Context, runs RunRepository, settingsRepo apifysetti
 		}
 		if !source.Enabled || !source.Supported {
 			continue
+		}
+		if _, e = tx.ExecContext(ctx, `UPDATE vacancy_source_parsing SET interval_days=?,next_run_at=? WHERE company_id=? AND source_id='hh' AND revision=? AND source_url=?`, settings.IntervalDays, candidate.next, candidate.id, source.Revision, source.URL); e != nil {
+			return ErrSettingsStorage
 		}
 		key := fmt.Sprintf("scan:%d:hh:%d:%d:%d", candidate.id, source.Revision, candidate.next, settings.Revision)
 		payload, e := json.Marshal(map[string]any{"sourceRevision": source.Revision, "sourceUrl": source.URL, "manual": false, "scheduleRevision": settings.Revision, "dueAt": candidate.next})
@@ -148,7 +179,8 @@ func completeScheduledHH(ctx context.Context, tx *sql.Tx, job Job, owner string,
 	if code != "" {
 		result = "partial"
 	}
-	update, err := tx.ExecContext(ctx, `UPDATE vacancy_source_parsing SET next_run_at=?,last_attempt_at=?,last_result=?,last_error=? WHERE company_id=? AND source_id='hh' AND enabled=1 AND revision=? AND source_url=?`, now+int64(settings.IntervalDays)*86400000, now, result, "", job.CompanyID, cursor.Operation.SourceRevision, cursor.Operation.SourceURL)
+	successAt := time.UnixMilli(now).UTC().Format("2006-01-02T15:04:05.000Z")
+	update, err := tx.ExecContext(ctx, `UPDATE vacancy_source_parsing SET next_run_at=?,last_attempt_at=?,last_result=?,last_error=?,last_success_at=CASE WHEN ?='success' THEN ? ELSE last_success_at END,interval_days=? WHERE company_id=? AND source_id='hh' AND enabled=1 AND revision=? AND source_url=?`, now+int64(settings.IntervalDays)*86400000, now, result, "", result, successAt, settings.IntervalDays, job.CompanyID, cursor.Operation.SourceRevision, cursor.Operation.SourceURL)
 	if err != nil {
 		return ErrSettingsStorage
 	}
