@@ -2,6 +2,7 @@ package parser
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"sync/atomic"
@@ -14,13 +15,14 @@ import (
 
 // Worker запускается только явным вызовом Cycle; таймеров и фоновых задач нет.
 type Worker struct {
-	Runs           RunRepository
-	Settings       apifysettings.Repository
-	ListingRuntime HHListingRuntime
-	DetailRuntime  HHDetailRuntime
-	Public         HHPublicFetcher
-	Generator      AIStageGenerator
-	Classifier     AIStageClassifier
+	Runs            RunRepository
+	Settings        apifysettings.Repository
+	ListingRuntime  HHListingRuntime
+	DetailRuntime   HHDetailRuntime
+	Public          HHPublicFetcher
+	Generator       AIStageGenerator
+	Classifier      AIStageClassifier
+	ScheduleSources bool
 }
 
 // NewWorker связывает провайдеры только с серверным хранилищем конфигурации.
@@ -96,6 +98,12 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 		return result, ErrSettingsStorage
 	}
 	owner := settings.OwnerName
+	if w.ScheduleSources {
+		if err := scheduleHH(bounded, w.Runs, w.Settings, start.Run.ID, owner); err != nil {
+			status = "partial"
+			return result, err
+		}
+	}
 	var actorStarts atomic.Int32
 	admit := func() error {
 		if actorStarts.Load() >= 1 {
@@ -195,7 +203,7 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 		if kind := lease.Job().Type; kind == "scan_source" || kind == "fetch_full_text" {
 			hhStages++
 		}
-		if err = workerExecute(bounded, d, lease); err != nil {
+		if err = workerExecute(bounded, d, lease, owner); err != nil {
 			releaseRun = false
 			status = "partial"
 			return result, err
@@ -204,7 +212,7 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 	return result, nil
 }
 
-func workerExecute(ctx context.Context, d workerDispatch, lease *JobLease) error {
+func workerExecute(ctx context.Context, d workerDispatch, lease *JobLease, owner string) error {
 	kind := lease.Job().Type
 	ai := kind == "classify_title" || kind == "extract_vacancy" || kind == "assign_roles" || kind == "score_relevance"
 	var attempt *Attempt
@@ -237,7 +245,11 @@ func workerExecute(ctx context.Context, d workerDispatch, lease *JobLease) error
 			return executeErr
 		}
 	} else {
-		err = attempt.Finish(cleanup, AttemptFinish{Job: finish})
+		var save func(*sql.Tx) error
+		if kind == "scan_source" && finish.Status == "completed" {
+			save = func(tx *sql.Tx) error { return completeScheduledHH(cleanup, tx, lease.Job(), owner, out.code) }
+		}
+		err = attempt.FinishWithin(cleanup, AttemptFinish{Job: finish}, save)
 	}
 	if err != nil {
 		return errors.Join(executeErr, err)

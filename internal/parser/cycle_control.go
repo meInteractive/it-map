@@ -38,6 +38,7 @@ func (c CycleControl) PrepareCycle(ctx context.Context) (func(context.Context, s
 		if err != nil {
 			return nil, err
 		}
+		w.ScheduleSources = true
 		result, err := w.Cycle(ctx, WorkerOptions{Run: RunOptions{RequestID: id, Trigger: "manual"}, MaxJobs: 50})
 		if err != nil {
 			return nil, err

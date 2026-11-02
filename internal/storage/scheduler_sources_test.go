@@ -1,0 +1,50 @@
+//go:build mariadb && schedulerwrites && schedulerbilling
+
+package storage
+
+import (
+	"encoding/json"
+	"testing"
+
+	"itmap/internal/apifysettings"
+	"itmap/internal/parser"
+)
+
+func TestMariaDBSchedulerSourcesDisposable(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		favorites bool
+		want      int
+	}{{"eligible source", false, 1}, {"outside favorites", true, 0}} {
+		t.Run(tc.name, func(t *testing.T) {
+			provider := &hhScanProvider{rows: [][]json.RawMessage{{}}}
+			_, s, lease, listing := hhScanFixture(t, provider)
+			var run string
+			if err := s.db.QueryRowContext(s.ctx, "SELECT id FROM scheduler_runs WHERE status='running'").Scan(&run); err != nil {
+				t.Fatal(err)
+			}
+			if err := lease.Finish(s.ctx, parser.FinishOptions{Status: "cancelled"}); err != nil {
+				t.Fatal(err)
+			}
+			if err := s.repo.Finish(s.ctx, run, "completed"); err != nil {
+				t.Fatal(err)
+			}
+			s.exec("DELETE FROM scheduler_jobs WHERE id='CI_HH_SCAN'")
+			if tc.favorites {
+				s.exec("UPDATE firecrawl_settings SET favorites_only=1 WHERE id=1")
+			}
+			w := parser.Worker{Runs: s.repo, Settings: apifysettings.NewRepository(s.db, "CI_SECRET"), ListingRuntime: listing.Runtime, ScheduleSources: true}
+			first, err := w.Cycle(s.ctx, parser.WorkerOptions{Run: parser.RunOptions{RequestID: "CI_SOURCE_TICK_1"}, MaxJobs: 20})
+			if err != nil || first.Processed != tc.want || provider.starts != tc.want {
+				t.Fatal("first source tick", first, provider.starts, err)
+			}
+			if tc.want == 1 && s.count("SELECT COUNT(*) FROM vacancy_source_parsing WHERE company_id=991302 AND source_id='hh' AND next_run_at>CAST(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000 AS SIGNED) AND last_result='success'") != 1 {
+				t.Fatal("next source run not recorded")
+			}
+			second, err := w.Cycle(s.ctx, parser.WorkerOptions{Run: parser.RunOptions{RequestID: "CI_SOURCE_TICK_2"}, MaxJobs: 20})
+			if err != nil || second.Processed != 0 || provider.starts != tc.want {
+				t.Fatal("source duplicate", second, provider.starts, err)
+			}
+		})
+	}
+}
