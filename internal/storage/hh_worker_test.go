@@ -121,3 +121,32 @@ func TestMariaDBHHWorkerDisposable(t *testing.T) {
 		t.Fatal("replay", result, err)
 	}
 }
+
+func TestMariaDBHHWorkerUncertainDisposable(t *testing.T) {
+	s, lease, _, vacancy := hhRelevanceFixture(t)
+	var run string
+	if err := s.db.QueryRowContext(s.ctx, "SELECT id FROM scheduler_runs WHERE status='running'").Scan(&run); err != nil {
+		t.Fatal(err)
+	}
+	job := lease.Job().ID
+	if err := lease.Finish(s.ctx, parser.FinishOptions{Status: "pending", Deferred: true}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.repo.Finish(s.ctx, run, "completed"); err != nil {
+		t.Fatal(err)
+	}
+	runner := &relevanceRunner{after: func() {
+		s.exec("UPDATE user_profiles SET resume_md='CI changed resume',revision=revision+1 WHERE user_name='CI_OWNER'")
+	}}
+	w := parser.Worker{Runs: s.repo, Settings: apifysettings.NewRepository(s.db, "CI_SECRET"), Generator: runner}
+	_, err := w.Cycle(s.ctx, parser.WorkerOptions{Run: parser.RunOptions{RequestID: "CI_WORKER_STALE"}, MaxJobs: 20})
+	if err == nil || runner.calls != 1 {
+		t.Fatal("stale paid result accepted", err, runner.calls)
+	}
+	if s.count("SELECT COUNT(*) FROM scheduler_attempts WHERE job_id=? AND status='interrupted' AND reserved_usd>0 AND cost_usd IS NULL", job) != 1 {
+		t.Fatal("unknown cost not preserved")
+	}
+	if s.count("SELECT COUNT(*) FROM company_vacancy_user_state WHERE user_name='CI_OWNER' AND vacancy_id=? AND relevance IS NOT NULL", vacancy) != 0 {
+		t.Fatal("stale score saved")
+	}
+}

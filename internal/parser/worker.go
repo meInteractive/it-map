@@ -64,7 +64,14 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 		return result, nil
 	}
 	status := "completed"
+	releaseRun := true
 	defer func() {
+		// Ошибка записи может оставить принадлежащие run попытки открытыми.
+		// Не закрывать run: после истечения lease стандартное восстановление
+		// сохранит резервы и освободит задания.
+		if !releaseRun {
+			return
+		}
 		finishCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
 		defer cancel()
 		if err := w.Runs.Finish(finishCtx, start.Run.ID, status); err != nil {
@@ -110,6 +117,7 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 		}
 		result.Processed++
 		if err = workerExecute(bounded, d, lease); err != nil {
+			releaseRun = false
 			status = "partial"
 			return result, err
 		}
