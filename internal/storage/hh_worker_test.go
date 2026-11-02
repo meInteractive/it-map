@@ -236,3 +236,33 @@ func TestMariaDBHHWorkerCrashDisposable(t *testing.T) {
 		t.Fatal("crash recovery allowed paid replay", err, runner.calls)
 	}
 }
+
+func TestMariaDBHHWorkerGenerationDisposable(t *testing.T) {
+	s, lease, _, vacancy := hhRelevanceFixture(t)
+	job := lease.Job().ID
+	var run string
+	if err := s.db.QueryRowContext(s.ctx, "SELECT id FROM scheduler_runs WHERE status='running'").Scan(&run); err != nil {
+		t.Fatal(err)
+	}
+	if err := lease.Finish(s.ctx, parser.FinishOptions{Status: "pending", Deferred: true}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.repo.Finish(s.ctx, run, "completed"); err != nil {
+		t.Fatal(err)
+	}
+	defer s.exec("UPDATE app_runtime_generation SET generation=? WHERE id=1", s.repo.Generation)
+	runner := &relevanceRunner{after: func() {
+		s.exec("UPDATE app_runtime_generation SET generation='22222222-2222-4333-8444-555555555555' WHERE id=1")
+	}}
+	w := parser.Worker{Runs: s.repo, Settings: apifysettings.NewRepository(s.db, "CI_SECRET"), Generator: runner}
+	_, err := w.Cycle(s.ctx, parser.WorkerOptions{Run: parser.RunOptions{RequestID: "CI_WORKER_GENERATION"}, MaxJobs: 20})
+	if err == nil || runner.calls != 1 {
+		t.Fatal("generation rotation accepted", err, runner.calls)
+	}
+	if s.count("SELECT COUNT(*) FROM scheduler_attempts WHERE job_id=? AND reserved_usd>0 AND cost_usd IS NULL", job) != 1 {
+		t.Fatal("generation rotation lost reserve")
+	}
+	if s.count("SELECT COUNT(*) FROM company_vacancy_user_state WHERE user_name='CI_OWNER' AND vacancy_id=? AND relevance IS NOT NULL", vacancy) != 0 {
+		t.Fatal("stale generation wrote score")
+	}
+}
