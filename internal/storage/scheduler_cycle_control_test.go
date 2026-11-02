@@ -59,6 +59,14 @@ func TestMariaDBSchedulerCycleControlDisposable(t *testing.T) {
 	if err != nil || !strings.Contains(string(probeBody), `"reused":true`) || f.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='diagnostic'") != 1 {
 		t.Fatal("probe replay", err)
 	}
+	diagnosticTick, err := control.PrepareTick(f.ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	probeBody, err = diagnosticTick(f.ctx, "CI_PROBE_TICK", true)
+	if err != nil || !strings.Contains(string(probeBody), `"externalRequests":0`) || f.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='diagnostic' AND status='completed'") != 2 {
+		t.Fatal("diagnostic tick", err)
+	}
 	stale, err := control.PrepareCycle(f.ctx)
 	if err != nil {
 		t.Fatal(err)
