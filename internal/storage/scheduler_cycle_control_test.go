@@ -5,6 +5,7 @@ package storage
 import (
 	"encoding/json"
 	"errors"
+	"strings"
 	"testing"
 
 	"itmap/internal/parser"
@@ -30,6 +31,18 @@ func TestMariaDBSchedulerCycleControlDisposable(t *testing.T) {
 	}
 	if f.count("SELECT COUNT(*) FROM scheduler_jobs") != 0 || f.count("SELECT COUNT(*) FROM scheduler_attempts") != 0 {
 		t.Fatal("disabled cycle created work")
+	}
+	tick, err := control.PrepareTick(f.ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err = tick(f.ctx, "CI_DISABLED_TICK")
+	if err != nil || json.Unmarshal(raw, &result) != nil || result.Status != "paused" {
+		t.Fatal("disabled tick", err)
+	}
+	replay, err := tick(f.ctx, "CI_DISABLED_TICK")
+	if err != nil || !strings.Contains(string(replay), `"reused":true`) || f.count("SELECT COUNT(*) FROM scheduler_jobs") != 0 {
+		t.Fatal("tick replay", err)
 	}
 	stale, err := control.PrepareCycle(f.ctx)
 	if err != nil {

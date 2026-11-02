@@ -72,6 +72,8 @@ type Options struct {
 	BackupRestores       BackupRestorer
 	SchedulerRunRead     SchedulerRunReader
 	SchedulerCycle       SchedulerCycleRunner
+	SchedulerTick        SchedulerTickRunner
+	SchedulerToken       string
 	SchedulerQueue       SchedulerQueueReader
 	SchedulerJobActions  SchedulerJobActionWriter
 	SchedulerSettings    SchedulerSettingsWriter
@@ -100,6 +102,7 @@ func NewHandlerWithOptions(logger *slog.Logger, opts Options) http.Handler {
 		}
 		jsonReply(w, http.StatusServiceUnavailable, map[string]any{"status": "not_ready", "reason": reason})
 	})
+	mux.HandleFunc("POST /api/internal/scheduler/tick", SchedulerTickHandler(opts.SchedulerTick, opts.SchedulerToken))
 	unmigrated := func(w http.ResponseWriter, _ *http.Request) {
 		jsonReply(w, http.StatusServiceUnavailable, map[string]any{"error": "backend_not_migrated"})
 	}
