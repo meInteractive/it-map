@@ -48,6 +48,7 @@ func httpHandler(logger *slog.Logger, db *sql.DB, manager *auth.Manager) http.Ha
 		opts.SchedulerDashboard = parser.DashboardRepository{DB: db}
 		opts.SchedulerQueue = parser.QueueRepository{DB: db}
 		opts.SchedulerRunRead = parser.RunReadRepository{DB: db}
+		configureScheduler(&opts, db)
 		opts.BackupExports = backup.Repository{DB: db}
 		opts.BackupRestores = backup.Repository{DB: db}
 		opts.Resumes = profiles.Repository{DB: db}
@@ -80,6 +81,19 @@ func httpHandler(logger *slog.Logger, db *sql.DB, manager *auth.Manager) http.Ha
 		opts.TaskReschedule = tasks.Repository{DB: db}
 	}
 	return httpapi.NewHandlerWithOptions(logger, opts)
+}
+
+// configureScheduler не запускает фоновые операции; выполнение по умолчанию выключено.
+func configureScheduler(opts *httpapi.Options, db *sql.DB) {
+	if opts == nil || db == nil || os.Getenv("ITMAP_PARSER_EXECUTION_ENABLED") != "1" {
+		return
+	}
+	control := parser.NewCycleControl(db, os.Getenv("SESSION_SECRET"), os.Getenv("OPENAI_API_KEY"))
+	opts.SchedulerCycle = control
+	if token := os.Getenv("SCHEDULER_TOKEN"); token != "" {
+		opts.SchedulerTick = control
+		opts.SchedulerToken = token
+	}
 }
 
 func main() {
