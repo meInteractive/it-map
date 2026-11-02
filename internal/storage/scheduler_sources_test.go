@@ -56,3 +56,26 @@ func TestMariaDBSchedulerSourcesDisposable(t *testing.T) {
 		})
 	}
 }
+
+func TestMariaDBSchedulerStopDisposable(t *testing.T) {
+	provider := &hhScanProvider{rows: [][]json.RawMessage{{}}}
+	_, s, lease, listing := hhScanFixture(t, provider)
+	var oldRun string
+	if err := s.db.QueryRowContext(s.ctx, "SELECT id FROM scheduler_runs WHERE status='running'").Scan(&oldRun); err != nil {
+		t.Fatal(err)
+	}
+	if err := lease.Finish(s.ctx, parser.FinishOptions{Status: "pending", Deferred: true}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.repo.Finish(s.ctx, oldRun, "completed"); err != nil {
+		t.Fatal(err)
+	}
+	provider.afterAccount = func() {
+		s.exec(`UPDATE firecrawl_settings SET scheduler_json=JSON_SET(scheduler_json,'$.enabled',false) WHERE id=1`)
+	}
+	w := parser.Worker{Runs: s.repo, Settings: apifysettings.NewRepository(s.db, "CI_SECRET"), ListingRuntime: listing.Runtime, ScheduleSources: true}
+	_, err := w.Cycle(s.ctx, parser.WorkerOptions{Run: parser.RunOptions{RequestID: "CI_STOP_DURING_ACCOUNT"}, MaxJobs: 20})
+	if err == nil || provider.starts != 0 || s.count("SELECT COUNT(*) FROM apify_runs") != 0 {
+		t.Fatal("disabled scheduler started actor", err, provider.starts)
+	}
+}
