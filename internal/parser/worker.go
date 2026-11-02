@@ -177,6 +177,10 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 		importer: HHImportExecutor{Settings: w.Settings, Owner: owner},
 		ai:       AIStageDispatcher{Owner: owner, Generator: w.Generator, Classifier: w.Classifier},
 	}
+	if err := w.Runs.reportCycle(bounded, start.Run.ID, 0, true); err != nil {
+		status = "partial"
+		return result, err
+	}
 	hhStages := 0
 	for result.Processed < options.MaxJobs {
 		if err = bounded.Err(); err != nil {
@@ -203,10 +207,14 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 		if kind := lease.Job().Type; kind == "scan_source" || kind == "fetch_full_text" {
 			hhStages++
 		}
-		if err = workerExecute(bounded, d, lease, owner); err != nil {
+		executeErr := workerExecute(bounded, d, lease, owner)
+		reportCtx, reportCancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+		reportErr := w.Runs.reportCycle(reportCtx, start.Run.ID, result.Processed, false)
+		reportCancel()
+		if executeErr != nil || reportErr != nil {
 			releaseRun = false
 			status = "partial"
-			return result, err
+			return result, errors.Join(executeErr, reportErr)
 		}
 	}
 	return result, nil
