@@ -109,7 +109,13 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 			return result, err
 		}
 		source := "hh"
-		lease, err := w.Runs.ClaimJob(bounded, start.Run.ID, ClaimOptions{Types: workerTypes, SourceID: &source})
+		deadline, _ := bounded.Deadline()
+		jobDuration := time.Until(deadline)
+		if jobDuration < time.Millisecond {
+			status = "interrupted"
+			return result, context.DeadlineExceeded
+		}
+		lease, err := w.Runs.ClaimJob(bounded, start.Run.ID, ClaimOptions{Types: workerTypes, SourceID: &source, Lease: jobDuration})
 		if err != nil {
 			status = "partial"
 			return result, err

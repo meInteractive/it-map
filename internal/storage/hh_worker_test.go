@@ -218,6 +218,9 @@ func TestMariaDBHHWorkerCrashDisposable(t *testing.T) {
 	case <-time.After(15 * time.Second):
 		t.Fatal("worker child timeout")
 	}
+	if s.count("SELECT COUNT(*) FROM scheduler_jobs j JOIN scheduler_attempts a ON a.job_id=j.id JOIN scheduler_runs r ON r.id=a.run_id WHERE j.id=? AND j.status='running' AND a.status='running' AND j.locked_until<r.lease_until", job) != 1 {
+		t.Fatal("job lease outlives worker run")
+	}
 	if err = child.Process.Kill(); err != nil {
 		t.Fatal(err)
 	}
