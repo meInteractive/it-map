@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"itmap/internal/aiproviders"
+	"itmap/internal/apifyruns"
 	"itmap/internal/apifysettings"
 	"itmap/internal/auth"
 	"itmap/internal/httpapi"
@@ -347,7 +348,8 @@ func TestMariaDBHHWorkerActorLimitDisposable(t *testing.T) {
 		}
 	})
 	s.exec(`INSERT INTO scheduler_jobs(id,generation,dedupe_key,type,company_id,source_id,payload,priority,run_after,created_at,updated_at) VALUES('CI_HH_SCAN_2',?,'CI_HH_SCAN_2','scan_source',991305,'hh','{}',90,0,0,0)`, s.repo.Generation)
-	w := parser.Worker{Runs: s.repo, Settings: apifysettings.NewRepository(s.db, "CI_SECRET"), ListingRuntime: listing.Runtime}
+	runtime := listing.Runtime.(apifyruns.Service)
+	w := parser.Worker{Runs: s.repo, Settings: apifysettings.NewRepository(s.db, "CI_SECRET"), ListingRuntime: &runtime}
 	result, err := w.Cycle(s.ctx, parser.WorkerOptions{Run: parser.RunOptions{RequestID: "CI_WORKER_ACTOR_LIMIT"}, MaxJobs: 20})
 	if err != nil || result.Processed != 2 || provider.starts != 1 {
 		t.Fatal("actor limit", result, provider.starts, err)
