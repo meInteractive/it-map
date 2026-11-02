@@ -18,7 +18,7 @@ import (
 )
 
 func TestMariaDBSchedulerControlHTTPDisposable(t *testing.T) {
-	for _, kind := range []string{"manual", "tick"} {
+	for _, kind := range []string{"manual", "tick", "stream"} {
 		t.Run(kind, func(t *testing.T) {
 			provider := &hhScanProvider{rows: [][]json.RawMessage{{}}}
 			_, s, lease, listing := hhScanFixture(t, provider)
@@ -56,10 +56,13 @@ func TestMariaDBSchedulerControlHTTPDisposable(t *testing.T) {
 					body = `{"requestId":"CI_TICK_REQUEST"}`
 				}
 				request := httptest.NewRequest("POST", "https://example.invalid"+path, strings.NewReader(body))
-				if kind == "manual" {
-					request.AddCookie(&http.Cookie{Name: auth.CookieName, Value: token})
-				} else {
+				if kind == "tick" {
 					request.Header.Set("Authorization", "Bearer CI_TICK_TOKEN")
+				} else {
+					request.AddCookie(&http.Cookie{Name: auth.CookieName, Value: token})
+				}
+				if kind == "stream" {
+					request.Header.Set("Accept", "application/x-ndjson")
 				}
 				response := httptest.NewRecorder()
 				handler.ServeHTTP(response, request)
@@ -67,7 +70,23 @@ func TestMariaDBSchedulerControlHTTPDisposable(t *testing.T) {
 			}
 			first := call()
 			var result map[string]any
-			if first.Code != http.StatusOK || json.Unmarshal(first.Body.Bytes(), &result) != nil || result["status"] != "completed" || provider.starts != 1 {
+			if kind == "stream" {
+				for _, line := range strings.Split(strings.TrimSpace(first.Body.String()), "\n") {
+					var event struct {
+						Type string         `json:"type"`
+						Run  map[string]any `json:"run"`
+					}
+					if json.Unmarshal([]byte(line), &event) != nil {
+						t.Fatal("invalid stream event")
+					}
+					if event.Type == "done" {
+						result = event.Run
+					}
+				}
+			} else if json.Unmarshal(first.Body.Bytes(), &result) != nil {
+				t.Fatal("invalid HTTP cycle JSON")
+			}
+			if first.Code != http.StatusOK || result["status"] != "completed" || provider.starts != 1 {
 				t.Fatal("first HTTP cycle", first.Code, provider.starts)
 			}
 			if s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='scan_source' AND status='completed'") != 1 || s.count("SELECT COUNT(*) FROM scheduler_runs WHERE processed=1 AND succeeded=1 AND status='completed'") != 1 {
