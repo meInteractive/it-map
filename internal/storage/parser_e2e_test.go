@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -97,21 +98,37 @@ func TestMariaDBParserE2EDisposable(t *testing.T) {
 				t.Fatal(err)
 			}
 			handler := httpapi.NewHandlerWithOptions(nil, httpapi.Options{Auth: manager, SchedulerCycle: control, SchedulerTick: control, SchedulerToken: "CI_TICK_TOKEN", VacancyDetails: vacancies.Repository{DB: s.db}})
-			call := func(id string) *httptest.ResponseRecorder {
+			server := httptest.NewServer(handler)
+			defer func() { server.Close() }()
+			type response struct {
+				Code int
+				Body []byte
+			}
+			call := func(id string) response {
 				path := "/api/scheduler/run"
 				if kind == "tick" {
 					path = "/api/internal/scheduler/tick"
 				}
 				body, _ := json.Marshal(map[string]string{"requestId": id})
-				request := httptest.NewRequest("POST", "https://example.invalid"+path, strings.NewReader(string(body)))
+				request, err := http.NewRequestWithContext(s.ctx, "POST", server.URL+path, strings.NewReader(string(body)))
+				if err != nil {
+					t.Fatal(err)
+				}
 				if kind == "tick" {
 					request.Header.Set("Authorization", "Bearer CI_TICK_TOKEN")
 				} else {
 					request.AddCookie(&http.Cookie{Name: auth.CookieName, Value: token})
 				}
-				response := httptest.NewRecorder()
-				handler.ServeHTTP(response, request)
-				return response
+				res, err := server.Client().Do(request)
+				if err != nil {
+					t.Fatal("HTTP cycle transport", err)
+				}
+				defer res.Body.Close()
+				raw, err := io.ReadAll(res.Body)
+				if err != nil {
+					t.Fatal("HTTP cycle body", err)
+				}
+				return response{res.StatusCode, raw}
 			}
 			requestID := "12345678-1234-4234-8234-123456789abc"
 			if kind == "tick" {
@@ -121,10 +138,9 @@ func TestMariaDBParserE2EDisposable(t *testing.T) {
 			var result struct {
 				Status    string `json:"status"`
 				Processed int    `json:"processed"`
-				Errors    int    `json:"errors"
-	"fmt"`
+				Errors    int    `json:"errors"`
 			}
-			if first.Code != http.StatusOK || json.Unmarshal(first.Body.Bytes(), &result) != nil || result.Status != "completed" || result.Processed != 8 || result.Errors != 0 {
+			if first.Code != http.StatusOK || json.Unmarshal(first.Body, &result) != nil || result.Status != "completed" || result.Processed != 8 || result.Errors != 0 {
 				t.Fatal("e2e cycle", first.Code, result)
 			}
 			if provider.starts != 1 || classifier.calls != 2 || extract.calls != 1 || roles.calls != 1 || relevance.calls != 1 {
@@ -143,21 +159,30 @@ func TestMariaDBParserE2EDisposable(t *testing.T) {
 			if s.count("SELECT COUNT(*) FROM scheduler_attempts WHERE reserved_usd>0 AND cost_usd IS NULL") != 0 || s.count("SELECT COUNT(*) FROM scheduler_attempts WHERE cost_usd>0") != 5 || s.count("SELECT COUNT(*) FROM apify_runs WHERE ABS(charged_usd-0.02)<0.0000001") != 1 || s.count("SELECT COUNT(*) FROM (SELECT SUM(cost_usd) AS total FROM scheduler_attempts) AS amounts WHERE ABS(total-0.003004)<0.0000001") != 1 {
 				t.Fatal("billing receipts")
 			}
-			detailRequest := httptest.NewRequest("GET", fmt.Sprintf("/api/vacancies/%d", vacancyID), nil)
+			detailRequest, err := http.NewRequestWithContext(s.ctx, "GET", fmt.Sprintf("%s/api/vacancies/%d", server.URL, vacancyID), nil)
+			if err != nil {
+				t.Fatal(err)
+			}
 			detailRequest.AddCookie(&http.Cookie{Name: auth.CookieName, Value: token})
-			detail := httptest.NewRecorder()
-			handler.ServeHTTP(detail, detailRequest)
+			detail, err := server.Client().Do(detailRequest)
+			if err != nil {
+				t.Fatal("HTTP detail transport", err)
+			}
 			var item vacancies.DetailResponse
-			if detail.Code != http.StatusOK || json.Unmarshal(detail.Body.Bytes(), &item) != nil || item.Vacancy.ID != vacancyID || item.Vacancy.Title != "CI_TITLE" || item.Vacancy.DescriptionMD == "" || len(item.Vacancy.PublicationSources) != 1 {
-				t.Fatal("API vacancy readback", detail.Code)
+			decodeErr := json.NewDecoder(detail.Body).Decode(&item)
+			detail.Body.Close()
+			if detail.StatusCode != http.StatusOK || decodeErr != nil || item.Vacancy.ID != vacancyID || item.Vacancy.Title != "CI_TITLE" || item.Vacancy.DescriptionMD == "" || len(item.Vacancy.PublicationSources) != 1 {
+				t.Fatal("API vacancy readback", detail.StatusCode)
 			}
 			replay := call(requestID)
-			if replay.Code != http.StatusOK || !strings.Contains(replay.Body.String(), `"reused":true`) || provider.starts != 1 {
+			if replay.Code != http.StatusOK || !strings.Contains(string(replay.Body), `"reused":true`) || provider.starts != 1 {
 				t.Fatal("same request replay", replay.Code)
 			}
 			// Новый handler и control имитируют перезапуск процесса с той же БД.
+			server.Close()
 			control = parser.NewCycleControlWithFactory(s.db, factory)
 			handler = httpapi.NewHandlerWithOptions(nil, httpapi.Options{Auth: manager, SchedulerCycle: control, SchedulerTick: control, SchedulerToken: "CI_TICK_TOKEN", VacancyDetails: vacancies.Repository{DB: s.db}})
+			server = httptest.NewServer(handler)
 			restartID := "12345678-1234-4234-8234-123456789abd"
 			if kind == "tick" {
 				restartID = "CI_E2E_RESTART"
