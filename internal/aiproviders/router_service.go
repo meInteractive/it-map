@@ -40,6 +40,15 @@ type RouterService struct {
 func NewRouterService(store RouterStore) *RouterService {
 	return &RouterService{Store: store, factory: func(key string) (RouterTransport, error) { return aihttp.New(aihttp.OpenRouter, key) }, now: time.Now}
 }
+
+// NewRouterServiceWithTransport позволяет серверу задать изолированный transport.
+func NewRouterServiceWithTransport(store RouterStore, factory func(string) (RouterTransport, error)) *RouterService {
+	s := NewRouterService(store)
+	if factory != nil {
+		s.factory = factory
+	}
+	return s
+}
 func routerWarning(e error) string {
 	switch {
 	case errors.Is(e, ErrDecrypt):

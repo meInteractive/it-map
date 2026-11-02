@@ -32,6 +32,15 @@ type OpenAIService struct {
 func NewOpenAIService(store KeyStore) *OpenAIService {
 	return &OpenAIService{Store: store, factory: func(key string) (ModelTransport, error) { return aihttp.New(aihttp.OpenAI, key) }}
 }
+
+// NewOpenAIServiceWithTransport позволяет серверу задать изолированный transport.
+func NewOpenAIServiceWithTransport(store KeyStore, factory func(string) (ModelTransport, error)) *OpenAIService {
+	s := NewOpenAIService(store)
+	if factory != nil {
+		s.factory = factory
+	}
+	return s
+}
 func (s *OpenAIService) Models(ctx context.Context, refresh bool) ([]Model, error) {
 	if s == nil || s.Store == nil {
 		return nil, ErrStorage
