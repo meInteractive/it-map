@@ -25,12 +25,32 @@ func (s RelevanceStageStore) Prepare(ctx context.Context, tx *sql.Tx, j Job) (AI
 		return AIStagePlan{}, err
 	}
 	plan := AIStagePlan{Request: aiproviders.GenerationRequest{Task: "relevance"}, Config: x.Config, provenance: x}
+	if stageHash(x.BaseKey) != j.DedupeKey {
+		return AIStagePlan{}, ErrRelevanceChanged
+	}
 	if x.Score.Valid {
-		raw, _ := json.Marshal(map[string]int64{"relevance": x.Score.Int64})
-		plan.Cached = &AIStageOutput{Generation: aiproviders.AIResult{Model: "cached", Message: aiproviders.Message{Content: string(raw)}}}
+		var raw []byte
+		err = tx.QueryRowContext(ctx, "SELECT result_json FROM scheduler_attempts WHERE job_id=? AND status='completed' ORDER BY finished_at DESC,id DESC LIMIT 1 FOR UPDATE", j.ID).Scan(&raw)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return AIStagePlan{}, ErrSettingsStorage
+		}
+		if err == nil {
+			var receipt struct {
+				BaseHash  string `json:"relevanceInputHash"`
+				RolesHash string `json:"relevanceRolesHash"`
+			}
+			if json.Unmarshal(raw, &receipt) != nil {
+				return AIStagePlan{}, ErrRelevanceChanged
+			}
+			if receipt.BaseHash != "" && (receipt.BaseHash != x.BaseHash || receipt.RolesHash != x.RolesHash) {
+				return AIStagePlan{}, ErrRelevanceChanged
+			}
+		}
+		content, _ := json.Marshal(map[string]int64{"relevance": x.Score.Int64})
+		plan.Cached = &AIStageOutput{Generation: aiproviders.AIResult{Model: "cached", Message: aiproviders.Message{Content: string(content)}}}
 		return plan, nil
 	}
-	if !x.Eligible || stageHash(x.Key) != j.DedupeKey {
+	if !x.Eligible {
 		return AIStagePlan{}, ErrRelevanceChanged
 	}
 	plan.Request, err = prepareRelevanceRequest(x.Prompt, x.Resume, x.Title, x.Markdown, x.SalaryFrom, x.SalaryTo)
@@ -51,7 +71,7 @@ func (s RelevanceStageStore) Revalidate(ctx context.Context, tx *sql.Tx, j Job, 
 	if !reflect.DeepEqual(current, old) {
 		return ErrRelevanceChanged
 	}
-	if !current.Score.Valid && (!current.Eligible || stageHash(current.Key) != j.DedupeKey) {
+	if stageHash(current.BaseKey) != j.DedupeKey || !current.Score.Valid && !current.Eligible {
 		return ErrRelevanceChanged
 	}
 	return nil

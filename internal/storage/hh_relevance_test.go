@@ -108,6 +108,20 @@ func TestMariaDBHHRelevanceDisposable(t *testing.T) {
 		if s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE candidate_id=? AND type='score_relevance' AND payload LIKE '%CI synthetic resume%'", candidate) != 0 {
 			t.Fatal("resume leaked to job")
 		}
+		id := lease.Job().ID
+		s.exec("UPDATE vacancy_roles SET name='CI renamed leaf' WHERE id=991304")
+		s.exec("UPDATE scheduler_jobs SET status='pending',locked_by='',locked_until=0,run_after=0 WHERE id=?", id)
+		var run string
+		if err = s.db.QueryRowContext(s.ctx, "SELECT id FROM scheduler_runs WHERE status='running'").Scan(&run); err != nil {
+			t.Fatal(err)
+		}
+		retry, err := s.repo.ClaimJob(s.ctx, run, parser.ClaimOptions{JobID: &id})
+		if err != nil || retry == nil {
+			t.Fatal("cached retry claim", err)
+		}
+		if _, err = (parser.AIStageDispatcher{Owner: "CI_OWNER", Generator: runner}).Execute(s.ctx, retry); err == nil || runner.calls != 1 || s.count("SELECT COUNT(*) FROM company_vacancy_user_state WHERE user_name='CI_OWNER' AND vacancy_id=? AND relevance=67", vacancy) != 1 {
+			t.Fatal("stale role receipt reused", err)
+		}
 	})
 	t.Run("saved zero is reused without provider", func(t *testing.T) {
 		s, lease, _, vacancy := hhRelevanceFixture(t)
@@ -116,6 +130,15 @@ func TestMariaDBHHRelevanceDisposable(t *testing.T) {
 		out, err := (parser.AIStageDispatcher{Owner: "CI_OWNER", Generator: runner}).Execute(s.ctx, lease)
 		if err != nil || !out.Reused || runner.calls != 0 || s.count("SELECT COUNT(*) FROM company_vacancy_user_state WHERE user_name='CI_OWNER' AND vacancy_id=? AND relevance=0", vacancy) != 1 {
 			t.Fatal("cached zero", err)
+		}
+	})
+	t.Run("changed prompt does not reuse an old job", func(t *testing.T) {
+		s, lease, _, vacancy := hhRelevanceFixture(t)
+		s.exec("INSERT INTO company_vacancy_user_state(user_name,vacancy_id,relevance) VALUES('CI_OWNER',?,0)", vacancy)
+		s.exec("UPDATE system_prompts SET markdown='CI changed prompt',revision=revision+1 WHERE kind='relevance'")
+		runner := &relevanceRunner{}
+		if _, err := (parser.AIStageDispatcher{Owner: "CI_OWNER", Generator: runner}).Execute(s.ctx, lease); err == nil || runner.calls != 0 || s.count("SELECT COUNT(*) FROM company_vacancy_user_state WHERE user_name='CI_OWNER' AND vacancy_id=? AND relevance=0", vacancy) != 1 {
+			t.Fatal("stale prompt cache accepted", err)
 		}
 	})
 	t.Run("stale model blocks before paid work", func(t *testing.T) {

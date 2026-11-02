@@ -24,7 +24,7 @@ type relevanceSnapshot struct {
 	Score                                          sql.NullInt64
 	Roles                                          []int64
 	RoleDetails                                    []relevanceRole
-	Key, InputHash                                 string
+	Key, InputHash, BaseKey, BaseHash, RolesHash   string
 	Eligible                                       bool
 }
 
@@ -188,6 +188,16 @@ func readRelevanceSnapshot(ctx context.Context, tx *sql.Tx, job Job, owner strin
 		return x, err
 	}
 	x.Key = fmt.Sprintf("relevance:%s:%d:%s", owner, x.VacancyID, x.InputHash)
+	snapshot[len(snapshot)-1] = nil
+	x.BaseHash, err = canonicalHash(snapshot)
+	if err != nil {
+		return x, err
+	}
+	x.BaseKey = fmt.Sprintf("relevance:%s:%d:%s", owner, x.VacancyID, x.BaseHash)
+	x.RolesHash, err = canonicalHash(x.RoleDetails)
+	if err != nil {
+		return x, err
+	}
 	x.Eligible = !x.Score.Valid && len(x.Roles) > 0 && jsStageTrim(x.Resume) != "" && jsStageTrim(x.Prompt) != "" && jsStageTrim(x.Title) != "" && jsStageTrim(x.Markdown) != "" && x.Config.Provider == "openrouter" && x.Config.OpenRouterModel == "jev" && profiles.ValidateModel("relevance", x.Config) == nil
 	return x, nil
 }
