@@ -70,6 +70,8 @@
 
 ### [ ] GO-403. Исполнение одного полного цикла worker
 
+- **В работе:** черновик [#210](https://github.com/meInteractive/it-map/pull/210). Полный HH mock-цикл с Go API readback прошёл disposable MariaDB на `44eac1e`; восстановление после неизвестного расхода — на `1ef99ca`. SIGKILL и проверки последней версии выполняются; остаются приёмка ошибок/ротации, полный CI и проверка базы PR. Таймер и live провайдеры не включены.
+
 - **Зависимости:** GO-399…402, GO-394 и принятый durable-core GO-045.
 - **Результат:** серверный worker получает due jobs под lease и направляет `scan_source`, `classify_title`, `fetch_full_text`, `extract_vacancy`, `assign_roles`, `import_vacancy`, `score_relevance` в конкретные исполнители, связывая подготовленные `RouterService`/`Generator` с AI-диспетчером; завершает attempt/job и передаёт следующую стадию. Ключи, модель и владелец берутся из серверной конфигурации, не из payload. Ручной bounded cycle завершается, отменяется и восстанавливается после crash без второго оплачиваемого вызова.
 - **Приёмка:** полный mock-provider/MariaDB цикл от источника до API readback, а также SIGKILL/restart, lease expiry, generation rotation, ошибки каждой стадии и отказ неподдерживаемому типу. Пока без таймера и live Apify.

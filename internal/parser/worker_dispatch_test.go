@@ -32,10 +32,13 @@ func TestWorkerDispatchAIAndUnsupported(t *testing.T) {
 	}
 }
 
-type workerTestListing struct{ done bool }
+type workerTestListing struct {
+	done bool
+	code string
+}
 
 func (s workerTestListing) Execute(context.Context, *JobLease) (HHListingProgress, error) {
-	return HHListingProgress{Done: s.done}, nil
+	return HHListingProgress{Done: s.done, PartialCode: s.code}, nil
 }
 
 type workerTestDetail struct{ pending bool }
@@ -81,5 +84,13 @@ func TestWorkerClaimRestrictsSource(t *testing.T) {
 		if err != nil || allowed != test.allowed {
 			t.Fatalf("source %v: %v %v", test.source, allowed, err)
 		}
+	}
+}
+
+func TestWorkerDispatchRetainsListingDiagnostic(t *testing.T) {
+	d := workerDispatch{listing: workerTestListing{done: true, code: "apify_partial_data"}}
+	result, err := d.execute(context.Background(), &JobLease{job: Job{Type: "scan_source"}})
+	if err != nil || result.pending || result.code != "apify_partial_data" {
+		t.Fatalf("partial result: %+v %v", result, err)
 	}
 }

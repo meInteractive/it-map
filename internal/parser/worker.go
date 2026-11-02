@@ -76,6 +76,8 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 		defer cancel()
 		if err := w.Runs.Finish(finishCtx, start.Run.ID, status); err != nil {
 			failure = errors.Join(failure, err)
+		} else {
+			result.Run.Status = status
 		}
 	}()
 	bounded, cancel := context.WithTimeout(ctx, duration)
@@ -142,7 +144,7 @@ func workerExecute(ctx context.Context, d workerDispatch, lease *JobLease) error
 	}
 	cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
 	defer cancel()
-	finish := FinishOptions{Status: "completed"}
+	finish := FinishOptions{Status: "completed", Code: out.code}
 	if executeErr != nil {
 		finish = FinishOptions{Status: "failed", Code: "stage_failed", Message: "Не удалось выполнить этап обработки."}
 		if errors.Is(executeErr, ErrHHDetailPending) || errors.Is(executeErr, ErrDetailBusy) || errors.Is(executeErr, context.Canceled) || errors.Is(executeErr, context.DeadlineExceeded) {

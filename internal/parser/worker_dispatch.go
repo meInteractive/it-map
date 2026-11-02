@@ -31,6 +31,7 @@ type workerDispatch struct {
 type workerDispatchResult struct {
 	pending  bool
 	finished bool
+	code     string
 }
 
 func (d workerDispatch) execute(ctx context.Context, lease *JobLease) (workerDispatchResult, error) {
@@ -43,7 +44,7 @@ func (d workerDispatch) execute(ctx context.Context, lease *JobLease) (workerDis
 			return workerDispatchResult{}, ErrAIStageUnavailable
 		}
 		result, err := d.listing.Execute(ctx, lease)
-		return workerDispatchResult{pending: !result.Done}, err
+		return workerDispatchResult{pending: !result.Done, code: result.PartialCode}, err
 	case "fetch_full_text":
 		if d.detail == nil {
 			return workerDispatchResult{}, ErrAIStageUnavailable
