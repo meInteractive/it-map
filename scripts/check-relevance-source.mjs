@@ -1,0 +1,18 @@
+import {DatabaseSync} from 'node:sqlite';
+import {readVacancyRelevanceInput,parseRelevanceAnswer} from '../server/services/vacancy-relevance.js';
+import {candidateHash} from '../server/repositories/vacancy-candidates.js';
+const sqlite=new DatabaseSync(':memory:');
+sqlite.exec(`CREATE TABLE app_runtime_generation(id INTEGER,generation TEXT); INSERT INTO app_runtime_generation VALUES(1,'11111111-2222-4333-8444-555555555555');
+CREATE TABLE company_vacancies(id INTEGER,created_at TEXT,title TEXT,description_md TEXT,salary_from INTEGER,salary_to INTEGER,archived INTEGER,company_name TEXT,entity_type TEXT);
+INSERT INTO company_vacancies VALUES(7,'2026-01-02 03:04:05','CI_TITLE','CI_DESC',100000,NULL,0,'CI_COMPANY','company');
+CREATE TABLE user_profiles(user_name TEXT,resume_md TEXT,revision INTEGER); INSERT INTO user_profiles VALUES('CI_USER','CI_RESUME',3);
+CREATE TABLE system_prompts(kind TEXT,markdown TEXT,revision INTEGER); INSERT INTO system_prompts VALUES('relevance','CI_PROMPT',4);
+CREATE TABLE prompt_model_settings(kind TEXT,provider TEXT,openai_model TEXT,openrouter_model TEXT,reasoning_effort TEXT,revision INTEGER); INSERT INTO prompt_model_settings VALUES('relevance','openrouter','','jev','medium',5);
+CREATE TABLE company_vacancy_user_state(user_name TEXT,vacancy_id INTEGER,relevance INTEGER);
+CREATE TABLE openrouter_settings(id INTEGER,revision INTEGER); INSERT INTO openrouter_settings VALUES(1,6);
+CREATE TABLE openai_settings(id INTEGER,revision INTEGER);`);
+const db={prepare(sql){let args=[];return{bind(...v){args=v;return this},async first(){return sqlite.prepare(sql).get(...args)||null}}}};
+const input=await readVacancyRelevanceInput(db,'CI_USER',7);
+const raw=['0','100','1e2','1.5','-1','101','"42"','{"relevance":0}','{"relevance":99}','```json\n{"relevance":42}\n```','\ufeff```JSON\u00a0{"relevance":9}\u2028```\ufeff','{}','true','42 43'];
+console.log(JSON.stringify({snapshot:JSON.parse(input.snapshot),hash:await candidateHash(input.snapshot),answers:raw.map(value=>({value,answer:parseRelevanceAnswer(value)}))}));
+sqlite.close();

@@ -147,6 +147,20 @@ func (s *attemptState) reserve(ctx context.Context, upper float64, provider, mod
 		if unresolved != 0 {
 			return ErrMoneyUncertain
 		}
+		// Разные ключи оценки одной вакансии не обходят неизвестный исход
+		// предыдущего платного запроса после изменения входных данных.
+		if s.lease.job.Type == "score_relevance" {
+			if s.lease.job.CandidateID == nil {
+				return ErrJobInput
+			}
+			err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM scheduler_attempts a JOIN scheduler_jobs prior_job ON prior_job.id=a.job_id JOIN vacancy_candidates prior_candidate ON prior_candidate.id=prior_job.candidate_id JOIN vacancy_candidates current_candidate ON current_candidate.id=? WHERE prior_job.type='score_relevance' AND prior_candidate.main_vacancy_id IS NOT NULL AND prior_candidate.main_vacancy_id=current_candidate.main_vacancy_id AND a.id<>? AND a.cost_usd IS NULL AND a.reserved_usd>0`, s.lease.job.CandidateID, s.id).Scan(&unresolved)
+			if err != nil {
+				return storageError(ctx)
+			}
+			if unresolved != 0 {
+				return ErrMoneyUncertain
+			}
+		}
 		var raw []byte
 		if tx.QueryRowContext(ctx, "SELECT scheduler_json FROM firecrawl_settings WHERE id=1").Scan(&raw) != nil {
 			return storageError(ctx)
