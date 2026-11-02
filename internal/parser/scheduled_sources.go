@@ -98,7 +98,7 @@ func scheduleHH(ctx context.Context, runs RunRepository, settingsRepo apifysetti
 		if sources[i].lastAttempt != sources[j].lastAttempt {
 			return sources[i].lastAttempt < sources[j].lastAttempt
 		}
-		return sources[i].id < sources[j].id
+		return fmt.Sprintf("company:%d", sources[i].id) < fmt.Sprintf("company:%d", sources[j].id)
 	})
 	scheduled := 0
 	for _, candidate := range sources {
