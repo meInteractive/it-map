@@ -86,6 +86,9 @@ func aiExecutionLease(t *testing.T, f *schedulerFixture, kind string) *parser.Jo
 	run := f.begin("CI_AI_EXECUTION")
 	schedulerSeedJob(f, "CI_AI_JOB", nil)
 	f.exec("UPDATE scheduler_jobs SET type=?,payload=? WHERE id='CI_AI_JOB'", kind, `{"instructions":"CI_UNTRUSTED_JOB_PAYLOAD"}`)
+	if kind == "score_relevance" {
+		f.exec("UPDATE scheduler_jobs SET candidate_id=990001 WHERE id='CI_AI_JOB'")
+	}
 	return schedulerRequireLease(t, f, run, "CI_AI_JOB")
 }
 func TestMariaDBParserAIExecutionDisposable(t *testing.T) {
