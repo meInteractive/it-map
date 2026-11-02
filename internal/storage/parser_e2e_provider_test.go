@@ -31,7 +31,7 @@ func newE2EProviders(extraction json.RawMessage) *e2eProviders {
 		case "/openai/models":
 			_ = json.NewEncoder(w).Encode(map[string]any{"data": []any{map[string]string{"id": "gpt-6-luna"}}})
 		case "/jev/models":
-			_ = json.NewEncoder(w).Encode(map[string]any{"data": []any{map[string]any{"id": aiproviders.JEVModelID, "context_length": 262144, "pricing": map[string]string{"prompt": "0.00001", "completion": "0"}}}})
+			_ = json.NewEncoder(w).Encode(map[string]any{"data": []any{map[string]any{"id": aiproviders.JEVModelID, "context_length": 262144, "pricing": map[string]string{"prompt": "0.000001", "completion": "0"}}}})
 		case "/jev/decisions":
 			var request struct {
 				State     json.RawMessage            `json:"state"`
