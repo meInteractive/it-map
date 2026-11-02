@@ -289,8 +289,8 @@
     {
       "id": "scheduler",
       "implementation": "partial",
-      "level": "Settings/dashboard/retry/cancel/queue/GET saved run приняты; prerequisite error-history GO-332 ожидает native CI",
-      "gap": "POST run/probe/cloud-owner/issues/funnel и stage wiring GO-046 ещё отсутствуют; source GET issues пишет историю, поэтому не объявляется readonly. Standalone history HTTP не добавлен.",
+      "level": "Settings/dashboard/retry/cancel/queue/GET saved run; ручной запуск, probe и tick за серверным флагом, mock SQL/HTTP приёмка GO-404",
+      "gap": "Cloud-owner, issues/funnel, потоковый NDJSON и полный source HTTP golden остаются открыты; планирование ограничено разрешёнными HH-источниками. Реальные провайдеры и автоматический timer не включены.",
       "evidence": [
         {
           "file": "internal/storage/scheduler_jobs_integration_test.go",
@@ -398,6 +398,43 @@
         {
           "file": "internal/storage/parser_error_history_integration_test.go",
           "symbol": "TestMariaDBSchedulerErrorHistoryFaultsDisposable",
+          "required": true
+        },
+        {
+          "file": "internal/httpapi/scheduler_cycle_routes_test.go",
+          "symbol": "TestSchedulerCycleHTTPAuthorization"
+        },
+        {
+          "file": "internal/httpapi/scheduler_tick_routes_test.go",
+          "symbol": "TestSchedulerTickHTTPAuthorization"
+        },
+        {
+          "file": "internal/httpapi/scheduler_probe_routes_test.go",
+          "symbol": "TestSchedulerProbeHTTPAuthorization"
+        },
+        {
+          "file": "internal/storage/scheduler_cycle_control_test.go",
+          "symbol": "TestMariaDBSchedulerCycleControlDisposable",
+          "required": true
+        },
+        {
+          "file": "internal/storage/scheduler_sources_test.go",
+          "symbol": "TestMariaDBSchedulerSourcesDisposable",
+          "required": true
+        },
+        {
+          "file": "internal/storage/scheduler_control_http_test.go",
+          "symbol": "TestMariaDBSchedulerControlHTTPDisposable",
+          "required": true
+        },
+        {
+          "file": "internal/storage/scheduler_sources_test.go",
+          "symbol": "TestMariaDBSchedulerStopDisposable",
+          "required": true
+        },
+        {
+          "file": "internal/storage/scheduler_control_http_test.go",
+          "symbol": "TestMariaDBSchedulerConcurrentDisposable",
           "required": true
         }
       ]
@@ -660,7 +697,7 @@
   ],
   "sourceHashes": {
     "frontend/api/client.ts": "b6880480b3eed65bf7caa043f5e41c8e899b672e5c9629666ccbd6d8f80c14ad",
-    "internal/httpapi/handler.go": "de714b8804572e3e4e98140a3d12591485ea7fc7aba840ba2b9818bef9947dbf",
+    "internal/httpapi/handler.go": "1b8236563d9516e4b7f1c189f73b8e977e9001d00fc146c038759b48e1895a56",
     "server/routes/index.js": "6134004f682975cb51ea13cd2ec4de8e85a5957deff6a5392fbad3fd70ccb1e4"
   },
   "clientExports": [
