@@ -46,7 +46,7 @@ func TestMariaDBSchedulerSourcesDisposable(t *testing.T) {
 			if s.count("SELECT COUNT(*) FROM scheduler_runs WHERE id=? AND processed=? AND succeeded=?", first.Run.ID, tc.want, tc.want) != 1 {
 				t.Fatal("cycle counters missing")
 			}
-			if tc.want == 1 && s.count("SELECT COUNT(*) FROM vacancy_source_parsing WHERE company_id=991302 AND source_id='hh' AND next_run_at>CAST(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000 AS SIGNED) AND last_result='success'") != 1 {
+			if tc.want == 1 && s.count("SELECT COUNT(*) FROM vacancy_source_parsing WHERE company_id=991302 AND source_id='hh' AND next_run_at>CAST(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000 AS SIGNED) AND last_result='success' AND auto_enabled=1") != 1 {
 				t.Fatal("next source run not recorded")
 			}
 			second, err := w.Cycle(s.ctx, parser.WorkerOptions{Run: parser.RunOptions{RequestID: "CI_SOURCE_TICK_2"}, MaxJobs: 20})
