@@ -56,6 +56,27 @@ func TestMariaDBParserStagingMockDisposable(t *testing.T) {
 	w.ContinueOnStageFailure = true
 	result, err := w.Cycle(s.ctx, parser.WorkerOptions{Run: parser.RunOptions{RequestID: "12345678-1234-4234-8234-123456789abc"}, MaxJobs: 50})
 	if err != nil || result.Run.Status != "completed" || result.Processed != 8 || p.Starts() != 1 {
+		rows, queryErr := s.db.QueryContext(s.ctx, "SELECT type,status,reason_code FROM scheduler_jobs ORDER BY type")
+		if queryErr == nil {
+			for rows.Next() {
+				var kind, status, reason string
+				if rows.Scan(&kind, &status, &reason) == nil {
+					t.Log("synthetic job", kind, status, reason)
+				}
+			}
+			rows.Close()
+		}
+		rows, queryErr = s.db.QueryContext(s.ctx, "SELECT decision,COUNT(*) FROM vacancy_classifications GROUP BY decision")
+		if queryErr == nil {
+			for rows.Next() {
+				var decision string
+				var count int
+				if rows.Scan(&decision, &count) == nil {
+					t.Log("synthetic classification", decision, count)
+				}
+			}
+			rows.Close()
+		}
 		t.Fatalf("mock cycle status=%s processed=%d starts=%d err=%v", result.Run.Status, result.Processed, p.Starts(), err)
 	}
 	if s.count("SELECT COUNT(*) FROM company_vacancies WHERE company_name='CI Apify Runtime'") != 1 || s.count("SELECT COUNT(*) FROM vacancy_candidates WHERE title_raw='STAGING_SYNTHETIC_REJECTED' AND main_vacancy_id IS NULL") != 1 {
