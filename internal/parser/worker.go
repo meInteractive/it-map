@@ -169,8 +169,7 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 			return result, context.DeadlineExceeded
 		}
 		allowHH := hhStages < 5
-		allowStarts := actorStarts.Load() < 1
-		lease, err := w.Runs.ClaimJob(bounded, start.Run.ID, ClaimOptions{Types: workerTypes, SourceID: &source, Lease: jobDuration, AllowApify: &allowHH, AllowApifyStarts: &allowStarts})
+		lease, err := w.Runs.ClaimJob(bounded, start.Run.ID, ClaimOptions{Types: workerTypes, SourceID: &source, Lease: jobDuration, AllowApify: &allowHH})
 		if err != nil {
 			status = "partial"
 			return result, err

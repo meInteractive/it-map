@@ -335,6 +335,12 @@ func TestMariaDBHHWorkerActorLimitDisposable(t *testing.T) {
 		t.Fatal(err)
 	}
 	s.exec("INSERT INTO company_identity(id,company_name) VALUES(991305,'CI second HH company')")
+	s.exec(`UPDATE app_catalog SET data_json='{"companies":[{"name":"CI Apify Runtime","vacancySources":{"hh":"https://hh.ru/employer/456"}},{"name":"CI second HH company","vacancySources":{"hh":"https://hh.ru/employer/456"}}],"agencies":[]}' WHERE id=1`)
+	settings := apifysettings.NewRepository(s.db, "CI_SECRET")
+	if _, err := settings.SaveHHSource(s.ctx, s.repo.Generation, 991305, apifysettings.HHSourceInput{SourceURL: "https://hh.ru/employer/456", Enabled: true, Revision: 0}); err != nil {
+		t.Fatal("second HH source", err)
+	}
+
 	t.Cleanup(func() {
 		if _, err := s.db.ExecContext(context.Background(), "DELETE FROM company_identity WHERE id=991305"); err != nil {
 			t.Error("worker second company cleanup", err)
@@ -343,7 +349,7 @@ func TestMariaDBHHWorkerActorLimitDisposable(t *testing.T) {
 	s.exec(`INSERT INTO scheduler_jobs(id,generation,dedupe_key,type,company_id,source_id,payload,priority,run_after,created_at,updated_at) VALUES('CI_HH_SCAN_2',?,'CI_HH_SCAN_2','scan_source',991305,'hh','{}',90,0,0,0)`, s.repo.Generation)
 	w := parser.Worker{Runs: s.repo, Settings: apifysettings.NewRepository(s.db, "CI_SECRET"), ListingRuntime: listing.Runtime}
 	result, err := w.Cycle(s.ctx, parser.WorkerOptions{Run: parser.RunOptions{RequestID: "CI_WORKER_ACTOR_LIMIT"}, MaxJobs: 20})
-	if err != nil || result.Processed != 1 || provider.starts != 1 {
+	if err != nil || result.Processed != 2 || provider.starts != 1 {
 		t.Fatal("actor limit", result, provider.starts, err)
 	}
 	if s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='scan_source' AND status='pending'") != 1 {
