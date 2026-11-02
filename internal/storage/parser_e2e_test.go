@@ -140,7 +140,7 @@ func TestMariaDBParserE2EDisposable(t *testing.T) {
 			if s.count("SELECT COUNT(*) FROM vacancy_role_assignments WHERE vacancy_id=? AND role_id=991304", vacancyID) != 1 || s.count("SELECT COUNT(*) FROM vacancy_publication_sources WHERE vacancy_id=?", vacancyID) != 1 || s.count("SELECT COUNT(*) FROM company_vacancy_user_state WHERE user_name='CI_OWNER' AND vacancy_id=? AND relevance=67", vacancyID) != 1 {
 				t.Fatal("missing role, source or personal score")
 			}
-			if s.count("SELECT COUNT(*) FROM scheduler_attempts WHERE reserved_usd>0 AND cost_usd IS NULL") != 0 || s.count("SELECT COUNT(*) FROM scheduler_attempts WHERE cost_usd>0") < 4 || s.count("SELECT COUNT(*) FROM apify_runs WHERE charged_usd IS NOT NULL") != 1 {
+			if s.count("SELECT COUNT(*) FROM scheduler_attempts WHERE reserved_usd>0 AND cost_usd IS NULL") != 0 || s.count("SELECT COUNT(*) FROM scheduler_attempts WHERE cost_usd>0") != 5 || s.count("SELECT COUNT(*) FROM apify_runs WHERE ABS(charged_usd-0.02)<0.0000001") != 1 || s.count("SELECT COUNT(*) FROM (SELECT SUM(cost_usd) AS total FROM scheduler_attempts) AS amounts WHERE ABS(total-0.003004)<0.0000001") != 1 {
 				t.Fatal("billing receipts")
 			}
 			detailRequest := httptest.NewRequest("GET", fmt.Sprintf("/api/vacancies/%d", vacancyID), nil)
@@ -155,6 +155,9 @@ func TestMariaDBParserE2EDisposable(t *testing.T) {
 			if replay.Code != http.StatusOK || !strings.Contains(replay.Body.String(), `"reused":true`) || provider.starts != 1 {
 				t.Fatal("same request replay", replay.Code)
 			}
+			// Новый handler и control имитируют перезапуск процесса с той же БД.
+			control = parser.NewCycleControlWithFactory(s.db, factory)
+			handler = httpapi.NewHandlerWithOptions(nil, httpapi.Options{Auth: manager, SchedulerCycle: control, SchedulerTick: control, SchedulerToken: "CI_TICK_TOKEN", VacancyDetails: vacancies.Repository{DB: s.db}})
 			restartID := "12345678-1234-4234-8234-123456789abd"
 			if kind == "tick" {
 				restartID = "CI_E2E_RESTART"
