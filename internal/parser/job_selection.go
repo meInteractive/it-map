@@ -117,6 +117,9 @@ func claimEligible(job Job, now int64, settings Settings, options ClaimOptions, 
 	if options.JobID != nil && job.ID != *options.JobID || options.Diagnostic && job.Type != "diagnostic" || job.CandidateID != nil && view.busy[*job.CandidateID] {
 		return false, false, nil
 	}
+	if options.SourceID != nil && (job.SourceID == nil || *job.SourceID != *options.SourceID) {
+		return false, false, nil
+	}
 	hh := job.SourceID != nil && *job.SourceID == "hh"
 	if options.DeferredApifyOnly && (!hh || job.Type != "scan_source" || (job.ReasonCode != "apify_busy" && job.ReasonCode != "apify_budget") || job.RunAfter > now-300000) {
 		return false, false, nil

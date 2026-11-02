@@ -67,3 +67,19 @@ func TestWorkerDispatchNonAIProgress(t *testing.T) {
 		}
 	}
 }
+
+func TestWorkerClaimRestrictsSource(t *testing.T) {
+	hh, other := "hh", "companySite"
+	options := ClaimOptions{SourceID: &hh}
+	types := map[string]bool{"import_vacancy": true}
+	for _, test := range []struct {
+		source  *string
+		allowed bool
+	}{{&hh, true}, {&other, false}, {nil, false}} {
+		job := Job{Status: "pending", Type: "import_vacancy", SourceID: test.source}
+		allowed, _, err := claimEligible(job, 1, DefaultSettings(), options, types, claimView{})
+		if err != nil || allowed != test.allowed {
+			t.Fatalf("source %v: %v %v", test.source, allowed, err)
+		}
+	}
+}

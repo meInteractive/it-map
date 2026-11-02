@@ -30,7 +30,7 @@ type ClaimOptions struct {
 	Lease                         time.Duration
 	Diagnostic, DeferredApifyOnly bool
 	AllowApify, AllowApifyStarts  *bool
-	JobID                         *string
+	JobID, SourceID               *string
 }
 type FinishOptions struct {
 	Status, Code, Message string
