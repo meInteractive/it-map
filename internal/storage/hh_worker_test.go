@@ -149,4 +149,15 @@ func TestMariaDBHHWorkerUncertainDisposable(t *testing.T) {
 	if s.count("SELECT COUNT(*) FROM company_vacancy_user_state WHERE user_name='CI_OWNER' AND vacancy_id=? AND relevance IS NOT NULL", vacancy) != 0 {
 		t.Fatal("stale score saved")
 	}
+	var failedRun string
+	if err := s.db.QueryRowContext(s.ctx, "SELECT id FROM scheduler_runs WHERE status='running'").Scan(&failedRun); err != nil {
+		t.Fatal(err)
+	}
+	s.exec("UPDATE scheduler_runs SET lease_until=1 WHERE id=?", failedRun)
+	s.exec("UPDATE scheduler_jobs SET status='pending',run_after=0,attempts=0,completed_at=NULL WHERE id=?", job)
+	s.exec("UPDATE user_profiles SET resume_md='CI synthetic resume',revision=1 WHERE user_name='CI_OWNER'")
+	_, err = w.Cycle(s.ctx, parser.WorkerOptions{Run: parser.RunOptions{RequestID: "CI_WORKER_RECOVER"}, MaxJobs: 20})
+	if !errors.Is(err, parser.ErrMoneyUncertain) || runner.calls != 1 {
+		t.Fatal("uncertain cost allowed another request", err, runner.calls)
+	}
 }
