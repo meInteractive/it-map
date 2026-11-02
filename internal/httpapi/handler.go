@@ -71,6 +71,7 @@ type Options struct {
 	BackupExports        BackupExporter
 	BackupRestores       BackupRestorer
 	SchedulerRunRead     SchedulerRunReader
+	SchedulerCycle       SchedulerCycleRunner
 	SchedulerQueue       SchedulerQueueReader
 	SchedulerJobActions  SchedulerJobActionWriter
 	SchedulerSettings    SchedulerSettingsWriter
@@ -114,6 +115,7 @@ func NewHandlerWithOptions(logger *slog.Logger, opts Options) http.Handler {
 		mux.HandleFunc("/api/openrouter", RouterSettingsHandler(opts.Auth, opts.RouterSettings, opts.AIConnectionTests))
 		mux.HandleFunc("/api/openrouter/", RouterSettingsHandler(opts.Auth, opts.RouterSettings, opts.AIConnectionTests))
 		mux.HandleFunc("GET /api/scheduler/run", SchedulerRunReadHandler(opts.Auth, opts.SchedulerRunRead))
+		mux.HandleFunc("POST /api/scheduler/run", SchedulerCycleHandler(opts.Auth, opts.SchedulerCycle))
 		mux.HandleFunc("/api/scheduler/queue", SchedulerQueueHandler(opts.Auth, opts.SchedulerQueue))
 		mux.HandleFunc("/api/scheduler/jobs/", SchedulerJobActionsHandler(opts.Auth, opts.SchedulerJobActions))
 		mux.HandleFunc("/api/scheduler/settings", SchedulerSettingsHandler(opts.Auth, opts.SchedulerSettings))
