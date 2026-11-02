@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"sync/atomic"
 	"time"
 
 	"itmap/internal/aiproviders"
@@ -41,6 +42,8 @@ type WorkerResult struct {
 	Processed int
 	Reused    bool
 }
+
+var ErrHHCycleLimit = errors.New("HH cycle actor start limit reached")
 
 var workerTypes = []string{"scan_source", "classify_title", "fetch_full_text", "extract_vacancy", "assign_roles", "import_vacancy", "score_relevance"}
 
@@ -93,16 +96,51 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 		return result, ErrSettingsStorage
 	}
 	owner := settings.OwnerName
+	var actorStarts atomic.Int32
+	admit := func() error {
+		if actorStarts.Add(1) > 1 {
+			return ErrHHCycleLimit
+		}
+		return nil
+	}
+	service := apifyruns.Service{Repository: apifyruns.Repository{DB: w.Settings.DB, Settings: w.Settings}, BeforeReserve: admit}
 	listingRuntime := w.ListingRuntime
 	if listingRuntime == nil {
-		listingRuntime = apifyruns.Service{Repository: apifyruns.Repository{DB: w.Settings.DB, Settings: w.Settings}}
+		listingRuntime = service
+	} else if existing, ok := listingRuntime.(apifyruns.Service); ok {
+		previous := existing.BeforeReserve
+		existing.BeforeReserve = func() error {
+			if previous != nil {
+				if err := previous(); err != nil {
+					return err
+				}
+			}
+			return admit()
+		}
+		listingRuntime = existing
+	}
+	detailRuntime := w.DetailRuntime
+	if detailRuntime == nil {
+		detailRuntime = service
+	} else if existing, ok := detailRuntime.(apifyruns.Service); ok {
+		previous := existing.BeforeReserve
+		existing.BeforeReserve = func() error {
+			if previous != nil {
+				if err := previous(); err != nil {
+					return err
+				}
+			}
+			return admit()
+		}
+		detailRuntime = existing
 	}
 	d := workerDispatch{
 		listing:  HHListingExecutor{Settings: w.Settings, Runtime: listingRuntime, Owner: owner},
-		detail:   HHFullTextExecutor{Settings: w.Settings, Runtime: w.DetailRuntime, Public: w.Public, Owner: owner},
+		detail:   HHFullTextExecutor{Settings: w.Settings, Runtime: detailRuntime, Public: w.Public, Owner: owner},
 		importer: HHImportExecutor{Settings: w.Settings, Owner: owner},
 		ai:       AIStageDispatcher{Owner: owner, Generator: w.Generator, Classifier: w.Classifier},
 	}
+	hhStages := 0
 	for result.Processed < options.MaxJobs {
 		if err = bounded.Err(); err != nil {
 			status = "interrupted"
@@ -115,7 +153,9 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 			status = "interrupted"
 			return result, context.DeadlineExceeded
 		}
-		lease, err := w.Runs.ClaimJob(bounded, start.Run.ID, ClaimOptions{Types: workerTypes, SourceID: &source, Lease: jobDuration})
+		allowHH := hhStages < 5
+		allowStarts := actorStarts.Load() < 1
+		lease, err := w.Runs.ClaimJob(bounded, start.Run.ID, ClaimOptions{Types: workerTypes, SourceID: &source, Lease: jobDuration, AllowApify: &allowHH, AllowApifyStarts: &allowStarts})
 		if err != nil {
 			status = "partial"
 			return result, err
@@ -124,6 +164,9 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 			return result, nil
 		}
 		result.Processed++
+		if kind := lease.Job().Type; kind == "scan_source" || kind == "fetch_full_text" {
+			hhStages++
+		}
 		if err = workerExecute(bounded, d, lease); err != nil {
 			releaseRun = false
 			status = "partial"
@@ -153,7 +196,7 @@ func workerExecute(ctx context.Context, d workerDispatch, lease *JobLease) error
 	finish := FinishOptions{Status: "completed", Code: out.code}
 	if executeErr != nil {
 		finish = FinishOptions{Status: "failed", Code: "stage_failed", Message: "Не удалось выполнить этап обработки."}
-		if errors.Is(executeErr, ErrHHDetailPending) || errors.Is(executeErr, ErrDetailBusy) || errors.Is(executeErr, context.Canceled) || errors.Is(executeErr, context.DeadlineExceeded) {
+		if errors.Is(executeErr, ErrHHDetailPending) || errors.Is(executeErr, ErrDetailBusy) || errors.Is(executeErr, ErrHHCycleLimit) || errors.Is(executeErr, context.Canceled) || errors.Is(executeErr, context.DeadlineExceeded) {
 			finish = FinishOptions{Status: "pending", Code: "deferred", Delay: 10 * time.Second, Deferred: true}
 		}
 	} else if out.pending {

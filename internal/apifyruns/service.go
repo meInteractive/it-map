@@ -19,9 +19,10 @@ type Provider interface {
 }
 
 type Service struct {
-	Repository  Repository
-	NewClient   func(string) (Provider, error)
-	CheckActive func(context.Context) error
+	Repository    Repository
+	NewClient     func(string) (Provider, error)
+	CheckActive   func(context.Context) error
+	BeforeReserve func() error
 }
 
 // WithCheck возвращает отдельную копию для текущей стадии. Callback выполняется
@@ -137,6 +138,11 @@ func (s Service) Execute(ctx context.Context, v apifysettings.OperationVersion, 
 	}
 	if err := s.checkActive(ctx); err != nil {
 		return Record{}, err
+	}
+	if s.BeforeReserve != nil {
+		if err := s.BeforeReserve(); err != nil {
+			return Record{}, err
+		}
 	}
 	reserved, e := s.Repository.Reserve(ctx, v, scoped)
 	if e != nil {
