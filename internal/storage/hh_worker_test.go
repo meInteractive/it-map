@@ -334,7 +334,13 @@ func TestMariaDBHHWorkerActorLimitDisposable(t *testing.T) {
 	if err := s.repo.Finish(s.ctx, run, "completed"); err != nil {
 		t.Fatal(err)
 	}
-	s.exec(`INSERT INTO scheduler_jobs(id,generation,dedupe_key,type,company_id,source_id,payload,priority,run_after,created_at,updated_at) VALUES('CI_HH_SCAN_2',?,'CI_HH_SCAN_2','scan_source',991302,'hh','{}',90,0,0,0)`, s.repo.Generation)
+	s.exec("INSERT INTO company_identity(id,company_name) VALUES(991305,'CI second HH company')")
+	t.Cleanup(func() {
+		if _, err := s.db.ExecContext(context.Background(), "DELETE FROM company_identity WHERE id=991305"); err != nil {
+			t.Error("worker second company cleanup", err)
+		}
+	})
+	s.exec(`INSERT INTO scheduler_jobs(id,generation,dedupe_key,type,company_id,source_id,payload,priority,run_after,created_at,updated_at) VALUES('CI_HH_SCAN_2',?,'CI_HH_SCAN_2','scan_source',991305,'hh','{}',90,0,0,0)`, s.repo.Generation)
 	w := parser.Worker{Runs: s.repo, Settings: apifysettings.NewRepository(s.db, "CI_SECRET"), ListingRuntime: listing.Runtime}
 	result, err := w.Cycle(s.ctx, parser.WorkerOptions{Run: parser.RunOptions{RequestID: "CI_WORKER_ACTOR_LIMIT"}, MaxJobs: 20})
 	if err != nil || result.Processed != 1 || provider.starts != 1 {
