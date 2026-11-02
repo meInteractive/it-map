@@ -100,10 +100,11 @@ func scheduleHH(ctx context.Context, runs RunRepository, settingsRepo apifysetti
 		}
 		return sources[i].id < sources[j].id
 	})
-	if len(sources) > 5 {
-		sources = sources[:5]
-	}
+	scheduled := 0
 	for _, candidate := range sources {
+		if scheduled >= 5 {
+			break
+		}
 		source, e := settingsRepo.ReadHHSourceTx(ctx, tx, candidate.id)
 		if errors.Is(e, apifysettings.ErrSourceMissing) {
 			continue
@@ -114,10 +115,17 @@ func scheduleHH(ctx context.Context, runs RunRepository, settingsRepo apifysetti
 		if !source.Enabled || !source.Supported {
 			continue
 		}
+		key := fmt.Sprintf("scan:%d:hh:%d:%d:%d", candidate.id, source.Revision, candidate.next, settings.Revision)
+		var known int
+		if e = tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM scheduler_jobs WHERE generation=? AND dedupe_key=?`, runs.Generation, stageHash(key)).Scan(&known); e != nil {
+			return ErrSettingsStorage
+		}
+		if known != 0 {
+			continue
+		}
 		if _, e = tx.ExecContext(ctx, `UPDATE vacancy_source_parsing SET interval_days=?,next_run_at=? WHERE company_id=? AND source_id='hh' AND revision=? AND source_url=?`, settings.IntervalDays, candidate.next, candidate.id, source.Revision, source.URL); e != nil {
 			return ErrSettingsStorage
 		}
-		key := fmt.Sprintf("scan:%d:hh:%d:%d:%d", candidate.id, source.Revision, candidate.next, settings.Revision)
 		payload, e := json.Marshal(map[string]any{"sourceRevision": source.Revision, "sourceUrl": source.URL, "manual": false, "scheduleRevision": settings.Revision, "dueAt": candidate.next})
 		if e != nil {
 			return ErrJobInput
@@ -134,6 +142,7 @@ func scheduleHH(ctx context.Context, runs RunRepository, settingsRepo apifysetti
 		if e != nil {
 			return ErrSettingsStorage
 		}
+		scheduled++
 	}
 	if _, err = activeRun(ctx, tx, runs.Generation, runID); err != nil {
 		return err
