@@ -3,12 +3,15 @@
 package storage
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"os/exec"
 	"strings"
 	"testing"
 	"time"
@@ -159,5 +162,77 @@ func TestMariaDBHHWorkerUncertainDisposable(t *testing.T) {
 	_, err = w.Cycle(s.ctx, parser.WorkerOptions{Run: parser.RunOptions{RequestID: "CI_WORKER_RECOVER"}, MaxJobs: 20})
 	if !errors.Is(err, parser.ErrMoneyUncertain) || runner.calls != 1 {
 		t.Fatal("uncertain cost allowed another request", err, runner.calls)
+	}
+}
+
+func TestMariaDBHHWorkerCrashDisposable(t *testing.T) {
+	if os.Getenv("ITMAP_HH_WORKER_CRASH_CHILD") == "1" {
+		ctx, db := schedulerDB(t)
+		var generation string
+		if err := db.QueryRowContext(ctx, "SELECT generation FROM app_runtime_generation WHERE id=1").Scan(&generation); err != nil {
+			t.Fatal(err)
+		}
+		runner := &relevanceRunner{after: func() { fmt.Println("CI_HH_WORKER_PAID_READY"); select {} }}
+		w := parser.Worker{Runs: parser.RunRepository{DB: db, Generation: generation}, Settings: apifysettings.NewRepository(db, "CI_SECRET"), Generator: runner}
+		_, err := w.Cycle(ctx, parser.WorkerOptions{Run: parser.RunOptions{RequestID: "CI_WORKER_CRASH"}, MaxJobs: 20})
+		t.Fatal("child ended before kill", err)
+	}
+	s, lease, _, _ := hhRelevanceFixture(t)
+	job := lease.Job().ID
+	var run string
+	if err := s.db.QueryRowContext(s.ctx, "SELECT id FROM scheduler_runs WHERE status='running'").Scan(&run); err != nil {
+		t.Fatal(err)
+	}
+	if err := lease.Finish(s.ctx, parser.FinishOptions{Status: "pending", Deferred: true}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.repo.Finish(s.ctx, run, "completed"); err != nil {
+		t.Fatal(err)
+	}
+	child := exec.Command(os.Args[0], "-test.run=^TestMariaDBHHWorkerCrashDisposable$", "-test.count=1")
+	child.Env = append(os.Environ(), "ITMAP_HH_WORKER_CRASH_CHILD=1")
+	pipe, err := child.StdoutPipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = child.Start(); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = child.Process.Kill(); _ = child.Wait() }()
+	ready := make(chan bool, 1)
+	go func() {
+		scanner := bufio.NewScanner(pipe)
+		for scanner.Scan() {
+			if scanner.Text() == "CI_HH_WORKER_PAID_READY" {
+				ready <- true
+				return
+			}
+		}
+		ready <- false
+	}()
+	select {
+	case ok := <-ready:
+		if !ok {
+			t.Fatal("worker child not ready")
+		}
+	case <-time.After(15 * time.Second):
+		t.Fatal("worker child timeout")
+	}
+	if err = child.Process.Kill(); err != nil {
+		t.Fatal(err)
+	}
+	if child.Wait() == nil {
+		t.Fatal("worker child exited without SIGKILL")
+	}
+	if s.count("SELECT COUNT(*) FROM scheduler_attempts WHERE job_id=? AND status='running' AND reserved_usd>0 AND cost_usd IS NULL", job) != 1 {
+		t.Fatal("crash lost reservation")
+	}
+	s.exec("UPDATE scheduler_runs SET lease_until=0 WHERE status='running'")
+	s.exec("UPDATE scheduler_jobs SET locked_until=0 WHERE id=?", job)
+	runner := &relevanceRunner{}
+	w := parser.Worker{Runs: s.repo, Settings: apifysettings.NewRepository(s.db, "CI_SECRET"), Generator: runner}
+	_, err = w.Cycle(s.ctx, parser.WorkerOptions{Run: parser.RunOptions{RequestID: "CI_WORKER_AFTER_CRASH"}, MaxJobs: 20})
+	if !errors.Is(err, parser.ErrMoneyUncertain) || runner.calls != 0 {
+		t.Fatal("crash recovery allowed paid replay", err, runner.calls)
 	}
 }
