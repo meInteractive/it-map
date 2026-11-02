@@ -55,7 +55,7 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 	if duration == 0 {
 		duration = 110 * time.Second
 	}
-	if duration < time.Millisecond || duration > 5*time.Minute {
+	if duration < time.Millisecond || duration > 110*time.Second {
 		return result, ErrRunInput
 	}
 	start, err := w.Runs.Begin(ctx, options.Run)
