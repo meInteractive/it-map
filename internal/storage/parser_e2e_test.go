@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -20,12 +21,18 @@ import (
 	"itmap/internal/httpapi"
 	"itmap/internal/integrations/hhpublic"
 	"itmap/internal/parser"
+	"itmap/internal/profiles"
 	"itmap/internal/vacancies"
 )
 
-type e2eTitleClassifier struct{ calls int }
+type e2eTitleClassifier struct {
+	mu    sync.Mutex
+	calls int
+}
 
 func (r *e2eTitleClassifier) ClassifyTitles(ctx context.Context, title string, roles []aiproviders.TitleRole, b aiproviders.Billing, check func(context.Context) error) (aiproviders.TitleResult, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	if title != "CI_TITLE" && title != "CI_REJECTED" {
 		return aiproviders.TitleResult{}, errors.New("unexpected synthetic title")
 	}
@@ -38,6 +45,24 @@ func (r *e2eTitleClassifier) ClassifyTitles(ctx context.Context, title string, r
 	r.calls += runner.calls
 	return result, err
 }
+
+type e2eGenerator struct {
+	mu    sync.Mutex
+	inner workerGenerator
+}
+
+func (g *e2eGenerator) Automatic(ctx context.Context, req aiproviders.GenerationRequest, cfg profiles.ModelInput, b aiproviders.Billing) (aiproviders.AIResult, error) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return g.inner.Automatic(ctx, req, cfg, b)
+}
+func (g *e2eGenerator) counts() (int, int, int) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return g.inner.extraction.calls, g.inner.roles.calls, g.inner.relevance.calls
+}
+func (r *e2eTitleClassifier) count() int   { r.mu.Lock(); defer r.mu.Unlock(); return r.calls }
+func e2eActorStarts(p *hhScanProvider) int { p.mu.Lock(); defer p.mu.Unlock(); return p.starts }
 
 func TestMariaDBParserE2EDisposable(t *testing.T) {
 	for _, kind := range []string{"manual", "tick"} {
@@ -81,8 +106,9 @@ func TestMariaDBParserE2EDisposable(t *testing.T) {
 			roles := &leafStageRunner{content: json.RawMessage(`{"role_ids":[991304]}`), model: "gpt-6-luna", provider: "openai"}
 			relevance := &relevanceRunner{}
 			classifier := &e2eTitleClassifier{}
+			generator := &e2eGenerator{inner: workerGenerator{extract, roles, relevance}}
 			factory := func(r parser.RunRepository) (parser.Worker, error) {
-				return parser.Worker{Runs: r, Settings: apifysettings.NewRepository(s.db, "CI_SECRET"), ListingRuntime: listing.Runtime, Public: &hhPublicFixture{job: &hhpublic.Job{ID: "123", URL: "https://hh.ru/vacancy/123", Title: "CI_TITLE", Description: hhDetailBody()}}, Generator: workerGenerator{extract, roles, relevance}, Classifier: classifier}, nil
+				return parser.Worker{Runs: r, Settings: apifysettings.NewRepository(s.db, "CI_SECRET"), ListingRuntime: listing.Runtime, Public: &hhPublicFixture{job: &hhpublic.Job{ID: "123", URL: "https://hh.ru/vacancy/123", Title: "CI_TITLE", Description: hhDetailBody()}}, Generator: generator, Classifier: classifier}, nil
 			}
 			control := parser.NewCycleControlWithFactory(s.db, factory)
 			manager, err := auth.NewManager(strings.Repeat("s", 64), map[string]string{"eugene": "CI_pw", "demo": "CI_pw"})
@@ -143,8 +169,9 @@ func TestMariaDBParserE2EDisposable(t *testing.T) {
 			if first.Code != http.StatusOK || json.Unmarshal(first.Body, &result) != nil || result.Status != "completed" || result.Processed != 8 || result.Errors != 0 {
 				t.Fatal("e2e cycle", first.Code, result)
 			}
-			if provider.starts != 1 || classifier.calls != 2 || extract.calls != 1 || roles.calls != 1 || relevance.calls != 1 {
-				t.Fatal("provider counts", provider.starts, classifier.calls, extract.calls, roles.calls, relevance.calls)
+			extractCalls, roleCalls, relevanceCalls := generator.counts()
+			if e2eActorStarts(provider) != 1 || classifier.count() != 2 || extractCalls != 1 || roleCalls != 1 || relevanceCalls != 1 {
+				t.Fatal("provider counts", e2eActorStarts(provider), classifier.count(), extractCalls, roleCalls, relevanceCalls)
 			}
 			if s.count("SELECT COUNT(*) FROM company_vacancies WHERE company_name='CI Apify Runtime'") != 1 || s.count("SELECT COUNT(*) FROM vacancy_candidates WHERE title_raw='CI_REJECTED' AND main_vacancy_id IS NULL") != 1 || s.count("SELECT COUNT(*) FROM vacancy_classifications WHERE decision='reject'") != 1 {
 				t.Fatal("accepted or rejected vacancy mismatch")
@@ -175,7 +202,7 @@ func TestMariaDBParserE2EDisposable(t *testing.T) {
 				t.Fatal("API vacancy readback", detail.StatusCode)
 			}
 			replay := call(requestID)
-			if replay.Code != http.StatusOK || !strings.Contains(string(replay.Body), `"reused":true`) || provider.starts != 1 {
+			if replay.Code != http.StatusOK || !strings.Contains(string(replay.Body), `"reused":true`) || e2eActorStarts(provider) != 1 {
 				t.Fatal("same request replay", replay.Code)
 			}
 			// Новый handler и control имитируют перезапуск процесса с той же БД.
@@ -188,7 +215,7 @@ func TestMariaDBParserE2EDisposable(t *testing.T) {
 				restartID = "CI_E2E_RESTART"
 			}
 			restart := call(restartID)
-			if restart.Code != http.StatusOK || provider.starts != 1 || classifier.calls != 2 || extract.calls != 1 || roles.calls != 1 || relevance.calls != 1 || s.count("SELECT COUNT(*) FROM company_vacancies WHERE company_name='CI Apify Runtime'") != 1 {
+			if restart.Code != http.StatusOK || e2eActorStarts(provider) != 1 || classifier.count() != 2 || func() bool { a, b, c := generator.counts(); return a != 1 || b != 1 || c != 1 }() || s.count("SELECT COUNT(*) FROM company_vacancies WHERE company_name='CI Apify Runtime'") != 1 {
 				t.Fatal("restart repeated work", restart.Code)
 			}
 		})
