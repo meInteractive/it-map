@@ -134,6 +134,7 @@ func TestMariaDBHHRelevanceDisposable(t *testing.T) {
 		"resume": "UPDATE user_profiles SET resume_md='CI changed resume',revision=revision+1 WHERE user_name='CI_OWNER'",
 		"key":    "UPDATE openrouter_settings SET revision=revision+1 WHERE id=1",
 		"owner":  "UPDATE firecrawl_settings SET scheduler_json=JSON_SET(scheduler_json,'$.ownerName','CI_OTHER') WHERE id=1",
+		"level":  "UPDATE company_vacancies SET level='Head' WHERE company_name='CI Apify Runtime'",
 	} {
 		t.Run("changed "+name+" during provider work blocks save", func(t *testing.T) {
 			s, lease, _, vacancy := hhRelevanceFixture(t)

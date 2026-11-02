@@ -16,6 +16,8 @@ import (
 type relevanceSnapshot struct {
 	CandidateID, CompanyID, VacancyID              int64
 	Owner, SourceURL, CreatedAt, Title, Markdown   string
+	VacancyURL, Level, RoleText                    string
+	PublishedAt, LoadedAt                          sql.NullString
 	SalaryFrom, SalaryTo                           *int64
 	Resume, Prompt                                 string
 	ResumeRevision, PromptRevision, RouterRevision sql.NullInt64
@@ -109,7 +111,7 @@ func readRelevanceSnapshot(ctx context.Context, tx *sql.Tx, job Job, owner strin
 	var name, entity string
 	var archived int64
 	var from, to sql.NullInt64
-	err = tx.QueryRowContext(ctx, "SELECT company_name,entity_type,created_at,title,description_md,salary_from,salary_to,archived FROM company_vacancies WHERE id=? FOR UPDATE", x.VacancyID).Scan(&name, &entity, &x.CreatedAt, &x.Title, &x.Markdown, &from, &to, &archived)
+	err = tx.QueryRowContext(ctx, "SELECT company_name,entity_type,created_at,title,description_md,salary_from,salary_to,archived,url,level,role,published_at,loaded_at FROM company_vacancies WHERE id=? FOR UPDATE", x.VacancyID).Scan(&name, &entity, &x.CreatedAt, &x.Title, &x.Markdown, &from, &to, &archived, &x.VacancyURL, &x.Level, &x.RoleText, &x.PublishedAt, &x.LoadedAt)
 	if err != nil || name != company || entity != "company" || archived != 0 {
 		return x, ErrCandidateChanged
 	}
