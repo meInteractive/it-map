@@ -2,6 +2,7 @@ package parser
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"sync/atomic"
@@ -14,13 +15,15 @@ import (
 
 // Worker запускается только явным вызовом Cycle; таймеров и фоновых задач нет.
 type Worker struct {
-	Runs           RunRepository
-	Settings       apifysettings.Repository
-	ListingRuntime HHListingRuntime
-	DetailRuntime  HHDetailRuntime
-	Public         HHPublicFetcher
-	Generator      AIStageGenerator
-	Classifier     AIStageClassifier
+	Runs                   RunRepository
+	Settings               apifysettings.Repository
+	ListingRuntime         HHListingRuntime
+	DetailRuntime          HHDetailRuntime
+	Public                 HHPublicFetcher
+	Generator              AIStageGenerator
+	Classifier             AIStageClassifier
+	ScheduleSources        bool
+	ContinueOnStageFailure bool
 }
 
 // NewWorker связывает провайдеры только с серверным хранилищем конфигурации.
@@ -96,6 +99,12 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 		return result, ErrSettingsStorage
 	}
 	owner := settings.OwnerName
+	if w.ScheduleSources {
+		if err := scheduleHH(bounded, w.Runs, w.Settings, start.Run.ID, owner); err != nil {
+			status = "partial"
+			return result, err
+		}
+	}
 	var actorStarts atomic.Int32
 	admit := func() error {
 		if actorStarts.Load() >= 1 {
@@ -169,6 +178,10 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 		importer: HHImportExecutor{Settings: w.Settings, Owner: owner},
 		ai:       AIStageDispatcher{Owner: owner, Generator: w.Generator, Classifier: w.Classifier},
 	}
+	if err := w.Runs.reportCycle(bounded, start.Run.ID, 0, true); err != nil {
+		status = "partial"
+		return result, err
+	}
 	hhStages := 0
 	for result.Processed < options.MaxJobs {
 		if err = bounded.Err(); err != nil {
@@ -195,16 +208,30 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 		if kind := lease.Job().Type; kind == "scan_source" || kind == "fetch_full_text" {
 			hhStages++
 		}
-		if err = workerExecute(bounded, d, lease); err != nil {
+		executeErr := workerExecute(bounded, d, lease, owner)
+		reportCtx, reportCancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+		reportErr := w.Runs.reportCycle(reportCtx, start.Run.ID, result.Processed, false)
+		reportCancel()
+		if executeErr != nil || reportErr != nil {
+			if executeErr != nil && reportErr == nil && w.ContinueOnStageFailure {
+				checkCtx, checkCancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+				finished, checkErr := w.Runs.finishedWorkerStep(checkCtx, lease)
+				checkCancel()
+				if checkErr == nil && finished {
+					status = "partial"
+					continue
+				}
+				reportErr = errors.Join(reportErr, checkErr)
+			}
 			releaseRun = false
 			status = "partial"
-			return result, err
+			return result, errors.Join(executeErr, reportErr)
 		}
 	}
 	return result, nil
 }
 
-func workerExecute(ctx context.Context, d workerDispatch, lease *JobLease) error {
+func workerExecute(ctx context.Context, d workerDispatch, lease *JobLease, owner string) error {
 	kind := lease.Job().Type
 	ai := kind == "classify_title" || kind == "extract_vacancy" || kind == "assign_roles" || kind == "score_relevance"
 	var attempt *Attempt
@@ -237,7 +264,11 @@ func workerExecute(ctx context.Context, d workerDispatch, lease *JobLease) error
 			return executeErr
 		}
 	} else {
-		err = attempt.Finish(cleanup, AttemptFinish{Job: finish})
+		var save func(*sql.Tx) error
+		if kind == "scan_source" && finish.Status == "completed" {
+			save = func(tx *sql.Tx) error { return completeScheduledHH(cleanup, tx, lease.Job(), owner, out.code) }
+		}
+		err = attempt.FinishWithin(cleanup, AttemptFinish{Job: finish}, save)
 	}
 	if err != nil {
 		return errors.Join(executeErr, err)
