@@ -284,7 +284,16 @@ func TestMariaDBHHDetailKeyRotationDisposable(t *testing.T) {
 }
 
 func TestMariaDBHHDetailAdmissionDisposable(t *testing.T) {
-	for _, kind := range []string{"roles", "scheduler", "favorites"} {
+	t.Run("old owner before detail sends no request", func(t *testing.T) {
+		_, s, lease, _ := hhDetailFixture(t)
+		s.exec("UPDATE firecrawl_settings SET scheduler_json=JSON_SET(scheduler_json,'$.ownerName','CI_OTHER') WHERE id=1")
+		public := &hhPublicFixture{}
+		_, err := (parser.HHFullTextExecutor{Settings: apifysettings.NewRepository(s.db, "CI_SECRET"), Owner: "CI_OWNER", Public: public}).Execute(s.ctx, lease)
+		if err == nil || public.calls != 0 {
+			t.Fatal("stale owner admitted detail", err)
+		}
+	})
+	for _, kind := range []string{"roles", "scheduler", "favorites", "owner"} {
 		t.Run("public delay then "+kind+" change sends no paid request", func(t *testing.T) {
 			_, s, lease, candidate := hhDetailFixture(t)
 			before := s.count("SELECT COUNT(*) FROM apify_runs")
@@ -295,6 +304,8 @@ func TestMariaDBHHDetailAdmissionDisposable(t *testing.T) {
 					s.exec("UPDATE vacancy_role_classification SET markdown='CI stale preflight',revision=revision+1 WHERE role_id=991303")
 				} else if kind == "favorites" {
 					s.exec("UPDATE firecrawl_settings SET favorites_only=1 WHERE id=1")
+				} else if kind == "owner" {
+					s.exec("UPDATE firecrawl_settings SET scheduler_json=JSON_SET(scheduler_json,'$.ownerName','CI_OTHER') WHERE id=1")
 				} else {
 					s.exec(`UPDATE firecrawl_settings SET scheduler_json='{"enabled":false,"sourceIds":["hh"]}' WHERE id=1`)
 				}
@@ -309,7 +320,7 @@ func TestMariaDBHHDetailAdmissionDisposable(t *testing.T) {
 }
 
 func TestMariaDBHHDetailAccountAdmissionDisposable(t *testing.T) {
-	for _, kind := range []string{"roles", "scheduler", "favorites"} {
+	for _, kind := range []string{"roles", "scheduler", "favorites", "owner"} {
 		t.Run(kind+" change during account refresh sends no paid request", func(t *testing.T) {
 			_, s, lease, candidate := hhDetailFixture(t)
 			before := s.count("SELECT COUNT(*) FROM apify_runs")
@@ -320,6 +331,8 @@ func TestMariaDBHHDetailAccountAdmissionDisposable(t *testing.T) {
 					s.exec("UPDATE vacancy_role_classification SET markdown='CI stale account preflight',revision=revision+1 WHERE role_id=991303")
 				case "favorites":
 					s.exec("UPDATE firecrawl_settings SET favorites_only=1 WHERE id=1")
+				case "owner":
+					s.exec("UPDATE firecrawl_settings SET scheduler_json=JSON_SET(scheduler_json,'$.ownerName','CI_OTHER') WHERE id=1")
 				default:
 					s.exec(`UPDATE firecrawl_settings SET scheduler_json='{"enabled":false,"sourceIds":["hh"]}' WHERE id=1`)
 				}

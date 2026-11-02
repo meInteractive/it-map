@@ -64,7 +64,7 @@ func (s TitleStageStore) read(ctx context.Context, tx *sql.Tx, j Job) (titleSnap
 		return titleSnapshot{}, ErrSettingsStorage
 	}
 	var settings Settings
-	if json.Unmarshal(view.PublicJSON(), &settings) != nil || !settings.Enabled {
+	if json.Unmarshal(view.PublicJSON(), &settings) != nil || !settings.Enabled || settings.OwnerName != s.Owner {
 		return titleSnapshot{}, ErrCandidateChanged
 	}
 	selected := false

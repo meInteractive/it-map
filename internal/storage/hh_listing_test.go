@@ -96,7 +96,7 @@ func hhScanFixture(t *testing.T, p *hhScanProvider) (apifyRuntimeFixture, *sched
 	t.Helper()
 	f := openApifyRuntimeFixture(t)
 	s := billingFixture(t)
-	s.exec(`UPDATE firecrawl_settings SET favorites_only=0,scheduler_json='{"enabled":true,"sourceIds":["hh"],"dayBudgetUsd":5,"monthBudgetUsd":5}' WHERE id=1`)
+	s.exec(`UPDATE firecrawl_settings SET favorites_only=0,scheduler_json='{"enabled":true,"sourceIds":["hh"],"ownerName":"CI_OWNER","dayBudgetUsd":5,"monthBudgetUsd":5}' WHERE id=1`)
 	s.exec(`INSERT INTO vacancy_roles(id,name,stable_key,sort_order) VALUES(991303,'CI HH Root','root-it-manager',1)`)
 	s.exec(`INSERT INTO vacancy_role_classification(role_id,markdown,parsing_enabled) VALUES(991303,'CI HH classification',1)`)
 	t.Cleanup(func() {
@@ -239,13 +239,23 @@ func TestMariaDBHHListingRecoveryDisposable(t *testing.T) {
 }
 
 func TestMariaDBHHListingAdmissionDisposable(t *testing.T) {
-	for _, kind := range []string{"scheduler", "favorites"} {
+	t.Run("old owner before listing spends nothing", func(t *testing.T) {
+		p := &hhScanProvider{rows: [][]json.RawMessage{{hhScanItem(9000, "CI stale listing")}}}
+		f, s, lease, e := hhScanFixture(t, p)
+		s.exec("UPDATE firecrawl_settings SET scheduler_json=JSON_SET(scheduler_json,'$.ownerName','CI_OTHER') WHERE id=1")
+		if _, err := e.Execute(f.ctx, lease); err == nil || p.accounts != 0 || p.starts != 0 || s.count("SELECT COUNT(*) FROM apify_runs") != 0 {
+			t.Fatal("stale owner admitted listing", err)
+		}
+	})
+	for _, kind := range []string{"scheduler", "favorites", "owner"} {
 		t.Run(kind+" change during account refresh blocks listing", func(t *testing.T) {
 			p := &hhScanProvider{rows: [][]json.RawMessage{{hhScanItem(9000, "CI stale listing")}}}
 			f, s, lease, e := hhScanFixture(t, p)
 			p.afterAccount = func() {
 				if kind == "favorites" {
 					s.exec("UPDATE firecrawl_settings SET favorites_only=1 WHERE id=1")
+				} else if kind == "owner" {
+					s.exec("UPDATE firecrawl_settings SET scheduler_json=JSON_SET(scheduler_json,'$.ownerName','CI_OTHER') WHERE id=1")
 				} else {
 					s.exec(`UPDATE firecrawl_settings SET scheduler_json='{"enabled":false,"sourceIds":["hh"]}' WHERE id=1`)
 				}

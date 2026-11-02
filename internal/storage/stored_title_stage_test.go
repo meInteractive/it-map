@@ -453,6 +453,16 @@ func TestMariaDBStoredTitleStageDisposable(t *testing.T) {
 			t.Fatal("foreign favorite scope sent paid request", err)
 		}
 	})
+	t.Run("changed_owner_blocks_paid_classification", func(t *testing.T) {
+		f.exec("DELETE FROM vacancy_classification_attempts WHERE candidate_id=990001")
+		lease := titleStageLease(t, f)
+		f.exec("UPDATE firecrawl_settings SET scheduler_json=JSON_SET(scheduler_json,'$.ownerName','CI_OTHER') WHERE id=1")
+		runner := &storedTitleRunner{}
+		_, err := (&parser.AIStageExecutor{Store: parser.TitleStageStore{Owner: "CI_USER"}, Classifier: runner}).Execute(f.ctx, lease)
+		if !errors.Is(err, parser.ErrCandidateChanged) || runner.calls != 0 || f.count("SELECT COUNT(*) FROM scheduler_attempts") != 0 {
+			t.Fatal("stale owner sent paid classification", err)
+		}
+	})
 	t.Run("partial_retry", func(t *testing.T) {
 		f.exec("DELETE FROM vacancy_classification_attempts WHERE candidate_id=990001")
 		lease := titleStageLease(t, f)

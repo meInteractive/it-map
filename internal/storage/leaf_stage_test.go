@@ -301,7 +301,7 @@ func TestMariaDBLeafStageSourceDisposable(t *testing.T) {
 	t.Run("budget_denial", func(t *testing.T) {
 		seed(0)
 		lease := leafStageLease(t, f)
-		f.exec(`UPDATE firecrawl_settings SET scheduler_json='{"enabled":true,"sourceIds":["companySite"],"dayBudgetUsd":0,"monthBudgetUsd":0}' WHERE id=1`)
+		f.exec(`UPDATE firecrawl_settings SET scheduler_json='{"enabled":true,"sourceIds":["companySite"],"ownerName":"CI_USER","dayBudgetUsd":0,"monthBudgetUsd":0}' WHERE id=1`)
 		runner := &leafStageRunner{content: frames[0].Value, model: "gpt-6-luna", provider: "openai"}
 		_, e := (&parser.AIStageExecutor{Store: parser.LeafStageStore{Owner: "CI_USER"}, Generator: runner}).Execute(f.ctx, lease)
 		if !errors.Is(e, parser.ErrBudgetLimit) || runner.calls != 0 || f.count("SELECT COUNT(*) FROM vacancy_detail_leases") != 0 {

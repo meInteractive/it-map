@@ -61,6 +61,10 @@ func (e HHFullTextExecutor) readHHFullTextPlan(ctx context.Context, tx *sql.Tx, 
 	if err != nil {
 		return plan, ErrSettingsStorage
 	}
+	var current Settings
+	if json.Unmarshal(view.PublicJSON(), &current) != nil || !current.Enabled || current.OwnerName != e.Owner {
+		return plan, ErrCandidateChanged
+	}
 	plan.SchedulerHash = stageHash(string(view.PublicJSON()))
 	plan.Title = title
 	err = tx.QueryRowContext(ctx, "SELECT id,created_at FROM vacancy_raw_snapshots WHERE candidate_id=? AND source_url=? ORDER BY created_at DESC,id DESC LIMIT 1 FOR UPDATE", j.CandidateID, plan.URL).Scan(&plan.LastSnapshotID, &plan.LastCreated)
