@@ -5,13 +5,11 @@ package storage
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -19,49 +17,12 @@ import (
 	"itmap/internal/apifysettings"
 	"itmap/internal/auth"
 	"itmap/internal/httpapi"
+	"itmap/internal/integrations/aihttp"
 	"itmap/internal/integrations/hhpublic"
 	"itmap/internal/parser"
-	"itmap/internal/profiles"
 	"itmap/internal/vacancies"
 )
 
-type e2eTitleClassifier struct {
-	mu    sync.Mutex
-	calls int
-}
-
-func (r *e2eTitleClassifier) ClassifyTitles(ctx context.Context, title string, roles []aiproviders.TitleRole, b aiproviders.Billing, check func(context.Context) error) (aiproviders.TitleResult, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	if title != "CI_TITLE" && title != "CI_REJECTED" {
-		return aiproviders.TitleResult{}, errors.New("unexpected synthetic title")
-	}
-	choices := map[string]struct{ Type, Choice string }{"role_991303": {"choice", "match"}}
-	if title == "CI_REJECTED" {
-		choices["role_991303"] = struct{ Type, Choice string }{"choice", "reject"}
-	}
-	runner := &storedTitleRunner{answers: choices}
-	result, err := runner.ClassifyTitles(ctx, "CI_TITLE", roles, b, check)
-	r.calls += runner.calls
-	return result, err
-}
-
-type e2eGenerator struct {
-	mu    sync.Mutex
-	inner workerGenerator
-}
-
-func (g *e2eGenerator) Automatic(ctx context.Context, req aiproviders.GenerationRequest, cfg profiles.ModelInput, b aiproviders.Billing) (aiproviders.AIResult, error) {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	return g.inner.Automatic(ctx, req, cfg, b)
-}
-func (g *e2eGenerator) counts() (int, int, int) {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	return g.inner.extraction.calls, g.inner.roles.calls, g.inner.relevance.calls
-}
-func (r *e2eTitleClassifier) count() int   { r.mu.Lock(); defer r.mu.Unlock(); return r.calls }
 func e2eActorStarts(p *hhScanProvider) int { p.mu.Lock(); defer p.mu.Unlock(); return p.starts }
 
 func TestMariaDBParserE2EDisposable(t *testing.T) {
@@ -86,9 +47,12 @@ func TestMariaDBParserE2EDisposable(t *testing.T) {
 			s.exec("INSERT INTO user_profiles(user_name,resume_md,revision) VALUES('CI_OWNER','CI synthetic resume',1)")
 			s.exec("INSERT INTO system_prompts(kind,markdown,revision) VALUES('relevance','CI relevance prompt',1)")
 			s.exec("INSERT INTO prompt_model_settings(kind,provider,openai_model,openrouter_model,reasoning_effort,revision) VALUES('relevance','openrouter','','jev','medium',1)")
+			if s.count("SELECT COUNT(*) FROM openrouter_ai_logs") != 0 {
+				t.Fatal("provider log namespace not empty")
+			}
 			s.exec("INSERT INTO openrouter_settings(id,revision) VALUES(1,1)")
 			t.Cleanup(func() {
-				for _, q := range []string{"DELETE FROM vacancy_detail_leases", "DELETE FROM vacancy_import_write_context", "DELETE FROM company_vacancies WHERE company_name='CI Apify Runtime'", "DELETE FROM company_vacancy_state WHERE company_name='CI Apify Runtime'", "DELETE FROM company_crm WHERE company_name='CI Apify Runtime'", "DELETE FROM user_profiles WHERE user_name='CI_OWNER'", "DELETE FROM system_prompts WHERE kind='relevance'", "DELETE FROM prompt_model_settings WHERE kind='relevance'", "DELETE FROM openrouter_settings WHERE id=1", "DELETE FROM vacancy_detail_settings WHERE id=1", "DELETE FROM vacancy_role_settings WHERE id=1", "DELETE FROM vacancy_roles WHERE id=991304"} {
+				for _, q := range []string{"DELETE FROM vacancy_detail_leases", "DELETE FROM vacancy_import_write_context", "DELETE FROM company_vacancies WHERE company_name='CI Apify Runtime'", "DELETE FROM company_vacancy_state WHERE company_name='CI Apify Runtime'", "DELETE FROM company_crm WHERE company_name='CI Apify Runtime'", "DELETE FROM user_profiles WHERE user_name='CI_OWNER'", "DELETE FROM system_prompts WHERE kind='relevance'", "DELETE FROM prompt_model_settings WHERE kind='relevance'", "DELETE FROM openrouter_ai_logs", "DELETE FROM openrouter_settings WHERE id=1", "DELETE FROM vacancy_detail_settings WHERE id=1", "DELETE FROM vacancy_role_settings WHERE id=1", "DELETE FROM vacancy_roles WHERE id=991304"} {
 					if _, err := s.db.ExecContext(context.Background(), q); err != nil {
 						t.Error("e2e cleanup", err)
 					}
@@ -102,13 +66,17 @@ func TestMariaDBParserE2EDisposable(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			extract := &extractionRunner{content: raw}
-			roles := &leafStageRunner{content: json.RawMessage(`{"role_ids":[991304]}`), model: "gpt-6-luna", provider: "openai"}
-			relevance := &relevanceRunner{}
-			classifier := &e2eTitleClassifier{}
-			generator := &e2eGenerator{inner: workerGenerator{extract, roles, relevance}}
+			fake := newE2EProviders(raw)
+			defer fake.server.Close()
+			keys := aiproviders.NewRepository(s.db, "CI_SECRET", "sk-"+strings.Repeat("o", 16))
+			if err = keys.SaveKey(s.ctx, aihttp.OpenRouter, s.repo.Generation, "sk-or-"+strings.Repeat("r", 16)); err != nil {
+				t.Fatal("synthetic key setup", err)
+			}
 			factory := func(r parser.RunRepository) (parser.Worker, error) {
-				return parser.Worker{Runs: r, Settings: apifysettings.NewRepository(s.db, "CI_SECRET"), ListingRuntime: listing.Runtime, Public: &hhPublicFixture{job: &hhpublic.Job{ID: "123", URL: "https://hh.ru/vacancy/123", Title: "CI_TITLE", Description: hhDetailBody()}}, Generator: generator, Classifier: classifier}, nil
+				openAI := aiproviders.NewOpenAIServiceWithTransport(keys, func(string) (aiproviders.ModelTransport, error) { return fake, nil })
+				router := aiproviders.NewRouterServiceWithTransport(keys, func(string) (aiproviders.RouterTransport, error) { return fake, nil })
+				generator := aiproviders.NewGeneratorWithTransport(openAI, router, func(aihttp.Provider, string) (aiproviders.CompletionTransport, error) { return fake, nil })
+				return parser.Worker{Runs: r, Settings: apifysettings.NewRepository(s.db, "CI_SECRET"), ListingRuntime: listing.Runtime, Public: &hhPublicFixture{job: &hhpublic.Job{ID: "123", URL: "https://hh.ru/vacancy/123", Title: "CI_TITLE", Description: hhDetailBody()}}, Generator: generator, Classifier: router}, nil
 			}
 			control := parser.NewCycleControlWithFactory(s.db, factory)
 			manager, err := auth.NewManager(strings.Repeat("s", 64), map[string]string{"eugene": "CI_pw", "demo": "CI_pw"})
@@ -169,9 +137,9 @@ func TestMariaDBParserE2EDisposable(t *testing.T) {
 			if first.Code != http.StatusOK || json.Unmarshal(first.Body, &result) != nil || result.Status != "completed" || result.Processed != 8 || result.Errors != 0 {
 				t.Fatal("e2e cycle", first.Code, result)
 			}
-			extractCalls, roleCalls, relevanceCalls := generator.counts()
-			if e2eActorStarts(provider) != 1 || classifier.count() != 2 || extractCalls != 1 || roleCalls != 1 || relevanceCalls != 1 {
-				t.Fatal("provider counts", e2eActorStarts(provider), classifier.count(), extractCalls, roleCalls, relevanceCalls)
+			titles, relevanceCalls, extractCalls, roleCalls := fake.counts()
+			if e2eActorStarts(provider) != 1 || titles != 2 || relevanceCalls != 1 || extractCalls != 1 || roleCalls != 1 {
+				t.Fatal("provider counts", e2eActorStarts(provider), titles, relevanceCalls, extractCalls, roleCalls)
 			}
 			if s.count("SELECT COUNT(*) FROM company_vacancies WHERE company_name='CI Apify Runtime'") != 1 || s.count("SELECT COUNT(*) FROM vacancy_candidates WHERE title_raw='CI_REJECTED' AND main_vacancy_id IS NULL") != 1 || s.count("SELECT COUNT(*) FROM vacancy_classifications WHERE decision='reject'") != 1 {
 				t.Fatal("accepted or rejected vacancy mismatch")
@@ -215,7 +183,7 @@ func TestMariaDBParserE2EDisposable(t *testing.T) {
 				restartID = "CI_E2E_RESTART"
 			}
 			restart := call(restartID)
-			if restart.Code != http.StatusOK || e2eActorStarts(provider) != 1 || classifier.count() != 2 || func() bool { a, b, c := generator.counts(); return a != 1 || b != 1 || c != 1 }() || s.count("SELECT COUNT(*) FROM company_vacancies WHERE company_name='CI Apify Runtime'") != 1 {
+			if restart.Code != http.StatusOK || e2eActorStarts(provider) != 1 || func() bool { a, b, c, d := fake.counts(); return a != 2 || b != 1 || c != 1 || d != 1 }() || s.count("SELECT COUNT(*) FROM company_vacancies WHERE company_name='CI Apify Runtime'") != 1 {
 				t.Fatal("restart repeated work", restart.Code)
 			}
 		})

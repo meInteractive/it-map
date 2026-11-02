@@ -51,6 +51,15 @@ type Generator struct {
 func NewGenerator(a *OpenAIService, r *RouterService) *Generator {
 	return &Generator{OpenAI: a, Router: r, factory: func(p aihttp.Provider, key string) (CompletionTransport, error) { return aihttp.New(p, key) }}
 }
+
+// NewGeneratorWithTransport позволяет серверу задать изолированный transport.
+func NewGeneratorWithTransport(a *OpenAIService, r *RouterService, factory func(aihttp.Provider, string) (CompletionTransport, error)) *Generator {
+	g := NewGenerator(a, r)
+	if factory != nil {
+		g.factory = factory
+	}
+	return g
+}
 func generationError(code, msg string, status int) error {
 	return &ServiceError{Code: code, Message: msg, Status: status}
 }
