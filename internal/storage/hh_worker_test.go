@@ -6,13 +6,21 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
+	"time"
 
 	"itmap/internal/aiproviders"
 	"itmap/internal/apifysettings"
+	"itmap/internal/auth"
+	"itmap/internal/httpapi"
 	"itmap/internal/integrations/hhpublic"
 	"itmap/internal/parser"
 	"itmap/internal/profiles"
+	"itmap/internal/vacancies"
 )
 
 type workerGenerator struct {
@@ -64,6 +72,7 @@ func TestMariaDBHHWorkerDisposable(t *testing.T) {
 	for _, k := range []string{"employer_name", "location", "work_format", "employment_type", "level", "salary_from", "salary_to", "salary_currency", "salary_period", "salary_tax_type", "responsibilities", "requirements", "conditions", "published_at", "language"} {
 		data[k] = nil
 	}
+	data["level"] = "Senior"
 	raw, err := json.Marshal(data)
 	if err != nil {
 		t.Fatal(err)
@@ -81,6 +90,31 @@ func TestMariaDBHHWorkerDisposable(t *testing.T) {
 	}
 	if s.count("SELECT COUNT(*) FROM company_vacancies WHERE company_name='CI Apify Runtime'") != 1 || s.count("SELECT COUNT(*) FROM company_vacancy_user_state WHERE user_name='CI_OWNER' AND relevance=67") != 1 {
 		t.Fatal("vacancy or relevance missing")
+	}
+	var vacancyID int64
+	if err := s.db.QueryRowContext(s.ctx, "SELECT id FROM company_vacancies WHERE company_name='CI Apify Runtime'").Scan(&vacancyID); err != nil {
+		t.Fatal(err)
+	}
+	manager, err := auth.NewManager(strings.Repeat("s", 64), map[string]string{"eugene": "admin-secret", "demo": "demoPassword"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	user, ok := manager.Authenticate("demo", "demoPassword")
+	if !ok {
+		t.Fatal("synthetic login")
+	}
+	token, err := manager.Issue(user, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler := httpapi.NewHandlerWithOptions(nil, httpapi.Options{Auth: manager, VacancyDetails: vacancies.Repository{DB: s.db}})
+	request := httptest.NewRequest("GET", fmt.Sprintf("/api/vacancies/%d", vacancyID), nil)
+	request.AddCookie(&http.Cookie{Name: auth.CookieName, Value: token})
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	var api vacancies.DetailResponse
+	if response.Code != http.StatusOK || json.Unmarshal(response.Body.Bytes(), &api) != nil || api.Vacancy.ID != vacancyID || api.Vacancy.Title != "CI_TITLE" || api.Vacancy.DescriptionMD == "" || len(api.Vacancy.PublicationSources) != 1 {
+		t.Fatal("API readback", response.Code)
 	}
 	result, err = w.Cycle(s.ctx, parser.WorkerOptions{Run: parser.RunOptions{RequestID: "CI_WORKER_REPLAY"}, MaxJobs: 20})
 	if err != nil || result.Processed != 0 || provider.starts != 1 {
