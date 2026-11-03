@@ -289,7 +289,7 @@
     {
       "id": "scheduler",
       "implementation": "partial",
-      "level": "Settings/dashboard/retry/cancel/queue/GET saved run; ручной запуск с NDJSON, probe и tick за серверным флагом, mock SQL/HTTP приёмка GO-404",
+      "level": "Settings/dashboard/retry/cancel/queue/GET saved run; ручной запуск с NDJSON, probe и tick за серверным флагом, mock SQL/HTTP приёмка GO-404; ручное продолжение выбранного HH dataset",
       "gap": "Cloud-owner, issues/funnel и полный source HTTP golden, включая timing потока, остаются открыты; планирование ограничено разрешёнными HH-источниками. Реальные провайдеры и автоматический timer не включены.",
       "evidence": [
         {
@@ -448,6 +448,15 @@
         {
           "file": "internal/httpapi/scheduler_cycle_routes_test.go",
           "symbol": "TestSchedulerCycleStreamPanicIsRedacted"
+        },
+        {
+          "file": "internal/httpapi/scheduler_resume_routes_test.go",
+          "symbol": "TestSchedulerResumeAuthorizationAndInput"
+        },
+        {
+          "file": "internal/storage/hh_listing_test.go",
+          "symbol": "TestMariaDBHHListingRecoveryDisposable",
+          "required": true
         }
       ]
     },
@@ -713,7 +722,7 @@
   ],
   "sourceHashes": {
     "frontend/api/client.ts": "b6880480b3eed65bf7caa043f5e41c8e899b672e5c9629666ccbd6d8f80c14ad",
-    "internal/httpapi/handler.go": "838f5e2192b097ed2ab91ee4b45c9b286cf1f27aa1d4bfa5de3d47e8515f3d4a",
+    "internal/httpapi/handler.go": "7f375c8a5886771c18ca14d48f799e1219fab178e3ec7dfa2dba68bdaea797d5",
     "server/routes/index.js": "6134004f682975cb51ea13cd2ec4de8e85a5957deff6a5392fbad3fd70ccb1e4"
   },
   "clientExports": [
