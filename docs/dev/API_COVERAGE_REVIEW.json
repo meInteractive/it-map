@@ -534,8 +534,8 @@
     {
       "id": "apify",
       "implementation": "partial",
-      "level": "Go settings/key and company HH source HTTP + disposable MariaDB CAS",
-      "gap": "Подключены settings/key, узкий HH source и legacy PUT компании/hh; общий список sources, check/usage и provider-run wiring не перенесены.",
+      "level": "Go settings/key, HH source and read-only account check HTTP",
+      "gap": "Check возвращает только текущую безопасную проекцию аккаунта: сохранение снимка, budget/usage и reconciliation в HTTP ещё не реализованы; полный legacy контракт не заявлен.",
       "evidence": [
         {
           "file": "scripts/check-apify-transport-contract.mjs"
@@ -553,6 +553,10 @@
           "file": "internal/storage/apify_settings_test.go",
           "symbol": "TestMariaDBApifyHHSourceDisposable",
           "required": true
+        },
+        {
+          "file": "internal/apifysettings/check_test.go",
+          "symbol": "TestCheckProfileAndStaleResults"
         }
       ]
     },
@@ -709,7 +713,7 @@
   ],
   "sourceHashes": {
     "frontend/api/client.ts": "b6880480b3eed65bf7caa043f5e41c8e899b672e5c9629666ccbd6d8f80c14ad",
-    "internal/httpapi/handler.go": "1b8236563d9516e4b7f1c189f73b8e977e9001d00fc146c038759b48e1895a56",
+    "internal/httpapi/handler.go": "838f5e2192b097ed2ab91ee4b45c9b286cf1f27aa1d4bfa5de3d47e8515f3d4a",
     "server/routes/index.js": "6134004f682975cb51ea13cd2ec4de8e85a5957deff6a5392fbad3fd70ccb1e4"
   },
   "clientExports": [

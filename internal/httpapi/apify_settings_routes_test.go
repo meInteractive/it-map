@@ -4,6 +4,7 @@ import (
 	"context"
 	"itmap/internal/apifysettings"
 	"itmap/internal/auth"
+	"itmap/internal/integrations/apify"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -14,6 +15,15 @@ import (
 type apifySettingsProbe struct {
 	writes     int
 	generation bool
+}
+type apifyCheckProbe struct{ calls int }
+
+func (p *apifyCheckProbe) Check(_ context.Context, profile string) (apify.BillingAccount, error) {
+	p.calls++
+	if profile != "free" {
+		return apify.BillingAccount{}, apifysettings.ErrMissing
+	}
+	return apify.BillingAccount{AccountID: "CIAccount", ProviderUsedUSD: 1.5, ProviderLimitUSD: 5}, nil
 }
 
 func (p *apifySettingsProbe) Read(context.Context) (apifysettings.PublicView, error) {
@@ -69,7 +79,8 @@ func TestApifySettingsHTTPAccessAndValidation(t *testing.T) {
 		return &http.Cookie{Name: auth.CookieName, Value: value}
 	}
 	p := &apifySettingsProbe{}
-	handler := NewHandlerWithOptions(nil, Options{Auth: m, ApifySettings: p})
+	check := &apifyCheckProbe{}
+	handler := NewHandlerWithOptions(nil, Options{Auth: m, ApifySettings: p, ApifyAccountCheck: check})
 	call := func(method, path, login, origin, body string) *httptest.ResponseRecorder {
 		r := httptest.NewRequest(method, "https://example.com"+path, strings.NewReader(body))
 		if login != "" {
@@ -105,14 +116,26 @@ func TestApifySettingsHTTPAccessAndValidation(t *testing.T) {
 		{"PUT", "/api/firecrawl/sources/1/hh", "eugene", "https://example.com", `{"sourceUrl":"https://hh.ru/employer/123","enabled":true,"revision":0,"config":{}}`, 200},
 		{"PUT", "/api/firecrawl/sources/1/hh", "demo", "", `{}`, 403},
 		{"GET", "/api/firecrawl/sources/1/hh", "eugene", "", "", 405},
-		{"GET", "/api/apify/check", "eugene", "", "", 404},
+		{"GET", "/api/apify/check", "eugene", "", "", 405},
+		{"POST", "/api/apify/check", "", "", `{"profile":"free"}`, 401},
+		{"POST", "/api/apify/check", "demo", "", `{"profile":"free"}`, 403},
+		{"POST", "/api/apify/check", "eugene", "https://foreign.invalid", `{"profile":"free"}`, 403},
+		{"POST", "/api/apify/check", "eugene", "", `{"profile":"bad"}`, 400},
+		{"POST", "/api/apify/check", "eugene", "", `{"profile":"starter"}`, 400},
+		{"POST", "/api/apify/check", "eugene", "", `{"profile":"free"}`, 200},
 	} {
 		w := call(tc.method, tc.path, tc.login, tc.origin, tc.body)
 		if w.Code != tc.status || strings.Contains(w.Body.String(), key) {
 			t.Fatalf("%s %s: status=%d expected=%d", tc.method, tc.path, w.Code, tc.status)
 		}
+		if tc.method == "POST" && tc.path == "/api/apify/check" && tc.status == http.StatusOK && !strings.Contains(w.Body.String(), `"providerUsedUsd":1.5`) {
+			t.Fatal("account usage missing from successful check")
+		}
 	}
 	if p.writes != 4 || !p.generation {
 		t.Fatalf("unexpected writes=%d generation=%v", p.writes, p.generation)
+	}
+	if check.calls != 2 {
+		t.Fatalf("unexpected check calls=%d", check.calls)
 	}
 }

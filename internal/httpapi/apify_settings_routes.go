@@ -6,6 +6,7 @@ import (
 	"io"
 	"itmap/internal/apifysettings"
 	"itmap/internal/auth"
+	"itmap/internal/integrations/apify"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -23,8 +24,13 @@ type ApifySettingsService interface {
 	SaveHHSource(context.Context, string, int64, apifysettings.HHSourceInput) (apifysettings.HHSource, error)
 }
 
+type ApifyAccountChecker interface {
+	Check(context.Context, string) (apify.BillingAccount, error)
+}
+
 func apifySettingsError(w http.ResponseWriter, err error) {
 	code, status, message := "apify_storage", http.StatusServiceUnavailable, "Не удалось выполнить операцию Apify."
+	var provider *apify.Error
 	switch {
 	case errors.Is(err, apifysettings.ErrInput):
 		code, status, message = "apify_data", http.StatusBadRequest, "Некорректные настройки Apify."
@@ -36,11 +42,15 @@ func apifySettingsError(w http.ResponseWriter, err error) {
 		code, status, message = "restored", http.StatusConflict, "Данные восстановлены во время операции. Повторите действие."
 	case errors.Is(err, apifysettings.ErrSourceMissing):
 		code, status, message = "source_missing", http.StatusNotFound, "Источник HH организации не найден."
+	case errors.Is(err, apifysettings.ErrMissing), errors.Is(err, apifysettings.ErrDecrypt):
+		code, status, message = "apify_auth", http.StatusBadRequest, "Не удалось использовать токен Apify. Сохраните его заново."
+	case errors.As(err, &provider):
+		code, status, message = provider.Code, provider.Status, provider.Error()
 	}
 	jsonReply(w, status, map[string]any{"error": message, "code": code})
 }
 
-func ApifySettingsHandler(manager *auth.Manager, service ApifySettingsService) http.HandlerFunc {
+func ApifySettingsHandler(manager *auth.Manager, service ApifySettingsService, checker ApifyAccountChecker) http.HandlerFunc {
 	return RequireSession(manager, func(w http.ResponseWriter, r *http.Request) {
 		user, ok := sessionFromRequest(manager, r)
 		if !ok {
@@ -68,11 +78,11 @@ func ApifySettingsHandler(manager *auth.Manager, service ApifySettingsService) h
 			legacyCompany = parts[0]
 			path = "/api/apify/hh-source"
 		}
-		if path != "/api/apify/settings" && path != "/api/apify/key" && path != "/api/apify/hh-source" && path != "/api/apify/hh-sources" {
+		if path != "/api/apify/settings" && path != "/api/apify/key" && path != "/api/apify/check" && path != "/api/apify/hh-source" && path != "/api/apify/hh-sources" {
 			jsonReply(w, http.StatusNotFound, map[string]string{"error": "Метод API не найден."})
 			return
 		}
-		if (path == "/api/apify/hh-sources" && r.Method != http.MethodGet) || (path == "/api/apify/key" && r.Method != http.MethodPut) || (path != "/api/apify/key" && r.Method != http.MethodGet && r.Method != http.MethodPut) {
+		if (path == "/api/apify/hh-sources" && r.Method != http.MethodGet) || (path == "/api/apify/key" && r.Method != http.MethodPut) || (path == "/api/apify/check" && r.Method != http.MethodPost) || (path != "/api/apify/key" && path != "/api/apify/check" && r.Method != http.MethodGet && r.Method != http.MethodPut) {
 			jsonReply(w, http.StatusMethodNotAllowed, map[string]string{"error": "Метод не поддерживается."})
 			return
 		}
@@ -103,7 +113,11 @@ func ApifySettingsHandler(manager *auth.Manager, service ApifySettingsService) h
 				return
 			}
 		}
-		ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+		timeout := 10 * time.Second
+		if path == "/api/apify/check" {
+			timeout = 40 * time.Second
+		}
+		ctx, cancel := context.WithTimeout(r.Context(), timeout)
 		defer cancel()
 		if r.Method == http.MethodGet {
 			if path == "/api/apify/hh-sources" {
@@ -146,6 +160,24 @@ func ApifySettingsHandler(manager *auth.Manager, service ApifySettingsService) h
 			} else {
 				apifySettingsError(w, apifysettings.ErrInput)
 			}
+			return
+		}
+		if path == "/api/apify/check" {
+			profile, err := apifysettings.ParseCheck(body)
+			if err != nil {
+				apifySettingsError(w, err)
+				return
+			}
+			if checker == nil {
+				apifySettingsError(w, apifysettings.ErrStorage)
+				return
+			}
+			account, err := checker.Check(ctx, profile)
+			if err != nil {
+				apifySettingsError(w, err)
+				return
+			}
+			jsonReply(w, http.StatusOK, map[string]any{"account": account})
 			return
 		}
 		if path == "/api/apify/hh-source" {
