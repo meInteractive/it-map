@@ -378,6 +378,8 @@ jobs:
           npm ci --no-audit --no-fund
           npm run build:web
           npx playwright install --with-deps --only-shell chromium
+      - name: Проверить ручное восстановление списка в браузере
+        run: npx playwright test --config=playwright.resume.config.ts
       - name: Verify writable task UI ONLY in disposable CI
         env:
           ITMAP_REQUIRE_MARIADB_INTEGRATION: '1'
