@@ -169,6 +169,58 @@ func (p *hhLateFailurePlanner) Next(ctx context.Context, tx *sql.Tx, j parser.Jo
 	return nil, errors.New("CI late handoff failure")
 }
 func TestMariaDBHHListingRecoveryDisposable(t *testing.T) {
+	t.Run("manual control resumes one saved job and replays its receipt", func(t *testing.T) {
+		rows := make([]json.RawMessage, 11)
+		for i := range rows {
+			rows[i] = hhScanItem(8400+i, "CI manual resume")
+		}
+		p := &hhScanProvider{rows: [][]json.RawMessage{rows}}
+		f, s, oldLease, executor := hhScanFixture(t, p)
+		var oldRun string
+		if err := s.db.QueryRowContext(s.ctx, "SELECT id FROM scheduler_runs WHERE status='running'").Scan(&oldRun); err != nil {
+			t.Fatal(err)
+		}
+		if err := oldLease.Finish(s.ctx, parser.FinishOptions{Status: "pending", Deferred: true}); err != nil {
+			t.Fatal(err)
+		}
+		if err := s.repo.Finish(s.ctx, oldRun, "completed"); err != nil {
+			t.Fatal(err)
+		}
+		const jobID = "12345678-1234-4234-8234-123456789abd"
+		s.exec("UPDATE scheduler_jobs SET id=? WHERE id='CI_HH_SCAN'", jobID)
+		firstRun := s.begin("CI resume first")
+		lease := schedulerRequireLease(t, s, firstRun, jobID)
+		first, err := executor.Execute(f.ctx, lease)
+		if err != nil || first.Offset != 10 {
+			t.Fatal("first slice", first, err)
+		}
+		if err = lease.Finish(s.ctx, parser.FinishOptions{Status: "pending", Deferred: true}); err != nil {
+			t.Fatal(err)
+		}
+		s.finish(firstRun)
+		paused, err := f.repo.Settings.SaveHHSource(f.ctx, f.v.Generation, 991302, apifysettings.HHSourceInput{SourceURL: f.v.SourceURL, Enabled: false, Revision: f.v.SourceRevision})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err = f.repo.Settings.SaveHHSource(f.ctx, f.v.Generation, 991302, apifysettings.HHSourceInput{SourceURL: f.v.SourceURL, Enabled: true, Revision: paused.Revision}); err != nil {
+			t.Fatal(err)
+		}
+		control := parser.NewCycleControlWithFactory(s.db, func(r parser.RunRepository) (parser.Worker, error) {
+			return parser.Worker{Runs: r, Settings: executor.Settings, ListingRuntime: executor.Runtime}, nil
+		})
+		resume, err := control.PrepareResume(s.ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		const requestID = "12345678-1234-4234-8234-123456789abc"
+		if _, err = resume(s.ctx, requestID, jobID); err != nil || p.starts != 1 || s.count("SELECT COUNT(*) FROM vacancy_candidates WHERE company_id=991302") != 11 || s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='classify_title' AND status='pending'") != 11 {
+			t.Fatal("manual resume", err)
+		}
+		replayed, err := resume(s.ctx, requestID, jobID)
+		if err != nil || !strings.Contains(string(replayed), `"reused":true`) || p.starts != 1 {
+			t.Fatal("resume receipt replay", err)
+		}
+	})
 	t.Run("explicit resume rejects rotated token without changing cursor", func(t *testing.T) {
 		rows := make([]json.RawMessage, 11)
 		for i := range rows {

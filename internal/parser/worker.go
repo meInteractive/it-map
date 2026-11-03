@@ -25,6 +25,7 @@ type Worker struct {
 	ScheduleSources        bool
 	ContinueOnStageFailure bool
 	ResumePreviousDataset  bool
+	ResumeJobID            string
 }
 
 // NewWorker связывает провайдеры только с серверным хранилищем конфигурации.
@@ -201,7 +202,16 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 			return result, context.DeadlineExceeded
 		}
 		allowHH := hhStages < 5
-		lease, err := w.Runs.ClaimJob(bounded, start.Run.ID, ClaimOptions{Types: workerTypes, SourceID: &source, Lease: jobDuration, AllowApify: &allowHH})
+		claim := ClaimOptions{Types: workerTypes, SourceID: &source, Lease: jobDuration, AllowApify: &allowHH}
+		if w.ResumeJobID != "" {
+			if !w.ResumePreviousDataset {
+				status = "partial"
+				return result, ErrRunInput
+			}
+			claim.Types = []string{"scan_source"}
+			claim.JobID = &w.ResumeJobID
+		}
+		lease, err := w.Runs.ClaimJob(bounded, start.Run.ID, claim)
 		if err != nil {
 			status = "partial"
 			return result, err
