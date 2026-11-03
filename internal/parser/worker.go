@@ -108,7 +108,7 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 	}
 	var actorStarts atomic.Int32
 	admit := func() error {
-		if actorStarts.Load() >= 1 {
+		if w.ResumePreviousDataset || actorStarts.Load() >= 1 {
 			return ErrHHCycleLimit
 		}
 		return nil

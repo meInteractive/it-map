@@ -323,6 +323,25 @@ func TestMariaDBHHWorkerCancelDisposable(t *testing.T) {
 }
 
 func TestMariaDBHHWorkerActorLimitDisposable(t *testing.T) {
+	t.Run("resume mode cannot start a new Actor", func(t *testing.T) {
+		provider := &hhScanProvider{rows: [][]json.RawMessage{{}}}
+		_, s, lease, listing := hhScanFixture(t, provider)
+		var run string
+		if err := s.db.QueryRowContext(s.ctx, "SELECT id FROM scheduler_runs WHERE status='running'").Scan(&run); err != nil {
+			t.Fatal(err)
+		}
+		if err := lease.Finish(s.ctx, parser.FinishOptions{Status: "pending", Deferred: true}); err != nil {
+			t.Fatal(err)
+		}
+		if err := s.repo.Finish(s.ctx, run, "completed"); err != nil {
+			t.Fatal(err)
+		}
+		w := parser.Worker{Runs: s.repo, Settings: apifysettings.NewRepository(s.db, "CI_SECRET"), ListingRuntime: listing.Runtime, ResumePreviousDataset: true}
+		result, err := w.Cycle(s.ctx, parser.WorkerOptions{Run: parser.RunOptions{RequestID: "CI_WORKER_RESUME_LIMIT"}, MaxJobs: 1})
+		if err != nil || result.Processed != 1 || provider.starts != 0 || s.count("SELECT COUNT(*) FROM apify_runs") != 0 {
+			t.Fatal("resume started an Actor", result, provider.starts, err)
+		}
+	})
 	provider := &hhScanProvider{rows: [][]json.RawMessage{{}}}
 	_, s, lease, listing := hhScanFixture(t, provider)
 	var run string
