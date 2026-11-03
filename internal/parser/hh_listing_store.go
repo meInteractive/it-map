@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"itmap/internal/apifysettings"
+	"itmap/internal/integrations/apify"
 )
 
 type hhListingPlan struct {
@@ -109,7 +110,7 @@ func persistHHListingCursor(ctx context.Context, tx *sql.Tx, id, owner string, j
 	if created {
 		_, err = tx.ExecContext(ctx, "INSERT INTO vacancy_discovery_runs(id,user_name,generation,company_id,source_id,source_url,source_revision,settings_revision,result_json,created_at,expires_at) VALUES(?,?,?,?,'hh',?,?,?,?,?,?)", id, owner, job.Generation, job.CompanyID, c.Operation.SourceURL, c.Operation.SourceRevision, c.Operation.SettingsRevision, string(raw), now, now+3600000)
 	} else {
-		_, err = tx.ExecContext(ctx, "UPDATE vacancy_discovery_runs SET result_json=?,expires_at=? WHERE id=?", string(raw), now+3600000, id)
+		_, err = tx.ExecContext(ctx, "UPDATE vacancy_discovery_runs SET source_revision=?,settings_revision=?,result_json=?,expires_at=? WHERE id=?", c.Operation.SourceRevision, c.Operation.SettingsRevision, string(raw), now+3600000, id)
 	}
 	if err != nil {
 		return ErrSettingsStorage
@@ -131,9 +132,34 @@ func (e HHListingExecutor) prepareHHListing(ctx context.Context, tx *sql.Tx, job
 	}
 	if exists {
 		if !reflect.DeepEqual(cur.Operation, v) || cur.SchedulerHash != hash {
-			return plan, ErrHHListingChanged
+			old := cur.Operation
+			if !e.ResumePrevious || cur.Done || cur.RunID == "" || cur.DatasetID == "" || cur.Metadata == nil || old.Generation != v.Generation || old.CompanyID != v.CompanyID || old.SourceURL != v.SourceURL || old.Profile != v.Profile || old.CandidateID != 0 || v.CandidateID != 0 || old.SourceRevision > v.SourceRevision || old.SettingsRevision > v.SettingsRevision || !reflect.DeepEqual(cur.TitleQuery, hhTitleQuery(keys)) {
+				return plan, ErrHHListingChanged
+			}
+			if cur.PreviousOperation == nil {
+				cur.PreviousOperation = &old
+			}
+			verifier, ok := e.Runtime.(interface {
+				VerifyPreviousDatasetTx(context.Context, *sql.Tx, apifysettings.OperationVersion, apifysettings.OperationVersion, string, apify.HHOptions, string, string) error
+			})
+			if !ok {
+				return plan, ErrHHListingChanged
+			}
+			key := fmt.Sprintf("listing:%s:%d", plan.ID, cur.Page)
+			if err = verifier.VerifyPreviousDatasetTx(ctx, tx, *cur.PreviousOperation, v, key, cur.options(), cur.RunID, cur.DatasetID); err != nil {
+				return plan, err
+			}
+			cur.Operation = v
+			cur.SchedulerHash = hash
+			cur.Revision++
+			if err = persistHHListingCursor(ctx, tx, plan.ID, e.Owner, job, cur, false); err != nil {
+				return plan, err
+			}
 		}
 	} else {
+		if e.ResumePrevious {
+			return plan, ErrHHListingChanged
+		}
 		cur = hhListingCursor{Version: 1, Revision: 1, Operation: v, SchedulerHash: hash, Profile: v.Profile, TitleQuery: hhTitleQuery(keys)}
 		if err = persistHHListingCursor(ctx, tx, plan.ID, e.Owner, job, cur, true); err != nil {
 			return plan, err

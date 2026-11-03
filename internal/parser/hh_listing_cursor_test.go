@@ -2,6 +2,7 @@ package parser
 
 import (
 	"itmap/internal/apifyruns"
+	"itmap/internal/apifysettings"
 	"itmap/internal/integrations/apify"
 	"testing"
 	"time"
@@ -30,9 +31,9 @@ func TestHHListingCursorHonorsCostFailureAndPageLimit(t *testing.T) {
 	now := time.Now().UnixMilli()
 	cost := 0.02
 	slice := apifyruns.DatasetSlice{Record: apifyruns.Record{State: "succeeded", RunID: "CIRun", DatasetID: "CIData", ChargedUSD: &cost}, Metadata: apify.DatasetMetadata{ItemCount: 100, ModifiedAt: "2020-01-01T00:00:00Z"}}
-	c := hhListingCursor{Version: 1, Profile: "free", Page: 0, Offset: 100, PageCount: 100, RunID: "CIRun", DatasetID: "CIData", Metadata: &slice.Metadata}
+	c := hhListingCursor{Version: 1, Profile: "free", Page: 0, Offset: 100, PageCount: 100, RunID: "CIRun", DatasetID: "CIData", Metadata: &slice.Metadata, PreviousOperation: &apifysettings.OperationVersion{CompanyID: 1}}
 	next, e := advanceHHListingCursor(c, slice, 0, "", now)
-	if e != nil || next.Page != 1 || next.Offset != 0 || next.Done || next.RunID != "" {
+	if e != nil || next.Page != 1 || next.Offset != 0 || next.Done || next.RunID != "" || next.PreviousOperation != nil {
 		t.Fatal("next HH page", next, e)
 	}
 	slice.Record.State = "failed"

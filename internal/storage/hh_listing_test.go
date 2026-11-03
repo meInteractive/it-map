@@ -12,6 +12,7 @@ import (
 	"itmap/internal/apifysettings"
 	"itmap/internal/integrations/apify"
 	"itmap/internal/parser"
+	"strings"
 	"sync"
 	"testing"
 )
@@ -168,6 +169,113 @@ func (p *hhLateFailurePlanner) Next(ctx context.Context, tx *sql.Tx, j parser.Jo
 	return nil, errors.New("CI late handoff failure")
 }
 func TestMariaDBHHListingRecoveryDisposable(t *testing.T) {
+	t.Run("explicit resume rejects rotated token without changing cursor", func(t *testing.T) {
+		rows := make([]json.RawMessage, 11)
+		for i := range rows {
+			rows[i] = hhScanItem(8300+i, "CI rotated token")
+		}
+		p := &hhScanProvider{rows: [][]json.RawMessage{rows}}
+		f, s, lease, executor := hhScanFixture(t, p)
+		if _, err := executor.Execute(f.ctx, lease); err != nil {
+			t.Fatal("first slice", err)
+		}
+		view, err := f.repo.Settings.Read(f.ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err = f.repo.Settings.SaveKey(f.ctx, f.v.Generation, apifysettings.KeyInput{Profile: "free", APIKey: "apify_api_" + strings.Repeat("s", 16), Revision: view.Revision}); err != nil {
+			t.Fatal("rotate token", err)
+		}
+		executor.ResumePrevious = true
+		if _, err = executor.Execute(f.ctx, lease); !errors.Is(err, apifyruns.ErrDatasetChanged) || p.starts != 1 || s.count("SELECT COUNT(*) FROM vacancy_candidates WHERE company_id=991302") != 10 || s.count("SELECT COUNT(*) FROM vacancy_discovery_runs WHERE company_id=991302 AND settings_revision=2") != 1 {
+			t.Fatal("rotated token admitted or cursor changed", err)
+		}
+	})
+	t.Run("explicit resume rejects changed search without another Actor", func(t *testing.T) {
+		rows := make([]json.RawMessage, 11)
+		for i := range rows {
+			rows[i] = hhScanItem(8200+i, "CI changed search")
+		}
+		p := &hhScanProvider{rows: [][]json.RawMessage{rows}}
+		f, s, lease, executor := hhScanFixture(t, p)
+		if _, err := executor.Execute(f.ctx, lease); err != nil {
+			t.Fatal("first slice", err)
+		}
+		paused, err := f.repo.Settings.SaveHHSource(f.ctx, f.v.Generation, 991302, apifysettings.HHSourceInput{SourceURL: f.v.SourceURL, Enabled: false, Revision: f.v.SourceRevision})
+		if err != nil {
+			t.Fatal("pause source", err)
+		}
+		if _, err = f.repo.Settings.SaveHHSource(f.ctx, f.v.Generation, 991302, apifysettings.HHSourceInput{SourceURL: f.v.SourceURL, Enabled: true, Revision: paused.Revision}); err != nil {
+			t.Fatal("enable source", err)
+		}
+		s.exec("UPDATE vacancy_roles SET stable_key='ci-other-role' WHERE id=991303")
+		executor.ResumePrevious = true
+		if _, err = executor.Execute(f.ctx, lease); !errors.Is(err, parser.ErrHHListingChanged) || p.starts != 1 || s.count("SELECT COUNT(*) FROM vacancy_candidates WHERE company_id=991302") != 10 {
+			t.Fatal("changed search admitted", err)
+		}
+	})
+	t.Run("explicit resume reads terminal dataset after source pause", func(t *testing.T) {
+		rows := make([]json.RawMessage, 11)
+		for i := range rows {
+			rows[i] = hhScanItem(8100+i, "CI resume")
+		}
+		p := &hhScanProvider{rows: [][]json.RawMessage{rows}}
+		f, s, lease, executor := hhScanFixture(t, p)
+		first, err := executor.Execute(f.ctx, lease)
+		if err != nil || first.Offset != 10 || p.starts != 1 {
+			t.Fatal("first slice", first, err)
+		}
+		paused, err := f.repo.Settings.SaveHHSource(f.ctx, f.v.Generation, 991302, apifysettings.HHSourceInput{SourceURL: f.v.SourceURL, Enabled: false, Revision: f.v.SourceRevision})
+		if err != nil {
+			t.Fatal("pause source", err)
+		}
+		if _, err = f.repo.Settings.SaveHHSource(f.ctx, f.v.Generation, 991302, apifysettings.HHSourceInput{SourceURL: f.v.SourceURL, Enabled: true, Revision: paused.Revision}); err != nil {
+			t.Fatal("enable source", err)
+		}
+		executor.ResumePrevious = true
+		last, err := executor.Execute(f.ctx, lease)
+		if err != nil || !last.Done || last.Offset != 11 || p.starts != 1 || s.count("SELECT COUNT(*) FROM vacancy_candidates WHERE company_id=991302") != 11 || s.count("SELECT COUNT(*) FROM apify_runs") != 1 {
+			t.Fatal("resume failed or created a new Actor", last, err)
+		}
+	})
+	t.Run("previous terminal dataset needs current authorization and same token", func(t *testing.T) {
+		p := &hhScanProvider{rows: [][]json.RawMessage{{hhScanItem(7999, "CI prior dataset")}}}
+		f := openApifyRuntimeFixture(t)
+		service := apifyruns.Service{Repository: f.repo, NewClient: func(string) (apifyruns.Provider, error) { return p, nil }}
+		original, err := service.Execute(f.ctx, f.v, "CI previous", apify.HHOptions{})
+		if err != nil || original.State != "succeeded" || original.ChargedUSD == nil {
+			t.Fatal("terminal operation", err)
+		}
+		paused, err := f.repo.Settings.SaveHHSource(f.ctx, f.v.Generation, 991302, apifysettings.HHSourceInput{SourceURL: f.v.SourceURL, Enabled: false, Revision: f.v.SourceRevision})
+		if err != nil {
+			t.Fatal("pause", err)
+		}
+		active, err := f.repo.Settings.SaveHHSource(f.ctx, f.v.Generation, 991302, apifysettings.HHSourceInput{SourceURL: f.v.SourceURL, Enabled: true, Revision: paused.Revision})
+		if err != nil {
+			t.Fatal("resume", err)
+		}
+		current := f.v
+		current.SourceRevision = active.Revision
+		slice, err := service.ReadPreviousDataset(f.ctx, f.v, current, "CI previous", apify.HHOptions{}, 0, original.RunID, original.DatasetID)
+		if err != nil || len(slice.Items) != 1 || p.starts != 1 {
+			t.Fatal("previous dataset not reused", err)
+		}
+		if _, err = service.ReadPreviousDataset(f.ctx, f.v, current, "CI previous", apify.HHOptions{}, 0, "wrong", original.DatasetID); !errors.Is(err, apifyruns.ErrDatasetChanged) || p.starts != 1 {
+			t.Fatal("mismatched run admitted", err)
+		}
+		view, err := f.repo.Settings.Read(f.ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		updated, err := f.repo.Settings.SaveKey(f.ctx, f.v.Generation, apifysettings.KeyInput{Profile: "free", APIKey: "apify_api_" + strings.Repeat("s", 16), Revision: view.Revision})
+		if err != nil {
+			t.Fatal("rotate token", err)
+		}
+		current.SettingsRevision = updated.Revision
+		if _, err = service.ReadPreviousDataset(f.ctx, f.v, current, "CI previous", apify.HHOptions{}, 0, original.RunID, original.DatasetID); !errors.Is(err, apifysettings.ErrChanged) || p.starts != 1 {
+			t.Fatal("rotated token admitted", err)
+		}
+	})
 	t.Run("source pause fences the old cursor without another Actor", func(t *testing.T) {
 		rows := make([]json.RawMessage, 11)
 		for i := range rows {

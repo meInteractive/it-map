@@ -24,6 +24,7 @@ type Worker struct {
 	Classifier             AIStageClassifier
 	ScheduleSources        bool
 	ContinueOnStageFailure bool
+	ResumePreviousDataset  bool
 }
 
 // NewWorker связывает провайдеры только с серверным хранилищем конфигурации.
@@ -47,6 +48,13 @@ type WorkerResult struct {
 }
 
 var ErrHHCycleLimit = errors.New("HH cycle actor start limit reached")
+
+func admitHHActorStart(resumePrevious bool, starts int32) error {
+	if resumePrevious || starts >= 1 {
+		return ErrHHCycleLimit
+	}
+	return nil
+}
 
 var workerTypes = []string{"scan_source", "classify_title", "fetch_full_text", "extract_vacancy", "assign_roles", "import_vacancy", "score_relevance"}
 
@@ -107,10 +115,7 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 	}
 	var actorStarts atomic.Int32
 	admit := func() error {
-		if actorStarts.Load() >= 1 {
-			return ErrHHCycleLimit
-		}
-		return nil
+		return admitHHActorStart(w.ResumePreviousDataset, actorStarts.Load())
 	}
 	count := func() { actorStarts.Add(1) }
 	service := apifyruns.Service{Repository: apifyruns.Repository{DB: w.Settings.DB, Settings: w.Settings}, BeforeReserve: admit, AfterReserve: count}
@@ -173,7 +178,7 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 		detailRuntime = existing
 	}
 	d := workerDispatch{
-		listing:  HHListingExecutor{Settings: w.Settings, Runtime: listingRuntime, Owner: owner},
+		listing:  HHListingExecutor{Settings: w.Settings, Runtime: listingRuntime, Owner: owner, ResumePrevious: w.ResumePreviousDataset},
 		detail:   HHFullTextExecutor{Settings: w.Settings, Runtime: detailRuntime, Public: w.Public, Owner: owner},
 		importer: HHImportExecutor{Settings: w.Settings, Owner: owner},
 		ai:       AIStageDispatcher{Owner: owner, Generator: w.Generator, Classifier: w.Classifier},
