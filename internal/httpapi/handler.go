@@ -121,6 +121,8 @@ func NewHandlerWithOptions(logger *slog.Logger, opts Options) http.Handler {
 		mux.HandleFunc("/api/openrouter/", RouterSettingsHandler(opts.Auth, opts.RouterSettings, opts.AIConnectionTests))
 		mux.HandleFunc("GET /api/scheduler/run", SchedulerRunReadHandler(opts.Auth, opts.SchedulerRunRead))
 		mux.HandleFunc("POST /api/scheduler/run", SchedulerCycleHandler(opts.Auth, opts.SchedulerCycle))
+		resume, _ := opts.SchedulerCycle.(SchedulerResumeRunner)
+		mux.HandleFunc("POST /api/scheduler/resume", SchedulerResumeHandler(opts.Auth, resume))
 		mux.HandleFunc("POST /api/scheduler/probe", SchedulerProbeHandler(opts.Auth, opts.SchedulerProbe))
 		mux.HandleFunc("/api/scheduler/queue", SchedulerQueueHandler(opts.Auth, opts.SchedulerQueue))
 		mux.HandleFunc("/api/scheduler/jobs/", SchedulerJobActionsHandler(opts.Auth, opts.SchedulerJobActions))
