@@ -139,6 +139,10 @@ func TestMariaDBBackupBrowserDisposable(t *testing.T) {
 		Errors []struct{ Message string }
 	}
 	if parse := json.Unmarshal(stdout.Bytes(), &report); parse != nil {
+		// Distinguish a reporter failure from a killed child process; do not print
+		// the potentially sensitive JSON browser report or HTTP payloads.
+		t.Logf("backup browser process: err=%v state=%v context=%v stdout_bytes=%d stderr_bytes=%d json_err=%v",
+			e, command.ProcessState, ctx.Err(), stdout.Len(), stderr.Len(), parse)
 		t.Logf("synthetic backup browser stderr: %s", stderr.String())
 		t.Fatal("required backup browser JSON report missing")
 	}
