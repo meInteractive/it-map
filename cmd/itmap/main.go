@@ -39,7 +39,9 @@ func httpHandler(logger *slog.Logger, db *sql.DB, manager *auth.Manager) http.Ha
 		openAI := aiproviders.NewOpenAIService(aiKeys)
 		router := aiproviders.NewRouterService(aiKeys)
 		opts.OpenAISettings = openAI
-		opts.ApifySettings = apifysettings.NewRepository(db, os.Getenv("SESSION_SECRET"))
+		apifySettings := apifysettings.NewRepository(db, os.Getenv("SESSION_SECRET"))
+		opts.ApifySettings = apifySettings
+		opts.ApifyAccountCheck = apifysettings.CheckService{Settings: apifySettings}
 		opts.ProfileModelCatalog = aiproviders.ModelCatalog{OpenAI: openAI, Router: router}
 		opts.RouterSettings = router
 		opts.AIConnectionTests = &aiproviders.ManualTests{Keys: aiKeys, Runner: aiproviders.NewGenerator(openAI, router), OpenAI: openAI, Router: router}
