@@ -27,6 +27,9 @@ type DatasetSlice struct {
 // ReadDataset читает только известный terminal run, всегда в raw-режиме.
 // Проверки до и после чтения запрещают продолжение по смешанному снимку.
 func (s Service) ReadDataset(ctx context.Context, v apifysettings.OperationVersion, key string, options apify.HHOptions, offset int64) (DatasetSlice, error) {
+	if offset < 0 || offset > 9007199254740991 {
+		return DatasetSlice{}, ErrDatasetChanged
+	}
 	scoped, e := operationKey(v, key, options)
 	if e != nil {
 		return DatasetSlice{}, e

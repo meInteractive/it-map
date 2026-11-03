@@ -31,3 +31,10 @@ func TestPreviousDatasetRejectsChangedIdentityBeforeStorage(t *testing.T) {
 		t.Fatalf("detail operation admitted: %v", err)
 	}
 }
+
+func TestDatasetInvalidOffsetPrecedesOperationValidation(t *testing.T) {
+	_, err := (Service{}).ReadDataset(context.Background(), apifysettings.OperationVersion{}, "", apify.HHOptions{}, -1)
+	if !errors.Is(err, ErrDatasetChanged) {
+		t.Fatalf("invalid offset contract changed: %v", err)
+	}
+}
