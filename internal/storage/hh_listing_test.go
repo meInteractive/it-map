@@ -168,6 +168,31 @@ func (p *hhLateFailurePlanner) Next(ctx context.Context, tx *sql.Tx, j parser.Jo
 	return nil, errors.New("CI late handoff failure")
 }
 func TestMariaDBHHListingRecoveryDisposable(t *testing.T) {
+	t.Run("source pause fences the old cursor without another Actor", func(t *testing.T) {
+		rows := make([]json.RawMessage, 11)
+		for i := range rows {
+			rows[i] = hhScanItem(8000+i, "CI pause")
+		}
+		p := &hhScanProvider{rows: [][]json.RawMessage{rows}}
+		f, s, lease, e := hhScanFixture(t, p)
+		first, err := e.Execute(f.ctx, lease)
+		if err != nil || first.Offset != 10 || p.starts != 1 {
+			t.Fatal("first slice", first, err)
+		}
+		paused, err := f.repo.Settings.SaveHHSource(f.ctx, f.v.Generation, 991302, apifysettings.HHSourceInput{SourceURL: f.v.SourceURL, Enabled: false, Revision: f.v.SourceRevision})
+		if err != nil {
+			t.Fatal("pause source", err)
+		}
+		if _, err = f.repo.Settings.SaveHHSource(f.ctx, f.v.Generation, 991302, apifysettings.HHSourceInput{SourceURL: f.v.SourceURL, Enabled: true, Revision: paused.Revision}); err != nil {
+			t.Fatal("re-enable source", err)
+		}
+		if _, err = e.Execute(f.ctx, lease); !errors.Is(err, parser.ErrHHListingChanged) {
+			t.Fatal("stale cursor should be fenced", err)
+		}
+		if p.starts != 1 || s.count("SELECT COUNT(*) FROM vacancy_candidates WHERE company_id=991302") != 10 || s.count("SELECT COUNT(*) FROM apify_runs") != 1 {
+			t.Fatal("pause changed saved data or started another Actor")
+		}
+	})
 	t.Run("empty stable dataset completes", func(t *testing.T) {
 		p := &hhScanProvider{rows: [][]json.RawMessage{{}}}
 		f, _, lease, e := hhScanFixture(t, p)
