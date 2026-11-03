@@ -338,7 +338,7 @@ func TestMariaDBHHWorkerActorLimitDisposable(t *testing.T) {
 		}
 		w := parser.Worker{Runs: s.repo, Settings: apifysettings.NewRepository(s.db, "CI_SECRET"), ListingRuntime: listing.Runtime, ResumePreviousDataset: true}
 		result, err := w.Cycle(s.ctx, parser.WorkerOptions{Run: parser.RunOptions{RequestID: "CI_WORKER_RESUME_LIMIT"}, MaxJobs: 1})
-		if err != nil || result.Processed != 1 || provider.starts != 0 || s.count("SELECT COUNT(*) FROM apify_runs") != 0 {
+		if !errors.Is(err, parser.ErrHHListingChanged) || result.Processed != 1 || provider.starts != 0 || s.count("SELECT COUNT(*) FROM apify_runs") != 0 || s.count("SELECT COUNT(*) FROM vacancy_discovery_runs WHERE company_id=991302") != 0 {
 			t.Fatal("resume started an Actor", result, provider.starts, err)
 		}
 	})

@@ -157,6 +157,9 @@ func (e HHListingExecutor) prepareHHListing(ctx context.Context, tx *sql.Tx, job
 			}
 		}
 	} else {
+		if e.ResumePrevious {
+			return plan, ErrHHListingChanged
+		}
 		cur = hhListingCursor{Version: 1, Revision: 1, Operation: v, SchedulerHash: hash, Profile: v.Profile, TitleQuery: hhTitleQuery(keys)}
 		if err = persistHHListingCursor(ctx, tx, plan.ID, e.Owner, job, cur, true); err != nil {
 			return plan, err
