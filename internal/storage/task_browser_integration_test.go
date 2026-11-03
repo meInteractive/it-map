@@ -68,6 +68,10 @@ func TestMariaDBTaskBrowserDisposable(t *testing.T) {
 		Errors []struct{ Message string }
 	}
 	if parseErr := json.Unmarshal(output.Bytes(), &report); parseErr != nil {
+		// The JSON reporter writes its report only when Playwright finishes.
+		// Capture the process exit reason without dumping synthetic browser payloads.
+		t.Logf("task browser process: err=%v state=%v context=%v stdout_bytes=%d stderr_bytes=%d json_err=%v",
+			err, command.ProcessState, ctx.Err(), output.Len(), stderr.Len(), parseErr)
 		t.Logf("task browser stderr: %s", stderr.String())
 		t.Fatal("task browser did not return a valid required JSON report")
 	}
