@@ -16,6 +16,7 @@ type hhListingCursor struct {
 	Version                          int
 	Revision                         int64
 	Operation                        apifysettings.OperationVersion
+	PreviousOperation                *apifysettings.OperationVersion `json:",omitempty"`
 	SchedulerHash                    string
 	Profile                          string
 	TitleQuery                       *string
@@ -86,6 +87,7 @@ func advanceHHListingCursor(c hhListingCursor, slice apifyruns.DatasetSlice, cou
 		c.DatasetID = ""
 		c.Metadata = nil
 		c.MetadataObservedAt = 0
+		c.PreviousOperation = nil
 		c.RepeatedPrefix = false
 		c.Done = false
 	case c.PageCount >= 100:

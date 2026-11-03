@@ -26,10 +26,11 @@ type HHListingProgress struct {
 	PartialCode                                    string
 }
 type HHListingExecutor struct {
-	Settings apifysettings.Repository
-	Runtime  HHListingRuntime
-	Owner    string
-	Handoff  *CandidateHandoff
+	Settings       apifysettings.Repository
+	Runtime        HHListingRuntime
+	Owner          string
+	Handoff        *CandidateHandoff
+	ResumePrevious bool
 }
 
 func hhListingProgress(c hhListingCursor) HHListingProgress {
@@ -97,7 +98,23 @@ func (e HHListingExecutor) Execute(ctx context.Context, lease *JobLease) (HHList
 		return hhListingProgress(cur), err
 	}
 	key := fmt.Sprintf("listing:%s:%d", plan.ID, cur.Page)
-	record, err := runtime.Execute(workCtx, cur.Operation, key, cur.options())
+	var record apifyruns.Record
+	var slice apifyruns.DatasetSlice
+	if cur.PreviousOperation != nil {
+		reader, ok := runtime.(interface {
+			ReadPreviousDataset(context.Context, apifysettings.OperationVersion, apifysettings.OperationVersion, string, apify.HHOptions, int64, string, string) (apifyruns.DatasetSlice, error)
+		})
+		if !ok {
+			return hhListingProgress(cur), ErrHHListingChanged
+		}
+		slice, err = reader.ReadPreviousDataset(workCtx, *cur.PreviousOperation, cur.Operation, key, cur.options(), cur.Offset, cur.RunID, cur.DatasetID)
+		if err != nil {
+			return hhListingProgress(cur), err
+		}
+		record = slice.Record
+	} else {
+		record, err = runtime.Execute(workCtx, cur.Operation, key, cur.options())
+	}
 	if errors.Is(err, apifyruns.ErrBudget) && cur.Profile == "free" && cfg.PaidAllowed && cfg.Profiles["starter"].Configured {
 		// ErrBudget не выдаёт право POST и не создаёт резерв. Выбор разрешённого
 		// Starter сохраняется до сети; при неизвестном исходе переход запрещён.
@@ -131,9 +148,11 @@ func (e HHListingExecutor) Execute(ctx context.Context, lease *JobLease) (HHList
 	if record.State != "succeeded" && record.State != "failed" {
 		return hhListingProgress(cur), nil
 	}
-	slice, err := runtime.ReadDataset(workCtx, cur.Operation, key, cur.options(), cur.Offset)
-	if err != nil {
-		return hhListingProgress(cur), err
+	if cur.PreviousOperation == nil {
+		slice, err = runtime.ReadDataset(workCtx, cur.Operation, key, cur.options(), cur.Offset)
+		if err != nil {
+			return hhListingProgress(cur), err
+		}
 	}
 	if slice.Record.RunID != record.RunID || slice.Record.DatasetID != record.DatasetID {
 		return hhListingProgress(cur), apifyruns.ErrDatasetChanged

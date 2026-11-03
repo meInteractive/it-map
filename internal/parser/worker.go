@@ -24,6 +24,7 @@ type Worker struct {
 	Classifier             AIStageClassifier
 	ScheduleSources        bool
 	ContinueOnStageFailure bool
+	ResumePreviousDataset  bool
 }
 
 // NewWorker связывает провайдеры только с серверным хранилищем конфигурации.
@@ -173,7 +174,7 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 		detailRuntime = existing
 	}
 	d := workerDispatch{
-		listing:  HHListingExecutor{Settings: w.Settings, Runtime: listingRuntime, Owner: owner},
+		listing:  HHListingExecutor{Settings: w.Settings, Runtime: listingRuntime, Owner: owner, ResumePrevious: w.ResumePreviousDataset},
 		detail:   HHFullTextExecutor{Settings: w.Settings, Runtime: detailRuntime, Public: w.Public, Owner: owner},
 		importer: HHImportExecutor{Settings: w.Settings, Owner: owner},
 		ai:       AIStageDispatcher{Owner: owner, Generator: w.Generator, Classifier: w.Classifier},
