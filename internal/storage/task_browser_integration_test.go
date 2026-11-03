@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http/httptest"
@@ -58,26 +59,29 @@ func TestMariaDBTaskBrowserDisposable(t *testing.T) {
 	command := exec.CommandContext(ctx, "node", "node_modules/@playwright/test/cli.js", "test", "--config=playwright.task-writes.config.ts", "--reporter=json")
 	command.Dir = root
 	command.WaitDelay = 5 * time.Second
-	command.Env = append(os.Environ(), "ITMAP_TASK_BROWSER_WRITES=1", "ITMAP_BROWSER_URL="+server.URL, "ITMAP_SMOKE_PASSWORD="+password)
+	// A dedicated JSON report file avoids mixing reporter output with other stdout messages.
+	reportPath := filepath.Join(t.TempDir(), "playwright-report.json")
+	command.Env = append(os.Environ(), "ITMAP_TASK_BROWSER_WRITES=1", "ITMAP_BROWSER_URL="+server.URL, "ITMAP_SMOKE_PASSWORD="+password, "PLAYWRIGHT_JSON_OUTPUT_FILE="+reportPath)
 	var output, stderr bytes.Buffer
 	command.Stdout = &output
 	command.Stderr = &stderr
 	err = command.Run()
+	reportData, readErr := os.ReadFile(reportPath)
 	var report struct {
 		Stats  struct{ Expected, Skipped, Unexpected, Flaky int }
 		Errors []struct{ Message string }
 	}
-	if parseErr := json.Unmarshal(output.Bytes(), &report); parseErr != nil {
+	if parseErr := json.Unmarshal(reportData, &report); readErr != nil || parseErr != nil {
 		// The JSON reporter writes its report only when Playwright finishes.
 		// Capture the process exit reason without dumping synthetic browser payloads.
 		t.Logf("task browser process: err=%v state=%v context=%v stdout_bytes=%d stderr_bytes=%d json_err=%v",
-			err, command.ProcessState, ctx.Err(), output.Len(), stderr.Len(), parseErr)
+			err, command.ProcessState, ctx.Err(), output.Len(), stderr.Len(), errors.Join(readErr, parseErr))
 		t.Logf("task browser stderr: %s", stderr.String())
 		t.Fatal("task browser did not return a valid required JSON report")
 	}
 	if err != nil || report.Stats.Expected != 2 || report.Stats.Skipped != 0 || report.Stats.Unexpected != 0 || report.Stats.Flaky != 0 {
 		// Only synthetic CI test data is available; never persist cookies or screenshots.
-		t.Logf("task browser errors: %s", output.String())
+		t.Logf("task browser report errors: %+v; process=%v; stdout_bytes=%d; stderr_bytes=%d", report.Errors, err, output.Len(), stderr.Len())
 		t.Fatalf("required desktop/mobile task UI scenarios failed: expected=%d skipped=%d unexpected=%d", report.Stats.Expected, report.Stats.Skipped, report.Stats.Unexpected)
 	}
 	rows, err := f.repo.List(ctx, taskUser, "", true, nil)
