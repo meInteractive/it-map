@@ -169,6 +169,28 @@ func (p *hhLateFailurePlanner) Next(ctx context.Context, tx *sql.Tx, j parser.Jo
 	return nil, errors.New("CI late handoff failure")
 }
 func TestMariaDBHHListingRecoveryDisposable(t *testing.T) {
+	t.Run("explicit resume rejects rotated token without changing cursor", func(t *testing.T) {
+		rows := make([]json.RawMessage, 11)
+		for i := range rows {
+			rows[i] = hhScanItem(8300+i, "CI rotated token")
+		}
+		p := &hhScanProvider{rows: [][]json.RawMessage{rows}}
+		f, s, lease, executor := hhScanFixture(t, p)
+		if _, err := executor.Execute(f.ctx, lease); err != nil {
+			t.Fatal("first slice", err)
+		}
+		view, err := f.repo.Settings.Read(f.ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err = f.repo.Settings.SaveKey(f.ctx, f.v.Generation, apifysettings.KeyInput{Profile: "free", APIKey: "apify_api_" + strings.Repeat("s", 16), Revision: view.Revision}); err != nil {
+			t.Fatal("rotate token", err)
+		}
+		executor.ResumePrevious = true
+		if _, err = executor.Execute(f.ctx, lease); !errors.Is(err, apifyruns.ErrDatasetChanged) || p.starts != 1 || s.count("SELECT COUNT(*) FROM vacancy_candidates WHERE company_id=991302") != 10 || s.count("SELECT COUNT(*) FROM vacancy_discovery_runs WHERE company_id=991302 AND settings_revision=2") != 1 {
+			t.Fatal("rotated token admitted or cursor changed", err)
+		}
+	})
 	t.Run("explicit resume rejects changed search without another Actor", func(t *testing.T) {
 		rows := make([]json.RawMessage, 11)
 		for i := range rows {
