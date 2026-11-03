@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -129,25 +130,28 @@ func TestMariaDBBackupBrowserDisposable(t *testing.T) {
 	command := exec.CommandContext(ctx, "node", "node_modules/@playwright/test/cli.js", "test", "--config=playwright.restore.config.ts", "--reporter=json")
 	command.Dir = root
 	command.WaitDelay = 5 * time.Second
-	command.Env = append(os.Environ(), "ITMAP_BACKUP_BROWSER_WRITES=1", "ITMAP_BROWSER_URL="+server.URL, "ITMAP_SMOKE_PASSWORD="+password)
+	// A dedicated JSON report file avoids mixing reporter output with other stdout messages.
+	reportPath := filepath.Join(t.TempDir(), "playwright-report.json")
+	command.Env = append(os.Environ(), "ITMAP_BACKUP_BROWSER_WRITES=1", "ITMAP_BROWSER_URL="+server.URL, "ITMAP_SMOKE_PASSWORD="+password, "PLAYWRIGHT_JSON_OUTPUT_FILE="+reportPath)
 	var stdout, stderr bytes.Buffer
 	command.Stdout = &stdout
 	command.Stderr = &stderr
 	e = command.Run()
+	reportData, readErr := os.ReadFile(reportPath)
 	var report struct {
 		Stats  struct{ Expected, Skipped, Unexpected, Flaky int }
 		Errors []struct{ Message string }
 	}
-	if parse := json.Unmarshal(stdout.Bytes(), &report); parse != nil {
+	if parse := json.Unmarshal(reportData, &report); readErr != nil || parse != nil {
 		// Distinguish a reporter failure from a killed child process; do not print
 		// the potentially sensitive JSON browser report or HTTP payloads.
 		t.Logf("backup browser process: err=%v state=%v context=%v stdout_bytes=%d stderr_bytes=%d json_err=%v",
-			e, command.ProcessState, ctx.Err(), stdout.Len(), stderr.Len(), parse)
+			e, command.ProcessState, ctx.Err(), stdout.Len(), stderr.Len(), errors.Join(readErr, parse))
 		t.Logf("synthetic backup browser stderr: %s", stderr.String())
 		t.Fatal("required backup browser JSON report missing")
 	}
 	if e != nil || report.Stats.Expected != 6 || report.Stats.Skipped != 0 || report.Stats.Unexpected != 0 || report.Stats.Flaky != 0 {
-		t.Logf("synthetic backup browser report: %s", stdout.String())
+		t.Logf("synthetic backup browser report errors: %+v; process=%v; stdout_bytes=%d; stderr_bytes=%d", report.Errors, e, stdout.Len(), stderr.Len())
 		t.Fatal("required desktop/mobile backup scenarios failed")
 	}
 	if unsafe.Load() || successful.Load() != 2 {
