@@ -1427,13 +1427,14 @@ jobs:
           ITMAP_TEST_MARIADB_WRITE_DSN: 'itmap_ci:ci_only_disposable_writer@tcp(127.0.0.1:3306)/itmap_ci?parseTime=true&clientFoundRows=true&collation=utf8mb4_bin'
         run: |
           set -euo pipefail
+          go build -tags mariadb -o /tmp/itmap-parser-staging-ci ./cmd/itmap-parser-staging
           result_file="$(mktemp)"
           trap 'rm -f "$result_file"' EXIT
-          go test -race -tags mariadb,schedulerwrites,schedulerbilling ./internal/storage -run '^TestMariaDBParserE2EDisposable$' -count=1 -json | tee "$result_file"
+          go test -race -tags mariadb,schedulerwrites,schedulerbilling ./internal/storage -run '^TestMariaDBParser(E2E|StagingMock|StagingSeed)Disposable$' -count=1 -json | tee "$result_file"
           python3 - "$result_file" <<'PYCODE'
           import json,sys
           events=[json.loads(line) for line in open(sys.argv[1],encoding='utf8')]
-          assert all(any(e.get('Test')==name and e.get('Action')=='pass' for e in events) for name in ('TestMariaDBParserE2EDisposable','TestMariaDBParserE2EDisposable/manual','TestMariaDBParserE2EDisposable/tick')), 'HH pipeline gate did not pass'
+          assert all(any(e.get('Test')==name and e.get('Action')=='pass' for e in events) for name in ('TestMariaDBParserE2EDisposable','TestMariaDBParserE2EDisposable/manual','TestMariaDBParserE2EDisposable/tick','TestMariaDBParserStagingMockDisposable','TestMariaDBParserStagingSeedDisposable')), 'HH pipeline gate did not pass'
           assert not any(e.get('Action')=='skip' for e in events), 'HH pipeline gate skipped'
           PYCODE
       - name: Verify scheduler billing reservation and recovery ONLY in disposable CI
