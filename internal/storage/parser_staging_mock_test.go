@@ -4,6 +4,7 @@ package storage
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -104,6 +105,19 @@ func TestMariaDBParserStagingSeedDisposable(t *testing.T) {
 	})
 	if err := stagingmock.Seed(ctx, db, "CI_SECRET", "itmap_ci"); err != nil {
 		t.Fatal(err)
+	}
+	scheduler := parser.SettingsRepository{DB: db}
+	raw, err := scheduler.Read(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var current parser.Settings
+	if json.Unmarshal(raw, &current) != nil {
+		t.Fatal("seeded scheduler settings invalid")
+	}
+	input, _ := json.Marshal(map[string]any{"enabled": false, "dayBudgetUsd": 0, "monthBudgetUsd": 0, "revision": current.Revision})
+	if _, err := scheduler.Save(ctx, input, "CI_OWNER"); err != nil {
+		t.Fatal("seeded scheduler cannot be safely disabled", err)
 	}
 	var count int
 	if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM vacancy_source_parsing WHERE company_id=991302 AND source_id='hh' AND enabled=1").Scan(&count); err != nil || count != 1 {
