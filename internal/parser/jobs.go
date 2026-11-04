@@ -31,6 +31,13 @@ type ClaimOptions struct {
 	Diagnostic, DeferredApifyOnly bool
 	AllowApify, AllowApifyStarts  *bool
 	JobID, SourceID               *string
+	ScanScope                     *ScanCandidateScope
+}
+
+// ScanCandidateScope идентифицирует серверный точечный запрос и его область.
+type ScanCandidateScope struct {
+	RequestID, ScanJobID string
+	CompanyID            int64
 }
 type FinishOptions struct {
 	Status, Code, Message string
@@ -161,6 +168,13 @@ func (r RunRepository) ClaimJob(ctx context.Context, runID string, options Claim
 	if e != nil {
 		return nil, storageError(ctx)
 	}
+	var scopedIDs map[int64]bool
+	if options.ScanScope != nil {
+		scopedIDs, e = readCandidateScope(ctx, tx, r.Generation, options.ScanScope)
+		if e != nil {
+			return nil, e
+		}
+	}
 	rows, e := tx.QueryContext(ctx, "SELECT "+jobColumns+" FROM scheduler_jobs WHERE generation=? AND status='pending' AND run_after<=?", r.Generation, now)
 	if e != nil {
 		return nil, storageError(ctx)
@@ -178,7 +192,7 @@ func (r RunRepository) ClaimJob(ctx context.Context, runID string, options Claim
 			rows.Close()
 			return nil, storageError(ctx)
 		}
-		if eligible && (best == nil || claimBefore(job, page, *best, bestPage, now)) {
+		if eligible && inCandidateScope(job, options.ScanScope, scopedIDs) && (best == nil || claimBefore(job, page, *best, bestPage, now)) {
 			copy := job
 			best = &copy
 			bestPage = page

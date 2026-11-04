@@ -363,8 +363,43 @@ func TestMariaDBHHWorkerActorLimitDisposable(t *testing.T) {
 		if success == 0 {
 			t.Fatal("both requests rejected")
 		}
-		if _, err = command(s.ctx, id, 991302); err != nil {
+		raw, err := command(s.ctx, id, 991302)
+		if err != nil {
 			t.Fatal("replay", err)
+		}
+		var receipt struct {
+			JobID string `json:"jobId"`
+		}
+		if json.Unmarshal(raw, &receipt) != nil || receipt.JobID == "" {
+			t.Fatal("target receipt missing scan job")
+		}
+		var candidate int64
+		if err = s.db.QueryRowContext(s.ctx, "SELECT id FROM vacancy_candidates WHERE company_id=991302 LIMIT 1").Scan(&candidate); err != nil {
+			t.Fatal(err)
+		}
+		s.exec(`INSERT INTO scheduler_jobs(id,generation,dedupe_key,type,company_id,candidate_id,source_id,payload,priority,run_after,created_at,updated_at) VALUES('CI_OTHER_CAND',?,'CI_OTHER_CAND','classify_title',991305,?,'hh','{}',100,0,0,0)`, s.repo.Generation, candidate)
+		scope := &parser.ScanCandidateScope{RequestID: id, ScanJobID: receipt.JobID, CompanyID: 991302}
+		classifier := &storedTitleRunner{answers: map[string]struct{ Type, Choice string }{"role_991303": {"choice", "reject"}}}
+		worker := parser.Worker{Runs: s.repo, Settings: apifysettings.NewRepository(s.db, "CI_SECRET"), Classifier: classifier, CandidateScope: scope}
+		stage, err := worker.Cycle(s.ctx, parser.WorkerOptions{Run: parser.RunOptions{RequestID: "CI_SCOPED_STAGE"}, MaxJobs: 1})
+		if err != nil || stage.Processed != 1 || s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE id='CI_OTHER_CAND' AND status='pending' AND attempts=0") != 1 {
+			t.Fatal("candidate scope escaped", stage, err)
+		}
+		s.exec("UPDATE scheduler_jobs SET status='pending' WHERE id=?", receipt.JobID)
+		partial, err := worker.Cycle(s.ctx, parser.WorkerOptions{Run: parser.RunOptions{RequestID: "CI_PARTIAL_SCOPE"}, MaxJobs: 1})
+		if err != nil || partial.Processed != 0 {
+			t.Fatal("saved partial scope rejected", partial, err)
+		}
+		s.exec("UPDATE scheduler_jobs SET status='completed' WHERE id=?", receipt.JobID)
+		s.exec("UPDATE vacancy_discovery_runs SET result_json=JSON_REMOVE(JSON_SET(result_json,'$.LineageVersion',0),'$.CandidateIDs') WHERE id=?", "go399:"+receipt.JobID)
+		if _, err = worker.Cycle(s.ctx, parser.WorkerOptions{Run: parser.RunOptions{RequestID: "CI_OLD_SCOPE"}, MaxJobs: 1}); !errors.Is(err, parser.ErrHHListingChanged) {
+			t.Fatal("legacy scope accepted", err)
+		}
+		bad := *scope
+		bad.CompanyID = 991305
+		worker.CandidateScope = &bad
+		if _, err = worker.Cycle(s.ctx, parser.WorkerOptions{Run: parser.RunOptions{RequestID: "CI_BAD_SCOPE"}, MaxJobs: 1}); !errors.Is(err, parser.ErrHHListingChanged) {
+			t.Fatal("foreign scope accepted", err)
 		}
 		if _, err = command(s.ctx, id, 991305); !errors.Is(err, parser.ErrRunBusy) && !errors.Is(err, parser.ErrHHListingChanged) {
 			t.Fatal("request reused for other company", err)

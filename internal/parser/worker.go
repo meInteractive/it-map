@@ -27,6 +27,7 @@ type Worker struct {
 	ResumePreviousDataset  bool
 	ResumeJobID            string
 	TargetJobID            string
+	CandidateScope         *ScanCandidateScope
 }
 
 // NewWorker связывает провайдеры только с серверным хранилищем конфигурации.
@@ -62,6 +63,9 @@ var workerTypes = []string{"scan_source", "classify_title", "fetch_full_text", "
 
 // Выбранное задание не должно расширять область цикла или возобновлять dataset.
 func validTargetedCycle(w Worker, options WorkerOptions) bool {
+	if w.CandidateScope != nil {
+		return !w.ScheduleSources && !w.ResumePreviousDataset && w.ResumeJobID == "" && w.TargetJobID == "" && options.MaxJobs == 1
+	}
 	if w.TargetJobID == "" {
 		return true
 	}
@@ -226,6 +230,10 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 		if w.TargetJobID != "" {
 			claim.Types = []string{"scan_source"}
 			claim.JobID = &w.TargetJobID
+		}
+		if w.CandidateScope != nil {
+			claim.Types = []string{"classify_title", "fetch_full_text", "extract_vacancy", "assign_roles", "import_vacancy"}
+			claim.ScanScope = w.CandidateScope
 		}
 		lease, err := w.Runs.ClaimJob(bounded, start.Run.ID, claim)
 		if err != nil {
