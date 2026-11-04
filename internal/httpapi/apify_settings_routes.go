@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"itmap/internal/apifyruns"
 	"itmap/internal/apifysettings"
 	"itmap/internal/auth"
 	"itmap/internal/integrations/apify"
@@ -50,7 +51,11 @@ func apifySettingsError(w http.ResponseWriter, err error) {
 	jsonReply(w, status, map[string]any{"error": message, "code": code})
 }
 
-func ApifySettingsHandler(manager *auth.Manager, service ApifySettingsService, checker ApifyAccountChecker) http.HandlerFunc {
+type ApifyUsageReader interface {
+	ReadUsage(context.Context) (apifyruns.UsageView, error)
+}
+
+func ApifySettingsHandler(manager *auth.Manager, service ApifySettingsService, checker ApifyAccountChecker, usage ApifyUsageReader) http.HandlerFunc {
 	return RequireSession(manager, func(w http.ResponseWriter, r *http.Request) {
 		user, ok := sessionFromRequest(manager, r)
 		if !ok {
@@ -78,11 +83,11 @@ func ApifySettingsHandler(manager *auth.Manager, service ApifySettingsService, c
 			legacyCompany = parts[0]
 			path = "/api/apify/hh-source"
 		}
-		if path != "/api/apify/settings" && path != "/api/apify/key" && path != "/api/apify/check" && path != "/api/apify/hh-source" && path != "/api/apify/hh-sources" {
+		if path != "/api/apify/usage" && path != "/api/apify/settings" && path != "/api/apify/key" && path != "/api/apify/check" && path != "/api/apify/hh-source" && path != "/api/apify/hh-sources" {
 			jsonReply(w, http.StatusNotFound, map[string]string{"error": "Метод API не найден."})
 			return
 		}
-		if (path == "/api/apify/hh-sources" && r.Method != http.MethodGet) || (path == "/api/apify/key" && r.Method != http.MethodPut) || (path == "/api/apify/check" && r.Method != http.MethodPost) || (path != "/api/apify/key" && path != "/api/apify/check" && r.Method != http.MethodGet && r.Method != http.MethodPut) {
+		if (path == "/api/apify/usage" && r.Method != http.MethodGet) || (path == "/api/apify/hh-sources" && r.Method != http.MethodGet) || (path == "/api/apify/key" && r.Method != http.MethodPut) || (path == "/api/apify/check" && r.Method != http.MethodPost) || (path != "/api/apify/key" && path != "/api/apify/check" && r.Method != http.MethodGet && r.Method != http.MethodPut) {
 			jsonReply(w, http.StatusMethodNotAllowed, map[string]string{"error": "Метод не поддерживается."})
 			return
 		}
@@ -120,6 +125,19 @@ func ApifySettingsHandler(manager *auth.Manager, service ApifySettingsService, c
 		ctx, cancel := context.WithTimeout(r.Context(), timeout)
 		defer cancel()
 		if r.Method == http.MethodGet {
+			if path == "/api/apify/usage" {
+				if usage == nil {
+					apifySettingsError(w, apifysettings.ErrStorage)
+					return
+				}
+				view, err := usage.ReadUsage(ctx)
+				if err != nil {
+					apifySettingsError(w, err)
+					return
+				}
+				jsonReply(w, http.StatusOK, view)
+				return
+			}
 			if path == "/api/apify/hh-sources" {
 				sources, err := service.ListHHSources(ctx, user.Name)
 				if err != nil {

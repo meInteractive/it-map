@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"itmap/internal/aiproviders"
+	"itmap/internal/apifyruns"
 	"itmap/internal/apifysettings"
 	"itmap/internal/applications"
 	"itmap/internal/auth"
@@ -42,6 +43,7 @@ func httpHandler(logger *slog.Logger, db *sql.DB, manager *auth.Manager) http.Ha
 		apifySettings := apifysettings.NewRepository(db, os.Getenv("SESSION_SECRET"))
 		opts.ApifySettings = apifySettings
 		opts.ApifyAccountCheck = apifysettings.CheckService{Settings: apifySettings}
+		opts.ApifyUsage = apifyruns.Repository{DB: db, Settings: apifySettings, TrustFreeProviderLimit: os.Getenv("ITMAP_APIFY_TRUST_FREE_HARD_LIMIT") == "1"}
 		opts.ProfileModelCatalog = aiproviders.ModelCatalog{OpenAI: openAI, Router: router}
 		opts.RouterSettings = router
 		opts.AIConnectionTests = &aiproviders.ManualTests{Keys: aiKeys, Runner: aiproviders.NewGenerator(openAI, router), OpenAI: openAI, Router: router}

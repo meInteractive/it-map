@@ -545,6 +545,8 @@ Structured OpenRouter: task-specific model health в существующих ti
 
 Только admin, same-origin для мутаций, ограниченный JSON. `GET /api/apify/settings` возвращает маски и billing metadata, никогда токены. `PUT /api/apify/key`: profile free/starter, apiKey, revision; AES-GCM, сброс paidAllowed. `PUT /api/apify/settings`: enabled, paidAllowed, revision; первое включение Starter требует confirmed:true. Подписку этот метод не покупает. `POST /api/apify/check` с profile читает account и limits, не запускает Actor. `GET /api/apify/usage` возвращает локальные резервы и безопасную оценку остатка, время проверки и активные run IDs.
 
+GET /api/apify/usage — административный read-only снимок сохранённой оценки бюджета и до пяти незавершённых запусков; внешние запросы не выполняются. При включённом ограниченном режиме оценка остаётся консервативной и может показывать меньше остатка.
+
 По умолчанию выключен до ввода токена, paidAllowed=false. При сборе выбирается настоящий Free с планом$0 и лимитом$5, затем только явно разрешённый Starter с заранее оформленным платным аккаунтом/включёнными$19. Перед стартом свежий account/limits, атомарный резерв$0.25 +$0.01 на чтение, maxTotalChargeUsd0.25, timeout180s, restartOnError=false. Остаток использует max(account usage, confirmed local charges) плюс unresolved/read reserves. Неизвестный POST не повторяется. Долгий Actor будет опрашиваться отдельными тиками. Живые существующие запуски сверены 18.10; неизвестные расходы/ACK не снимают резерв.
 
 

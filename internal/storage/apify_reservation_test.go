@@ -162,4 +162,16 @@ func TestMariaDBApifyReservationDisposable(t *testing.T) {
 	if _, e = optin.Reserve(ctx, version, "CI unknown reserve"); !errors.Is(e, apifyruns.ErrBudget) {
 		t.Fatal("unknown outcome lost its reserve", e)
 	}
+
+	usage, e := optin.ReadUsage(ctx)
+	if e != nil {
+		t.Fatal("read usage", e)
+	}
+	free := usage.Profiles["free"]
+	if !usage.ProviderLimitMode || free == nil || free.UnknownRuns != 1 || free.UnknownReserveUSD != .25 || free.ProviderUsedUSD != 4.4665 || free.RemainingUSD != 0 || len(usage.Active) != 1 || usage.Active[0].ID != allowed.ID {
+		t.Fatal("unexpected budget snapshot", usage)
+	}
+	if usage.Profiles["starter"] != nil {
+		t.Fatal("unconfigured profile returned data")
+	}
 }
