@@ -1,7 +1,7 @@
 {
   "scope": "Current frontend/web direct transport sites and reviewed JSX/download bindings; no runtime/golden coverage inferred",
   "typescript": "5.9.3",
-  "files": 63,
+  "files": 64,
   "transportModule": "frontend/api/client.ts",
   "sites": [
     {
@@ -411,7 +411,7 @@
     {
       "id": "a700cef598cd7540",
       "file": "frontend/features/settings/Apify.tsx",
-      "line": 12,
+      "line": 13,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
@@ -427,7 +427,7 @@
     {
       "id": "e119cd8c11236b90",
       "file": "frontend/features/settings/Apify.tsx",
-      "line": 12,
+      "line": 13,
       "call": "mutate",
       "method": "POST",
       "methodExpression": "'POST'",
@@ -443,7 +443,7 @@
     {
       "id": "5a327ec1abad41b8",
       "file": "frontend/features/settings/Apify.tsx",
-      "line": 18,
+      "line": 19,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
@@ -459,7 +459,7 @@
     {
       "id": "681ccd135d8a836a",
       "file": "frontend/features/settings/Apify.tsx",
-      "line": 22,
+      "line": 23,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -475,7 +475,7 @@
     {
       "id": "5006e486312542d3",
       "file": "frontend/features/settings/Apify.tsx",
-      "line": 28,
+      "line": 29,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
@@ -491,7 +491,7 @@
     {
       "id": "09abb7df931d88f0",
       "file": "frontend/features/settings/Apify.tsx",
-      "line": 31,
+      "line": 32,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -507,7 +507,7 @@
     {
       "id": "97a6926cc087d3be",
       "file": "frontend/features/settings/Apify.tsx",
-      "line": 34,
+      "line": 35,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -1541,6 +1541,36 @@
         "catalog-operations"
       ],
       "dynamicURL": false
+    },
+    {
+      "id": "fa58b060b977e031",
+      "file": "frontend/features/settings/TargetHH.tsx",
+      "line": 15,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/apify/hh-sources'",
+      "literalFragments": [
+        "/api/apify/hh-sources"
+      ],
+      "families": [
+        "apify"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "411abbe2e091921c",
+      "file": "frontend/features/settings/TargetHH.tsx",
+      "line": 22,
+      "call": "mutate",
+      "method": "POST",
+      "methodExpression": "'POST'",
+      "urlExpression": "path",
+      "literalFragments": [],
+      "families": [
+        "dynamic"
+      ],
+      "dynamicURL": true
     },
     {
       "id": "ea7f2e6d0675591f",

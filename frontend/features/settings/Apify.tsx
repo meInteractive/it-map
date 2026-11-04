@@ -1,3 +1,4 @@
+import TargetHH from './TargetHH';
 import {useState} from 'react';
 import {useApi,mutate} from '../../api/client';
 import {ActionForm,ErrorText,Field,State,dateLabel} from '../../components/Common';
@@ -31,4 +32,4 @@ function HHSources(){
  const q=useApi<{sources:HHSource[]}>('/api/apify/hh-sources');
  return <details><summary>Источники HH компаний</summary><State loading={!q.data&&q.loading} error={q.error}>{q.data&&<>{q.data.sources.length===0&&<p>Нет заполненных HH-источников компаний в текущей области парсинга.</p>}{q.data.sources.map(source=><HHSourceForm key={source.companyId+':'+source.revision+':'+source.url} source={source}/>)}</>}</State></details>;
 }
-export default function ApifySettings(){const q=useApi<ApifyState>('/api/apify/settings');return <section className="settings-card firecrawl-settings"><h2>Apify · HH</h2><p className="resume-hint">Сбор HH с общими правилами компаний, агентств, направлений и периода проверки.</p><State loading={!q.data&&q.loading} error={q.error}>{q.data&&<><p>{q.data.enabled?'Сбор включён':'Сбор выключен'} · Starter {q.data.paidAllowed?'разрешён':'не разрешён'}</p><Budgets/><HHSources/><details><summary>Подключения и тариф Apify</summary><div className="settings-grid"><Permissions key={q.data.revision} state={q.data}/><Connection state={q.data} profile="free"/><Connection state={q.data} profile="starter"/></div></details></>}</State></section>;}
+export default function ApifySettings(){const q=useApi<ApifyState>('/api/apify/settings');return <section className="settings-card firecrawl-settings"><h2>Apify · HH</h2><p className="resume-hint">Сбор HH с общими правилами компаний, агентств, направлений и периода проверки.</p><State loading={!q.data&&q.loading} error={q.error}>{q.data&&<><p>{q.data.enabled?'Сбор включён':'Сбор выключен'} · Starter {q.data.paidAllowed?'разрешён':'не разрешён'}</p><Budgets/><TargetHH/><HHSources/><details><summary>Подключения и тариф Apify</summary><div className="settings-grid"><Permissions key={q.data.revision} state={q.data}/><Connection state={q.data} profile="free"/><Connection state={q.data} profile="starter"/></div></details></>}</State></section>;}

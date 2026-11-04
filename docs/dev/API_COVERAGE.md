@@ -4,11 +4,11 @@ GO-314 — воспроизводимый аудит вызовов, не при
 
 | Инвентарь | Количество |
 |---|---|
-| TS/TSX файлов | 63 |
-| Прямых transport/form/link callsites | 132 |
+| TS/TSX файлов | 64 |
+| Прямых transport/form/link callsites | 134 |
 | JSX url bindings | 7 |
 | Download forwarding sites | 1 |
-| Callsites с динамическим URL | 66 |
+| Callsites с динамическим URL | 67 |
 | Callsites с динамическим методом | 4 |
 
 Число callsites не равно числу endpoints или завершённых задач. Nullable useApi может не отправлять запрос; conditional URL/method сохраняются как выражения без выдуманного декартова произведения. Binding и forwarding не считаются дополнительным подтверждённым запросом. Полные выражения и места находятся в [API_CALLSITES.json](API_CALLSITES.json).
