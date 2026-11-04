@@ -55,6 +55,8 @@ type hhListingCursor struct {
 	DateFrom, DateTo                 *string `json:",omitempty"`
 	DateFilterApplied                bool    `json:",omitempty"`
 	VacancyAgeDays                   int     `json:",omitempty"`
+	LineageVersion                   int     `json:",omitempty"`
+	CandidateIDs                     []int64 `json:",omitempty"`
 	Page, Offset, PageCount          int64
 	RunID, DatasetID                 string
 	Metadata                         *apify.DatasetMetadata
@@ -65,6 +67,47 @@ type hhListingCursor struct {
 	PartialCode                      string
 	Candidates, Created, Quarantined int64
 	Quarantine                       []hhQuarantine
+}
+
+func (c hhListingCursor) validLineage() bool {
+	if c.LineageVersion == 0 {
+		return len(c.CandidateIDs) == 0
+	}
+	if c.LineageVersion != 1 || len(c.CandidateIDs) > 10000 {
+		return false
+	}
+	seen := make(map[int64]struct{}, len(c.CandidateIDs))
+	for _, id := range c.CandidateIDs {
+		if id < 1 || id > maxSafeInteger {
+			return false
+		}
+		if _, exists := seen[id]; exists {
+			return false
+		}
+		seen[id] = struct{}{}
+	}
+	return true
+}
+
+// Связь записывается только в курсоры, созданные с включённой версией учёта.
+// Прежние курсоры нельзя задним числом считать полным набором кандидатов.
+func (c *hhListingCursor) rememberCandidate(id int64) error {
+	if c.LineageVersion == 0 {
+		return nil
+	}
+	if c.LineageVersion != 1 || id < 1 || id > maxSafeInteger || len(c.CandidateIDs) > 10000 {
+		return ErrHHListingChanged
+	}
+	for _, existing := range c.CandidateIDs {
+		if existing == id {
+			return nil
+		}
+	}
+	if len(c.CandidateIDs) == 10000 {
+		return ErrHHListingChanged
+	}
+	c.CandidateIDs = append(c.CandidateIDs, id)
+	return nil
 }
 
 func (c hhListingCursor) options() apify.HHOptions {

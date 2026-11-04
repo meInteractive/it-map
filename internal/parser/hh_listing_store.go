@@ -96,7 +96,7 @@ func readHHListingCursor(ctx context.Context, tx *sql.Tx, id, owner string, job 
 	if err != nil {
 		return cur, false, ErrSettingsStorage
 	}
-	if json.Unmarshal(raw, &cur) != nil || cur.Version != 1 || cur.Revision < 1 || user != owner || generation != job.Generation || !company.Valid || company.Int64 != *job.CompanyID || agency.Valid || source != "hh" || cur.Operation.SourceURL != url || cur.Operation.SourceRevision != sourceRev || cur.Operation.SettingsRevision != settingsRev {
+	if json.Unmarshal(raw, &cur) != nil || cur.Version != 1 || !cur.validLineage() || cur.Revision < 1 || user != owner || generation != job.Generation || !company.Valid || company.Int64 != *job.CompanyID || agency.Valid || source != "hh" || cur.Operation.SourceURL != url || cur.Operation.SourceRevision != sourceRev || cur.Operation.SettingsRevision != settingsRev {
 		return cur, false, ErrHHListingChanged
 	}
 	return cur, true, nil
@@ -179,7 +179,7 @@ func (e HHListingExecutor) prepareHHListing(ctx context.Context, tx *sql.Tx, job
 			return plan, ErrHHListingChanged
 		}
 		from, to := hhDateWindow(time.Now(), settings.VacancyAgeDays)
-		cur = hhListingCursor{Version: 1, Revision: 1, Operation: v, SchedulerHash: hash, Profile: v.Profile, TitleQuery: hhTitleQuery(keys), DateFrom: from, DateTo: to, DateFilterApplied: true, VacancyAgeDays: settings.VacancyAgeDays}
+		cur = hhListingCursor{Version: 1, Revision: 1, Operation: v, SchedulerHash: hash, Profile: v.Profile, TitleQuery: hhTitleQuery(keys), DateFrom: from, DateTo: to, DateFilterApplied: true, VacancyAgeDays: settings.VacancyAgeDays, LineageVersion: 1}
 		if err = persistHHListingCursor(ctx, tx, plan.ID, e.Owner, job, cur, true); err != nil {
 			return plan, err
 		}

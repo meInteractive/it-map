@@ -126,6 +126,9 @@ func TestMariaDBHHListingDisposable(t *testing.T) {
 		if err != nil || progress.Candidates != 1 || progress.Quarantined != 1 || s.count("SELECT COUNT(*) FROM vacancy_candidates WHERE company_id=991302") != 1 || s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='classify_title'") != 1 {
 			t.Fatal("publication date filter did not protect candidate handoff", progress, err)
 		}
+		if s.count("SELECT COUNT(*) FROM vacancy_discovery_runs WHERE company_id=991302 AND JSON_EXTRACT(result_json,'$.LineageVersion')=1 AND JSON_LENGTH(JSON_EXTRACT(result_json,'$.CandidateIDs'))=1") != 1 {
+			t.Fatal("filtered and quarantined records affected lineage")
+		}
 	})
 	t.Run("raw pagination quarantine duplicate URL title revision and restart", func(t *testing.T) {
 		rows := []json.RawMessage{}
@@ -146,6 +149,9 @@ func TestMariaDBHHListingDisposable(t *testing.T) {
 		}
 		if s.count("SELECT COUNT(*) FROM vacancy_candidates WHERE company_id=991302 AND vacancy_url='https://hh.ru/vacancy/100' AND title_raw='CI changed title' AND title_revision=2") != 1 || s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='classify_title'") != 9 || s.count("SELECT COUNT(*) FROM parser_candidate_intakes WHERE parser='apify'") != 8 {
 			t.Fatal("candidate/classification/provenance mismatch")
+		}
+		if s.count("SELECT COUNT(*) FROM vacancy_discovery_runs WHERE company_id=991302 AND JSON_LENGTH(JSON_EXTRACT(result_json,'$.CandidateIDs'))=8") != 1 {
+			t.Fatal("duplicate candidate changed scan lineage")
 		}
 		if _, err = resumed.Execute(f.ctx, lease); err != nil || p.starts != 1 {
 			t.Fatal("completed scan replay started Actor", err)
@@ -404,6 +410,9 @@ func TestMariaDBHHListingRecoveryDisposable(t *testing.T) {
 		e.Handoff = &parser.CandidateHandoff{Planner: fail}
 		if _, err := e.Execute(f.ctx, lease); err == nil || !fail.seen || s.count("SELECT COUNT(*) FROM vacancy_candidates WHERE company_id=991302") != 0 || s.count("SELECT COUNT(*) FROM parser_candidate_intakes WHERE parser='apify'") != 0 {
 			t.Fatal("late handoff failure did not roll back", err)
+		}
+		if s.count("SELECT COUNT(*) FROM vacancy_discovery_runs WHERE company_id=991302 AND JSON_EXTRACT(result_json,'$.CandidateIDs') IS NOT NULL") != 0 {
+			t.Fatal("rolled back candidate survived in scan lineage")
 		}
 		e.Handoff = nil
 		progress, err := e.Execute(f.ctx, lease)

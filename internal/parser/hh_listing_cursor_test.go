@@ -59,3 +59,44 @@ func TestHHListingUnderfilledDatasetFailsWithoutAdvancing(t *testing.T) {
 		}
 	}
 }
+
+func TestHHScanCandidateLineage(t *testing.T) {
+	legacy := hhListingCursor{}
+	if err := legacy.rememberCandidate(1); err != nil || legacy.LineageVersion != 0 || len(legacy.CandidateIDs) != 0 {
+		t.Fatal("legacy cursor must remain unverified", err)
+	}
+	current := hhListingCursor{LineageVersion: 1}
+	for _, id := range []int64{11, 12, 11} {
+		if err := current.rememberCandidate(id); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if len(current.CandidateIDs) != 2 || current.CandidateIDs[0] != 11 || current.CandidateIDs[1] != 12 {
+		t.Fatal("lineage is not unique", current.CandidateIDs)
+	}
+	if err := current.rememberCandidate(0); err == nil {
+		t.Fatal("invalid candidate accepted")
+	}
+	full := hhListingCursor{LineageVersion: 1, CandidateIDs: make([]int64, 10000)}
+	if err := full.rememberCandidate(1); err == nil {
+		t.Fatal("oversized lineage accepted")
+	}
+	if err := (&hhListingCursor{LineageVersion: 2}).rememberCandidate(1); err == nil {
+		t.Fatal("unknown lineage version accepted")
+	}
+	for _, tc := range []struct {
+		c     hhListingCursor
+		valid bool
+	}{
+		{hhListingCursor{}, true},
+		{hhListingCursor{LineageVersion: 1, CandidateIDs: []int64{1, 2}}, true},
+		{hhListingCursor{CandidateIDs: []int64{1}}, false},
+		{hhListingCursor{LineageVersion: 1, CandidateIDs: []int64{1, 1}}, false},
+		{hhListingCursor{LineageVersion: 1, CandidateIDs: []int64{0}}, false},
+		{hhListingCursor{LineageVersion: 2}, false},
+	} {
+		if tc.c.validLineage() != tc.valid {
+			t.Fatal("invalid stored lineage validation", tc)
+		}
+	}
+}
