@@ -27,6 +27,7 @@ type Worker struct {
 	ResumePreviousDataset  bool
 	ResumeJobID            string
 	TargetJobID            string
+	DenyActorStarts        bool
 	CandidateScope         *ScanCandidateScope
 }
 
@@ -132,7 +133,7 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 	}
 	var actorStarts atomic.Int32
 	admit := func() error {
-		return admitHHActorStart(w.ResumePreviousDataset, actorStarts.Load())
+		return admitHHActorStart(w.ResumePreviousDataset || w.DenyActorStarts, actorStarts.Load())
 	}
 	count := func() { actorStarts.Add(1) }
 	service := apifyruns.Service{Repository: apifyruns.Repository{DB: w.Settings.DB, Settings: w.Settings}, BeforeReserve: admit, AfterReserve: count}
