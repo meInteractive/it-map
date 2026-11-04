@@ -28,6 +28,7 @@ type Worker struct {
 	ResumeJobID            string
 	TargetJobID            string
 	DenyActorStarts        bool
+	TrustFreeProviderLimit bool
 	CandidateScope         *ScanCandidateScope
 }
 
@@ -136,7 +137,7 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 		return admitHHActorStart(w.ResumePreviousDataset || w.DenyActorStarts, actorStarts.Load())
 	}
 	count := func() { actorStarts.Add(1) }
-	service := apifyruns.Service{Repository: apifyruns.Repository{DB: w.Settings.DB, Settings: w.Settings}, BeforeReserve: admit, AfterReserve: count}
+	service := apifyruns.Service{Repository: apifyruns.Repository{DB: w.Settings.DB, Settings: w.Settings, TrustFreeProviderLimit: w.TrustFreeProviderLimit}, BeforeReserve: admit, AfterReserve: count}
 	listingRuntime := w.ListingRuntime
 	if existing, ok := listingRuntime.(*apifyruns.Service); ok {
 		if existing == nil {

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"itmap/internal/httpapi"
+	"itmap/internal/parser"
 )
 
 func TestSchedulerExecutionWiringRequiresExplicitFlag(t *testing.T) {
@@ -22,6 +23,16 @@ func TestSchedulerExecutionWiringRequiresExplicitFlag(t *testing.T) {
 	configureScheduler(&opts, db)
 	if opts.SchedulerCycle == nil || opts.SchedulerTick != nil || opts.SchedulerProbe == nil {
 		t.Fatal("manual/tick gating")
+	}
+
+	if opts.SchedulerCycle.(parser.CycleControl).TrustFreeProviderLimit {
+		t.Fatal("provider limit fallback enabled by default")
+	}
+	t.Setenv("ITMAP_APIFY_TRUST_FREE_HARD_LIMIT", "1")
+	capped := httpapi.Options{}
+	configureScheduler(&capped, db)
+	if !capped.SchedulerCycle.(parser.CycleControl).TrustFreeProviderLimit {
+		t.Fatal("explicit provider limit fallback not wired")
 	}
 	t.Setenv("SCHEDULER_TOKEN", "CI_TICK_TOKEN")
 	opts = httpapi.Options{}
