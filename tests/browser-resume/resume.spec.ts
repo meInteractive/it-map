@@ -41,3 +41,26 @@ test('при приостановленном диспетчере продол�
  await expect(page.getByRole('button',{name:'Продолжить сохранённый список'})).toBeDisabled();
  expect(posts).toBe(0);
 });
+
+test('возраст вакансий по умолчанию три дня и сохраняется режим всех вакансий',async({page})=>{
+ const saved:Record<string,unknown>[]=[];
+ const settings={enabled:false,ownerName:'CI_OWNER',dayBudgetUsd:0,monthBudgetUsd:0,revision:1,cloudConnected:false,favoritesOnly:false,sourceIds:['hh'],intervalDays:7,priorities:{}};
+ await page.route(url=>url.pathname.startsWith('/api/'),async route=>{
+  const req=route.request(),path=new URL(req.url()).pathname;
+  if(path==='/api/scheduler/settings'&&req.method()==='PUT'){
+   const body=req.postDataJSON();saved.push(body);
+   return route.fulfill({json:{...settings,...body,revision:2}});
+  }
+  if(path==='/api/scheduler')return route.fulfill({json:{sourceOptions:[{id:'hh',name:'HH',supported:true,reason:null}],settings,counts:{pending:0,running:0},runs:[],attempts:[],statistics:{sources:0,found:0,accepted:0,imported:0},spending:{dayUsd:0,monthUsd:0,byType:[],timezone:'Europe/Moscow'},lastSignalAt:null,nextSignalAt:null,cloudStatus:''}});
+  return route.fulfill({status:503,json:{error:'CI unavailable'}});
+ });
+ await page.goto('/');
+ await page.getByRole('tab',{name:'Источники и правила'}).click();
+ const age=page.getByLabel('Возраст вакансий');
+ await expect(age).toHaveValue('3');
+ await age.selectOption('0');
+ await page.getByRole('button',{name:'Сохранить область и источники'}).click();
+ await expect.poll(()=>saved.length).toBe(1);
+ expect(saved[0].vacancyAgeDays).toBe(0);
+ await expect(page.getByRole('status').filter({hasText:'Общие настройки парсинга сохранены.'})).toBeVisible();
+});
