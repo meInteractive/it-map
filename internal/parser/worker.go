@@ -26,6 +26,7 @@ type Worker struct {
 	ContinueOnStageFailure bool
 	ResumePreviousDataset  bool
 	ResumeJobID            string
+	TargetJobID            string
 }
 
 // NewWorker связывает провайдеры только с серверным хранилищем конфигурации.
@@ -59,8 +60,19 @@ func admitHHActorStart(resumePrevious bool, starts int32) error {
 
 var workerTypes = []string{"scan_source", "classify_title", "fetch_full_text", "extract_vacancy", "assign_roles", "import_vacancy", "score_relevance"}
 
+// Выбранное задание не должно расширять область цикла или возобновлять dataset.
+func validTargetedCycle(w Worker, options WorkerOptions) bool {
+	if w.TargetJobID == "" {
+		return true
+	}
+	return !w.ScheduleSources && !w.ResumePreviousDataset && w.ResumeJobID == "" && options.MaxJobs == 1
+}
+
 func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result WorkerResult, failure error) {
 	if w.Runs.DB == nil || w.Settings.DB != w.Runs.DB || options.MaxJobs < 1 || options.MaxJobs > 50 || options.Run.Diagnostic {
+		return result, ErrRunInput
+	}
+	if !validTargetedCycle(w, options) {
 		return result, ErrRunInput
 	}
 	duration := options.Run.Duration
@@ -210,6 +222,10 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 			}
 			claim.Types = []string{"scan_source"}
 			claim.JobID = &w.ResumeJobID
+		}
+		if w.TargetJobID != "" {
+			claim.Types = []string{"scan_source"}
+			claim.JobID = &w.TargetJobID
 		}
 		lease, err := w.Runs.ClaimJob(bounded, start.Run.ID, claim)
 		if err != nil {
