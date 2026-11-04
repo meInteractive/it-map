@@ -174,6 +174,7 @@ func (e HHListingExecutor) Execute(ctx context.Context, lease *JobLease) (HHList
 			return ErrHHListingChanged
 		}
 		next = cur
+		next.CandidateIDs = append([]int64(nil), cur.CandidateIDs...)
 		handoff := e.Handoff
 		if handoff == nil {
 			handoff = &CandidateHandoff{Planner: SQLCandidateHandoffPlanner{Owner: e.Owner}}
@@ -204,6 +205,9 @@ func (e HHListingExecutor) Execute(ctx context.Context, lease *JobLease) (HHList
 				var created, imported bool
 				id, created, imported, err = saveHHListingCandidate(ctx, tx, job, name, cur.Operation.SourceURL, item)
 				if err == nil {
+					if err = next.rememberCandidate(id); err != nil {
+						return err
+					}
 					next.Candidates++
 					if created {
 						next.Created++
