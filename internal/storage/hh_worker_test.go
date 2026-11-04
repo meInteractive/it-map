@@ -428,6 +428,63 @@ func TestMariaDBHHWorkerActorLimitDisposable(t *testing.T) {
 			t.Fatal("unexpected provider or queue activity", provider.starts)
 		}
 	})
+	t.Run("target continuation reads same dataset without another actor", func(t *testing.T) {
+		items := make([]json.RawMessage, 11)
+		for i := range items {
+			items[i] = hhScanItem(123+i, "CI_TITLE")
+		}
+		provider := &hhScanProvider{rows: [][]json.RawMessage{items}}
+		_, s, lease, listing := hhScanFixture(t, provider)
+		var run string
+		if err := s.db.QueryRowContext(s.ctx, "SELECT id FROM scheduler_runs WHERE status='running'").Scan(&run); err != nil {
+			t.Fatal(err)
+		}
+		if err := lease.Finish(s.ctx, parser.FinishOptions{Status: "cancelled"}); err != nil {
+			t.Fatal(err)
+		}
+		if err := s.repo.Finish(s.ctx, run, "completed"); err != nil {
+			t.Fatal(err)
+		}
+		control := parser.NewCycleControlWithFactory(s.db, func(r parser.RunRepository) (parser.Worker, error) {
+			return parser.Worker{Runs: r, Settings: apifysettings.NewRepository(s.db, "CI_SECRET"), ListingRuntime: listing.Runtime}, nil
+		})
+		start, err := control.PrepareTargetedHH(s.ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		scanRequest := "12345678-1234-4234-8234-123456789abc"
+		raw, err := start(s.ctx, scanRequest, 991302)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var receipt struct {
+			JobID string `json:"jobId"`
+		}
+		if json.Unmarshal(raw, &receipt) != nil || receipt.JobID == "" {
+			t.Fatal("missing target job")
+		}
+		scope := parser.ScanCandidateScope{RequestID: scanRequest, ScanJobID: receipt.JobID, CompanyID: 991302}
+		s.exec("UPDATE scheduler_jobs SET run_after=0 WHERE id=?", receipt.JobID)
+		follow, err := control.PrepareTargetContinuation(s.ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		request := "12345678-1234-4234-8234-123456789abd"
+		if _, err = follow(s.ctx, request, scope); err != nil {
+			t.Fatal("continuation", err)
+		}
+		if _, err = follow(s.ctx, request, scope); err != nil {
+			t.Fatal("continuation replay", err)
+		}
+		bad := scope
+		bad.CompanyID = 991305
+		if _, err = follow(s.ctx, request, bad); !errors.Is(err, parser.ErrHHListingChanged) && !errors.Is(err, parser.ErrRunBusy) {
+			t.Fatal("foreign scope accepted", err)
+		}
+		if provider.starts != 1 || s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE id=? AND status='completed'", receipt.JobID) != 1 {
+			t.Fatal("continuation started another actor or did not finish", provider.starts)
+		}
+	})
 	t.Run("targeted cycle leaves other jobs untouched", func(t *testing.T) {
 		provider := &hhScanProvider{rows: [][]json.RawMessage{{hhScanItem(123, "CI_TITLE")}}}
 		_, s, lease, listing := hhScanFixture(t, provider)

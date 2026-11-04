@@ -465,6 +465,10 @@
         {
           "file": "internal/httpapi/scheduler_candidate_stage_routes_test.go",
           "symbol": "TestSchedulerCandidateStageAuthorizationAndInput"
+        },
+        {
+          "file": "internal/httpapi/scheduler_target_continue_routes_test.go",
+          "symbol": "TestSchedulerTargetContinuationAuthorizationAndInput"
         }
       ]
     },
@@ -730,7 +734,7 @@
   ],
   "sourceHashes": {
     "frontend/api/client.ts": "b6880480b3eed65bf7caa043f5e41c8e899b672e5c9629666ccbd6d8f80c14ad",
-    "internal/httpapi/handler.go": "0ea274c5dd134247173113e6f68d56ee3d0294077bbb43970d3bda30d3f0fe07",
+    "internal/httpapi/handler.go": "d254a15753818654b52348870f3ed8b373664ae5365fa36c321b67c8feec012b",
     "server/routes/index.js": "6134004f682975cb51ea13cd2ec4de8e85a5957deff6a5392fbad3fd70ccb1e4"
   },
   "clientExports": [
