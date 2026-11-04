@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"sync"
 	"testing"
@@ -126,5 +127,39 @@ func TestMariaDBApifyReservationDisposable(t *testing.T) {
 	}
 	if e = db.QueryRowContext(ctx, "SELECT COUNT(*) FROM apify_runs").Scan(&count); e != nil || count != 1 {
 		t.Fatal("denial created extra reservations", e)
+	}
+
+	// Historical known runs must not block an explicitly enabled, provider-capped
+	// fallback; unresolved outcomes retain the conservative reservation.
+	if _, e = db.ExecContext(ctx, "UPDATE apify_runs SET state='succeeded',charged_usd=0,updated_at=? WHERE id=?", time.Now().Add(-48*time.Hour).UnixMilli(), id); e != nil {
+		t.Fatal(e)
+	}
+	for i := 0; i < 58; i++ {
+		key := fmt.Sprintf("CI_OLD_%d", i)
+		if _, e = db.ExecContext(ctx, `INSERT INTO apify_runs(id,generation,operation_key,profile,account_id,key_hash,period_start,period_end,reserved_usd,charged_usd,state,created_at,updated_at) VALUES(?,?,?,'free','CIReserve','CI_HASH',?,?,0.25,0,'succeeded',1,1)`, key, generation, key, snapshot.PeriodStart, snapshot.PeriodEnd); e != nil {
+			t.Fatal(e)
+		}
+	}
+	account["providerUsedUsd"] = 2
+	saveAccount()
+	snapshot.ProviderUsedUSD = 4.4665
+	snapshot.CheckedAt = time.Now().UnixMilli()
+	if _, e = repo.StoreAccount(ctx, version, snapshot); e != nil {
+		t.Fatal(e)
+	}
+	if _, e = repo.Reserve(ctx, version, "CI conservative"); !errors.Is(e, apifyruns.ErrBudget) {
+		t.Fatal("default guard changed", e)
+	}
+	optin := repo
+	optin.TrustFreeProviderLimit = true
+	allowed, e := optin.Reserve(ctx, version, "CI provider hard cap")
+	if e != nil || allowed.Existing {
+		t.Fatal("bounded reserve", e)
+	}
+	if _, e = db.ExecContext(ctx, "UPDATE apify_runs SET created_at=1 WHERE id=?", allowed.ID); e != nil {
+		t.Fatal(e)
+	}
+	if _, e = optin.Reserve(ctx, version, "CI unknown reserve"); !errors.Is(e, apifyruns.ErrBudget) {
+		t.Fatal("unknown outcome lost its reserve", e)
 	}
 }

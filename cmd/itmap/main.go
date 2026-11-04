@@ -91,6 +91,7 @@ func configureScheduler(opts *httpapi.Options, db *sql.DB) {
 		return
 	}
 	control := parser.NewCycleControl(db, os.Getenv("SESSION_SECRET"), os.Getenv("OPENAI_API_KEY"))
+	control.TrustFreeProviderLimit = os.Getenv("ITMAP_APIFY_TRUST_FREE_HARD_LIMIT") == "1"
 	opts.SchedulerCycle = control
 	opts.SchedulerProbe = control
 	if token := os.Getenv("SCHEDULER_TOKEN"); token != "" {

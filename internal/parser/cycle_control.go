@@ -15,9 +15,10 @@ import (
 // CycleControl фиксирует поколение до чтения входного тела HTTP.
 // Он сам не создаёт таймер и не запускает цикл при создании.
 type CycleControl struct {
-	DB                   *sql.DB
-	secret, openAIEnvKey string
-	workerFactory        func(RunRepository) (Worker, error)
+	DB                     *sql.DB
+	TrustFreeProviderLimit bool
+	secret, openAIEnvKey   string
+	workerFactory          func(RunRepository) (Worker, error)
 }
 
 func NewCycleControl(db *sql.DB, secret, openAIEnvKey string) CycleControl {
@@ -40,7 +41,9 @@ func (c CycleControl) worker(generation string) (Worker, error) {
 		}
 		return w, nil
 	}
-	return NewWorker(runs, apifysettings.NewRepository(c.DB, c.secret), aiproviders.NewRepository(c.DB, c.secret, c.openAIEnvKey))
+	w, err := NewWorker(runs, apifysettings.NewRepository(c.DB, c.secret), aiproviders.NewRepository(c.DB, c.secret, c.openAIEnvKey))
+	w.TrustFreeProviderLimit = c.TrustFreeProviderLimit
+	return w, err
 }
 func (c CycleControl) String() string   { return "CycleControl{credentials:redacted}" }
 func (c CycleControl) GoString() string { return c.String() }

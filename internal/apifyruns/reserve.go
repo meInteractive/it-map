@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"math"
 	"regexp"
 	"time"
 
@@ -19,8 +20,9 @@ var ErrBusy = errors.New("другой запуск Apify ещё выполня�
 var ErrBudget = errors.New("недостаточно подтверждённого бюджета Apify")
 
 type Repository struct {
-	DB       *sql.DB
-	Settings apifysettings.Repository
+	DB                     *sql.DB
+	Settings               apifysettings.Repository
+	TrustFreeProviderLimit bool
 }
 type Reservation struct {
 	ID        string
@@ -30,13 +32,14 @@ type Reservation struct {
 	Existing  bool
 }
 type account struct {
-	ID      string  `json:"accountId"`
-	Price   float64 `json:"planPriceUsd"`
-	Credits float64 `json:"planCreditsUsd"`
-	Limit   float64 `json:"providerLimitUsd"`
-	Used    float64 `json:"providerUsedUsd"`
-	Start   string  `json:"periodStart"`
-	End     string  `json:"periodEnd"`
+	ID        string  `json:"accountId"`
+	Price     float64 `json:"planPriceUsd"`
+	Credits   float64 `json:"planCreditsUsd"`
+	Limit     float64 `json:"providerLimitUsd"`
+	Used      float64 `json:"providerUsedUsd"`
+	Start     string  `json:"periodStart"`
+	End       string  `json:"periodEnd"`
+	CheckedAt int64   `json:"checkedAt"`
 }
 
 var accountID = regexp.MustCompile(`^[A-Za-z0-9]+$`)
@@ -153,7 +156,16 @@ func (r Repository) Reserve(ctx context.Context, v apifysettings.OperationVersio
 		return Reservation{}, e
 	}
 	if budget.RemainingUSD+1e-9 < budget.MinimumReserveUSD {
-		return Reservation{}, ErrBudget
+		if !r.TrustFreeProviderLimit {
+			return Reservation{}, ErrBudget
+		}
+		var settled int64
+		if tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM apify_runs WHERE account_id=? AND period_start=? AND period_end=? AND state IN ('succeeded','failed') AND charged_usd IS NOT NULL", a.ID, a.Start, a.End).Scan(&settled) != nil {
+			return Reservation{}, ErrStorage
+		}
+		if !hardLimitAdmission(in, a, now, settled) {
+			return Reservation{}, ErrBudget
+		}
 	}
 	var id [16]byte
 	if _, e = rand.Read(id[:]); e != nil {
@@ -168,4 +180,14 @@ func (r Repository) Reserve(ctx context.Context, v apifysettings.OperationVersio
 		return Reservation{}, ErrStorage
 	}
 	return out, nil
+}
+
+// hardLimitAdmission is an opt-in fallback. The provider's documented hard cap,
+// not a guess that old reads are billed, is the final account-level boundary.
+func hardLimitAdmission(in BudgetInput, a account, now time.Time, settled int64) bool {
+	if in.Profile != "free" || a.Price != 0 || a.Limit <= 0 || a.Limit > 5 || a.Limit > a.Credits || a.CheckedAt <= 0 || now.UnixMilli()-a.CheckedAt < 0 || now.UnixMilli()-a.CheckedAt > 30000 || in.UnknownRuns != 0 || in.UnknownReserveUSD != 0 || settled != in.Runs {
+		return false
+	}
+	used := math.Max(in.ProviderUsedUSD, math.Max(in.HighWaterUSD, in.ConfirmedUSD))
+	return used+RunCapUSD+ReadReserveUSD <= a.Limit+1e-9
 }
