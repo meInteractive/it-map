@@ -21,6 +21,10 @@ func TestWorkerTargetedCycleBounds(t *testing.T) {
 		{"планирование источников", Worker{TargetJobID: "CI_JOB", ScheduleSources: true}, 1, false},
 		{"старый dataset", Worker{TargetJobID: "CI_JOB", ResumePreviousDataset: true}, 1, false},
 		{"два идентификатора", Worker{TargetJobID: "CI_JOB", ResumeJobID: "CI_OTHER"}, 1, false},
+		{"этапы сканирования", Worker{CandidateScope: &ScanCandidateScope{}}, 1, true},
+		{"несколько этапов", Worker{CandidateScope: &ScanCandidateScope{}}, 2, false},
+		{"область и планирование", Worker{CandidateScope: &ScanCandidateScope{}, ScheduleSources: true}, 1, false},
+		{"область и другое задание", Worker{CandidateScope: &ScanCandidateScope{}, TargetJobID: "CI_JOB"}, 1, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			if got := validTargetedCycle(tc.worker, WorkerOptions{MaxJobs: tc.max}); got != tc.want {
