@@ -123,6 +123,8 @@ func NewHandlerWithOptions(logger *slog.Logger, opts Options) http.Handler {
 		mux.HandleFunc("POST /api/scheduler/run", SchedulerCycleHandler(opts.Auth, opts.SchedulerCycle))
 		resume, _ := opts.SchedulerCycle.(SchedulerResumeRunner)
 		mux.HandleFunc("POST /api/scheduler/resume", SchedulerResumeHandler(opts.Auth, resume))
+		target, _ := opts.SchedulerCycle.(SchedulerTargetRunner)
+		mux.HandleFunc("POST /api/scheduler/target-hh", SchedulerTargetHandler(opts.Auth, target))
 		mux.HandleFunc("POST /api/scheduler/probe", SchedulerProbeHandler(opts.Auth, opts.SchedulerProbe))
 		mux.HandleFunc("/api/scheduler/queue", SchedulerQueueHandler(opts.Auth, opts.SchedulerQueue))
 		mux.HandleFunc("/api/scheduler/jobs/", SchedulerJobActionsHandler(opts.Auth, opts.SchedulerJobActions))
