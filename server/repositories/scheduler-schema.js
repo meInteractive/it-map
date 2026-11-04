@@ -3,7 +3,7 @@ export const SCHEDULER_APIFY_POLICY=Object.freeze({priorityPenalty:50,maxStagesP
 import {VACANCY_SOURCE_META} from '../constants.js';
 const unavailable={telegram:'Telegram не поддерживается этим сборщиком.',dreamJob:'Нужен отдельный адаптер списка вакансий.',hCareers:'Нужен отдельный адаптер списка вакансий.'};
 export const SCHEDULER_SOURCE_OPTIONS=VACANCY_SOURCE_META.map(([id,name])=>({id,name,supported:!unavailable[id],reason:unavailable[id]||null}));
-export const SCHEDULER_DEFAULTS={enabled:false,agenciesEnabled:false,ownerName:'Eugene',dayBudgetUsd:0,monthBudgetUsd:0,revision:0,cloudOwnerId:'',sourceIds:[],intervalDays:7,priorities:{import_vacancy:100,assign_roles:90,score_relevance:85,extract_vacancy:80,fetch_full_text:70,classify_title:60,scan_source:20,diagnostic:0}};
+export const SCHEDULER_DEFAULTS={enabled:false,agenciesEnabled:false,ownerName:'Eugene',dayBudgetUsd:0,monthBudgetUsd:0,revision:0,cloudOwnerId:'',sourceIds:[],intervalDays:7,vacancyAgeDays:3,priorities:{import_vacancy:100,assign_roles:90,score_relevance:85,extract_vacancy:80,fetch_full_text:70,classify_title:60,scan_source:20,diagnostic:0}};
 export const SCHEDULER_SOURCE_COLUMNS={
  auto_enabled:"INTEGER NOT NULL DEFAULT 0 CHECK(auto_enabled IN (0,1))",
  interval_days:"INTEGER NOT NULL DEFAULT 7 CHECK(interval_days IN (1,3,7))",

@@ -9,6 +9,7 @@
     "cloudOwnerId": "",
     "sourceIds": [],
     "intervalDays": 7,
+    "vacancyAgeDays": 3,
     "priorities": {
       "import_vacancy": 100,
       "assign_roles": 90,
