@@ -130,7 +130,25 @@ func (e HHListingExecutor) prepareHHListing(ctx context.Context, tx *sql.Tx, job
 	if err != nil {
 		return plan, err
 	}
+	row, readErr := readSettingsRow(ctx, tx, true)
+	if readErr != nil {
+		return plan, ErrSettingsStorage
+	}
+	view, readErr := settingsView(ctx, tx, row)
+	if readErr != nil {
+		return plan, ErrSettingsStorage
+	}
+	var settings Settings
+	if json.Unmarshal(view.PublicJSON(), &settings) != nil {
+		return plan, ErrSettingsStorage
+	}
+	if settings.VacancyAgeDays != 0 && settings.VacancyAgeDays != 3 && settings.VacancyAgeDays != 7 && settings.VacancyAgeDays != 14 {
+		return plan, ErrSettingsStorage
+	}
 	if exists {
+		if cur.VacancyAgeDays != settings.VacancyAgeDays {
+			return plan, ErrHHListingChanged
+		}
 		if !reflect.DeepEqual(cur.Operation, v) || cur.SchedulerHash != hash {
 			old := cur.Operation
 			if !e.ResumePrevious || cur.Done || cur.RunID == "" || cur.DatasetID == "" || cur.Metadata == nil || old.Generation != v.Generation || old.CompanyID != v.CompanyID || old.SourceURL != v.SourceURL || old.Profile != v.Profile || old.CandidateID != 0 || v.CandidateID != 0 || old.SourceRevision > v.SourceRevision || old.SettingsRevision > v.SettingsRevision || !reflect.DeepEqual(cur.TitleQuery, hhTitleQuery(keys)) {
@@ -160,7 +178,8 @@ func (e HHListingExecutor) prepareHHListing(ctx context.Context, tx *sql.Tx, job
 		if e.ResumePrevious {
 			return plan, ErrHHListingChanged
 		}
-		cur = hhListingCursor{Version: 1, Revision: 1, Operation: v, SchedulerHash: hash, Profile: v.Profile, TitleQuery: hhTitleQuery(keys)}
+		from, to := hhDateWindow(time.Now(), settings.VacancyAgeDays)
+		cur = hhListingCursor{Version: 1, Revision: 1, Operation: v, SchedulerHash: hash, Profile: v.Profile, TitleQuery: hhTitleQuery(keys), DateFrom: from, DateTo: to, DateFilterApplied: true, VacancyAgeDays: settings.VacancyAgeDays}
 		if err = persistHHListingCursor(ctx, tx, plan.ID, e.Owner, job, cur, true); err != nil {
 			return plan, err
 		}

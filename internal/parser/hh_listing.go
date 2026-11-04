@@ -189,8 +189,16 @@ func (e HHListingExecutor) Execute(ctx context.Context, lease *JobLease) (HHList
 				}
 			}
 			prefixValues = append(prefixValues, pair)
+			include, dateErr := cur.includesPublication(raw)
+			if dateErr == nil && !include {
+				continue
+			}
 			item, err := parseHHListingVacancy(raw, cur.Operation.SourceURL)
 			code := "invalid_vacancy"
+			if dateErr != nil {
+				err = dateErr
+				code = "invalid_publication_date"
+			}
 			if err == nil {
 				var id int64
 				var created, imported bool

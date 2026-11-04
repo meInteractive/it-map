@@ -15,6 +15,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 )
 
 type hhScanProvider struct {
@@ -91,7 +92,8 @@ func (p *hhScanProvider) DatasetItems(_ context.Context, id string, offset int64
 	return items, nil
 }
 func hhScanItem(id int, title string) json.RawMessage {
-	return json.RawMessage(fmt.Sprintf(`{"title":%q,"url":"https://hh.ru/vacancy/%d?utm_source=ci","vacancy_id":%d,"employer_id":456}`, title, id, id))
+	posted := time.Now().In(time.FixedZone("MSK", 3*60*60)).AddDate(0, 0, -1).Format(time.RFC3339)
+	return json.RawMessage(fmt.Sprintf(`{"title":%q,"url":"https://hh.ru/vacancy/%d?utm_source=ci","vacancy_id":%d,"employer_id":456,"date_posted":%q}`, title, id, id, posted))
 }
 func hhScanFixture(t *testing.T, p *hhScanProvider) (apifyRuntimeFixture, *schedulerFixture, *parser.JobLease, parser.HHListingExecutor) {
 	t.Helper()
@@ -114,6 +116,17 @@ func hhScanFixture(t *testing.T, p *hhScanProvider) (apifyRuntimeFixture, *sched
 	return f, s, lease, parser.HHListingExecutor{Settings: apifysettings.NewRepository(s.db, "CI_SECRET"), Runtime: runtime, Owner: "CI_OWNER"}
 }
 func TestMariaDBHHListingDisposable(t *testing.T) {
+	t.Run("filters publication dates before candidate handoff", func(t *testing.T) {
+		old := time.Now().In(time.FixedZone("MSK", 3*60*60)).AddDate(0, 0, -8).Format(time.RFC3339)
+		outside := json.RawMessage(fmt.Sprintf(`{"title":"CI old","url":"https://hh.ru/vacancy/124","vacancy_id":124,"employer_id":456,"date_posted":%q}`, old))
+		missing := json.RawMessage(`{"title":"CI undated","url":"https://hh.ru/vacancy/125","vacancy_id":125,"employer_id":456}`)
+		p := &hhScanProvider{rows: [][]json.RawMessage{{hhScanItem(123, "CI recent"), outside, missing}}}
+		f, s, lease, e := hhScanFixture(t, p)
+		progress, err := e.Execute(f.ctx, lease)
+		if err != nil || progress.Candidates != 1 || progress.Quarantined != 1 || s.count("SELECT COUNT(*) FROM vacancy_candidates WHERE company_id=991302") != 1 || s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='classify_title'") != 1 {
+			t.Fatal("publication date filter did not protect candidate handoff", progress, err)
+		}
+	})
 	t.Run("raw pagination quarantine duplicate URL title revision and restart", func(t *testing.T) {
 		rows := []json.RawMessage{}
 		for i := 0; i < 8; i++ {

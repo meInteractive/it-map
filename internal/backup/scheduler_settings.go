@@ -122,7 +122,7 @@ func (v SchedulerSettingsView) NextFromValidated(input json.RawMessage, ownerNam
 	catalogSpread(next, old)
 	catalogDelete(next, "favoritesOnly")
 	next.set("enabled", raw.field("enabled"))
-	for _, key := range []string{"agenciesEnabled", "sourceIds", "intervalDays"} {
+	for _, key := range []string{"agenciesEnabled", "sourceIds", "intervalDays", "vacancyAgeDays"} {
 		value := raw.field(key)
 		if jsNullish(value) {
 			value = old.field(key)

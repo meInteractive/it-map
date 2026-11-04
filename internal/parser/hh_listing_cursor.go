@@ -1,12 +1,44 @@
 package parser
 
 import (
+	"encoding/json"
+	"errors"
 	"time"
 
 	"itmap/internal/apifyruns"
 	"itmap/internal/apifysettings"
 	"itmap/internal/integrations/apify"
 )
+
+var errHHDate = errors.New("некорректная дата публикации HH")
+
+func (c hhListingCursor) includesPublication(raw json.RawMessage) (bool, error) {
+	if !c.DateFilterApplied || c.VacancyAgeDays == 0 {
+		return true, nil
+	}
+	if c.DateFrom == nil || c.DateTo == nil {
+		return false, errHHDate
+	}
+	from, err := time.Parse(time.RFC3339, *c.DateFrom)
+	if err != nil {
+		return false, errHHDate
+	}
+	to, err := time.Parse(time.RFC3339, *c.DateTo)
+	if err != nil || !from.Before(to) {
+		return false, errHHDate
+	}
+	var fields struct {
+		DatePosted string `json:"date_posted"`
+	}
+	if json.Unmarshal(raw, &fields) != nil {
+		return false, errHHDate
+	}
+	published, err := time.Parse(time.RFC3339Nano, fields.DatePosted)
+	if err != nil {
+		return false, errHHDate
+	}
+	return !published.Before(from) && published.Before(to.Add(time.Second)), nil
+}
 
 type hhQuarantine struct {
 	Page, Offset int64
@@ -20,6 +52,9 @@ type hhListingCursor struct {
 	SchedulerHash                    string
 	Profile                          string
 	TitleQuery                       *string
+	DateFrom, DateTo                 *string `json:",omitempty"`
+	DateFilterApplied                bool    `json:",omitempty"`
+	VacancyAgeDays                   int     `json:",omitempty"`
 	Page, Offset, PageCount          int64
 	RunID, DatasetID                 string
 	Metadata                         *apify.DatasetMetadata
@@ -34,7 +69,19 @@ type hhListingCursor struct {
 
 func (c hhListingCursor) options() apify.HHOptions {
 	order := "publication_time"
-	return apify.HHOptions{Page: c.Page, OrderBy: &order, TitleQuery: c.TitleQuery}
+	return apify.HHOptions{Page: c.Page, OrderBy: &order, TitleQuery: c.TitleQuery, DateFrom: c.DateFrom, DateTo: c.DateTo, DateFilterApplied: c.DateFilterApplied}
+}
+
+func hhDateWindow(now time.Time, days int) (*string, *string) {
+	if days == 0 {
+		return nil, nil
+	}
+	moscow := time.FixedZone("MSK", 3*60*60)
+	today := now.In(moscow)
+	start := time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, moscow)
+	from := start.AddDate(0, 0, -days).Format(time.RFC3339)
+	to := start.Add(-time.Second).Format(time.RFC3339)
+	return &from, &to
 }
 func advanceHHListingCursor(c hhListingCursor, slice apifyruns.DatasetSlice, count int, prefix string, now int64) (hhListingCursor, error) {
 	if c.Version != 1 || count < 0 || count > 10 || c.Offset < 0 || c.Page < 0 || c.Page > 99 || c.Offset+int64(count) > slice.Metadata.ItemCount || c.RunID != "" && c.RunID != slice.Record.RunID || c.DatasetID != "" && c.DatasetID != slice.Record.DatasetID {

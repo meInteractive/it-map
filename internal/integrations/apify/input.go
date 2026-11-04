@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 	"unicode/utf16"
 	"unicode/utf8"
 )
@@ -20,10 +21,12 @@ var digits = regexp.MustCompile(`^[0-9]+$`)
 var providerID = regexp.MustCompile(`^[A-Za-z0-9]+$`)
 
 type HHOptions struct {
-	Page       int64
-	Detail     bool
-	OrderBy    *string
-	TitleQuery *string
+	Page              int64
+	Detail            bool
+	OrderBy           *string
+	TitleQuery        *string
+	DateFrom, DateTo  *string
+	DateFilterApplied bool
 }
 type StartInput struct {
 	StartURL           string `json:"startUrl"`
@@ -121,6 +124,18 @@ func specialQuery(raw string) string {
 // HHInput covers canonical public HTTPS HH source URLs. It preserves query
 // insertion/set semantics, since the serialized input is part of legacy hashes.
 func HHInput(source string, options HHOptions) (StartInput, error) {
+	if options.DateFilterApplied {
+		if (options.DateFrom == nil) != (options.DateTo == nil) {
+			return StartInput{}, apiError("apify_data", 400)
+		}
+		if options.DateFrom != nil {
+			from, e1 := time.Parse(time.RFC3339, *options.DateFrom)
+			to, e2 := time.Parse(time.RFC3339, *options.DateTo)
+			if e1 != nil || e2 != nil || !from.Before(to) {
+				return StartInput{}, apiError("apify_data", 400)
+			}
+		}
+	}
 	if !utf8.ValidString(source) {
 		return StartInput{}, apiError("apify_scope", 400)
 	}
@@ -175,6 +190,18 @@ func HHInput(source string, options HHOptions) (StartInput, error) {
 		parsed.Host = "hh.ru"
 		pairs = querySet(pairs, "page", strconv.FormatInt(options.Page, 10))
 		pairs = querySet(pairs, "per_page", "100")
+		if options.DateFilterApplied {
+			filtered := pairs[:0]
+			for _, p := range pairs {
+				if p.key != "date_from" && p.key != "date_to" {
+					filtered = append(filtered, p)
+				}
+			}
+			pairs = filtered
+			if options.DateFrom != nil {
+				pairs = append(pairs, pair{"date_from", *options.DateFrom}, pair{"date_to", *options.DateTo})
+			}
+		}
 		_, orders := queryGet(pairs, "order_by")
 		if options.OrderBy != nil && orders == 0 {
 			pairs = querySet(pairs, "order_by", *options.OrderBy)

@@ -31,6 +31,7 @@ type Settings struct {
 	Revision        int64            `json:"revision"`
 	SourceIDs       []string         `json:"sourceIds"`
 	IntervalDays    int              `json:"intervalDays"`
+	VacancyAgeDays  int              `json:"vacancyAgeDays"`
 	Priorities      map[string]int64 `json:"priorities"`
 	FavoritesOnly   bool             `json:"favoritesOnly"`
 	CloudConnected  bool             `json:"cloudConnected"`
@@ -51,7 +52,7 @@ func SourceOptions() []SourceOption {
 	return []SourceOption{{"companySite", "Сайт компании", true, nil}, {"hh", "HH", true, nil}, {"habr", "Хабр", true, nil}, {"getmatch", "Getmatch", true, nil}, {"telegram", "Telegram", false, reason("Telegram не поддерживается этим сборщиком.")}, {"dreamJob", "DreamJob", false, reason("Нужен отдельный адаптер списка вакансий.")}, {"hCareers", "Эйч", false, reason("Нужен отдельный адаптер списка вакансий.")}, {"rabota", "rabota.ru", true, nil}}
 }
 func DefaultSettings() Settings {
-	return Settings{OwnerName: "Eugene", SourceIDs: []string{}, IntervalDays: 7, FavoritesOnly: true, Priorities: map[string]int64{"import_vacancy": 100, "assign_roles": 90, "score_relevance": 85, "extract_vacancy": 80, "fetch_full_text": 70, "classify_title": 60, "scan_source": 20, "diagnostic": 0}}
+	return Settings{OwnerName: "Eugene", SourceIDs: []string{}, IntervalDays: 7, VacancyAgeDays: 3, FavoritesOnly: true, Priorities: map[string]int64{"import_vacancy": 100, "assign_roles": 90, "score_relevance": 85, "extract_vacancy": 80, "fetch_full_text": 70, "classify_title": 60, "scan_source": 20, "diagnostic": 0}}
 }
 
 // readObject also rejects duplicate keys: the accepted input boundary is stricter
@@ -134,7 +135,7 @@ func ValidateSettingsUpdate(data []byte, previous Settings, ownerName string) (S
 	}
 	for key := range raw {
 		switch key {
-		case "enabled", "dayBudgetUsd", "monthBudgetUsd", "revision", "priorities", "favoritesOnly", "sourceIds", "intervalDays", "agenciesEnabled":
+		case "enabled", "dayBudgetUsd", "monthBudgetUsd", "revision", "priorities", "favoritesOnly", "sourceIds", "intervalDays", "vacancyAgeDays", "agenciesEnabled":
 		default:
 			return fail(settingsMessage)
 		}
@@ -176,6 +177,13 @@ func ValidateSettingsUpdate(data []byte, previous Settings, ownerName string) (S
 			return fail(sourcesMessage)
 		}
 		next.IntervalDays = int(interval)
+	}
+	if value, present := raw["vacancyAgeDays"]; present {
+		days, valid := integer(value)
+		if !valid || (days != 0 && days != 3 && days != 7 && days != 14) {
+			return fail("Выберите возраст вакансий: 3, 7, 14 дней или все.")
+		}
+		next.VacancyAgeDays = int(days)
 	}
 	if value, present := raw["sourceIds"]; present {
 		var ids []string
