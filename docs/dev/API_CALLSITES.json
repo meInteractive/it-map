@@ -1399,6 +1399,22 @@
       "dynamicURL": true
     },
     {
+      "id": "75e59256bf1a7125",
+      "file": "frontend/features/settings/Scheduler.tsx",
+      "line": 46,
+      "call": "mutate",
+      "method": "POST",
+      "methodExpression": "'POST'",
+      "urlExpression": "'/api/scheduler/resume'",
+      "literalFragments": [
+        "/api/scheduler/resume"
+      ],
+      "families": [
+        "scheduler"
+      ],
+      "dynamicURL": false
+    },
+    {
       "id": "68c3e8b7ba26363a",
       "file": "frontend/features/settings/Scheduler.tsx",
       "line": 46,
