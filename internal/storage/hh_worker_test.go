@@ -340,7 +340,7 @@ func TestMariaDBHHWorkerActorLimitDisposable(t *testing.T) {
 		t.Cleanup(func() { _, _ = s.db.ExecContext(context.Background(), "DELETE FROM company_identity WHERE id=991305") })
 		s.exec(`INSERT INTO scheduler_jobs(id,generation,dedupe_key,type,company_id,source_id,payload,priority,run_after,created_at,updated_at) VALUES('CI_OTHER',?,'CI_OTHER','scan_source',991305,'hh','{}',100,0,0,0)`, s.repo.Generation)
 		control := parser.NewCycleControlWithFactory(s.db, func(r parser.RunRepository) (parser.Worker, error) {
-			return parser.Worker{Runs: r, Settings: apifysettings.NewRepository(s.db, "CI_SECRET"), ListingRuntime: listing.Runtime}, nil
+			return parser.Worker{Runs: r, Settings: apifysettings.NewRepository(s.db, "CI_SECRET"), ListingRuntime: listing.Runtime, Public: &hhPublicFixture{job: &hhpublic.Job{ID: "123", URL: "https://hh.ru/vacancy/123", Title: "CI_TITLE", Description: hhDetailBody()}}}, nil
 		})
 		command, err := control.PrepareTargetedHH(s.ctx)
 		if err != nil {
@@ -379,12 +379,32 @@ func TestMariaDBHHWorkerActorLimitDisposable(t *testing.T) {
 		}
 		s.exec(`INSERT INTO scheduler_jobs(id,generation,dedupe_key,type,company_id,candidate_id,source_id,payload,priority,run_after,created_at,updated_at) VALUES('CI_OTHER_CAND',?,'CI_OTHER_CAND','classify_title',991305,?,'hh','{}',100,0,0,0)`, s.repo.Generation, candidate)
 		scope := &parser.ScanCandidateScope{RequestID: id, ScanJobID: receipt.JobID, CompanyID: 991302}
-		classifier := &storedTitleRunner{answers: map[string]struct{ Type, Choice string }{"role_991303": {"choice", "reject"}}}
+		classifier := &storedTitleRunner{answers: map[string]struct{ Type, Choice string }{"role_991303": {"choice", "match"}}}
 		worker := parser.Worker{Runs: s.repo, Settings: apifysettings.NewRepository(s.db, "CI_SECRET"), Classifier: classifier, CandidateScope: scope}
 		stage, err := worker.Cycle(s.ctx, parser.WorkerOptions{Run: parser.RunOptions{RequestID: "CI_SCOPED_STAGE"}, MaxJobs: 1})
 		if err != nil || stage.Processed != 1 || s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE id='CI_OTHER_CAND' AND status='pending' AND attempts=0") != 1 {
 			t.Fatal("candidate scope escaped", stage, err)
 		}
+		stageCommand, err := control.PrepareCandidateStage(s.ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		stageID := "12345678-1234-4234-8234-123456789abe"
+		if _, err = stageCommand(s.ctx, stageID, *scope); err != nil {
+			t.Fatal("target stage", err)
+		}
+		if _, err = stageCommand(s.ctx, stageID, *scope); err != nil {
+			t.Fatal("target stage replay", err)
+		}
+		foreignScope := *scope
+		foreignScope.CompanyID = 991305
+		if _, err = stageCommand(s.ctx, stageID, foreignScope); !errors.Is(err, parser.ErrHHListingChanged) && !errors.Is(err, parser.ErrRunBusy) {
+			t.Fatal("foreign replay accepted", err)
+		}
+		if s.count("SELECT COUNT(*) FROM scheduler_attempts WHERE type='fetch_full_text' AND status='completed'") != 1 {
+			t.Fatal("target detail not completed once")
+		}
+		s.exec("UPDATE scheduler_jobs SET status='cancelled' WHERE candidate_id=? AND status='pending'", candidate)
 		s.exec("UPDATE scheduler_jobs SET status='pending' WHERE id=?", receipt.JobID)
 		partial, err := worker.Cycle(s.ctx, parser.WorkerOptions{Run: parser.RunOptions{RequestID: "CI_PARTIAL_SCOPE"}, MaxJobs: 1})
 		if err != nil || partial.Processed != 0 {
