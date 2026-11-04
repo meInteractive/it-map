@@ -69,9 +69,10 @@ func (*Providers) DatasetItems(ctx context.Context, id string, offset int64, cle
 	if id != "MockData0" || clean || offset < 0 || offset > 2 {
 		return nil, errUnexpected
 	}
+	posted := time.Now().In(time.FixedZone("MSK", 3*60*60)).AddDate(0, 0, -1).Format("2006-01-02") + "T12:00:00+03:00"
 	items := []json.RawMessage{
-		json.RawMessage(`{"title":"STAGING_SYNTHETIC_TITLE","url":"https://hh.ru/vacancy/123","vacancy_id":123,"employer_id":456}`),
-		json.RawMessage(`{"title":"STAGING_SYNTHETIC_REJECTED","url":"https://hh.ru/vacancy/124","vacancy_id":124,"employer_id":456}`),
+		json.RawMessage(fmt.Sprintf(`{"title":"STAGING_SYNTHETIC_TITLE","url":"https://hh.ru/vacancy/123","vacancy_id":123,"employer_id":456,"date_posted":%q}`, posted)),
+		json.RawMessage(fmt.Sprintf(`{"title":"STAGING_SYNTHETIC_REJECTED","url":"https://hh.ru/vacancy/124","vacancy_id":124,"employer_id":456,"date_posted":%q}`, posted)),
 	}
 	return items[offset:], nil
 }

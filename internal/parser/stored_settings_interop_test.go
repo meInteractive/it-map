@@ -77,7 +77,7 @@ func TestStoredSchedulerSettingsSource(t *testing.T) {
 	if e = cmd.Wait(); e != nil {
 		t.Fatal("unchanged stored scheduler source failed", e)
 	}
-	if count != 2214 {
+	if count != 2670 {
 		t.Fatal("missing stored settings corpus", count)
 	}
 	if mismatches != 0 {

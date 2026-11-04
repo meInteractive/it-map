@@ -41,7 +41,7 @@ func Seed(ctx context.Context, db *sql.DB, secret, expectedDatabase string) erro
 	statements := []string{
 		`INSERT INTO company_identity(id,company_name) VALUES(991302,'CI Apify Runtime')`,
 		`INSERT INTO app_catalog(id,data_json) VALUES(1,'{"companies":[{"name":"CI Apify Runtime","vacancySources":{"hh":"https://hh.ru/employer/456"}}],"agencies":[]}')`,
-		`INSERT INTO firecrawl_settings(id,favorites_only,scheduler_json) VALUES(1,0,'{"enabled":true,"sourceIds":["hh"],"ownerName":"CI_OWNER","dayBudgetUsd":5,"monthBudgetUsd":5,"revision":0,"vacancyAgeDays":0}')`,
+		`INSERT INTO firecrawl_settings(id,favorites_only,scheduler_json) VALUES(1,0,'{"enabled":true,"sourceIds":["hh"],"ownerName":"CI_OWNER","dayBudgetUsd":5,"monthBudgetUsd":5,"revision":0}')`,
 		`INSERT INTO vacancy_roles(id,name,stable_key,sort_order) VALUES(991303,'CI HH Root','root-it-manager',1)`,
 		`INSERT INTO vacancy_roles(id,name,stable_key,parent_id,sort_order) VALUES(991304,'CI HH leaf','ci-hh-leaf',991303,1)`,
 		`INSERT INTO vacancy_role_classification(role_id,markdown,parsing_enabled) VALUES(991303,'CI HH classification',1)`,
