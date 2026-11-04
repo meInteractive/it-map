@@ -8,6 +8,28 @@ import (
 
 type workerTestStages struct{ calls []string }
 
+func TestWorkerTargetedCycleBounds(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		worker Worker
+		max    int
+		want   bool
+	}{
+		{"обычный цикл", Worker{}, 50, true},
+		{"одно задание", Worker{TargetJobID: "CI_JOB"}, 1, true},
+		{"несколько заданий", Worker{TargetJobID: "CI_JOB"}, 2, false},
+		{"планирование источников", Worker{TargetJobID: "CI_JOB", ScheduleSources: true}, 1, false},
+		{"старый dataset", Worker{TargetJobID: "CI_JOB", ResumePreviousDataset: true}, 1, false},
+		{"два идентификатора", Worker{TargetJobID: "CI_JOB", ResumeJobID: "CI_OTHER"}, 1, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := validTargetedCycle(tc.worker, WorkerOptions{MaxJobs: tc.max}); got != tc.want {
+				t.Fatalf("got %v", got)
+			}
+		})
+	}
+}
+
 func (s *workerTestStages) Execute(ctx context.Context, j *JobLease) (AIStageOutput, error) {
 	s.calls = append(s.calls, j.Job().Type)
 	return AIStageOutput{}, nil
