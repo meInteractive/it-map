@@ -347,8 +347,21 @@ func TestMariaDBHHWorkerActorLimitDisposable(t *testing.T) {
 			t.Fatal(err)
 		}
 		id := "12345678-1234-4234-8234-123456789abc"
-		if _, err = command(s.ctx, id, 991302); err != nil {
-			t.Fatal(err)
+		results := make(chan error, 2)
+		for i := 0; i < 2; i++ {
+			go func() { _, e := command(s.ctx, id, 991302); results <- e }()
+		}
+		success := 0
+		for i := 0; i < 2; i++ {
+			e := <-results
+			if e == nil {
+				success++
+			} else if !errors.Is(e, parser.ErrRunBusy) {
+				t.Fatal("concurrent request", e)
+			}
+		}
+		if success == 0 {
+			t.Fatal("both requests rejected")
 		}
 		if _, err = command(s.ctx, id, 991302); err != nil {
 			t.Fatal("replay", err)
