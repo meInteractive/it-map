@@ -323,6 +323,43 @@ func TestMariaDBHHWorkerCancelDisposable(t *testing.T) {
 }
 
 func TestMariaDBHHWorkerActorLimitDisposable(t *testing.T) {
+	t.Run("targeted company request is isolated and idempotent", func(t *testing.T) {
+		provider := &hhScanProvider{rows: [][]json.RawMessage{{hhScanItem(123, "CI_TITLE")}}}
+		_, s, lease, listing := hhScanFixture(t, provider)
+		var run string
+		if err := s.db.QueryRowContext(s.ctx, "SELECT id FROM scheduler_runs WHERE status='running'").Scan(&run); err != nil {
+			t.Fatal(err)
+		}
+		if err := lease.Finish(s.ctx, parser.FinishOptions{Status: "cancelled"}); err != nil {
+			t.Fatal(err)
+		}
+		if err := s.repo.Finish(s.ctx, run, "completed"); err != nil {
+			t.Fatal(err)
+		}
+		s.exec("INSERT INTO company_identity(id,company_name) VALUES(991305,'CI other HH company')")
+		t.Cleanup(func() { _, _ = s.db.ExecContext(context.Background(), "DELETE FROM company_identity WHERE id=991305") })
+		s.exec(`INSERT INTO scheduler_jobs(id,generation,dedupe_key,type,company_id,source_id,payload,priority,run_after,created_at,updated_at) VALUES('CI_OTHER',?,'CI_OTHER','scan_source',991305,'hh','{}',100,0,0,0)`, s.repo.Generation)
+		control := parser.NewCycleControlWithFactory(s.db, func(r parser.RunRepository) (parser.Worker, error) {
+			return parser.Worker{Runs: r, Settings: apifysettings.NewRepository(s.db, "CI_SECRET"), ListingRuntime: listing.Runtime}, nil
+		})
+		command, err := control.PrepareTargetedHH(s.ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		id := "12345678-1234-4234-8234-123456789abc"
+		if _, err = command(s.ctx, id, 991302); err != nil {
+			t.Fatal(err)
+		}
+		if _, err = command(s.ctx, id, 991302); err != nil {
+			t.Fatal("replay", err)
+		}
+		if _, err = command(s.ctx, id, 991305); !errors.Is(err, parser.ErrRunBusy) && !errors.Is(err, parser.ErrHHListingChanged) {
+			t.Fatal("request reused for other company", err)
+		}
+		if provider.starts != 1 || s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE id='CI_OTHER' AND status='pending' AND attempts=0") != 1 {
+			t.Fatal("unexpected provider or queue activity", provider.starts)
+		}
+	})
 	t.Run("targeted cycle leaves other jobs untouched", func(t *testing.T) {
 		provider := &hhScanProvider{rows: [][]json.RawMessage{{hhScanItem(123, "CI_TITLE")}}}
 		_, s, lease, listing := hhScanFixture(t, provider)
