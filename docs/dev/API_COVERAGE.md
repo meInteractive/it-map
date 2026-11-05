@@ -5,7 +5,7 @@ GO-314 — воспроизводимый аудит вызовов, не при
 | Инвентарь | Количество |
 |---|---|
 | TS/TSX файлов | 64 |
-| Прямых transport/form/link callsites | 134 |
+| Прямых transport/form/link callsites | 135 |
 | JSX url bindings | 7 |
 | Download forwarding sites | 1 |
 | Callsites с динамическим URL | 67 |

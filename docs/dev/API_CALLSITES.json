@@ -1561,7 +1561,7 @@
     {
       "id": "411abbe2e091921c",
       "file": "frontend/features/settings/TargetHH.tsx",
-      "line": 22,
+      "line": 24,
       "call": "mutate",
       "method": "POST",
       "methodExpression": "'POST'",
@@ -1571,6 +1571,22 @@
         "dynamic"
       ],
       "dynamicURL": true
+    },
+    {
+      "id": "cde59909f1c953b6",
+      "file": "frontend/features/settings/TargetHH.tsx",
+      "line": 36,
+      "call": "mutate",
+      "method": "POST",
+      "methodExpression": "'POST'",
+      "urlExpression": "'/api/scheduler/target-hh/stage'",
+      "literalFragments": [
+        "/api/scheduler/target-hh/stage"
+      ],
+      "families": [
+        "scheduler"
+      ],
+      "dynamicURL": false
     },
     {
       "id": "ea7f2e6d0675591f",
