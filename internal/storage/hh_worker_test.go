@@ -485,6 +485,66 @@ func TestMariaDBHHWorkerActorLimitDisposable(t *testing.T) {
 			t.Fatal("continuation started another actor or did not finish", provider.starts)
 		}
 	})
+	t.Run("resume polls an existing Actor before dataset metadata", func(t *testing.T) {
+		items := make([]json.RawMessage, 11)
+		for i := range items {
+			items[i] = hhScanItem(123+i, "CI_TITLE")
+		}
+		provider := &hhScanProvider{rows: [][]json.RawMessage{items}, pollSuccess: true}
+		_, s, lease, listing := hhScanFixture(t, provider)
+		var run string
+		if err := s.db.QueryRowContext(s.ctx, "SELECT id FROM scheduler_runs WHERE status='running'").Scan(&run); err != nil {
+			t.Fatal(err)
+		}
+		if err := lease.Finish(s.ctx, parser.FinishOptions{Status: "cancelled"}); err != nil {
+			t.Fatal(err)
+		}
+		if err := s.repo.Finish(s.ctx, run, "completed"); err != nil {
+			t.Fatal(err)
+		}
+		control := parser.NewCycleControlWithFactory(s.db, func(r parser.RunRepository) (parser.Worker, error) {
+			return parser.Worker{Runs: r, Settings: apifysettings.NewRepository(s.db, "CI_SECRET"), ListingRuntime: listing.Runtime}, nil
+		})
+		start, err := control.PrepareTargetedHH(s.ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		raw, err := start(s.ctx, "12345678-1234-4234-8234-123456789abc", 991302)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var receipt struct {
+			JobID string `json:"jobId"`
+		}
+		if json.Unmarshal(raw, &receipt) != nil || receipt.JobID == "" {
+			t.Fatal("missing target job")
+		}
+		s.exec("UPDATE scheduler_jobs SET status='pending',run_after=0 WHERE id=?", receipt.JobID)
+		s.exec("UPDATE apify_runs SET state='running',charged_usd=NULL WHERE run_id='HHRun0'")
+		s.exec(`UPDATE vacancy_discovery_runs SET result_json=JSON_SET(result_json,'$.RunID','', '$.DatasetID','', '$.Metadata',JSON_EXTRACT('null','$'), '$.Offset',0, '$.PageCount',0, '$.Candidates',0, '$.Created',0, '$.Done',JSON_EXTRACT('false','$'), '$.CandidateIDs',JSON_ARRAY(), '$.SeenPrefixes',JSON_ARRAY()) WHERE id=?`, "go399:"+receipt.JobID)
+		resume, err := control.PrepareResume(s.ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err = resume(s.ctx, "12345678-1234-4234-8234-123456789abd", receipt.JobID); err != nil {
+			t.Fatal("resume existing actor", err)
+		}
+		if provider.starts != 1 {
+			t.Fatal("resume started another Actor", provider.starts)
+		}
+		if s.count("SELECT COUNT(*) FROM apify_runs WHERE run_id='HHRun0' AND state='succeeded' AND charged_usd IS NOT NULL") != 1 {
+			t.Fatal("existing actor not reconciled")
+		}
+		s.exec("UPDATE scheduler_jobs SET status='pending',run_after=0 WHERE id=?", receipt.JobID)
+		s.exec(`UPDATE vacancy_discovery_runs SET result_json=JSON_SET(result_json,'$.RunID','', '$.DatasetID','', '$.Metadata',JSON_EXTRACT('null','$'), '$.Offset',0, '$.PageCount',0, '$.Done',JSON_EXTRACT('false','$')) WHERE id=?`, "go399:"+receipt.JobID)
+		s.exec("DELETE FROM apify_runs")
+		if _, err = resume(s.ctx, "12345678-1234-4234-8234-123456789abe", receipt.JobID); !errors.Is(err, parser.ErrHHListingChanged) {
+			t.Fatal("missing actor accepted", err)
+		}
+		if provider.starts != 1 {
+			t.Fatal("missing actor started a new Actor", provider.starts)
+		}
+	})
 	t.Run("targeted cycle leaves other jobs untouched", func(t *testing.T) {
 		provider := &hhScanProvider{rows: [][]json.RawMessage{{hhScanItem(123, "CI_TITLE")}}}
 		_, s, lease, listing := hhScanFixture(t, provider)
