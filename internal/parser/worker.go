@@ -292,6 +292,9 @@ func workerExecute(ctx context.Context, d workerDispatch, lease *JobLease, owner
 	finish := FinishOptions{Status: "completed", Code: out.code}
 	if executeErr != nil {
 		finish = FinishOptions{Status: "failed", Code: "stage_failed", Message: "Не удалось выполнить этап обработки."}
+		if errors.Is(executeErr, ErrHHRoleFilter) {
+			finish = FinishOptions{Status: "failed", Code: "hh_roles_missing", Message: "Настройте поддерживаемые направления HH и повторите запуск."}
+		}
 		if errors.Is(executeErr, ErrHHDetailPending) || errors.Is(executeErr, ErrDetailBusy) || errors.Is(executeErr, ErrHHCycleLimit) || errors.Is(executeErr, context.Canceled) || errors.Is(executeErr, context.DeadlineExceeded) {
 			finish = FinishOptions{Status: "pending", Code: "deferred", Delay: 10 * time.Second, Deferred: true}
 		}

@@ -178,6 +178,9 @@ func (e HHListingExecutor) prepareHHListing(ctx context.Context, tx *sql.Tx, job
 		if e.ResumePrevious {
 			return plan, ErrHHListingChanged
 		}
+		if hhTitleQuery(keys) == nil {
+			return plan, ErrHHRoleFilter
+		}
 		from, to := hhDateWindow(time.Now(), settings.VacancyAgeDays)
 		cur = hhListingCursor{Version: 1, Revision: 1, Operation: v, SchedulerHash: hash, Profile: v.Profile, TitleQuery: hhTitleQuery(keys), DateFrom: from, DateTo: to, DateFilterApplied: true, MoscowFilter: true, VacancyAgeDays: settings.VacancyAgeDays, LineageVersion: 1}
 		if err = persistHHListingCursor(ctx, tx, plan.ID, e.Owner, job, cur, true); err != nil {
