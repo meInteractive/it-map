@@ -16,8 +16,8 @@ var ErrHHListingData = errors.New("неподдерживаемая запись
 var ErrHHListingChanged = errors.New("источник или прогресс HH изменились")
 var errHHLocation = errors.New("неизвестный город вакансии HH")
 
-// hhMoscowLocation admits only an explicit city, not Moscow Oblast or an
-// unqualified remote vacancy. Missing/ambiguous values are quarantined.
+// hhMoscowLocation допускает только явно указанный город Москву.
+// Отсутствующие или неоднозначные значения отправляются в карантин.
 func hhMoscowLocation(raw json.RawMessage) (bool, error) {
 	var fields map[string]json.RawMessage
 	var value string
@@ -30,10 +30,10 @@ func hhMoscowLocation(raw json.RawMessage) (bool, error) {
 	}
 	city := strings.ToLower(strings.TrimSpace(strings.SplitN(value, ",", 2)[0]))
 	city = strings.TrimSpace(strings.TrimPrefix(strings.TrimPrefix(city, "г. "), "г "))
-	if city == "москва" || city == "moscow" {
+	if city == "москва" || city == "москве" || city == "moscow" {
 		return true, nil
 	}
-	if city == "россия" || city == "russia" || city == "удалённо" || city == "удаленно" || city == "remote" || strings.Contains(strings.ToLower(value), "москва") || strings.Contains(strings.ToLower(value), "moscow") {
+	if city == "россия" || city == "russia" || city == "удалённо" || city == "удаленно" || city == "remote" || strings.Contains(strings.ToLower(value), "москв") || strings.Contains(strings.ToLower(value), "moscow") {
 		return false, errHHLocation
 	}
 	return false, nil
