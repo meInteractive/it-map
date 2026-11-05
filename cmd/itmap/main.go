@@ -24,6 +24,7 @@ import (
 	"itmap/internal/contacts"
 	"itmap/internal/crm"
 	"itmap/internal/httpapi"
+	"itmap/internal/integrations/hhpublic"
 	"itmap/internal/parser"
 	"itmap/internal/profiles"
 	"itmap/internal/roles"
@@ -33,7 +34,7 @@ import (
 )
 
 func httpHandler(logger *slog.Logger, db *sql.DB, manager *auth.Manager) http.Handler {
-	opts := httpapi.Options{Auth: manager, WebDir: os.Getenv("WEB_DIST_DIR")}
+	opts := httpapi.Options{Auth: manager, WebDir: os.Getenv("WEB_DIST_DIR"), HHProfessionalRoles: hhpublic.New()}
 	if db != nil {
 		opts.DB = db
 		aiKeys := aiproviders.NewRepository(db, os.Getenv("SESSION_SECRET"), os.Getenv("OPENAI_API_KEY"))
