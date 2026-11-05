@@ -98,7 +98,7 @@ func (e HHListingExecutor) Execute(ctx context.Context, lease *JobLease) (HHList
 	runtime := e.Runtime
 	check := func(active context.Context) error {
 		return lease.WithinOwned(active, func(tx *sql.Tx) error {
-			_, hash, keys, err := e.hhScope(active, tx, job, cur.Operation)
+			_, hash, _, err := e.hhScope(active, tx, job, cur.Operation)
 			if err != nil {
 				return err
 			}
@@ -106,8 +106,8 @@ func (e HHListingExecutor) Execute(ctx context.Context, lease *JobLease) (HHList
 				return ErrHHListingChanged
 			}
 			if requireCurrentRoles {
-				q := hhTitleQuery(keys)
-				if q == nil || !reflect.DeepEqual(q, cur.TitleQuery) {
+				roles, roleErr := hhCurrentProfessionalRoles(active, tx)
+				if roleErr != nil || cur.TitleQuery != nil || cur.ProfessionalRoles == nil || !reflect.DeepEqual(roles, cur.ProfessionalRoles) {
 					return ErrHHRoleFilter
 				}
 			}
