@@ -31,10 +31,16 @@ func TestHHListingCursorHonorsCostFailureAndPageLimit(t *testing.T) {
 	now := time.Now().UnixMilli()
 	cost := 0.02
 	slice := apifyruns.DatasetSlice{Record: apifyruns.Record{State: "succeeded", RunID: "CIRun", DatasetID: "CIData", ChargedUSD: &cost}, Metadata: apify.DatasetMetadata{ItemCount: 100, ModifiedAt: "2020-01-01T00:00:00Z"}}
-	c := hhListingCursor{Version: 1, Profile: "free", Page: 0, Offset: 100, PageCount: 100, RunID: "CIRun", DatasetID: "CIData", Metadata: &slice.Metadata, PreviousOperation: &apifysettings.OperationVersion{CompanyID: 1}}
+	c := hhListingCursor{Version: 1, Profile: "free", MoscowFilter: true, Page: 0, Offset: 100, PageCount: 100, RunID: "CIRun", DatasetID: "CIData", Metadata: &slice.Metadata, PreviousOperation: &apifysettings.OperationVersion{CompanyID: 1}}
 	next, e := advanceHHListingCursor(c, slice, 0, "", now)
 	if e != nil || next.Page != 1 || next.Offset != 0 || next.Done || next.RunID != "" || next.PreviousOperation != nil {
 		t.Fatal("next HH page", next, e)
+	}
+	legacy := c
+	legacy.MoscowFilter = false
+	stopped, err := advanceHHListingCursor(legacy, slice, 0, "", now)
+	if err != nil || !stopped.Done || stopped.Page != 0 || stopped.PartialCode != "moscow_filter_upgrade" {
+		t.Fatal("legacy page could start a new unfiltered Actor", stopped, err)
 	}
 	slice.Record.State = "failed"
 	next, e = advanceHHListingCursor(c, slice, 0, "", now)

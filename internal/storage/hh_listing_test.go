@@ -12,6 +12,7 @@ import (
 	"itmap/internal/apifysettings"
 	"itmap/internal/integrations/apify"
 	"itmap/internal/parser"
+	"net/url"
 	"strings"
 	"sync"
 	"testing"
@@ -19,14 +20,15 @@ import (
 )
 
 type hhScanProvider struct {
-	mu           sync.Mutex
-	starts       int
-	accounts     int
-	afterAccount func()
-	rows         [][]json.RawMessage
-	afterRead    func()
-	modified     bool
-	pollSuccess  bool
+	mu            sync.Mutex
+	starts        int
+	accounts      int
+	afterAccount  func()
+	rows          [][]json.RawMessage
+	afterRead     func()
+	modified      bool
+	pollSuccess   bool
+	requireMoscow bool
 }
 
 func (p *hhScanProvider) Account(ctx context.Context) (apify.BillingAccount, error) {
@@ -44,6 +46,16 @@ func (p *hhScanProvider) Start(_ context.Context, source string, o apify.HHOptio
 	defer p.mu.Unlock()
 	if source != "https://hh.ru/employer/456" {
 		return apify.ActorRun{}, fmt.Errorf("wrong source")
+	}
+	if p.requireMoscow {
+		input, err := apify.HHInput(source, o)
+		if err != nil {
+			return apify.ActorRun{}, err
+		}
+		u, err := url.Parse(input.StartURL)
+		if err != nil || !o.MoscowFilter || u.Query().Get("area") != "1" || u.Query().Get("employer_id") != "456" {
+			return apify.ActorRun{}, fmt.Errorf("Moscow scope missing")
+		}
 	}
 	p.starts++
 	return hhScanRun(o.Page), nil
@@ -120,11 +132,50 @@ func hhScanFixture(t *testing.T, p *hhScanProvider) (apifyRuntimeFixture, *sched
 	return f, s, lease, parser.HHListingExecutor{Settings: apifysettings.NewRepository(s.db, "CI_SECRET"), Runtime: runtime, Owner: "CI_OWNER"}
 }
 func TestMariaDBHHListingDisposable(t *testing.T) {
+	t.Run("legacy actor continues but a new unfiltered actor is forbidden", func(t *testing.T) {
+		items := make([]json.RawMessage, 11)
+		for i := range items {
+			items[i] = hhScanItem(123+i, "CI_TITLE")
+		}
+		p := &hhScanProvider{rows: [][]json.RawMessage{items}}
+		f, s, lease, listing := hhScanFixture(t, p)
+		first, err := listing.Execute(f.ctx, lease)
+		if err != nil || first.Done || p.starts != 1 {
+			t.Fatal("initial scope", first, err)
+		}
+		var raw []byte
+		if err = s.db.QueryRowContext(f.ctx, "SELECT result_json FROM vacancy_discovery_runs WHERE id='go399:CI_HH_SCAN'").Scan(&raw); err != nil {
+			t.Fatal(err)
+		}
+		var cursor struct {
+			Operation                    apifysettings.OperationVersion
+			Page                         int64
+			TitleQuery, DateFrom, DateTo *string
+			DateFilterApplied            bool
+		}
+		if json.Unmarshal(raw, &cursor) != nil {
+			t.Fatal("cursor")
+		}
+		s.exec(`UPDATE vacancy_discovery_runs SET result_json=JSON_REMOVE(result_json,'$.MoscowFilter') WHERE id='go399:CI_HH_SCAN'`)
+		if _, err = listing.Execute(f.ctx, lease); !errors.Is(err, parser.ErrHHListingChanged) || p.starts != 1 {
+			t.Fatal("unfiltered Actor was not blocked", err, p.starts)
+		}
+		runtime := listing.Runtime.(apifyruns.Service)
+		order := "publication_time"
+		opts := apify.HHOptions{Page: cursor.Page, OrderBy: &order, TitleQuery: cursor.TitleQuery, DateFrom: cursor.DateFrom, DateTo: cursor.DateTo, DateFilterApplied: cursor.DateFilterApplied}
+		if _, err = runtime.Execute(f.ctx, cursor.Operation, fmt.Sprintf("listing:go399:CI_HH_SCAN:%d", cursor.Page), opts); err != nil || p.starts != 2 {
+			t.Fatal("seed existing legacy actor", err, p.starts)
+		}
+		next, err := listing.Execute(f.ctx, lease)
+		if err != nil || !next.Done || p.starts != 2 {
+			t.Fatal("legacy dataset not continued", next, err, p.starts)
+		}
+	})
 	t.Run("filters publication dates before candidate handoff", func(t *testing.T) {
 		old := time.Now().In(time.FixedZone("MSK", 3*60*60)).AddDate(0, 0, -8).Format(time.RFC3339)
 		outside := json.RawMessage(fmt.Sprintf(`{"title":"CI old","url":"https://hh.ru/vacancy/124","vacancy_id":124,"employer_id":456,"date_posted":%q}`, old))
 		missing := json.RawMessage(`{"title":"CI undated","url":"https://hh.ru/vacancy/125","vacancy_id":125,"employer_id":456}`)
-		p := &hhScanProvider{rows: [][]json.RawMessage{{hhScanItem(123, "CI recent"), outside, missing}}}
+		p := &hhScanProvider{requireMoscow: true, rows: [][]json.RawMessage{{hhScanItem(123, "CI recent"), outside, missing}}}
 		f, s, lease, e := hhScanFixture(t, p)
 		progress, err := e.Execute(f.ctx, lease)
 		if err != nil || progress.Candidates != 1 || progress.Quarantined != 1 || s.count("SELECT COUNT(*) FROM vacancy_candidates WHERE company_id=991302") != 1 || s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='classify_title'") != 1 {

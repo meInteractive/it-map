@@ -98,6 +98,17 @@ func (e HHListingExecutor) Execute(ctx context.Context, lease *JobLease) (HHList
 		return hhListingProgress(cur), err
 	}
 	key := fmt.Sprintf("listing:%s:%d", plan.ID, cur.Page)
+	if !cur.MoscowFilter && cur.PreviousOperation == nil {
+		// Old cursors may read their already paid Actor, but can never start
+		// a new unfiltered Actor, including after an interrupted first POST.
+		exists, err := (apifyruns.Repository{DB: e.Settings.DB, Settings: e.Settings}).ExistingRun(workCtx, cur.Operation, key, cur.options())
+		if err != nil {
+			return hhListingProgress(cur), err
+		}
+		if !exists {
+			return hhListingProgress(cur), ErrHHListingChanged
+		}
+	}
 	var record apifyruns.Record
 	var slice apifyruns.DatasetSlice
 	if cur.PreviousOperation != nil {
