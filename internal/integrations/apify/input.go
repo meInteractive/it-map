@@ -27,6 +27,7 @@ type HHOptions struct {
 	TitleQuery        *string
 	DateFrom, DateTo  *string
 	DateFilterApplied bool
+	MoscowFilter      bool
 }
 type StartInput struct {
 	StartURL           string `json:"startUrl"`
@@ -168,6 +169,9 @@ func HHInput(source string, options HHOptions) (StartInput, error) {
 	path := parsed.EscapedPath()
 	vacancy := vacancyPath.FindStringSubmatch(path)
 	employer := employerPath.FindStringSubmatch(path)
+	if options.MoscowFilter && !options.Detail && vacancy != nil {
+		return StartInput{}, apiError("apify_scope", 400)
+	}
 	if options.Detail && vacancy == nil {
 		return StartInput{}, apiError("apify_scope", 400)
 	}
@@ -188,6 +192,9 @@ func HHInput(source string, options HHOptions) (StartInput, error) {
 			pairs = []pair{{"employer_id", employerID}}
 		}
 		parsed.Host = "hh.ru"
+		if options.MoscowFilter {
+			pairs = querySet(pairs, "area", "1")
+		}
 		pairs = querySet(pairs, "page", strconv.FormatInt(options.Page, 10))
 		pairs = querySet(pairs, "per_page", "100")
 		if options.DateFilterApplied {

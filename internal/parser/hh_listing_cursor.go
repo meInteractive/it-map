@@ -54,6 +54,7 @@ type hhListingCursor struct {
 	TitleQuery                       *string
 	DateFrom, DateTo                 *string `json:",omitempty"`
 	DateFilterApplied                bool    `json:",omitempty"`
+	MoscowFilter                     bool    `json:",omitempty"`
 	VacancyAgeDays                   int     `json:",omitempty"`
 	LineageVersion                   int     `json:",omitempty"`
 	CandidateIDs                     []int64 `json:",omitempty"`
@@ -112,7 +113,7 @@ func (c *hhListingCursor) rememberCandidate(id int64) error {
 
 func (c hhListingCursor) options() apify.HHOptions {
 	order := "publication_time"
-	return apify.HHOptions{Page: c.Page, OrderBy: &order, TitleQuery: c.TitleQuery, DateFrom: c.DateFrom, DateTo: c.DateTo, DateFilterApplied: c.DateFilterApplied}
+	return apify.HHOptions{Page: c.Page, OrderBy: &order, TitleQuery: c.TitleQuery, DateFrom: c.DateFrom, DateTo: c.DateTo, DateFilterApplied: c.DateFilterApplied, MoscowFilter: c.MoscowFilter}
 }
 
 func hhDateWindow(now time.Time, days int) (*string, *string) {
@@ -169,6 +170,8 @@ func advanceHHListingCursor(c hhListingCursor, slice apifyruns.DatasetSlice, cou
 		c.PartialCode = "apify_run_limit"
 	case c.RepeatedPrefix:
 		c.PartialCode = "apify_pagination_uncertain"
+	case c.PageCount >= 100 && !c.MoscowFilter:
+		c.PartialCode = "moscow_filter_upgrade"
 	case c.PageCount >= 100 && c.Page < 99:
 		c.Page++
 		c.Offset = 0
