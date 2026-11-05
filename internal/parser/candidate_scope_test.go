@@ -17,7 +17,9 @@ func TestCandidateScopeMatchesOnlyRecordedCompanyAndSource(t *testing.T) {
 		{"different company", Job{Type: "classify_title", CompanyID: &other, SourceID: &hh, CandidateID: &candidate}, false},
 		{"different source", Job{Type: "classify_title", CompanyID: &company, SourceID: &otherSource, CandidateID: &candidate}, false},
 		{"scan", Job{Type: "scan_source", CompanyID: &company, SourceID: &hh, CandidateID: &candidate}, false},
-		{"relevance", Job{Type: "score_relevance", CompanyID: &company, SourceID: &hh, CandidateID: &candidate}, false},
+		{"relevance", Job{Type: "score_relevance", CompanyID: &company, SourceID: &hh, CandidateID: &candidate}, true},
+		{"foreign relevance", Job{Type: "score_relevance", CompanyID: &company, SourceID: &hh, CandidateID: &foreign}, false},
+		{"foreign company relevance", Job{Type: "score_relevance", CompanyID: &other, SourceID: &hh, CandidateID: &candidate}, false},
 		{"missing candidate", Job{Type: "extract_vacancy", CompanyID: &company, SourceID: &hh}, false},
 	}
 	for _, tc := range tests {

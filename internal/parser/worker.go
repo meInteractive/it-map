@@ -234,7 +234,7 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 			claim.JobID = &w.TargetJobID
 		}
 		if w.CandidateScope != nil {
-			claim.Types = []string{"classify_title", "fetch_full_text", "extract_vacancy", "assign_roles", "import_vacancy"}
+			claim.Types = []string{"classify_title", "fetch_full_text", "extract_vacancy", "assign_roles", "import_vacancy", "score_relevance"}
 			claim.ScanScope = w.CandidateScope
 		}
 		lease, err := w.Runs.ClaimJob(bounded, start.Run.ID, claim)

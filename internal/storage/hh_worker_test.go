@@ -404,6 +404,21 @@ func TestMariaDBHHWorkerActorLimitDisposable(t *testing.T) {
 		if s.count("SELECT COUNT(*) FROM scheduler_attempts WHERE type='fetch_full_text' AND status='completed'") != 1 {
 			t.Fatal("target detail not completed once")
 		}
+		// Релевантность допускается только для кандидата текущего сканирования.
+		s.exec(`INSERT INTO scheduler_jobs(id,generation,dedupe_key,type,company_id,candidate_id,source_id,payload,priority,run_after,created_at,updated_at) VALUES('CI_SCOPE_SCORE',?,'CI_SCOPE_SCORE','score_relevance',991302,?,'hh','{}',90,0,0,0)`, s.repo.Generation, candidate)
+		s.exec(`INSERT INTO scheduler_jobs(id,generation,dedupe_key,type,company_id,candidate_id,source_id,payload,priority,run_after,created_at,updated_at) VALUES('CI_FOREIGN_SCORE',?,'CI_FOREIGN_SCORE','score_relevance',991305,?,'hh','{}',100,0,0,0)`, s.repo.Generation, candidate)
+		scoreRun := s.begin("CI_SCOPE_SCORE_RUN")
+		scoreLease, err := s.repo.ClaimJob(s.ctx, scoreRun.Run.ID, parser.ClaimOptions{Types: []string{"score_relevance"}, ScanScope: scope})
+		if err != nil || scoreLease == nil || scoreLease.Job().ID != "CI_SCOPE_SCORE" {
+			t.Fatal("scoped relevance claim", err)
+		}
+		if err = scoreLease.Finish(s.ctx, parser.FinishOptions{Status: "cancelled"}); err != nil {
+			t.Fatal(err)
+		}
+		s.finish(scoreRun)
+		if s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE id='CI_FOREIGN_SCORE' AND status='pending' AND attempts=0") != 1 {
+			t.Fatal("foreign relevance was claimed")
+		}
 		s.exec("UPDATE scheduler_jobs SET status='cancelled' WHERE candidate_id=? AND status='pending'", candidate)
 		s.exec("UPDATE scheduler_jobs SET status='pending' WHERE id=?", receipt.JobID)
 		partial, err := worker.Cycle(s.ctx, parser.WorkerOptions{Run: parser.RunOptions{RequestID: "CI_PARTIAL_SCOPE"}, MaxJobs: 1})

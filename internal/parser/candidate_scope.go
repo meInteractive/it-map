@@ -85,7 +85,7 @@ func inCandidateScope(job Job, scope *ScanCandidateScope, ids map[int64]bool) bo
 		return true
 	}
 	switch job.Type {
-	case "classify_title", "fetch_full_text", "extract_vacancy", "assign_roles", "import_vacancy":
+	case "classify_title", "fetch_full_text", "extract_vacancy", "assign_roles", "import_vacancy", "score_relevance":
 	default:
 		return false
 	}
