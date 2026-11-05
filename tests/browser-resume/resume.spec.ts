@@ -64,3 +64,26 @@ test('возраст вакансий по умолчанию три дня и �
  expect(saved[0].vacancyAgeDays).toBe(0);
  await expect(page.getByRole('status').filter({hasText:'Общие настройки парсинга сохранены.'})).toBeVisible();
 });
+
+test('роли HH выбираются независимо для каждого направления',async({page})=>{
+ const saved:Record<string,unknown>[]=[];
+ const generation='12345678-1234-4234-8234-123456789abd';
+ await page.route(url=>url.pathname.startsWith('/api/'),async route=>{
+  const req=route.request(),path=new URL(req.url()).pathname;
+  if(path==='/api/hh/role-settings'&&req.method()==='PUT'){const body=req.postDataJSON();saved.push(body);return route.fulfill({json:{...body,name:body.roleId===1?'IT Manager':'Журналист',revision:body.revision+1}});}
+  if(path==='/api/hh/role-settings')return route.fulfill({json:{generation,roles:[{roleId:1,name:'IT Manager',revision:0,roleIds:[]},{roleId:2,name:'Журналист',revision:0,roleIds:[]}]}});
+  if(path==='/api/hh/professional-roles')return route.fulfill({json:{categories:[{id:'1',name:'ИТ',roles:[{id:'36',name:'CIO'},{id:'107',name:'Руководитель проектов'}]},{id:'2',name:'Другое',roles:[{id:'107',name:'Руководитель проектов'}]}]}});
+  if(path==='/api/scheduler')return route.fulfill({json:{sourceOptions:[],settings:{enabled:false,ownerName:'CI_OWNER',dayBudgetUsd:0,monthBudgetUsd:0,revision:1,cloudConnected:false,favoritesOnly:false,sourceIds:['hh'],intervalDays:7,priorities:{}},counts:{pending:0,running:0},runs:[],attempts:[],statistics:{sources:0,found:0,accepted:0,imported:0},spending:{dayUsd:0,monthUsd:0,byType:[],timezone:'Europe/Moscow'},lastSignalAt:null,nextSignalAt:null,cloudStatus:''}});
+  return route.fulfill({status:503,json:{error:'CI unavailable'}});
+ });
+ await page.goto('/');await page.getByRole('tab',{name:'Источники и правила'}).click();
+ const it=page.locator('article').filter({has:page.getByRole('heading',{name:'IT Manager'})});
+ const news=page.locator('article').filter({has:page.getByRole('heading',{name:'Журналист'})});
+ await it.getByText('ИТ',{exact:true}).click();await it.getByLabel('Руководитель проектов').first().check();
+ await it.getByText('Другое',{exact:true}).click();await expect(it.getByLabel('Руководитель проектов').last()).toBeChecked();
+ await news.getByText('ИТ',{exact:true}).click();await expect(news.getByLabel('Руководитель проектов').first()).not.toBeChecked();
+ await it.getByRole('button',{name:'Сохранить роли HH'}).click();await expect.poll(()=>saved.length).toBe(1);
+ expect(saved[0]).toMatchObject({generation,roleId:1,revision:0,roleIds:['107']});
+ await news.getByLabel('CIO').check();await news.getByRole('button',{name:'Сохранить роли HH'}).click();await expect.poll(()=>saved.length).toBe(2);
+ expect(saved[1]).toMatchObject({generation,roleId:2,revision:0,roleIds:['36']});
+});

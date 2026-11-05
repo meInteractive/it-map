@@ -4,8 +4,8 @@ GO-314 — воспроизводимый аудит вызовов, не при
 
 | Инвентарь | Количество |
 |---|---|
-| TS/TSX файлов | 64 |
-| Прямых transport/form/link callsites | 135 |
+| TS/TSX файлов | 65 |
+| Прямых transport/form/link callsites | 138 |
 | JSX url bindings | 7 |
 | Download forwarding sites | 1 |
 | Callsites с динамическим URL | 67 |
@@ -41,6 +41,7 @@ GO-314 — воспроизводимый аудит вызовов, не при
 | catalog-operations | unported | Legacy UI action only | POST recalculate-rating/import agency/companies отдельно; GO-032 остаётся средним. | [internal/httpapi/handler.go](../../internal/httpapi/handler.go), [tasks/SPRINT-01.md](../../tasks/SPRINT-01.md) |
 | docs | unported | Repository documentation exists | GET /api/docs manifest/section handler в Go отсутствует; файлы docs не являются HTTP реализацией. | [internal/httpapi/handler.go](../../internal/httpapi/handler.go) |
 | dynamic | dynamic | Explicit unresolved forwarding/conditional sites | Не считать endpoints/методы разрешёнными по текстовому совпадению. RevisionEditor url и ExportCard bindings показаны отдельно; VacancyActions вычисляет url/method/apply rewrite, ImportCard выбирает companies/vacancies. Полный branch-aware HTTP golden ещё нужен. | [frontend/features/settings/Profile.tsx](../../frontend/features/settings/Profile.tsx), [frontend/features/settings/Transfer.tsx](../../frontend/features/settings/Transfer.tsx), [frontend/features/vacancies/Vacancies.tsx](../../frontend/features/vacancies/Vacancies.tsx) |
+| hh | partial | Публичный справочник и настройки фильтра HH | GO-425: применение сохранённых ролей при запуске Actor и фактическая фильтрация ещё не подтверждены. | [TestHHProfessionalRolesHTTP](../../internal/httpapi/hh_professional_roles_test.go), [TestHHRoleSettingsHTTP](../../internal/httpapi/hh_role_settings_test.go), [TestMariaDBSchedulerSettingsHHRoleSelectionsDisposable](../../internal/storage/scheduler_hh_role_settings_integration_test.go), [tests/browser-resume/resume.spec.ts](../../tests/browser-resume/resume.spec.ts) |
 
 Go HTTP partial означает только явно реализованный subset при переданных зависимостях. Unit-тест, наличие handler или pure source validator не подменяют actual SQL/HTTP parity. Для unported семейств Go router оставляет authenticated fail-closed ответ; методы/ошибки полной исходной реализации ещё не перенесены.
 

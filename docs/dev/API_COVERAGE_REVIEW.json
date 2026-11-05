@@ -734,11 +734,35 @@
           "file": "frontend/features/vacancies/Vacancies.tsx"
         }
       ]
+    },
+    {
+      "id": "hh",
+      "implementation": "partial",
+      "level": "Публичный справочник и настройки фильтра HH",
+      "gap": "GO-425: применение сохранённых ролей при запуске Actor и фактическая фильтрация ещё не подтверждены.",
+      "evidence": [
+        {
+          "file": "internal/httpapi/hh_professional_roles_test.go",
+          "symbol": "TestHHProfessionalRolesHTTP"
+        },
+        {
+          "file": "internal/httpapi/hh_role_settings_test.go",
+          "symbol": "TestHHRoleSettingsHTTP"
+        },
+        {
+          "file": "internal/storage/scheduler_hh_role_settings_integration_test.go",
+          "symbol": "TestMariaDBSchedulerSettingsHHRoleSelectionsDisposable",
+          "required": true
+        },
+        {
+          "file": "tests/browser-resume/resume.spec.ts"
+        }
+      ]
     }
   ],
   "sourceHashes": {
     "frontend/api/client.ts": "b6880480b3eed65bf7caa043f5e41c8e899b672e5c9629666ccbd6d8f80c14ad",
-    "internal/httpapi/handler.go": "427c46a4d3ab118730974199aaa2aaf792d8e6574efa9c12a5dd7aef5eafedd5",
+    "internal/httpapi/handler.go": "18d4d5602f483459997607ec2e06e9c8cd9a78cf72eb4d8fd780d2d7c4e78b50",
     "server/routes/index.js": "6134004f682975cb51ea13cd2ec4de8e85a5957deff6a5392fbad3fd70ccb1e4"
   },
   "clientExports": [
