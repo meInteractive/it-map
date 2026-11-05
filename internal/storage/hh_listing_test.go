@@ -164,7 +164,7 @@ func TestMariaDBHHListingDisposable(t *testing.T) {
 		}
 	})
 	t.Run("non-Moscow and unknown locations never reach classification", func(t *testing.T) {
-		moscow := hhScanItem(123, "CI Moscow")
+		moscow := json.RawMessage(strings.Replace(string(hhScanItem(123, "CI Moscow")), `"location":"Москва"`, `"location":"Москве"`, 1))
 		other := json.RawMessage(strings.Replace(string(hhScanItem(124, "CI SPB")), `"location":"Москва"`, `"location":"Санкт-Петербург"`, 1))
 		unknown := json.RawMessage(strings.Replace(string(hhScanItem(125, "CI unknown")), `,"location":"Москва"`, ``, 1))
 		p := &hhScanProvider{requireMoscow: true, rows: [][]json.RawMessage{{moscow, other, unknown}}}
