@@ -109,7 +109,7 @@ func (p *hhScanProvider) DatasetItems(_ context.Context, id string, offset int64
 }
 func hhScanItem(id int, title string) json.RawMessage {
 	posted := time.Now().In(time.FixedZone("MSK", 3*60*60)).AddDate(0, 0, -1).Format(time.RFC3339)
-	return json.RawMessage(fmt.Sprintf(`{"title":%q,"url":"https://hh.ru/vacancy/%d?utm_source=ci","vacancy_id":%d,"employer_id":456,"date_posted":%q}`, title, id, id, posted))
+	return json.RawMessage(fmt.Sprintf(`{"title":%q,"url":"https://hh.ru/vacancy/%d?utm_source=ci","vacancy_id":%d,"employer_id":456,"location":"Москва","date_posted":%q}`, title, id, id, posted))
 }
 func hhScanFixture(t *testing.T, p *hhScanProvider) (apifyRuntimeFixture, *schedulerFixture, *parser.JobLease, parser.HHListingExecutor) {
 	t.Helper()
@@ -132,6 +132,17 @@ func hhScanFixture(t *testing.T, p *hhScanProvider) (apifyRuntimeFixture, *sched
 	return f, s, lease, parser.HHListingExecutor{Settings: apifysettings.NewRepository(s.db, "CI_SECRET"), Runtime: runtime, Owner: "CI_OWNER"}
 }
 func TestMariaDBHHListingDisposable(t *testing.T) {
+	t.Run("non-Moscow and unknown locations never reach classification", func(t *testing.T) {
+		moscow := hhScanItem(123, "CI Moscow")
+		other := json.RawMessage(strings.Replace(string(hhScanItem(124, "CI SPB")), `"location":"Москва"`, `"location":"Санкт-Петербург"`, 1))
+		unknown := json.RawMessage(strings.Replace(string(hhScanItem(125, "CI unknown")), `,"location":"Москва"`, ``, 1))
+		p := &hhScanProvider{requireMoscow: true, rows: [][]json.RawMessage{{moscow, other, unknown}}}
+		f, s, lease, e := hhScanFixture(t, p)
+		progress, err := e.Execute(f.ctx, lease)
+		if err != nil || progress.Candidates != 1 || progress.OutsideMoscow != 1 || progress.Quarantined != 1 || s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='classify_title'") != 1 {
+			t.Fatal("location guard", progress, err)
+		}
+	})
 	t.Run("legacy actor continues but a new unfiltered actor is forbidden", func(t *testing.T) {
 		items := make([]json.RawMessage, 11)
 		for i := range items {

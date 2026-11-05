@@ -21,9 +21,9 @@ type hhCheckedRuntime interface {
 	WithCheck(func(context.Context) error) apifyruns.Service
 }
 type HHListingProgress struct {
-	Page, Offset, Candidates, Created, Quarantined int64
-	Done                                           bool
-	PartialCode                                    string
+	Page, Offset, Candidates, Created, Quarantined, OutsideMoscow int64
+	Done                                                          bool
+	PartialCode                                                   string
 }
 type HHListingExecutor struct {
 	Settings       apifysettings.Repository
@@ -34,7 +34,7 @@ type HHListingExecutor struct {
 }
 
 func hhListingProgress(c hhListingCursor) HHListingProgress {
-	return HHListingProgress{c.Page, c.Offset, c.Candidates, c.Created, c.Quarantined, c.Done, c.PartialCode}
+	return HHListingProgress{Page: c.Page, Offset: c.Offset, Candidates: c.Candidates, Created: c.Created, Quarantined: c.Quarantined, OutsideMoscow: c.OutsideMoscow, Done: c.Done, PartialCode: c.PartialCode}
 }
 
 // Execute обрабатывает одну raw-порцию под уже полученной lease. Он не запускает
@@ -210,6 +210,15 @@ func (e HHListingExecutor) Execute(ctx context.Context, lease *JobLease) (HHList
 			if dateErr != nil {
 				err = dateErr
 				code = "invalid_publication_date"
+			} else {
+				moscow, cityErr := hhMoscowLocation(raw)
+				if cityErr != nil {
+					err = cityErr
+					code = "invalid_location"
+				} else if !moscow {
+					next.OutsideMoscow++
+					continue
+				}
 			}
 			if err == nil {
 				var id int64
