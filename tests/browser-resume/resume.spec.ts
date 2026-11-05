@@ -16,7 +16,7 @@ test('ручное продолжение отправляет только вы
  await page.goto('/');
  const diagnostics=page.getByRole('tab',{name:'Диагностика'});
  if(isMobile)await diagnostics.tap();else await diagnostics.click();
- const button=page.getByRole('button',{name:'Продолжить сохранённый список'});
+ const button=page.getByRole('button',{name:'Продолжить HH'});
  await expect(button).toBeEnabled();
  if(isMobile)await button.tap();else await button.click();
  await expect.poll(()=>calls.length).toBe(1);
@@ -38,7 +38,7 @@ test('при приостановленном диспетчере продол�
  await page.goto('/');
  const diagnostics=page.getByRole('tab',{name:'Диагностика'});
  if(isMobile)await diagnostics.tap();else await diagnostics.click();
- await expect(page.getByRole('button',{name:'Продолжить сохранённый список'})).toBeDisabled();
+ await expect(page.getByRole('button',{name:'Продолжить HH'})).toBeDisabled();
  expect(posts).toBe(0);
 });
 

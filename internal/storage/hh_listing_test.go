@@ -26,6 +26,7 @@ type hhScanProvider struct {
 	rows         [][]json.RawMessage
 	afterRead    func()
 	modified     bool
+	pollSuccess  bool
 }
 
 func (p *hhScanProvider) Account(ctx context.Context) (apify.BillingAccount, error) {
@@ -48,6 +49,9 @@ func (p *hhScanProvider) Start(_ context.Context, source string, o apify.HHOptio
 	return hhScanRun(o.Page), nil
 }
 func (p *hhScanProvider) Run(context.Context, string) (apify.ActorRun, error) {
+	if p.pollSuccess {
+		return hhScanRun(0), nil
+	}
 	return apify.ActorRun{}, fmt.Errorf("terminal run should not need poll")
 }
 func hhScanRun(page int64) apify.ActorRun {

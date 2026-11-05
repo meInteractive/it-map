@@ -70,7 +70,7 @@ func SchedulerResumeHandler(manager *auth.Manager, runner SchedulerResumeRunner)
 			return
 		}
 		if errors.Is(err, parser.ErrHHListingChanged) {
-			jsonReply(w, 409, map[string]string{"error": "Для этого задания нет доступного сохранённого списка.", "code": "resume_unavailable"})
+			jsonReply(w, 409, map[string]string{"error": "Для этого задания нет доступного запуска или сохранённого списка.", "code": "resume_unavailable"})
 			return
 		}
 		if errors.Is(err, parser.ErrRunGeneration) {

@@ -5,6 +5,10 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
+
+	"itmap/internal/apifyruns"
+	"itmap/internal/apifysettings"
 )
 
 // PrepareResume фиксирует поколение до чтения запроса и запускает только одно
@@ -61,7 +65,11 @@ func (c CycleControl) PrepareResume(ctx context.Context) (func(context.Context, 
 			return nil, settingsFailure(ctx, err)
 		}
 		var cursor hhListingCursor
-		if actual != generation || json.Unmarshal(data, &cursor) != nil || cursor.Version != 1 || cursor.Done || cursor.RunID == "" || cursor.DatasetID == "" || cursor.Metadata == nil {
+		if actual != generation || json.Unmarshal(data, &cursor) != nil || cursor.Version != 1 || cursor.Done {
+			return nil, ErrHHListingChanged
+		}
+		savedDataset := cursor.RunID != "" && cursor.DatasetID != "" && cursor.Metadata != nil
+		if !savedDataset && (cursor.RunID != "" || cursor.DatasetID != "" || cursor.Metadata != nil) {
 			return nil, ErrHHListingChanged
 		}
 		row, err := readSettingsRow(ctx, tx, false)
@@ -83,8 +91,25 @@ func (c CycleControl) PrepareResume(ctx context.Context) (func(context.Context, 
 		if err != nil {
 			return nil, err
 		}
-		w.ResumePreviousDataset = true
-		w.ResumeJobID = jobID
+		if savedDataset {
+			w.ResumePreviousDataset = true
+			w.ResumeJobID = jobID
+		} else {
+			// The Actor already exists: permit only a status/read continuation.
+			// No new reservation or paid Actor start is possible in this cycle.
+			existing, checkErr := (apifyruns.Repository{DB: c.DB, Settings: w.Settings}).ExistingRun(ctx, cursor.Operation, fmt.Sprintf("listing:go399:%s:%d", jobID, cursor.Page), cursor.options())
+			if errors.Is(checkErr, apifysettings.ErrChanged) || errors.Is(checkErr, apifysettings.ErrGeneration) {
+				return nil, ErrHHListingChanged
+			}
+			if checkErr != nil {
+				return nil, checkErr
+			}
+			if !existing {
+				return nil, ErrHHListingChanged
+			}
+			w.TargetJobID = jobID
+			w.DenyActorStarts = true
+		}
 		result, err := w.Cycle(ctx, WorkerOptions{Run: RunOptions{RequestID: requestID, Trigger: "manual"}, MaxJobs: 1})
 		if err != nil {
 			return nil, err
