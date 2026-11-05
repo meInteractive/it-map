@@ -15,6 +15,7 @@ import (
 var ErrHHListingData = errors.New("неподдерживаемая запись HH")
 var ErrHHListingChanged = errors.New("источник или прогресс HH изменились")
 var errHHLocation = errors.New("неизвестный город вакансии HH")
+var ErrHHRoleFilter = errors.New("нет подтверждённого фильтра направлений HH")
 
 // hhMoscowLocation допускает только явно указанный город Москву.
 // Отсутствующие или неоднозначные значения отправляются в карантин.

@@ -132,6 +132,37 @@ func hhScanFixture(t *testing.T, p *hhScanProvider) (apifyRuntimeFixture, *sched
 	return f, s, lease, parser.HHListingExecutor{Settings: apifysettings.NewRepository(s.db, "CI_SECRET"), Runtime: runtime, Owner: "CI_OWNER"}
 }
 func TestMariaDBHHListingDisposable(t *testing.T) {
+	t.Run("missing or unmapped roles never start an Actor", func(t *testing.T) {
+		p := &hhScanProvider{rows: [][]json.RawMessage{{hhScanItem(123, "CI_TITLE")}}}
+		f, s, lease, listing := hhScanFixture(t, p)
+		s.exec("UPDATE vacancy_role_classification SET parsing_enabled=0 WHERE role_id=991303")
+		if _, err := listing.Execute(f.ctx, lease); !errors.Is(err, parser.ErrHHRoleFilter) || p.starts != 0 || p.accounts != 0 {
+			t.Fatal("missing role admitted", err, p.starts, p.accounts)
+		}
+		s.exec("UPDATE vacancy_role_classification SET parsing_enabled=1 WHERE role_id=991303")
+		s.exec("UPDATE vacancy_roles SET stable_key='CI_UNKNOWN_ROLE' WHERE id=991303")
+		if _, err := listing.Execute(f.ctx, lease); !errors.Is(err, parser.ErrHHRoleFilter) || p.starts != 0 || p.accounts != 0 {
+			t.Fatal("unknown role admitted", err, p.starts, p.accounts)
+		}
+		if s.count("SELECT COUNT(*) FROM apify_runs") != 0 {
+			t.Fatal("rejected scope reserved an Actor")
+		}
+	})
+	t.Run("role change during account check denies Actor", func(t *testing.T) {
+		p := &hhScanProvider{rows: [][]json.RawMessage{{hhScanItem(123, "CI_TITLE")}}}
+		f, s, lease, listing := hhScanFixture(t, p)
+		changed := false
+		p.afterAccount = func() {
+			s.exec("UPDATE vacancy_role_classification SET parsing_enabled=0 WHERE role_id=991303")
+			changed = true
+		}
+		if _, err := listing.Execute(f.ctx, lease); !errors.Is(err, parser.ErrHHRoleFilter) || !changed || p.starts != 0 {
+			t.Fatal("changed roles admitted", err, changed, p.starts)
+		}
+		if s.count("SELECT COUNT(*) FROM apify_runs") != 0 {
+			t.Fatal("changed scope reserved an Actor")
+		}
+	})
 	t.Run("non-Moscow and unknown locations never reach classification", func(t *testing.T) {
 		moscow := json.RawMessage(strings.Replace(string(hhScanItem(123, "CI Moscow")), `"location":"Москва"`, `"location":"Москве"`, 1))
 		other := json.RawMessage(strings.Replace(string(hhScanItem(124, "CI SPB")), `"location":"Москва"`, `"location":"Санкт-Петербург"`, 1))

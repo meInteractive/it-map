@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
 	"time"
 
 	"itmap/internal/apifyruns"
@@ -78,15 +79,37 @@ func (e HHListingExecutor) Execute(ctx context.Context, lease *JobLease) (HHList
 	workCtx, cancel := context.WithDeadline(ctx, time.UnixMilli(job.LockedUntil))
 	defer cancel()
 
+	key := fmt.Sprintf("listing:%s:%d", plan.ID, cur.Page)
+	requireCurrentRoles := false
+	if cur.PreviousOperation == nil {
+		// Новый Actor запускается только с Москвой и актуальным фильтром ролей.
+		// Для восстановления оплаченного Actor сохраняются исходные параметры.
+		exists, err := (apifyruns.Repository{DB: e.Settings.DB, Settings: e.Settings}).ExistingRun(workCtx, cur.Operation, key, cur.options())
+		if err != nil {
+			return hhListingProgress(cur), err
+		}
+		if !exists {
+			if !cur.MoscowFilter {
+				return hhListingProgress(cur), ErrHHListingChanged
+			}
+			requireCurrentRoles = true
+		}
+	}
 	runtime := e.Runtime
 	check := func(active context.Context) error {
 		return lease.WithinOwned(active, func(tx *sql.Tx) error {
-			_, hash, _, err := e.hhScope(active, tx, job, cur.Operation)
+			_, hash, keys, err := e.hhScope(active, tx, job, cur.Operation)
 			if err != nil {
 				return err
 			}
 			if hash != cur.SchedulerHash {
 				return ErrHHListingChanged
+			}
+			if requireCurrentRoles {
+				q := hhTitleQuery(keys)
+				if q == nil || !reflect.DeepEqual(q, cur.TitleQuery) {
+					return ErrHHRoleFilter
+				}
 			}
 			return nil
 		})
@@ -96,18 +119,6 @@ func (e HHListingExecutor) Execute(ctx context.Context, lease *JobLease) (HHList
 	}
 	if err := check(workCtx); err != nil {
 		return hhListingProgress(cur), err
-	}
-	key := fmt.Sprintf("listing:%s:%d", plan.ID, cur.Page)
-	if !cur.MoscowFilter && cur.PreviousOperation == nil {
-		// Old cursors may read their already paid Actor, but can never start
-		// a new unfiltered Actor, including after an interrupted first POST.
-		exists, err := (apifyruns.Repository{DB: e.Settings.DB, Settings: e.Settings}).ExistingRun(workCtx, cur.Operation, key, cur.options())
-		if err != nil {
-			return hhListingProgress(cur), err
-		}
-		if !exists {
-			return hhListingProgress(cur), ErrHHListingChanged
-		}
 	}
 	var record apifyruns.Record
 	var slice apifyruns.DatasetSlice
