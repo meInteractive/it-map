@@ -67,6 +67,7 @@ type hhListingCursor struct {
 	Done                             bool
 	PartialCode                      string
 	Candidates, Created, Quarantined int64
+	OutsideMoscow                    int64 `json:",omitempty"`
 	Quarantine                       []hhQuarantine
 }
 

@@ -14,6 +14,30 @@ import (
 
 var ErrHHListingData = errors.New("неподдерживаемая запись HH")
 var ErrHHListingChanged = errors.New("источник или прогресс HH изменились")
+var errHHLocation = errors.New("неизвестный город вакансии HH")
+
+// hhMoscowLocation допускает только явно указанный город Москву.
+// Отсутствующие или неоднозначные значения отправляются в карантин.
+func hhMoscowLocation(raw json.RawMessage) (bool, error) {
+	var fields map[string]json.RawMessage
+	var value string
+	if json.Unmarshal(raw, &fields) != nil || fields == nil || json.Unmarshal(fields["location"], &value) != nil || !utf8.ValidString(value) || strings.ContainsRune(value, 0) {
+		return false, errHHLocation
+	}
+	value = strings.TrimSpace(value)
+	if value == "" || utf8.RuneCountInString(value) > 500 {
+		return false, errHHLocation
+	}
+	city := strings.ToLower(strings.TrimSpace(strings.SplitN(value, ",", 2)[0]))
+	city = strings.TrimSpace(strings.TrimPrefix(strings.TrimPrefix(city, "г. "), "г "))
+	if city == "москва" || city == "москве" || city == "moscow" {
+		return true, nil
+	}
+	if city == "россия" || city == "russia" || city == "удалённо" || city == "удаленно" || city == "remote" || strings.Contains(strings.ToLower(value), "москв") || strings.Contains(strings.ToLower(value), "moscow") {
+		return false, errHHLocation
+	}
+	return false, nil
+}
 
 type hhListingVacancy struct{ Title, URL, ExternalID string }
 
