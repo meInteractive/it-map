@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"context"
+	"itmap/internal/apifyruns"
 	"itmap/internal/apifysettings"
 	"itmap/internal/auth"
 	"itmap/internal/integrations/apify"
@@ -11,6 +12,13 @@ import (
 	"testing"
 	"time"
 )
+
+type apifyUsageProbe struct{ calls int }
+
+func (p *apifyUsageProbe) ReadUsage(context.Context) (apifyruns.UsageView, error) {
+	p.calls++
+	return apifyruns.UsageView{Profiles: map[string]*apifyruns.UsageProfile{"free": nil, "starter": nil}, Active: []apifyruns.ActiveRun{}}, nil
+}
 
 type apifySettingsProbe struct {
 	writes     int
@@ -80,7 +88,8 @@ func TestApifySettingsHTTPAccessAndValidation(t *testing.T) {
 	}
 	p := &apifySettingsProbe{}
 	check := &apifyCheckProbe{}
-	handler := NewHandlerWithOptions(nil, Options{Auth: m, ApifySettings: p, ApifyAccountCheck: check})
+	usage := &apifyUsageProbe{}
+	handler := NewHandlerWithOptions(nil, Options{Auth: m, ApifySettings: p, ApifyAccountCheck: check, ApifyUsage: usage})
 	call := func(method, path, login, origin, body string) *httptest.ResponseRecorder {
 		r := httptest.NewRequest(method, "https://example.com"+path, strings.NewReader(body))
 		if login != "" {
@@ -98,6 +107,7 @@ func TestApifySettingsHTTPAccessAndValidation(t *testing.T) {
 		method, path, login, origin, body string
 		status                            int
 	}{
+		{"GET", "/api/apify/usage", "", "", "", 401}, {"GET", "/api/apify/usage", "demo", "", "", 403}, {"GET", "/api/apify/usage", "eugene", "", "", 200}, {"POST", "/api/apify/usage", "eugene", "", "{}", 405},
 		{"GET", "/api/apify/settings", "", "", "", 401}, {"GET", "/api/apify/settings", "demo", "", "", 403},
 		{"GET", "/api/apify/hh-sources", "eugene", "", "", 200},
 		{"PUT", "/api/apify/hh-sources", "eugene", "", "{}", 405},
@@ -134,6 +144,9 @@ func TestApifySettingsHTTPAccessAndValidation(t *testing.T) {
 	}
 	if p.writes != 4 || !p.generation {
 		t.Fatalf("unexpected writes=%d generation=%v", p.writes, p.generation)
+	}
+	if usage.calls != 1 {
+		t.Fatalf("unexpected usage calls=%d", usage.calls)
 	}
 	if check.calls != 2 {
 		t.Fatalf("unexpected check calls=%d", check.calls)
