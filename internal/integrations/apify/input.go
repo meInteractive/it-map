@@ -25,6 +25,7 @@ type HHOptions struct {
 	Detail            bool
 	OrderBy           *string
 	TitleQuery        *string
+	ProfessionalRoles []string
 	DateFrom, DateTo  *string
 	DateFilterApplied bool
 	MoscowFilter      bool
@@ -125,6 +126,16 @@ func specialQuery(raw string) string {
 // HHInput covers canonical public HTTPS HH source URLs. It preserves query
 // insertion/set semantics, since the serialized input is part of legacy hashes.
 func HHInput(source string, options HHOptions) (StartInput, error) {
+	if options.ProfessionalRoles != nil {
+		if options.Detail || options.TitleQuery != nil || len(options.ProfessionalRoles) == 0 || len(options.ProfessionalRoles) > 500 {
+			return StartInput{}, apiError("apify_data", 400)
+		}
+		for _, role := range options.ProfessionalRoles {
+			if !digits.MatchString(role) || len(role) > 12 || role[0] == '0' {
+				return StartInput{}, apiError("apify_data", 400)
+			}
+		}
+	}
 	if options.DateFilterApplied {
 		if (options.DateFrom == nil) != (options.DateTo == nil) {
 			return StartInput{}, apiError("apify_data", 400)
@@ -169,6 +180,9 @@ func HHInput(source string, options HHOptions) (StartInput, error) {
 	path := parsed.EscapedPath()
 	vacancy := vacancyPath.FindStringSubmatch(path)
 	employer := employerPath.FindStringSubmatch(path)
+	if options.ProfessionalRoles != nil && vacancy != nil {
+		return StartInput{}, apiError("apify_scope", 400)
+	}
 	if options.MoscowFilter && !options.Detail && vacancy != nil {
 		return StartInput{}, apiError("apify_scope", 400)
 	}
@@ -194,6 +208,22 @@ func HHInput(source string, options HHOptions) (StartInput, error) {
 		parsed.Host = "hh.ru"
 		if options.MoscowFilter {
 			pairs = querySet(pairs, "area", "1")
+		}
+		if options.ProfessionalRoles != nil {
+			filtered := pairs[:0]
+			for _, p := range pairs {
+				if p.key != "text" && p.key != "professional_role" {
+					filtered = append(filtered, p)
+				}
+			}
+			pairs = filtered
+			seen := make(map[string]bool, len(options.ProfessionalRoles))
+			for _, role := range options.ProfessionalRoles {
+				if !seen[role] {
+					pairs = append(pairs, pair{"professional_role", role})
+					seen[role] = true
+				}
+			}
 		}
 		pairs = querySet(pairs, "page", strconv.FormatInt(options.Page, 10))
 		pairs = querySet(pairs, "per_page", "100")
