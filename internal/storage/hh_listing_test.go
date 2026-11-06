@@ -29,6 +29,7 @@ type hhScanProvider struct {
 	afterRead     func()
 	modified      bool
 	pollSuccess   bool
+	startPending  bool
 	requireMoscow bool
 }
 
@@ -59,7 +60,12 @@ func (p *hhScanProvider) Start(_ context.Context, source string, o apify.HHOptio
 		}
 	}
 	p.starts++
-	return hhScanRun(o.Page), nil
+	run := hhScanRun(o.Page)
+	if p.startPending {
+		run.Status = "RUNNING"
+		run.Raw = json.RawMessage(fmt.Sprintf(`{"id":%q,"defaultDatasetId":%q,"status":"RUNNING","userId":"CIRuntime","usageTotalUsd":0.02}`, run.ID, run.DefaultDatasetID))
+	}
+	return run, nil
 }
 func (p *hhScanProvider) Run(context.Context, string) (apify.ActorRun, error) {
 	if p.pollSuccess {
