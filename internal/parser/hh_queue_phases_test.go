@@ -61,7 +61,7 @@ func TestQueuePhaseInputValidation(t *testing.T) {
 			t.Fatalf("invalid phase %s was not rejected: %v", phase, err)
 		}
 	}
-	if _, err := r.ClaimJob(nil, "", ClaimOptions{HHScanPhase: "launch", VerifiedHHOnly: false}); err != ErrJobInput {
+	if _, err := r.ClaimJob(context.Background(), "", ClaimOptions{HHScanPhase: "launch", VerifiedHHOnly: false}); err != ErrJobInput {
 		t.Fatal("unverified launch phase accepted", err)
 	}
 }
