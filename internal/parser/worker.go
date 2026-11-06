@@ -220,7 +220,7 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 			return result, context.DeadlineExceeded
 		}
 		allowHH := hhStages < 5
-		claim := ClaimOptions{Types: workerTypes, SourceID: &source, Lease: jobDuration, AllowApify: &allowHH}
+		claim := ClaimOptions{Types: workerTypes, SourceID: &source, Lease: jobDuration, AllowApify: &allowHH, VerifiedHHOnly: w.ScheduleSources}
 		if w.ResumeJobID != "" {
 			if !w.ResumePreviousDataset {
 				status = "partial"
