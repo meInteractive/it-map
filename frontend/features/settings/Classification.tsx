@@ -1,4 +1,5 @@
 import ApifySettings from './Apify';
+import HHRoleSettings from './HHRoleSettings';
 import Scheduler from './Scheduler';
 import '../../styles/parser.css';
 import FirecrawlSettings from './Firecrawl';
@@ -36,7 +37,7 @@ function ParsingRole({role}: {role:ClassificationRole}) {
 
 export function ParsingSettings({onNavigate}:{onNavigate?:(tab:string)=>void}={}){
  const q=useApi<ClassificationSettings>('/api/classification/settings');
- return <section className="parser-settings"><Scheduler onSettings={onNavigate} roles={<section className="parser-role-settings"><h2>Направления отбора</h2><p className="resume-hint">Включённые корневые роли с сохранённым промтом участвуют в классификации заголовков. Настройки общие для всех пользователей.</p><State loading={!q.data&&q.loading} error={q.error}>{q.data&&<div className="settings-grid">{q.data.roles.map(role=><ParsingRole key={role.roleId} role={role}/>)}{!q.data.roles.length&&<p>Создайте корневую роль в справочнике.</p>}</div>}</State>{onNavigate&&<button className="settings-button secondary" type="button" onClick={()=>onNavigate('prompts')}>Открыть промты обработки</button>}</section>} services={<><ApifySettings/><FirecrawlSettings/></>} tools={(tool,onChange)=><ParsingTools tool={tool} onChange={onChange} enabled={!!q.data?.roles.some(role=>role.enabled&&!!role.markdown.trim())}/>}/></section>;
+ return <section className="parser-settings"><Scheduler onSettings={onNavigate} roles={<><HHRoleSettings/><section className="parser-role-settings"><h2>Направления отбора</h2><p className="resume-hint">Включённые корневые роли с сохранённым промтом участвуют в классификации заголовков. Настройки общие для всех пользователей.</p><State loading={!q.data&&q.loading} error={q.error}>{q.data&&<div className="settings-grid">{q.data.roles.map(role=><ParsingRole key={role.roleId} role={role}/>)}{!q.data.roles.length&&<p>Создайте корневую роль в справочнике.</p>}</div>}</State>{onNavigate&&<button className="settings-button secondary" type="button" onClick={()=>onNavigate('prompts')}>Открыть промты обработки</button>}</section></>} services={<><ApifySettings/><FirecrawlSettings/></>} tools={(tool,onChange)=><ParsingTools tool={tool} onChange={onChange} enabled={!!q.data?.roles.some(role=>role.enabled&&!!role.markdown.trim())}/>}/></section>;
 }
 
 export function ClassificationResultView({result}:{result:ClassificationResult}) {

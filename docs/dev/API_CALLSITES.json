@@ -1,7 +1,7 @@
 {
   "scope": "Current frontend/web direct transport sites and reviewed JSX/download bindings; no runtime/golden coverage inferred",
   "typescript": "5.9.3",
-  "files": 64,
+  "files": 65,
   "transportModule": "frontend/api/client.ts",
   "sites": [
     {
@@ -587,7 +587,7 @@
     {
       "id": "1a4cdcb91e79a1a4",
       "file": "frontend/features/settings/Classification.tsx",
-      "line": 23,
+      "line": 24,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
@@ -603,7 +603,7 @@
     {
       "id": "2a25aa9f8dcd45a0",
       "file": "frontend/features/settings/Classification.tsx",
-      "line": 29,
+      "line": 30,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -619,7 +619,7 @@
     {
       "id": "4555aacd79ce3e68",
       "file": "frontend/features/settings/Classification.tsx",
-      "line": 34,
+      "line": 35,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
@@ -635,7 +635,7 @@
     {
       "id": "2a25aa9f8dcd45a0-2",
       "file": "frontend/features/settings/Classification.tsx",
-      "line": 38,
+      "line": 39,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -651,7 +651,7 @@
     {
       "id": "cd15aa359895c579",
       "file": "frontend/features/settings/Classification.tsx",
-      "line": 50,
+      "line": 51,
       "call": "mutate",
       "method": "POST",
       "methodExpression": "'POST'",
@@ -997,6 +997,54 @@
       ],
       "families": [
         "firecrawl"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "c86ff43ac1686e94",
+      "file": "frontend/features/settings/HHRoleSettings.tsx",
+      "line": 20,
+      "call": "mutate",
+      "method": "PUT",
+      "methodExpression": "'PUT'",
+      "urlExpression": "'/api/hh/role-settings'",
+      "literalFragments": [
+        "/api/hh/role-settings"
+      ],
+      "families": [
+        "hh"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "a8f34f8c05a10fe9",
+      "file": "frontend/features/settings/HHRoleSettings.tsx",
+      "line": 26,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/hh/role-settings'",
+      "literalFragments": [
+        "/api/hh/role-settings"
+      ],
+      "families": [
+        "hh"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "95075e33fb660242",
+      "file": "frontend/features/settings/HHRoleSettings.tsx",
+      "line": 26,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/hh/professional-roles'",
+      "literalFragments": [
+        "/api/hh/professional-roles"
+      ],
+      "families": [
+        "hh"
       ],
       "dynamicURL": false
     },

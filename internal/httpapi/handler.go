@@ -43,6 +43,7 @@ type Options struct {
 	Contacts             HiringContactStore
 	Roles                RoleReader
 	HHProfessionalRoles  HHProfessionalRolesReader
+	HHRoleSettings       HHRoleSettingsStore
 	Vacancies            VacancyLister
 	VacancyDetails       VacancyDetailer
 	VacancyCreates       ManualVacancyCreator
@@ -116,6 +117,7 @@ func NewHandlerWithOptions(logger *slog.Logger, opts Options) http.Handler {
 		mux.HandleFunc("GET /logout", LogoutHandler())
 		mux.HandleFunc("GET /api/session", SessionHandler(opts.Auth))
 		mux.HandleFunc("GET /api/hh/professional-roles", HHProfessionalRolesHandler(opts.Auth, opts.HHProfessionalRoles))
+		mux.HandleFunc("/api/hh/role-settings", HHRoleSettingsHandler(opts.Auth, opts.HHRoleSettings, opts.HHProfessionalRoles))
 		mux.HandleFunc("/api/openai", OpenAISettingsHandler(opts.Auth, opts.OpenAISettings, opts.AIConnectionTests))
 		mux.HandleFunc("/api/openai/", OpenAISettingsHandler(opts.Auth, opts.OpenAISettings, opts.AIConnectionTests))
 		mux.HandleFunc("/api/apify/", ApifySettingsHandler(opts.Auth, opts.ApifySettings, opts.ApifyAccountCheck, opts.ApifyUsage))

@@ -49,6 +49,7 @@ func httpHandler(logger *slog.Logger, db *sql.DB, manager *auth.Manager) http.Ha
 		opts.RouterSettings = router
 		opts.AIConnectionTests = &aiproviders.ManualTests{Keys: aiKeys, Runner: aiproviders.NewGenerator(openAI, router), OpenAI: openAI, Router: router}
 		opts.SchedulerSettings = parser.SettingsRepository{DB: db}
+		opts.HHRoleSettings = parser.HHRoleSettingsRepository{DB: db}
 		opts.SchedulerJobActions = parser.JobActionsRepository{DB: db}
 		opts.SchedulerDashboard = parser.DashboardRepository{DB: db}
 		opts.SchedulerQueue = parser.QueueRepository{DB: db}
