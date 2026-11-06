@@ -1,0 +1,10 @@
+[Unit]
+Description=IT-MAP hourly parser pilot timer
+
+[Timer]
+OnCalendar=hourly
+Persistent=false
+Unit=itmap-scheduler-main.service
+
+[Install]
+WantedBy=timers.target
