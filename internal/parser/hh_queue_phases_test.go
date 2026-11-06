@@ -1,10 +1,14 @@
 package parser
 
-import "testing"
+import (
+	"context"
+	"encoding/json"
+	"testing"
+)
 
 func TestHHQueuePhaseUsesReservedOperationIdentity(t *testing.T) {
 	source := "hh"
-	job := Job{ID: "CI_SCAN", Type: "scan_source", Status: "pending", SourceID: &source}
+	job := Job{ID: "CI_SCAN", Type: "scan_source", Status: "pending", SourceID: &source, Payload: json.RawMessage("{}")}
 	now := int64(1780000000000)
 	settings := DefaultSettings()
 	settings.Enabled = true
@@ -53,7 +57,7 @@ func TestHHQueuePhaseUsesReservedOperationIdentity(t *testing.T) {
 func TestQueuePhaseInputValidation(t *testing.T) {
 	r := RunRepository{}
 	for _, phase := range []string{"start", "Launch", "all"} {
-		if _, err := r.ClaimJob(nil, "", ClaimOptions{HHScanPhase: phase, VerifiedHHOnly: true}); err != ErrJobInput {
+		if _, err := r.ClaimJob(context.Background(), "", ClaimOptions{HHScanPhase: phase, VerifiedHHOnly: true}); err != ErrJobInput {
 			t.Fatalf("invalid phase %s was not rejected: %v", phase, err)
 		}
 	}
