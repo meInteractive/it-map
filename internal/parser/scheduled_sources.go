@@ -53,16 +53,10 @@ func scheduleHH(ctx context.Context, runs RunRepository, settingsRepo apifysetti
 		}
 		return nil
 	}
-	var due int
-	if err = tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM scheduler_jobs WHERE generation=? AND status='pending' AND run_after<=? AND source_id='hh'`, runs.Generation, now).Scan(&due); err != nil {
-		return ErrSettingsStorage
-	}
-	if due != 0 {
-		if err = tx.Commit(); err != nil {
-			return storageError(ctx)
-		}
-		return nil
-	}
+	// Наличие любого pending HH больше не блокирует планирование других компаний.
+	// Незавершённые кандидаты и старые непроверенные курсоры не имеют права
+	// останавливать независимую очередь сканирования.
+	// NOT EXISTS ниже сохраняет защиту от двух активных scan_source одной компании.
 	rows, err := tx.QueryContext(ctx, `SELECT s.company_id,COALESCE(s.next_run_at,0),s.interval_days,s.last_success_at,COALESCE(s.last_attempt_at,0) FROM vacancy_source_parsing s JOIN company_identity c ON c.id=s.company_id WHERE s.source_id='hh' AND s.enabled=1 AND (COALESCE(s.next_run_at,0)<=? OR s.interval_days<>?) AND (?=0 OR EXISTS(SELECT 1 FROM company_user_state u WHERE u.company_name=c.company_name AND u.user_name=? AND u.favorite=1)) AND NOT EXISTS(SELECT 1 FROM scheduler_jobs j WHERE j.generation=? AND j.company_id=s.company_id AND j.source_id='hh' AND j.type='scan_source' AND j.status IN ('pending','running')) FOR UPDATE`, now, settings.IntervalDays, row.favorite, owner, runs.Generation)
 	if err != nil {
 		return ErrSettingsStorage
