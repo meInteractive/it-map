@@ -108,7 +108,9 @@ func (c CycleControl) PrepareTick(ctx context.Context) (func(context.Context, st
 			return nil, &SettingsError{Message: "Некорректный сигнал."}
 		}
 		if id == "" {
-			id = fmt.Sprintf("hour:%d", time.Now().UnixMilli()/3600000)
+			// Идемпотентность по 15-минутным сигналам: повтор одного слота
+			// не выполняет цикл дважды, следующий слот уже независим.
+			id = fmt.Sprintf("quarter:%d", time.Now().UnixMilli()/900000)
 		}
 		w, err := c.worker(generation)
 		if err != nil {
@@ -116,7 +118,7 @@ func (c CycleControl) PrepareTick(ctx context.Context) (func(context.Context, st
 		}
 		w.ScheduleSources = true
 		w.ContinueOnStageFailure = true
-		result, err := w.Cycle(ctx, WorkerOptions{Run: RunOptions{RequestID: id, Trigger: "automatic"}, MaxJobs: 50})
+		result, err := w.Cycle(ctx, WorkerOptions{Run: RunOptions{RequestID: id, Trigger: "automatic"}, MaxJobs: 50, QueueProfile: "balanced"})
 		if err != nil {
 			return nil, err
 		}
