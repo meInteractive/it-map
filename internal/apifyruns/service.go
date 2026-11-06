@@ -96,6 +96,12 @@ func operationKey(v apifysettings.OperationVersion, key string, options apify.HH
 	return "go398:" + hex.EncodeToString(hash[:]), nil
 }
 
+// HHOperationIdentity возвращает тот же ключ, которым резервируется
+// оплаченная операция. Не выполняет сеть, не создаёт резерв и не содержит токен.
+func HHOperationIdentity(v apifysettings.OperationVersion, key string, options apify.HHOptions) (string, error) {
+	return operationKey(v, key, options)
+}
+
 // Execute выполняет один старт либо продолжает известную операцию. Восстановленный
 // starting/uncertain без run ID никогда не получает повторный POST.
 func (s Service) Execute(ctx context.Context, v apifysettings.OperationVersion, key string, options apify.HHOptions) (Record, error) {
