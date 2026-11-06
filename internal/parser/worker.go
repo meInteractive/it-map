@@ -23,6 +23,7 @@ type Worker struct {
 	Generator              AIStageGenerator
 	Classifier             AIStageClassifier
 	ScheduleSources        bool
+	VerifiedHHOnly        bool
 	ContinueOnStageFailure bool
 	ResumePreviousDataset  bool
 	ResumeJobID            string
@@ -43,8 +44,9 @@ func NewWorker(runs RunRepository, settings apifysettings.Repository, providers 
 }
 
 type WorkerOptions struct {
-	Run     RunOptions
-	MaxJobs int
+	Run          RunOptions
+	MaxJobs      int
+	QueueProfile string // "" = прежний ручной цикл; balanced, launch, reconcile, pipeline
 }
 type WorkerResult struct {
 	Run       Run
@@ -79,6 +81,14 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 		return result, ErrRunInput
 	}
 	if !validTargetedCycle(w, options) {
+		return result, ErrRunInput
+	}
+	switch options.QueueProfile {
+	case "", "balanced", "launch", "reconcile", "pipeline":
+	default:
+		return result, ErrRunInput
+	}
+	if options.QueueProfile != "" && (w.ResumeJobID != "" || w.ResumePreviousDataset || w.TargetJobID != "" || w.CandidateScope != nil) {
 		return result, ErrRunInput
 	}
 	duration := options.Run.Duration
@@ -206,8 +216,24 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 		status = "partial"
 		return result, err
 	}
-	hhStages := 0
-	for result.Processed < options.MaxJobs {
+	// Старый ручной запуск сохраняет исходный порядок. Автоматический тик
+	// выполняет независимые логические очереди над одной SQL-таблицей:
+	// платный запуск, безопасный GET уже сохранённого Actor, AI/импорт.
+	phases := []string{options.QueueProfile}
+	if options.QueueProfile == "balanced" {
+		phases = []string{"launch", "reconcile", "pipeline"}
+	}
+	for _, phase := range phases {
+		phaseLimit := options.MaxJobs
+		switch phase {
+		case "launch":
+			phaseLimit = 1
+		case "reconcile":
+			phaseLimit = 5
+		}
+		phaseProcessed := 0
+		hhStages := 0
+		for result.Processed < options.MaxJobs && phaseProcessed < phaseLimit {
 		if err = bounded.Err(); err != nil {
 			status = "interrupted"
 			return result, err
@@ -220,7 +246,17 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 			return result, context.DeadlineExceeded
 		}
 		allowHH := hhStages < 5
-		claim := ClaimOptions{Types: workerTypes, SourceID: &source, Lease: jobDuration, AllowApify: &allowHH, VerifiedHHOnly: w.ScheduleSources}
+		claim := ClaimOptions{Types: workerTypes, SourceID: &source, Lease: jobDuration, AllowApify: &allowHH, VerifiedHHOnly: w.ScheduleSources || w.VerifiedHHOnly}
+		switch phase {
+		case "launch":
+			claim.Types = []string{"scan_source"}
+			claim.HHScanPhase = "launch"
+		case "reconcile":
+			claim.Types = []string{"scan_source"}
+			claim.HHScanPhase = "reconcile"
+		case "pipeline":
+			claim.Types = []string{"classify_title", "fetch_full_text", "extract_vacancy", "assign_roles", "import_vacancy", "score_relevance"}
+		}
 		if w.ResumeJobID != "" {
 			if !w.ResumePreviousDataset {
 				status = "partial"
@@ -243,9 +279,10 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 			return result, err
 		}
 		if lease == nil {
-			return result, nil
+			break
 		}
 		result.Processed++
+		phaseProcessed++
 		if kind := lease.Job().Type; kind == "scan_source" || kind == "fetch_full_text" {
 			hhStages++
 		}
@@ -267,6 +304,7 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 			releaseRun = false
 			status = "partial"
 			return result, errors.Join(executeErr, reportErr)
+		}
 		}
 	}
 	return result, nil
