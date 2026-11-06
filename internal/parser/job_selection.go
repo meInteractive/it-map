@@ -35,6 +35,7 @@ type claimView struct {
 	verifiedHH     map[hhCandidateKey]bool
 	blockedHHScans  map[string]bool
 	goOperationKeys map[string]string
+	orphanPaidScans map[string]bool
 	lastListingStart int64
 }
 
@@ -56,7 +57,7 @@ func claimTypes(requested []string) (map[string]bool, error) {
 	return out, nil
 }
 func readClaimView(ctx context.Context, tx *sql.Tx, generation string) (claimView, error) {
-	view := claimView{busy: map[int64]bool{}, pages: map[string]string{}, operations: map[string]bool{}, goOperationKeys: map[string]string{}}
+	view := claimView{busy: map[int64]bool{}, pages: map[string]string{}, operations: map[string]bool{}, goOperationKeys: map[string]string{}, orphanPaidScans: map[string]bool{}}
 	operationCreated := map[string]int64{}
 	rows, e := tx.QueryContext(ctx, "SELECT candidate_id FROM scheduler_jobs WHERE generation=? AND status='running' AND candidate_id IS NOT NULL", generation)
 	if e != nil {
@@ -132,7 +133,13 @@ func readClaimView(ctx context.Context, tx *sql.Tx, generation string) (claimVie
 						continue
 					}
 					if n == c.Page {
-						view.goOperationKeys[strings.TrimPrefix(id, "go399:")] = key
+						scanID := strings.TrimPrefix(id, "go399:")
+						view.goOperationKeys[scanID] = key
+						if (c.RunID != "" || c.DatasetID != "") && !view.operations[key] {
+							// Cursor помнит платный Actor, но ledger не подтверждает
+							// операцию. Не выпускать повторный POST.
+							view.orphanPaidScans[scanID] = true
+						}
 					}
 					if created := operationCreated[key]; created > view.lastListingStart {
 						view.lastListingStart = created
@@ -198,7 +205,7 @@ func claimEligible(job Job, now int64, settings Settings, options ClaimOptions, 
 			page = known && view.operations[key]
 			switch options.HHScanPhase {
 			case "launch":
-				if page || view.lastListingStart > now-3600000 {
+				if page || view.orphanPaidScans[job.ID] || view.lastListingStart > now-3600000 {
 					return false, page, nil
 				}
 			case "reconcile":
