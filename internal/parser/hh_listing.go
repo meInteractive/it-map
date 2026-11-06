@@ -23,8 +23,8 @@ type hhCheckedRuntime interface {
 }
 type HHListingProgress struct {
 	Page, Offset, Candidates, Created, Quarantined, OutsideMoscow, OutsideDateWindow int64
-	Done                                                                            bool
-	PartialCode                                                                     string
+	Done                                                                             bool
+	PartialCode                                                                      string
 }
 type HHListingExecutor struct {
 	Settings       apifysettings.Repository
