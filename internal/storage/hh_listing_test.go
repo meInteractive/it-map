@@ -13,6 +13,7 @@ import (
 	"itmap/internal/integrations/apify"
 	"itmap/internal/parser"
 	"net/url"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -53,7 +54,7 @@ func (p *hhScanProvider) Start(_ context.Context, source string, o apify.HHOptio
 			return apify.ActorRun{}, err
 		}
 		u, err := url.Parse(input.StartURL)
-		if err != nil || !o.MoscowFilter || u.Query().Get("area") != "1" || u.Query().Get("employer_id") != "456" {
+		if err != nil || !o.MoscowFilter || u.Query().Get("area") != "1" || u.Query().Get("employer_id") != "456" || u.Query().Has("text") || !reflect.DeepEqual(u.Query()["professional_role"], []string{"36", "107"}) {
 			return apify.ActorRun{}, fmt.Errorf("Moscow scope missing")
 		}
 	}
@@ -115,7 +116,7 @@ func hhScanFixture(t *testing.T, p *hhScanProvider) (apifyRuntimeFixture, *sched
 	t.Helper()
 	f := openApifyRuntimeFixture(t)
 	s := billingFixture(t)
-	s.exec(`UPDATE firecrawl_settings SET favorites_only=0,scheduler_json='{"enabled":true,"sourceIds":["hh"],"ownerName":"CI_OWNER","dayBudgetUsd":5,"monthBudgetUsd":5}' WHERE id=1`)
+	s.exec(`UPDATE firecrawl_settings SET favorites_only=0,scheduler_json='{"enabled":true,"sourceIds":["hh"],"ownerName":"CI_OWNER","dayBudgetUsd":5,"monthBudgetUsd":5,"hhProfessionalRoles":{"991303":{"revision":1,"roleIds":["36","107"]}}}' WHERE id=1`)
 	s.exec(`INSERT INTO vacancy_roles(id,name,stable_key,sort_order) VALUES(991303,'CI HH Root','root-it-manager',1)`)
 	s.exec(`INSERT INTO vacancy_role_classification(role_id,markdown,parsing_enabled) VALUES(991303,'CI HH classification',1)`)
 	t.Cleanup(func() {
@@ -140,7 +141,7 @@ func TestMariaDBHHListingDisposable(t *testing.T) {
 			t.Fatal("missing role admitted", err, p.starts, p.accounts)
 		}
 		s.exec("UPDATE vacancy_role_classification SET parsing_enabled=1 WHERE role_id=991303")
-		s.exec("UPDATE vacancy_roles SET stable_key='CI_UNKNOWN_ROLE' WHERE id=991303")
+		s.exec(`UPDATE firecrawl_settings SET scheduler_json=JSON_REMOVE(scheduler_json,'$.hhProfessionalRoles') WHERE id=1`)
 		if _, err := listing.Execute(f.ctx, lease); !errors.Is(err, parser.ErrHHRoleFilter) || p.starts != 0 || p.accounts != 0 {
 			t.Fatal("unknown role admitted", err, p.starts, p.accounts)
 		}
@@ -193,6 +194,7 @@ func TestMariaDBHHListingDisposable(t *testing.T) {
 			Operation                    apifysettings.OperationVersion
 			Page                         int64
 			TitleQuery, DateFrom, DateTo *string
+			ProfessionalRoles            []string
 			DateFilterApplied            bool
 		}
 		if json.Unmarshal(raw, &cursor) != nil {
@@ -204,13 +206,48 @@ func TestMariaDBHHListingDisposable(t *testing.T) {
 		}
 		runtime := listing.Runtime.(apifyruns.Service)
 		order := "publication_time"
-		opts := apify.HHOptions{Page: cursor.Page, OrderBy: &order, TitleQuery: cursor.TitleQuery, DateFrom: cursor.DateFrom, DateTo: cursor.DateTo, DateFilterApplied: cursor.DateFilterApplied}
+		opts := apify.HHOptions{Page: cursor.Page, OrderBy: &order, TitleQuery: cursor.TitleQuery, ProfessionalRoles: cursor.ProfessionalRoles, DateFrom: cursor.DateFrom, DateTo: cursor.DateTo, DateFilterApplied: cursor.DateFilterApplied}
 		if _, err = runtime.Execute(f.ctx, cursor.Operation, fmt.Sprintf("listing:go399:CI_HH_SCAN:%d", cursor.Page), opts); err != nil || p.starts != 2 {
 			t.Fatal("seed existing legacy actor", err, p.starts)
 		}
 		next, err := listing.Execute(f.ctx, lease)
 		if err != nil || !next.Done || p.starts != 2 {
 			t.Fatal("legacy dataset not continued", next, err, p.starts)
+		}
+	})
+	t.Run("paid title-filter actor is read using its original input", func(t *testing.T) {
+		items := make([]json.RawMessage, 11)
+		for i := range items {
+			items[i] = hhScanItem(9000+i, "CI old paid")
+		}
+		p := &hhScanProvider{rows: [][]json.RawMessage{items}}
+		f, s, lease, listing := hhScanFixture(t, p)
+		if _, err := listing.Execute(f.ctx, lease); err != nil || p.starts != 1 {
+			t.Fatal("initial setup", err)
+		}
+		var raw []byte
+		if err := s.db.QueryRowContext(f.ctx, "SELECT result_json FROM vacancy_discovery_runs WHERE id='go399:CI_HH_SCAN'").Scan(&raw); err != nil {
+			t.Fatal(err)
+		}
+		var cursor struct {
+			Operation         apifysettings.OperationVersion
+			Page              int64
+			DateFrom, DateTo  *string
+			DateFilterApplied bool
+		}
+		if json.Unmarshal(raw, &cursor) != nil {
+			t.Fatal("cursor")
+		}
+		query, order := "NAME:(manager*)", "publication_time"
+		opts := apify.HHOptions{Page: cursor.Page, OrderBy: &order, TitleQuery: &query, DateFrom: cursor.DateFrom, DateTo: cursor.DateTo, DateFilterApplied: cursor.DateFilterApplied, MoscowFilter: true}
+		runtime := listing.Runtime.(apifyruns.Service)
+		if _, err := runtime.Execute(f.ctx, cursor.Operation, fmt.Sprintf("listing:go399:CI_HH_SCAN:%d", cursor.Page), opts); err != nil || p.starts != 2 {
+			t.Fatal("seed old paid actor", err)
+		}
+		s.exec(`UPDATE vacancy_discovery_runs SET result_json=JSON_SET(JSON_REMOVE(result_json,'$.ProfessionalRoles'),'$.TitleQuery',?) WHERE id='go399:CI_HH_SCAN'`, query)
+		last, err := listing.Execute(f.ctx, lease)
+		if err != nil || !last.Done || last.Offset != 11 || p.starts != 2 {
+			t.Fatal("old dataset was not resumed without new Actor", last, err, p.starts)
 		}
 	})
 	t.Run("filters publication dates before candidate handoff", func(t *testing.T) {
@@ -376,7 +413,7 @@ func TestMariaDBHHListingRecoveryDisposable(t *testing.T) {
 		if _, err = f.repo.Settings.SaveHHSource(f.ctx, f.v.Generation, 991302, apifysettings.HHSourceInput{SourceURL: f.v.SourceURL, Enabled: true, Revision: paused.Revision}); err != nil {
 			t.Fatal("enable source", err)
 		}
-		s.exec("UPDATE vacancy_roles SET stable_key='ci-other-role' WHERE id=991303")
+		s.exec(`UPDATE firecrawl_settings SET scheduler_json=JSON_SET(scheduler_json,'$.hhProfessionalRoles.991303.roleIds',JSON_ARRAY('73')) WHERE id=1`)
 		executor.ResumePrevious = true
 		if _, err = executor.Execute(f.ctx, lease); !errors.Is(err, parser.ErrHHListingChanged) || p.starts != 1 || s.count("SELECT COUNT(*) FROM vacancy_candidates WHERE company_id=991302") != 10 {
 			t.Fatal("changed search admitted", err)

@@ -52,12 +52,13 @@ type hhListingCursor struct {
 	SchedulerHash                    string
 	Profile                          string
 	TitleQuery                       *string
-	DateFrom, DateTo                 *string `json:",omitempty"`
-	DateFilterApplied                bool    `json:",omitempty"`
-	MoscowFilter                     bool    `json:",omitempty"`
-	VacancyAgeDays                   int     `json:",omitempty"`
-	LineageVersion                   int     `json:",omitempty"`
-	CandidateIDs                     []int64 `json:",omitempty"`
+	ProfessionalRoles                []string `json:",omitempty"`
+	DateFrom, DateTo                 *string  `json:",omitempty"`
+	DateFilterApplied                bool     `json:",omitempty"`
+	MoscowFilter                     bool     `json:",omitempty"`
+	VacancyAgeDays                   int      `json:",omitempty"`
+	LineageVersion                   int      `json:",omitempty"`
+	CandidateIDs                     []int64  `json:",omitempty"`
 	Page, Offset, PageCount          int64
 	RunID, DatasetID                 string
 	Metadata                         *apify.DatasetMetadata
@@ -114,7 +115,7 @@ func (c *hhListingCursor) rememberCandidate(id int64) error {
 
 func (c hhListingCursor) options() apify.HHOptions {
 	order := "publication_time"
-	return apify.HHOptions{Page: c.Page, OrderBy: &order, TitleQuery: c.TitleQuery, DateFrom: c.DateFrom, DateTo: c.DateTo, DateFilterApplied: c.DateFilterApplied, MoscowFilter: c.MoscowFilter}
+	return apify.HHOptions{Page: c.Page, OrderBy: &order, TitleQuery: c.TitleQuery, ProfessionalRoles: c.ProfessionalRoles, DateFrom: c.DateFrom, DateTo: c.DateTo, DateFilterApplied: c.DateFilterApplied, MoscowFilter: c.MoscowFilter}
 }
 
 func hhDateWindow(now time.Time, days int) (*string, *string) {

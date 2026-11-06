@@ -151,7 +151,14 @@ func (e HHListingExecutor) prepareHHListing(ctx context.Context, tx *sql.Tx, job
 		}
 		if !reflect.DeepEqual(cur.Operation, v) || cur.SchedulerHash != hash {
 			old := cur.Operation
-			if !e.ResumePrevious || cur.Done || cur.RunID == "" || cur.DatasetID == "" || cur.Metadata == nil || old.Generation != v.Generation || old.CompanyID != v.CompanyID || old.SourceURL != v.SourceURL || old.Profile != v.Profile || old.CandidateID != 0 || v.CandidateID != 0 || old.SourceRevision > v.SourceRevision || old.SettingsRevision > v.SettingsRevision || !reflect.DeepEqual(cur.TitleQuery, hhTitleQuery(keys)) {
+			filterUnchanged := false
+			if cur.ProfessionalRoles == nil {
+				filterUnchanged = reflect.DeepEqual(cur.TitleQuery, hhTitleQuery(keys))
+			} else {
+				roles, roleErr := hhCurrentProfessionalRoles(ctx, tx)
+				filterUnchanged = roleErr == nil && cur.TitleQuery == nil && reflect.DeepEqual(cur.ProfessionalRoles, roles)
+			}
+			if !e.ResumePrevious || cur.Done || cur.RunID == "" || cur.DatasetID == "" || cur.Metadata == nil || old.Generation != v.Generation || old.CompanyID != v.CompanyID || old.SourceURL != v.SourceURL || old.Profile != v.Profile || old.CandidateID != 0 || v.CandidateID != 0 || old.SourceRevision > v.SourceRevision || old.SettingsRevision > v.SettingsRevision || !filterUnchanged {
 				return plan, ErrHHListingChanged
 			}
 			if cur.PreviousOperation == nil {
@@ -178,11 +185,12 @@ func (e HHListingExecutor) prepareHHListing(ctx context.Context, tx *sql.Tx, job
 		if e.ResumePrevious {
 			return plan, ErrHHListingChanged
 		}
-		if hhTitleQuery(keys) == nil {
-			return plan, ErrHHRoleFilter
+		roles, roleErr := hhCurrentProfessionalRoles(ctx, tx)
+		if roleErr != nil {
+			return plan, roleErr
 		}
 		from, to := hhDateWindow(time.Now(), settings.VacancyAgeDays)
-		cur = hhListingCursor{Version: 1, Revision: 1, Operation: v, SchedulerHash: hash, Profile: v.Profile, TitleQuery: hhTitleQuery(keys), DateFrom: from, DateTo: to, DateFilterApplied: true, MoscowFilter: true, VacancyAgeDays: settings.VacancyAgeDays, LineageVersion: 1}
+		cur = hhListingCursor{Version: 1, Revision: 1, Operation: v, SchedulerHash: hash, Profile: v.Profile, ProfessionalRoles: roles, DateFrom: from, DateTo: to, DateFilterApplied: true, MoscowFilter: true, VacancyAgeDays: settings.VacancyAgeDays, LineageVersion: 1}
 		if err = persistHHListingCursor(ctx, tx, plan.ID, e.Owner, job, cur, true); err != nil {
 			return plan, err
 		}

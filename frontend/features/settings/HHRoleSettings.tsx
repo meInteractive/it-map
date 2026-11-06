@@ -24,7 +24,7 @@ function RolePicker({initial,tree,generation}:{initial:Setting;tree:Tree;generat
 
 export default function HHRoleSettings(){
  const settings=useApi<Settings>('/api/hh/role-settings'),tree=useApi<Tree>('/api/hh/professional-roles');
- return <section className="parser-role-settings"><h2>Профессиональные роли HH</h2><p className="resume-hint">Выберите роли HH отдельно для каждого направления. Настройки будут использоваться после подключения фильтра к парсеру. Изменение настроек не запускает сбор.</p>
+ return <section className="parser-role-settings"><h2>Профессиональные роли HH</h2><p className="resume-hint">Выберите роли HH отдельно для каждого направления. Новые запросы используют выбранные роли HH; фактический отбор зависит от разметки HH и работы Actor. Изменение настроек не запускает сбор.</p>
  <button type="button" className="settings-button secondary" onClick={()=>{settings.reload();tree.reload();}}>Обновить список и настройки</button>
  <State loading={!settings.data&&settings.loading} error={settings.error}><State loading={!tree.data&&tree.loading} error={tree.error}>{settings.data&&tree.data&&<div className="settings-grid">{settings.data.roles.map(role=><RolePicker key={role.roleId+':'+role.revision+':'+settings.data!.generation} initial={role} tree={tree.data!} generation={settings.data!.generation}/>)}{settings.data.roles.length===0&&<p>Создайте крупную роль в справочнике.</p>}</div>}</State></State></section>;
 }
