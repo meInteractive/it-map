@@ -54,7 +54,7 @@ func (p *hhScanProvider) Start(_ context.Context, source string, o apify.HHOptio
 			return apify.ActorRun{}, err
 		}
 		u, err := url.Parse(input.StartURL)
-		if err != nil || !o.MoscowFilter || u.Query().Get("area") != "1" || u.Query().Get("employer_id") != "456" || u.Query().Has("text") || !reflect.DeepEqual(u.Query()["professional_role"], []string{"36", "107"}) {
+		if err != nil || !o.MoscowFilter || !o.DateFilterApplied || o.DateFrom == nil || o.DateTo == nil || u.Query().Get("date_from") != *o.DateFrom || u.Query().Get("date_to") != *o.DateTo || u.Query().Get("area") != "1" || u.Query().Get("employer_id") != "456" || u.Query().Has("text") || !reflect.DeepEqual(u.Query()["professional_role"], []string{"36", "107"}) {
 			return apify.ActorRun{}, fmt.Errorf("Moscow scope missing")
 		}
 	}
@@ -250,18 +250,22 @@ func TestMariaDBHHListingDisposable(t *testing.T) {
 			t.Fatal("old dataset was not resumed without new Actor", last, err, p.starts)
 		}
 	})
-	t.Run("filters publication dates before candidate handoff", func(t *testing.T) {
-		old := time.Now().In(time.FixedZone("MSK", 3*60*60)).AddDate(0, 0, -8).Format(time.RFC3339)
-		outside := json.RawMessage(fmt.Sprintf(`{"title":"CI old","url":"https://hh.ru/vacancy/124","vacancy_id":124,"employer_id":456,"date_posted":%q}`, old))
-		missing := json.RawMessage(`{"title":"CI undated","url":"https://hh.ru/vacancy/125","vacancy_id":125,"employer_id":456}`)
-		p := &hhScanProvider{requireMoscow: true, rows: [][]json.RawMessage{{hhScanItem(123, "CI recent"), outside, missing}}}
+	t.Run("keeps out-of-range and missing dates from filtered Actor", func(t *testing.T) {
+		moscow := time.FixedZone("MSK", 3*60*60)
+		old := time.Now().In(moscow).AddDate(0, 0, -8).Format(time.RFC3339)
+		today := time.Now().In(moscow).Format(time.RFC3339)
+		outside := json.RawMessage(fmt.Sprintf(`{"title":"CI old","url":"https://hh.ru/vacancy/124","vacancy_id":124,"employer_id":456,"location":"Москве","date_posted":%q}`, old))
+		missing := json.RawMessage(`{"title":"CI undated","url":"https://hh.ru/vacancy/125","vacancy_id":125,"employer_id":456,"location":"Москва"}`)
+		current := json.RawMessage(fmt.Sprintf(`{"title":"CI today","url":"https://hh.ru/vacancy/126","vacancy_id":126,"employer_id":456,"location":"Москва","date_posted":%q}`, today))
+		malformed := json.RawMessage(`{"title":"CI malformed date","url":"https://hh.ru/vacancy/127","vacancy_id":127,"employer_id":456,"location":"Москва","date_posted":"not-a-date"}`)
+		p := &hhScanProvider{requireMoscow: true, rows: [][]json.RawMessage{{hhScanItem(123, "CI recent"), outside, missing, current, malformed}}}
 		f, s, lease, e := hhScanFixture(t, p)
 		progress, err := e.Execute(f.ctx, lease)
-		if err != nil || progress.Candidates != 1 || progress.Quarantined != 1 || s.count("SELECT COUNT(*) FROM vacancy_candidates WHERE company_id=991302") != 1 || s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='classify_title'") != 1 {
-			t.Fatal("publication date filter did not protect candidate handoff", progress, err)
+		if err != nil || !progress.Done || progress.Candidates != 5 || progress.Created != 5 || progress.Quarantined != 0 || progress.OutsideDateWindow != 2 || s.count("SELECT COUNT(*) FROM vacancy_candidates WHERE company_id=991302") != 5 || s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='classify_title'") != 5 || p.starts != 1 {
+			t.Fatal("Actor results were filtered by publication date or Actor was repeated", progress, err)
 		}
-		if s.count("SELECT COUNT(*) FROM vacancy_discovery_runs WHERE company_id=991302 AND JSON_EXTRACT(result_json,'$.LineageVersion')=1 AND JSON_LENGTH(JSON_EXTRACT(result_json,'$.CandidateIDs'))=1") != 1 {
-			t.Fatal("filtered and quarantined records affected lineage")
+		if s.count("SELECT COUNT(*) FROM vacancy_discovery_runs WHERE company_id=991302 AND JSON_EXTRACT(result_json,'$.LineageVersion')=1 AND JSON_LENGTH(JSON_EXTRACT(result_json,'$.CandidateIDs'))=5 AND JSON_EXTRACT(result_json,'$.OutsideDateWindow')=2") != 1 {
+			t.Fatal("accepted records or date diagnostics were not saved in cursor")
 		}
 	})
 	t.Run("raw pagination quarantine duplicate URL title revision and restart", func(t *testing.T) {
