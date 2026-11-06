@@ -110,11 +110,21 @@ func scheduleHH(ctx context.Context, runs RunRepository, settingsRepo apifysetti
 			continue
 		}
 		key := fmt.Sprintf("scan:%d:hh:%d:%d:%d", candidate.id, source.Revision, candidate.next, settings.Revision)
-		var known int
-		if e = tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM scheduler_jobs WHERE generation=? AND dedupe_key=?`, runs.Generation, stageHash(key)).Scan(&known); e != nil {
+		var knownStatus string
+		e = tx.QueryRowContext(ctx, `SELECT status FROM scheduler_jobs WHERE generation=? AND dedupe_key=? LIMIT 1`, runs.Generation, stageHash(key)).Scan(&knownStatus)
+		if e != nil && !errors.Is(e, sql.ErrNoRows) {
 			return ErrSettingsStorage
 		}
-		if known != 0 {
+		if e == nil {
+			if knownStatus == "cancelled" || knownStatus == "failed" {
+				// Не воскрешать отменённый/ошибочный Actor и не терять старый
+				// receipt. Следующий разрешённый срок получает иной dedupe key;
+				// исходный оплаченный run остаётся доступен для разбора.
+				nextRun := now + int64(settings.IntervalDays)*86400000
+				if _, e = tx.ExecContext(ctx, `UPDATE vacancy_source_parsing SET auto_enabled=1,interval_days=?,next_run_at=?,last_result='partial',last_error='Предыдущее сканирование отменено или завершилось ошибкой; автоматический повтор текущего периода запрещён.' WHERE company_id=? AND source_id='hh' AND revision=? AND source_url=?`, settings.IntervalDays, nextRun, candidate.id, source.Revision, source.URL); e != nil {
+					return ErrSettingsStorage
+				}
+			}
 			continue
 		}
 		if _, e = tx.ExecContext(ctx, `UPDATE vacancy_source_parsing SET auto_enabled=1,interval_days=?,next_run_at=? WHERE company_id=? AND source_id='hh' AND revision=? AND source_url=?`, settings.IntervalDays, candidate.next, candidate.id, source.Revision, source.URL); e != nil {
