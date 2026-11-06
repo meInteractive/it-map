@@ -19,6 +19,12 @@ type SchedulerTickRunner interface {
 	PrepareTick(context.Context) (func(context.Context, string, bool) (json.RawMessage, error), error)
 }
 
+// Не расширяем обязательный контракт старого тика: профиль поддерживается
+// только новыми Go-реализациями и имеет тот же bearer-token.
+type SchedulerProfileTickRunner interface {
+	PrepareProfileTick(context.Context) (func(context.Context, string, string) (json.RawMessage, error), error)
+}
+
 func SchedulerTickHandler(runner SchedulerTickRunner, token string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if runner == nil || token == "" {
@@ -36,6 +42,12 @@ func SchedulerTickHandler(runner SchedulerTickRunner, token string) http.Handler
 		}
 		ctx, cancel := context.WithTimeout(r.Context(), 35*time.Second)
 		run, err := runner.PrepareTick(ctx)
+		var profileRun func(context.Context, string, string) (json.RawMessage, error)
+		if err == nil {
+			if profiled, ok := runner.(SchedulerProfileTickRunner); ok {
+				profileRun, err = profiled.PrepareProfileTick(ctx)
+			}
+		}
 		cancel()
 		if err != nil {
 			schedulerSettingsFailure(w, err)
@@ -70,7 +82,7 @@ func SchedulerTickHandler(runner SchedulerTickRunner, token string) http.Handler
 			return
 		}
 		for key := range fields {
-			if key != "requestId" && key != "diagnostic" {
+			if key != "requestId" && key != "diagnostic" && key != "profile" {
 				schedulerSettingsFailure(w, &parser.SettingsError{Message: "Неизвестные параметры запроса."})
 				return
 			}
@@ -89,7 +101,23 @@ func SchedulerTickHandler(runner SchedulerTickRunner, token string) http.Handler
 				return
 			}
 		}
-		result, err := run(r.Context(), id, diagnostic)
+		profile := ""
+		if v, ok := fields["profile"]; ok {
+			if json.Unmarshal(v, &profile) != nil || profile == "" || profile != "launch" && profile != "reconcile" && profile != "pipeline" || diagnostic || id == "" {
+				schedulerSettingsFailure(w, &parser.SettingsError{Message: "Некорректный профиль очереди."})
+				return
+			}
+			if profileRun == nil {
+				schedulerSettingsFailure(w, &parser.SettingsError{Message: "Профиль очереди не поддерживается."})
+				return
+			}
+		}
+		var result json.RawMessage
+		if profile != "" {
+			result, err = profileRun(r.Context(), id, profile)
+		} else {
+			result, err = run(r.Context(), id, diagnostic)
+		}
 		if errors.Is(err, parser.ErrRunBusy) {
 			jsonReply(w, 409, map[string]string{"error": "Другой цикл диспетчера ещё выполняется.", "code": "scheduler_busy"})
 			return
