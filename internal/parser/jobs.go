@@ -33,6 +33,7 @@ type ClaimOptions struct {
 	JobID, SourceID               *string
 	ScanScope                     *ScanCandidateScope
 	VerifiedHHOnly                bool
+	HHScanPhase                   string // launch / reconcile; пусто — прежняя общая очередь
 }
 
 // ScanCandidateScope идентифицирует серверный точечный запрос и его область.
