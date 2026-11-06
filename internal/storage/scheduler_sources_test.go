@@ -97,3 +97,35 @@ func TestMariaDBSchedulerStopDisposable(t *testing.T) {
 		t.Fatal("disabled scheduler started actor", err, provider.starts)
 	}
 }
+
+func TestMariaDBSchedulerOtherPendingDoesNotBlockNewHHSource(t *testing.T) {
+	p := &hhScanProvider{rows: [][]json.RawMessage{{}}}
+	_, s, lease, listing := hhScanFixture(t, p)
+	var previous string
+	if err := s.db.QueryRowContext(s.ctx, "SELECT id FROM scheduler_runs WHERE status='running'").Scan(&previous); err != nil {
+		t.Fatal(err)
+	}
+	if err := lease.Finish(s.ctx, parser.FinishOptions{Status: "cancelled"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.repo.Finish(s.ctx, previous, "completed"); err != nil {
+		t.Fatal(err)
+	}
+	s.exec("DELETE FROM scheduler_jobs WHERE id='CI_HH_SCAN'")
+	// Раньше любой due pending с source_id='hh' останавливал scheduleHH
+	// для всех компаний, даже если этот тип не относится к сканированию.
+	s.exec(`INSERT INTO scheduler_jobs(id,generation,dedupe_key,type,company_id,source_id,payload,status,priority,run_after,created_at,updated_at)
+		VALUES('CI_OTHER_PENDING',?,'CI_OTHER_PENDING','classify_title',991302,'hh','{}','pending',60,0,0,0)`, s.repo.Generation)
+	w := parser.Worker{
+		Runs: s.repo, Settings: apifysettings.NewRepository(s.db, "CI_SECRET"),
+		ListingRuntime: listing.Runtime, ScheduleSources: true, VerifiedHHOnly: true,
+	}
+	result, err := w.Cycle(s.ctx, parser.WorkerOptions{
+		Run: parser.RunOptions{RequestID: "CI_GO430_OTHER_PENDING"}, QueueProfile: "launch", MaxJobs: 10,
+	})
+	if err != nil || result.Processed != 1 || p.starts != 1 ||
+		s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='scan_source' AND status='completed'") != 1 ||
+		s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE id='CI_OTHER_PENDING' AND status='pending'") != 1 {
+		t.Fatal("unrelated pending job blocked safe new HH source", result, err, p.starts)
+	}
+}
