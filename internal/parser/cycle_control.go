@@ -112,42 +112,73 @@ func (c CycleControl) PrepareTick(ctx context.Context) (func(context.Context, st
 			// не выполняет цикл дважды, следующий слот уже независим.
 			id = fmt.Sprintf("quarter:%d", time.Now().UnixMilli()/900000)
 		}
-		w, err := c.worker(generation)
-		if err != nil {
-			return nil, err
-		}
-		w.ScheduleSources = true
-		w.ContinueOnStageFailure = true
-		result, err := w.Cycle(ctx, WorkerOptions{Run: RunOptions{RequestID: id, Trigger: "automatic"}, MaxJobs: 50, QueueProfile: "balanced"})
-		if err != nil {
-			return nil, err
-		}
-		tx, err := c.DB.BeginTx(ctx, &sql.TxOptions{ReadOnly: true, Isolation: sql.LevelRepeatableRead})
-		if err != nil {
-			return nil, settingsFailure(ctx, err)
-		}
-		defer tx.Rollback()
-		var current string
-		if tx.QueryRowContext(ctx, "SELECT generation FROM app_runtime_generation WHERE id=1").Scan(&current) != nil {
-			return nil, ErrSettingsStorage
-		}
-		if current != generation {
-			return nil, ErrSettingsGeneration
-		}
-		rows, err := dashboardRows(ctx, tx, "SELECT id,generation,`trigger`,started_at,finished_at,status,ready,processed,succeeded,errors,remaining,reason,cursor_id,lease_until FROM scheduler_runs WHERE id=? AND generation=?", runID(generation, id), generation)
-		if err != nil || len(rows) != 1 {
-			return nil, ErrSettingsStorage
-		}
-		if result.Reused {
-			rows[0]["reused"] = true
-		}
-		raw, err := json.Marshal(rows[0])
-		if err != nil {
-			return nil, ErrSettingsStorage
-		}
-		if tx.Commit() != nil {
-			return nil, ErrSettingsStorage
-		}
-		return raw, nil
+		return c.runAutomaticProfile(ctx, generation, id, "balanced")
 	}, nil
+}
+
+// PrepareProfileTick допускает короткие независимые сигналы к трём очередям.
+// Состояние поколения фиксируется до чтения HTTP body; никаких фоновых
+// процессов, повторных POST или неограниченных циклов этот метод не создаёт.
+func (c CycleControl) PrepareProfileTick(ctx context.Context) (func(context.Context, string, string) (json.RawMessage, error), error) {
+	if c.DB == nil {
+		return nil, ErrSettingsStorage
+	}
+	var generation string
+	if err := c.DB.QueryRowContext(ctx, "SELECT generation FROM app_runtime_generation WHERE id=1").Scan(&generation); err != nil || !generationPattern.MatchString(generation) {
+		return nil, settingsFailure(ctx, ErrSettingsStorage)
+	}
+	return func(ctx context.Context, id, profile string) (json.RawMessage, error) {
+		if id == "" || len(utf16.Encode([]rune(id))) > 100 {
+			return nil, &SettingsError{Message: "Некорректный сигнал."}
+		}
+		switch profile {
+		case "launch", "reconcile", "pipeline":
+		default:
+			return nil, &SettingsError{Message: "Некорректный профиль очереди."}
+		}
+		return c.runAutomaticProfile(ctx, generation, "profile:"+profile+":"+id, profile)
+	}, nil
+}
+
+func (c CycleControl) runAutomaticProfile(ctx context.Context, generation, id, profile string) (json.RawMessage, error) {
+	w, err := c.worker(generation)
+	if err != nil {
+		return nil, err
+	}
+	w.ScheduleSources = profile == "launch" || profile == "balanced"
+	w.VerifiedHHOnly = true
+	w.ContinueOnStageFailure = true
+	result, err := w.Cycle(ctx, WorkerOptions{
+		Run: RunOptions{RequestID: id, Trigger: "automatic"}, MaxJobs: 50, QueueProfile: profile,
+	})
+	if err != nil {
+		return nil, err
+	}
+	tx, err := c.DB.BeginTx(ctx, &sql.TxOptions{ReadOnly: true, Isolation: sql.LevelRepeatableRead})
+	if err != nil {
+		return nil, settingsFailure(ctx, err)
+	}
+	defer tx.Rollback()
+	var current string
+	if tx.QueryRowContext(ctx, "SELECT generation FROM app_runtime_generation WHERE id=1").Scan(&current) != nil {
+		return nil, ErrSettingsStorage
+	}
+	if current != generation {
+		return nil, ErrSettingsGeneration
+	}
+	rows, err := dashboardRows(ctx, tx, "SELECT id,generation,`trigger`,started_at,finished_at,status,ready,processed,succeeded,errors,remaining,reason,cursor_id,lease_until FROM scheduler_runs WHERE id=? AND generation=?", runID(generation, id), generation)
+	if err != nil || len(rows) != 1 {
+		return nil, ErrSettingsStorage
+	}
+	if result.Reused {
+		rows[0]["reused"] = true
+	}
+	raw, err := json.Marshal(rows[0])
+	if err != nil {
+		return nil, ErrSettingsStorage
+	}
+	if tx.Commit() != nil {
+		return nil, ErrSettingsStorage
+	}
+	return raw, nil
 }
