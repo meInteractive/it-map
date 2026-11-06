@@ -5,9 +5,12 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"math"
 	"strconv"
 	"strings"
+
+	"itmap/internal/apifyruns"
 )
 
 // JSON1 uses the first duplicate; the surrounding settings parser uses the last.
@@ -30,7 +33,8 @@ type claimView struct {
 	pages          map[string]string
 	operations     map[string]bool
 	verifiedHH     map[hhCandidateKey]bool
-	blockedHHScans map[string]bool
+	blockedHHScans  map[string]bool
+	goOperationKeys map[string]string
 	lastListingStart int64
 }
 
@@ -52,7 +56,8 @@ func claimTypes(requested []string) (map[string]bool, error) {
 	return out, nil
 }
 func readClaimView(ctx context.Context, tx *sql.Tx, generation string) (claimView, error) {
-	view := claimView{busy: map[int64]bool{}, pages: map[string]string{}, operations: map[string]bool{}}
+	view := claimView{busy: map[int64]bool{}, pages: map[string]string{}, operations: map[string]bool{}, goOperationKeys: map[string]string{}}
+	operationCreated := map[string]int64{}
 	rows, e := tx.QueryContext(ctx, "SELECT candidate_id FROM scheduler_jobs WHERE generation=? AND status='running' AND candidate_id IS NOT NULL", generation)
 	if e != nil {
 		return view, e
@@ -82,9 +87,7 @@ func readClaimView(ctx context.Context, tx *sql.Tx, generation string) (claimVie
 			return view, e
 		}
 		view.operations[key] = true
-		if strings.HasPrefix(key, "listing:") && created > view.lastListingStart {
-			view.lastListingStart = created
-		}
+		operationCreated[key] = created
 	}
 	e = rows.Err()
 	rows.Close()
@@ -114,11 +117,27 @@ func readClaimView(ctx context.Context, tx *sql.Tx, generation string) (claimVie
 			page = "0"
 		}
 		if strings.HasPrefix(id, "go399:") {
-			// Новая очередь хранит страницу на верхнем уровне Go cursor,
-			// старый JS использовал paused.apify.page.
 			var c hhListingCursor
 			if json.Unmarshal(raw, &c) == nil && c.Version == 1 && c.Page >= 0 && c.Page < 100 {
 				page = strconv.FormatInt(c.Page, 10)
+				// Ключ в apify_runs — go398:SHA(input), а не строка listing:...
+				for _, n := range []int64{c.Page, c.Page - 1} {
+					if n < 0 {
+						continue
+					}
+					options := c.options()
+					options.Page = n
+					key, keyErr := apifyruns.HHOperationIdentity(c.Operation, fmt.Sprintf("listing:%s:%d", id, n), options)
+					if keyErr != nil {
+						continue
+					}
+					if n == c.Page {
+						view.goOperationKeys[strings.TrimPrefix(id, "go399:")] = key
+					}
+					if created := operationCreated[key]; created > view.lastListingStart {
+						view.lastListingStart = created
+					}
+				}
 			}
 		}
 		view.pages[id] = page
@@ -168,12 +187,15 @@ func claimEligible(job Job, now int64, settings Settings, options ClaimOptions, 
 			// В Go scan cursor привязан к go399:job.ID, а не к JS runId.
 			// Разделение выполняется по оплаченному operation_key,
 			// чтобы GET существующего Actor не считался новым POST.
-			goRun := "go399:" + job.ID
-			goPage := view.pages[goRun]
-			if goPage == "" {
-				goPage = "0"
+			key, known := view.goOperationKeys[job.ID]
+			if !known {
+				// Курсор не подтверждён либо ещё не создан: новому запуску
+				// разрешён только verified HH scan без старого paid cursor.
+				if view.pages["go399:"+job.ID] != "" {
+					return false, false, nil
+				}
 			}
-			page = view.operations["listing:"+goRun+":"+goPage]
+			page = known && view.operations[key]
 			switch options.HHScanPhase {
 			case "launch":
 				if page || view.lastListingStart > now-3600000 {
