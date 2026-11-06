@@ -22,9 +22,9 @@ type hhCheckedRuntime interface {
 	WithCheck(func(context.Context) error) apifyruns.Service
 }
 type HHListingProgress struct {
-	Page, Offset, Candidates, Created, Quarantined, OutsideMoscow int64
-	Done                                                          bool
-	PartialCode                                                   string
+	Page, Offset, Candidates, Created, Quarantined, OutsideMoscow, OutsideDateWindow int64
+	Done                                                                             bool
+	PartialCode                                                                      string
 }
 type HHListingExecutor struct {
 	Settings       apifysettings.Repository
@@ -35,7 +35,7 @@ type HHListingExecutor struct {
 }
 
 func hhListingProgress(c hhListingCursor) HHListingProgress {
-	return HHListingProgress{Page: c.Page, Offset: c.Offset, Candidates: c.Candidates, Created: c.Created, Quarantined: c.Quarantined, OutsideMoscow: c.OutsideMoscow, Done: c.Done, PartialCode: c.PartialCode}
+	return HHListingProgress{Page: c.Page, Offset: c.Offset, Candidates: c.Candidates, Created: c.Created, Quarantined: c.Quarantined, OutsideMoscow: c.OutsideMoscow, OutsideDateWindow: c.OutsideDateWindow, Done: c.Done, PartialCode: c.PartialCode}
 }
 
 // Execute обрабатывает одну raw-порцию под уже полученной lease. Он не запускает
@@ -212,16 +212,12 @@ func (e HHListingExecutor) Execute(ctx context.Context, lease *JobLease) (HHList
 				}
 			}
 			prefixValues = append(prefixValues, pair)
+			// Дата ограничивает запрос к Actor, но не исключает полученную запись:
+			// HH может вернуть обновлённую вакансию с прежней датой публикации.
 			include, dateErr := cur.includesPublication(raw)
-			if dateErr == nil && !include {
-				continue
-			}
 			item, err := parseHHListingVacancy(raw, cur.Operation.SourceURL)
 			code := "invalid_vacancy"
-			if dateErr != nil {
-				err = dateErr
-				code = "invalid_publication_date"
-			} else {
+			if err == nil {
 				moscow, cityErr := hhMoscowLocation(raw)
 				if cityErr != nil {
 					err = cityErr
@@ -232,6 +228,11 @@ func (e HHListingExecutor) Execute(ctx context.Context, lease *JobLease) (HHList
 				}
 			}
 			if err == nil {
+				// Для диагностики учитываем только достоверно распознанные
+				// даты вне интервала, не отправляя запись в карантин.
+				if dateErr == nil && !include {
+					next.OutsideDateWindow++
+				}
 				var id int64
 				var created, imported bool
 				id, created, imported, err = saveHHListingCandidate(ctx, tx, job, name, cur.Operation.SourceURL, item)

@@ -22,7 +22,8 @@ func TestHHDateWindowPreviousFullMoscowDays(t *testing.T) {
 	}
 }
 
-func TestHHDateWindowFiltersActualActorRecords(t *testing.T) {
+// Проверка диапазона используется только для диагностики Dataset, не для отсева вакансий.
+func TestHHDateWindowClassifiesActorRecordsForDiagnostics(t *testing.T) {
 	from, to := "2026-11-01T00:00:00+03:00", "2026-11-03T23:59:59+03:00"
 	c := hhListingCursor{DateFilterApplied: true, VacancyAgeDays: 3, DateFrom: &from, DateTo: &to}
 	for _, v := range []struct {
