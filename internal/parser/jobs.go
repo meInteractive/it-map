@@ -32,6 +32,7 @@ type ClaimOptions struct {
 	AllowApify, AllowApifyStarts  *bool
 	JobID, SourceID               *string
 	ScanScope                     *ScanCandidateScope
+	VerifiedHHOnly                bool
 }
 
 // ScanCandidateScope идентифицирует серверный точечный запрос и его область.
@@ -167,6 +168,12 @@ func (r RunRepository) ClaimJob(ctx context.Context, runID string, options Claim
 	view, e := readClaimView(ctx, tx, r.Generation)
 	if e != nil {
 		return nil, storageError(ctx)
+	}
+	if options.VerifiedHHOnly {
+		view.verifiedHH, view.blockedHHScans, e = readVerifiedHHLineage(ctx, tx, r.Generation)
+		if e != nil {
+			return nil, storageError(ctx)
+		}
 	}
 	var scopedIDs map[int64]bool
 	if options.ScanScope != nil {

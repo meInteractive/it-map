@@ -24,9 +24,11 @@ func claimAgenciesEnabled(raw []byte) (bool, error) {
 }
 
 type claimView struct {
-	busy       map[int64]bool
-	pages      map[string]string
-	operations map[string]bool
+	busy           map[int64]bool
+	pages          map[string]string
+	operations     map[string]bool
+	verifiedHH     map[hhCandidateKey]bool
+	blockedHHScans map[string]bool
 }
 
 func claimTypes(requested []string) (map[string]bool, error) {
@@ -121,6 +123,12 @@ func claimEligible(job Job, now int64, settings Settings, options ClaimOptions, 
 		return false, false, nil
 	}
 	hh := job.SourceID != nil && *job.SourceID == "hh"
+	if options.VerifiedHHOnly && hh && job.Type == "scan_source" && view.blockedHHScans[job.ID] {
+		return false, false, nil
+	}
+	if options.VerifiedHHOnly && hh && job.CandidateID != nil && (job.CompanyID == nil || !view.verifiedHH[hhCandidateKey{*job.CompanyID, *job.CandidateID}]) {
+		return false, false, nil
+	}
 	if options.DeferredApifyOnly && (!hh || job.Type != "scan_source" || (job.ReasonCode != "apify_busy" && job.ReasonCode != "apify_budget") || job.RunAfter > now-300000) {
 		return false, false, nil
 	}

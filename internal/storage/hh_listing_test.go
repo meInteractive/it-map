@@ -607,3 +607,47 @@ func TestMariaDBHHListingAdmissionDisposable(t *testing.T) {
 		})
 	}
 }
+
+func TestMariaDBHHListingQueueGuardDisposable(t *testing.T) {
+	p := &hhScanProvider{rows: [][]json.RawMessage{{hhScanItem(990123, "CI verified")}}}
+	f, s, lease, listing := hhScanFixture(t, p)
+	progress, err := listing.Execute(f.ctx, lease)
+	if err != nil || progress.Candidates != 1 {
+		t.Fatal("verified listing", progress, err)
+	}
+	if err = lease.Finish(f.ctx, parser.FinishOptions{Status: "completed"}); err != nil {
+		t.Fatal("finish scan", err)
+	}
+	var run string
+	if err = s.db.QueryRowContext(f.ctx, "SELECT id FROM scheduler_runs WHERE status='running' LIMIT 1").Scan(&run); err != nil {
+		t.Fatal("running cycle", err)
+	}
+	var verified int64
+	if err = s.db.QueryRowContext(f.ctx, "SELECT id FROM vacancy_candidates WHERE company_id=991302 LIMIT 1").Scan(&verified); err != nil {
+		t.Fatal("verified candidate", err)
+	}
+	s.exec(`INSERT INTO vacancy_candidates(id,creation_token,company_id,title_raw,title_hash,vacancy_url,source_id,acquisition_method,first_seen_at,last_seen_at,created_at,updated_at) VALUES(991399,'CI_OLD_HH',991302,'CI old title',?,'https://hh.ru/vacancy/990124','hh','site','2026-01-01','2026-01-01','2026-01-01','2026-01-01')`, strings.Repeat("a", 64))
+	s.exec(`INSERT INTO scheduler_jobs(id,generation,dedupe_key,type,company_id,candidate_id,source_id,payload,priority,run_after,created_at,updated_at) VALUES('CI_OLD_HH_JOB',?,'CI_OLD_HH_JOB','classify_title',991302,991399,'hh','{}',100,0,0,0)`, s.repo.Generation)
+	claimed, err := s.repo.ClaimJob(f.ctx, run, parser.ClaimOptions{Types: []string{"classify_title"}, VerifiedHHOnly: true})
+	if err != nil || claimed == nil || claimed.Job().CandidateID == nil || *claimed.Job().CandidateID != verified {
+		t.Fatal("verified job not selected over old job", err)
+	}
+	if err = claimed.Finish(f.ctx, parser.FinishOptions{Status: "completed"}); err != nil {
+		t.Fatal("finish candidate", err)
+	}
+	if s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE id='CI_OLD_HH_JOB' AND status='pending'") != 1 {
+		t.Fatal("old job changed")
+	}
+	s.exec(`INSERT INTO scheduler_jobs(id,generation,dedupe_key,type,company_id,source_id,payload,priority,run_after,created_at,updated_at) VALUES('CI_OLD_SCAN',?,'CI_OLD_SCAN','scan_source',991302,'hh','{}',100,0,0,0)`, s.repo.Generation)
+	s.exec(`INSERT INTO vacancy_discovery_runs(id,user_name,generation,company_id,source_id,source_url,source_revision,settings_revision,result_json,created_at,expires_at) VALUES('go399:CI_OLD_SCAN','CI_OWNER',?,991302,'hh',?,?,?, '{"Version":1}',0,0)`, s.repo.Generation, f.v.SourceURL, f.v.SourceRevision, f.v.SettingsRevision)
+	claimed, err = s.repo.ClaimJob(f.ctx, run, parser.ClaimOptions{Types: []string{"scan_source"}, VerifiedHHOnly: true})
+	if err != nil || claimed != nil {
+		t.Fatal("old scan admitted to global cycle", err)
+	}
+	s.exec(`INSERT INTO scheduler_jobs(id,generation,dedupe_key,type,company_id,candidate_id,source_id,payload,priority,run_after,created_at,updated_at) VALUES('CI_VERIFIED_AGAIN',?,'CI_VERIFIED_AGAIN','classify_title',991302,?,'hh','{}',100,0,0,0)`, s.repo.Generation, verified)
+	s.exec("UPDATE vacancy_source_parsing SET revision=revision+1 WHERE company_id=991302 AND source_id='hh'")
+	claimed, err = s.repo.ClaimJob(f.ctx, run, parser.ClaimOptions{Types: []string{"classify_title"}, VerifiedHHOnly: true})
+	if err != nil || claimed != nil {
+		t.Fatal("changed source admitted", err)
+	}
+}
