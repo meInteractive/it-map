@@ -59,3 +59,46 @@ func TestSchedulerTickHTTPAuthorization(t *testing.T) {
 		t.Fatal("diagnostic tick", w.Code, p.calls)
 	}
 }
+
+type schedulerTickProfilesProbe struct {
+	schedulerTickProbe
+	profileCalls int
+	profile, requestID string
+}
+
+func (p *schedulerTickProfilesProbe) PrepareProfileTick(context.Context) (func(context.Context, string, string) (json.RawMessage, error), error) {
+	return func(_ context.Context, id, profile string) (json.RawMessage, error) {
+		p.profileCalls++
+		p.requestID, p.profile = id, profile
+		return json.RawMessage(`{"status":"completed","processed":0,"errors":0}`), nil
+	}, nil
+}
+
+func TestSchedulerTickIndependentProfileHTTP(t *testing.T) {
+	p := &schedulerTickProfilesProbe{}
+	call := func(body string) *httptest.ResponseRecorder {
+		r := httptest.NewRequest("POST", "https://example.invalid/api/internal/scheduler/tick", strings.NewReader(body))
+		r.Header.Set("Authorization", "Bearer CI_TOKEN")
+		w := httptest.NewRecorder()
+		NewHandlerWithOptions(nil, Options{SchedulerTick: p, SchedulerToken: "CI_TOKEN"}).ServeHTTP(w, r)
+		return w
+	}
+	for _, bad := range []string{
+		`{"profile":"launch"}`,
+		`{"requestId":"CI","profile":"unknown"}`,
+		`{"requestId":"CI","profile":null}`,
+		`{"requestId":"CI","profile":"launch","diagnostic":true}`,
+	} {
+		if w := call(bad); w.Code != 400 || p.profileCalls != 0 || p.calls != 0 {
+			t.Fatalf("invalid profile reached worker: %s (%d)", bad, w.Code)
+		}
+	}
+	for _, profile := range []string{"launch", "reconcile", "pipeline"} {
+		if w := call(`{"requestId":"CI_SCHEDULE","profile":"`+profile+`"}`); w.Code != 200 || p.profileCalls == 0 || p.profile != profile || p.requestID != "CI_SCHEDULE" || p.calls != 0 {
+			t.Fatalf("profile %s not dispatched safely", profile)
+		}
+	}
+	if w := call(`{"requestId":"CI_DEFAULT"}`); w.Code != 200 || p.calls != 1 {
+		t.Fatal("legacy tick changed", w.Code)
+	}
+}
