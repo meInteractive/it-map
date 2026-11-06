@@ -138,6 +138,9 @@ func (r RunRepository) ClaimJob(ctx context.Context, runID string, options Claim
 	if options.Lease < time.Millisecond || options.Lease > time.Hour {
 		return nil, ErrJobInput
 	}
+	if options.HHScanPhase != "" && (options.HHScanPhase != "launch" && options.HHScanPhase != "reconcile" || !options.VerifiedHHOnly) {
+		return nil, ErrJobInput
+	}
 	tx, e := r.lockGeneration(ctx)
 	if e != nil {
 		return nil, e
