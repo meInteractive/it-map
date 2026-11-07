@@ -23,6 +23,7 @@ export interface DebugJSONInput {
   total?: number;
   coverage?: 'complete' | 'server_latest';
   daily?: Record<string,unknown>[];
+  breakdown?: Record<string,unknown>[];
 }
 export declare const DEBUG_JSON_SCHEMA_VERSION: 1;
 export declare const DEBUG_JSON_EVENT_LIMIT: 10;
