@@ -4,8 +4,13 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"encoding/json"
+	"fmt"
 	"math"
+	"strconv"
 	"strings"
+
+	"itmap/internal/apifyruns"
 )
 
 // JSON1 uses the first duplicate; the surrounding settings parser uses the last.
@@ -28,7 +33,10 @@ type claimView struct {
 	pages          map[string]string
 	operations     map[string]bool
 	verifiedHH     map[hhCandidateKey]bool
-	blockedHHScans map[string]bool
+	blockedHHScans  map[string]bool
+	goOperationKeys map[string]string
+	orphanPaidScans map[string]bool
+	lastListingStart int64
 }
 
 func claimTypes(requested []string) (map[string]bool, error) {
@@ -49,7 +57,8 @@ func claimTypes(requested []string) (map[string]bool, error) {
 	return out, nil
 }
 func readClaimView(ctx context.Context, tx *sql.Tx, generation string) (claimView, error) {
-	view := claimView{busy: map[int64]bool{}, pages: map[string]string{}, operations: map[string]bool{}}
+	view := claimView{busy: map[int64]bool{}, pages: map[string]string{}, operations: map[string]bool{}, goOperationKeys: map[string]string{}, orphanPaidScans: map[string]bool{}}
+	operationCreated := map[string]int64{}
 	rows, e := tx.QueryContext(ctx, "SELECT candidate_id FROM scheduler_jobs WHERE generation=? AND status='running' AND candidate_id IS NOT NULL", generation)
 	if e != nil {
 		return view, e
@@ -67,17 +76,19 @@ func readClaimView(ctx context.Context, tx *sql.Tx, generation string) (claimVie
 	if e != nil {
 		return view, e
 	}
-	rows, e = tx.QueryContext(ctx, "SELECT operation_key FROM apify_runs WHERE generation=?", generation)
+	rows, e = tx.QueryContext(ctx, "SELECT operation_key,created_at FROM apify_runs WHERE generation=?", generation)
 	if e != nil {
 		return view, e
 	}
 	for rows.Next() {
 		var key string
-		if e = rows.Scan(&key); e != nil {
+		var created int64
+		if e = rows.Scan(&key, &created); e != nil {
 			rows.Close()
 			return view, e
 		}
 		view.operations[key] = true
+		operationCreated[key] = created
 	}
 	e = rows.Err()
 	rows.Close()
@@ -105,6 +116,36 @@ func readClaimView(ctx context.Context, tx *sql.Tx, generation string) (claimVie
 		}
 		if !present {
 			page = "0"
+		}
+		if strings.HasPrefix(id, "go399:") {
+			var c hhListingCursor
+			if json.Unmarshal(raw, &c) == nil && c.Version == 1 && c.Page >= 0 && c.Page < 100 {
+				page = strconv.FormatInt(c.Page, 10)
+				// Ключ в apify_runs — go398:SHA(input), а не строка listing:...
+				for _, n := range []int64{c.Page, c.Page - 1} {
+					if n < 0 {
+						continue
+					}
+					options := c.options()
+					options.Page = n
+					key, keyErr := apifyruns.HHOperationIdentity(c.Operation, fmt.Sprintf("listing:%s:%d", id, n), options)
+					if keyErr != nil {
+						continue
+					}
+					if n == c.Page {
+						scanID := strings.TrimPrefix(id, "go399:")
+						view.goOperationKeys[scanID] = key
+						if (c.RunID != "" || c.DatasetID != "") && !view.operations[key] {
+							// Cursor помнит платный Actor, но ledger не подтверждает
+							// операцию. Не выпускать повторный POST.
+							view.orphanPaidScans[scanID] = true
+						}
+					}
+					if created := operationCreated[key]; created > view.lastListingStart {
+						view.lastListingStart = created
+					}
+				}
+			}
 		}
 		view.pages[id] = page
 	}
@@ -149,6 +190,32 @@ func claimEligible(job Job, now int64, settings Settings, options ClaimOptions, 
 			cursor = "0"
 		}
 		page = view.operations["listing:"+run+":"+cursor]
+		if options.HHScanPhase != "" {
+			// В Go scan cursor привязан к go399:job.ID, а не к JS runId.
+			// Разделение выполняется по оплаченному operation_key,
+			// чтобы GET существующего Actor не считался новым POST.
+			key, known := view.goOperationKeys[job.ID]
+			if !known {
+				// Курсор не подтверждён либо ещё не создан: новому запуску
+				// разрешён только verified HH scan без старого paid cursor.
+				if view.pages["go399:"+job.ID] != "" {
+					return false, false, nil
+				}
+			}
+			page = known && view.operations[key]
+			switch options.HHScanPhase {
+			case "launch":
+				if page || view.orphanPaidScans[job.ID] || view.lastListingStart > now-3600000 {
+					return false, page, nil
+				}
+			case "reconcile":
+				if !page {
+					return false, page, nil
+				}
+			default:
+				return false, false, ErrJobInput
+			}
+		}
 		if options.AllowApifyStarts != nil && !*options.AllowApifyStarts && !page {
 			return false, false, nil
 		}

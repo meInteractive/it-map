@@ -34,6 +34,24 @@ class TickTests(unittest.TestCase):
         self.assertEqual(json.loads(calls[0][0].data), {})
         self.assertNotIn('CI_SECRET', json.dumps(result))
 
+    def test_independent_profiles_are_idempotent_per_minute(self):
+        calls = []
+        def opener(req, timeout):
+            calls.append(json.loads(req.data))
+            return Response({'status': 'completed', 'processed': 0, 'errors': 0})
+        env = {'SCHEDULER_TOKEN': 'CI_TOKEN', 'ITMAP_SCHEDULER_UNTIL': '1000'}
+        for moment in (120, 125, 180):
+            self.assertEqual(tick.run(env, now=moment, opener=opener, profile='reconcile')['status'], 'completed')
+        self.assertEqual(calls, [
+            {'requestId': 'minute:2', 'profile': 'reconcile'},
+            {'requestId': 'minute:2', 'profile': 'reconcile'},
+            {'requestId': 'minute:3', 'profile': 'reconcile'},
+        ])
+        with self.assertRaises(tick.TickError):
+            tick.run(env, now=200, opener=opener, profile='unknown')
+        with self.assertRaises(tick.TickError):
+            tick.run(env, now=200, opener=opener, diagnostic=True, profile='launch')
+
     def test_expired_or_missing_configuration_never_calls_server(self):
         def forbidden(*args, **kwargs):
             raise AssertionError('unexpected request')

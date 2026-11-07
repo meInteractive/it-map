@@ -33,6 +33,7 @@ type ClaimOptions struct {
 	JobID, SourceID               *string
 	ScanScope                     *ScanCandidateScope
 	VerifiedHHOnly                bool
+	HHScanPhase                   string // launch / reconcile; пусто — прежняя общая очередь
 }
 
 // ScanCandidateScope идентифицирует серверный точечный запрос и его область.
@@ -135,6 +136,9 @@ func (r RunRepository) ClaimJob(ctx context.Context, runID string, options Claim
 		options.Lease = 5 * time.Minute
 	}
 	if options.Lease < time.Millisecond || options.Lease > time.Hour {
+		return nil, ErrJobInput
+	}
+	if options.HHScanPhase != "" && (options.HHScanPhase != "launch" && options.HHScanPhase != "reconcile" || !options.VerifiedHHOnly) {
 		return nil, ErrJobInput
 	}
 	tx, e := r.lockGeneration(ctx)

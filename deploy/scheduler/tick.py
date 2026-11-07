@@ -19,7 +19,7 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
-def run(env, now=None, opener=None, diagnostic=False):
+def run(env, now=None, opener=None, diagnostic=False, profile=None):
     token = env.get('SCHEDULER_TOKEN', '')
     raw_until = env.get('ITMAP_SCHEDULER_UNTIL', '')
     if not token or len(token) > 1024 or '\n' in token or '\r' in token:
@@ -27,9 +27,14 @@ def run(env, now=None, opener=None, diagnostic=False):
     if not raw_until.isascii() or not raw_until.isdigit() or len(raw_until) > 12:
         raise TickError('pilot_deadline_invalid')
     deadline = int(raw_until)
-    if (time.time() if now is None else now) >= deadline:
+    moment = time.time() if now is None else now
+    if moment >= deadline:
         return {'status': 'pilot_expired'}
-    body = {'diagnostic': True} if diagnostic else {}
+    if profile is not None and (profile not in ('launch', 'reconcile', 'pipeline') or diagnostic):
+        raise TickError('profile_invalid')
+    body = {'diagnostic': True} if diagnostic else (
+        {'requestId': 'minute:%d' % (moment // 60), 'profile': profile} if profile else {}
+    )
     request = urllib.request.Request(URL, data=json.dumps(body).encode(), method='POST', headers={
         'Authorization': 'Bearer ' + token,
         'Content-Type': 'application/json',
@@ -59,9 +64,13 @@ def run(env, now=None, opener=None, diagnostic=False):
 
 
 def main():
-    if len(sys.argv) > 2 or len(sys.argv) == 2 and sys.argv[1] != '--diagnostic':
+    if len(sys.argv) > 2:
         raise TickError('argument_invalid')
-    result = run(os.environ, diagnostic=len(sys.argv) == 2)
+    arg = sys.argv[1] if len(sys.argv) == 2 else ''
+    if arg and arg != '--diagnostic' and not arg.startswith('--profile='):
+        raise TickError('argument_invalid')
+    profile = arg[len('--profile='):] if arg.startswith('--profile=') else None
+    result = run(os.environ, diagnostic=arg == '--diagnostic', profile=profile)
     print(json.dumps(result, ensure_ascii=False))
     return 1 if result.get('errors', 0) or result['status'] in ('partial', 'interrupted') else 0
 
