@@ -18,6 +18,12 @@ const apify={
   },
   active:[{id:'OP01',profile:'free',state:'uncertain',run_id:'HIDDEN_RUN',created_at:now}],
 };
+const operations={checkedAt:now,coverage:'server_latest',total:11,items:
+  Array.from({length:10},(_,i)=>({operationId:'AI_OP_'+String(i),profile:'free',
+    state:i===9?'uncertain':'succeeded',createdAt:now+i*1000,updatedAt:now+i*1000,
+    chargedUsd:i===9?null:0.05,reservedUsd:0.25,errorCode:'ci_operation',
+    accountId:'HIDDEN_ACCOUNT',run_id:'HIDDEN_RUN',dataset_id:'HIDDEN_DATASET'})),
+};
 const firecrawl={mode:'free',fresh:true,checkedAt:now,status:'available',reason:'SECRET_REASON',
   limits:{credits:1000,scrapePerMinute:10,appConcurrency:1},
   budget:{providerPlanCredits:1000,providerRemaining:900,providerUsedEstimate:100,
@@ -33,6 +39,7 @@ globalThis.fetch=async (url,opts={})=>{
   requests.push(path);
   if(path==='/api/session')return Response.json({isAdmin:true});
   if(path==='/api/apify/usage')return Response.json(apify);
+  if(path==='/api/apify/operations/debug')return Response.json(operations);
   if(path==='/api/firecrawl/usage?mode=free')return Response.json(firecrawl);
   throw new Error('Unexpected request: '+path);
 };
@@ -48,8 +55,16 @@ try{
   assert.equal(requests.length,before,'copy has no network side effects');
   assert.equal(writes[0].section,'apify_usage');
   assert.equal(writes[0].summary.profiles.free.ownConfirmedUsd,2);
-  assert.equal(writes[0].summary.operationHistoryAvailable,false);
+  assert.equal(writes[0].summary.operationHistoryAvailable,true);
+  assert.equal(writes[0].summary.activeOnly,false);
+  assert.equal(writes[0].recentItems.total,11);
+  assert.equal(writes[0].recentItems.returned,10);
+  assert.equal(writes[0].recentItems.items[0].operationId,'AI_OP_9');
+  assert.equal(writes[0].recentItems.items[0].costUsd,undefined);
+  assert.equal(writes[0].recentItems.items[0].chargedUsd,null);
   assert.ok(!JSON.stringify(writes[0]).includes('HIDDEN_RUN'));
+  assert.ok(!JSON.stringify(writes[0]).includes('HIDDEN_DATASET'));
+  assert.ok(requests.includes('/api/apify/operations/debug'));
   assert.ok(!JSON.stringify(writes[0]).includes('HIDDEN_ACCOUNT'));
 
   await act(async()=>{f=create(h(FirecrawlBudget,{mode:'free'}));});
