@@ -18,7 +18,7 @@ const props={
  section:'scheduler_queue',
  getSnapshot:()=>({capturedAt:at,filters:{status:'pending',secret},
    summary:{totalMatched:1},items:[{jobId:'CI_JOB_1',type:'scan_source',status:'pending',createdAt:at,
-     sourceId:'hh',message:'sk-proj-PRIVATE',payload:{token:'secret'}}],total:1}),
+     sourceId:'hh',message:secret,payload:{token:'secret'}}],total:1}),
  isAuthorized:()=>allowed,
 };
 try {
