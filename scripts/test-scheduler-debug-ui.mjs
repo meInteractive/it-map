@@ -15,7 +15,7 @@ const info={settings:{enabled:true,ownerName:'Owner private',dayBudgetUsd:10,mon
   spending:{dayUsd:0.8,monthUsd:1.2,timezone:'Europe/Moscow',byType:[]},
   sourceOptions:[],lastSignalAt:now,lastSuccessAt:now,nextSignalAt:null,cloudStatus:'signal_received',
 };
-const queue={total:25,limit:10,coverage:'server_latest',items:Array.from({length:10},(_,i)=>({jobId:'Q_'+(25-i),type:'classify_title',status:'failed',sourceId:'hh',reasonCode:'retry_due',createdAt:now-i*1000,updatedAt:now-i*1000,priority:10,payload:'PRIVATE_RESULT'}))};
+const queue={total:25,limit:10,coverage:'server_latest',checkedAt:now,items:Array.from({length:10},(_,i)=>({jobId:'Q_'+(25-i),type:'classify_title',status:'failed',sourceId:'hh',reasonCode:'retry_due',createdAt:now-i*1000,updatedAt:now-i*1000,priority:10,payload:'PRIVATE_RESULT'}))};
 Object.defineProperty(globalThis,'navigator',{value:{clipboard:{async writeText(v){writes.push(JSON.parse(v));}}},configurable:true});
 globalThis.window={addEventListener(){},removeEventListener(){}};
 globalThis.document={visibilityState:'hidden',addEventListener(){},removeEventListener(){},getElementById(){return null;}};
