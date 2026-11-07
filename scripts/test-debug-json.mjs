@@ -51,7 +51,7 @@ const absent=buildDebugJSON({section:'parser_issues',capturedAt:at,available:fal
 assert.equal(absent.available,false);
 assert.equal(absent.errorCode,'backend_not_migrated');
 assert.equal(absent.daily,undefined);
-assert.equal(absent.summary.activeCounts.p1,0,'unavailable summary is not silently rewritten to zero');
+assert.deepEqual(absent.summary,{},'unavailable endpoint must not expose stale cached zero');
 const unavailableCost=buildDebugJSON({section:'ai_spending',capturedAt:at,summary:{confirmedUsd:0,unknownReservedUsd:null,upperEstimateUsd:null,credits:17},items:[{jobId:'A',type:'score_relevance',startedAt:at,costUsd:null,reservedUsd:0}]});
 assert.equal(unavailableCost.summary.confirmedUsd,0);
 assert.equal(unavailableCost.summary.unknownReservedUsd,null);
