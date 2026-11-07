@@ -51,6 +51,7 @@ type parserIssuesReport struct {
 	Limit            int                `json:"limit"`
 	ActiveCounts     ErrorHistoryCounts `json:"activeCounts"`
 	History          json.RawMessage    `json:"history,omitempty"`
+	Generation       string             `json:"-"`
 }
 
 var expectedIssueWait = map[string]bool{
@@ -83,7 +84,7 @@ func issueReason(code string) string {
 		return "не указана"
 	}
 	for _, r := range code {
-		if r > 127 || r < 'a' && (r < '0' || r > '9') || r > 'z' && r != '_' && r != '-' {
+		if !(r >= 'a' && r <= 'z' || r >= '0' && r <= '9' || r == '_' || r == '-') {
 			return "unknown"
 		}
 	}
@@ -139,6 +140,7 @@ func (r IssuesRepository) collect(ctx context.Context, now time.Time) (report pa
 		return report, "", ErrSettingsStorage
 	}
 	owner = settings.OwnerName
+	report.Generation = generation
 	add := func(id string, priority int, title, status, description, action, target string) {
 		report.Issues = append(report.Issues, parserIssue{
 			ID: id, Priority: priority, Title: title, Status: status,
@@ -313,6 +315,9 @@ func (r IssuesRepository) ReadIssues(ctx context.Context) (json.RawMessage, erro
 	if err != nil {
 		return nil, settingsFailure(ctx, err)
 	}
+	if op.generation != report.Generation {
+		return nil, ErrSettingsGeneration
+	}
 	report.History, err = op.Read(ctx, now.UnixMilli())
 	if err != nil {
 		return nil, settingsFailure(ctx, err)
@@ -331,6 +336,9 @@ func (r IssuesRepository) Sample(ctx context.Context) error {
 	op, err := (ErrorHistoryRepository{DB: r.DB}).PrepareHistory(ctx, owner)
 	if err != nil {
 		return settingsFailure(ctx, err)
+	}
+	if op.generation != report.Generation {
+		return ErrSettingsGeneration
 	}
 	return settingsFailure(ctx, op.Record(ctx, report.ActiveCounts, now.UnixMilli()))
 }
