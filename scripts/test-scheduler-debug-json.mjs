@@ -35,7 +35,7 @@ assert.equal(overview.summary.spending.confirmedUsd,undefined,'upper estimate is
 assert.ok(!JSON.stringify(overview).includes(secret));
 assert.ok(!JSON.stringify(overview).includes('Private owner'));
 
-const q={total:25,limit:10,coverage:'server_latest',items:Array.from({length:10},(_,i)=>({
+const q={total:25,limit:10,coverage:'server_latest',checkedAt:at,items:Array.from({length:10},(_,i)=>({
   jobId:'JOB_'+String(24-i),type:'classify_title',sourceId:'hh',status:'failed',
   priority:5,createdAt:at-i*1000,updatedAt:at-i*1000,reasonCode:'retry_due',
   payload:secret,last_error:secret,companyName:secret,
