@@ -10,15 +10,16 @@ const value=(n:number|null)=>n===null?'—':n.toLocaleString('ru-RU',{maximumFra
 const date=(day:string)=>day.slice(8,10)+'.'+day.slice(5,7);
 
 export default function ParserErrorHistory({history}:{history:ErrorHistory}){
- const id=useId(),{points,average}=history,today=points.at(-1);
+ const id=useId(),{points,average}=history,today=points.at(-1),lastMeasured=[...points].reverse().find(p=>p.observedAt!==null);
+ const lastSample=lastMeasured?.observedAt===null||lastMeasured?.observedAt===undefined?'ещё нет':new Intl.DateTimeFormat('ru-RU',{timeZone:'Europe/Moscow',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(lastMeasured.observedAt))+' МСК';
  const width=920,left=40,top=16,bottom=184,plotWidth=width-left-12,step=plotWidth/Math.max(1,points.length);
  const tick=Math.max(1,Math.ceil(Math.max(1,...points.flatMap(p=>[p.p1??0,p.p2??0]))/4)),max=tick*4,y=(n:number)=>bottom-n/max*(bottom-top);
  return <article className="settings-card parser-error-history">
   <div><h2>Ошибки за 30 дней</h2><p className="resume-hint">Дневной пик активных ошибок по Москве. P1 — критичные сигналы, P2 — проблемные задания.</p></div>
   <div className="parser-history-metrics">{priorities.map(p=><div key={p.key} className={'parser-history-metric '+p.key}>
-   <h3>{p.title}</h3><strong>{value(average[p.key])}<span> в день</span></strong><p>Среднее за 30 дней</p><p className="resume-hint">Сегодня, пик: {value(today?.[p.key]??null)}</p>
+   <h3>{p.title}</h3><strong>{value(average[p.key])}<span> в день</span></strong><p>Среднее за дни с наблюдениями</p><p className="resume-hint">Сегодня, пик: {value(today?.[p.key]??null)}</p>
   </div>)}</div>
-  <p className="resume-hint">Данных: {history.observedDays} из {history.days} дней. Среднее — по дням с наблюдениями; текущий день неполный. Пропуски не считаются нулём.</p>
+  <p className="resume-hint">Данных: {history.observedDays} из {history.days} дней. Среднее — по дням с наблюдениями; текущий день неполный. Пропуски не считаются нулём. Последний замер: {lastSample}.</p>
   <div className="parser-history-legend">{priorities.map(p=><span key={p.key}><i style={{background:p.color}}/>{p.title}</span>)}<span><i className="mean"/>Среднее</span><span><i className="missing"/>Нет данных</span></div>
   <div className="parser-history-scroll"><svg viewBox={'0 0 '+width+' 224'} role="img" aria-labelledby={id+'-title '+id+'-desc'} className="parser-history-chart">
    <title id={id+'-title'}>Дневные пики ошибок P1 и P2 за последние 30 дней</title>
