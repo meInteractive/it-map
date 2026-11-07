@@ -7,7 +7,7 @@ const {default:CopyDebugJSON}=await moduleFor('frontend/features/settings/CopyDe
 const oldNavigator=Object.getOwnPropertyDescriptor(globalThis,'navigator');
 const oldFetch=globalThis.fetch,oldAct=globalThis.IS_REACT_ACT_ENVIRONMENT;
 let root=null;
-const calls=[],at='2026-11-07T18:00:00.000Z';
+const calls=[],at='2026-11-07T18:00:00.000Z',secret=['sk','proj','PRIVATE'].join('-');
 let allowed=true,forceError=false;
 Object.defineProperty(globalThis,'navigator',{
  configurable:true,value:{clipboard:{async writeText(value){if(forceError)throw new Error('denied');calls.push(value);}}},
