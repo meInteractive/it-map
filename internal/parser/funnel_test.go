@@ -45,5 +45,6 @@ func TestFunnelFilterCalendarAndCounts(t *testing.T) {
 	var v map[string]any
 	if json.Unmarshal(raw,&v)!=nil || len(v)!=7 || v["published"]!=float64(1) {t.Fatal("daily stage contract changed")}
 	r,_:=json.Marshal(funnelCohort{funnelCounts:c,Rejected:1,Created:1})
+	v=map[string]any{} // Unmarshal into an existing map retains unrelated daily fields.
 	if json.Unmarshal(r,&v)!=nil || len(v)!=12 || v["rejected"]!=float64(1) {t.Fatal("cohort shape changed")}
 }
