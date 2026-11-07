@@ -113,7 +113,7 @@ func (r IssuesRepository) clock() time.Time {
 
 // collect возвращает точные активные сигналы, не суммируя retries и завершённые
 // задания. Транзакция только для чтения, без сетевых и платных вызовов.
-func (r IssuesRepository) collect(ctx context.Context, now time.Time) (report parserIssuesReport, owner string, err error) {
+func (r IssuesRepository) collect(ctx context.Context, now time.Time, includeBacklog bool) (report parserIssuesReport, owner string, err error) {
 	report = parserIssuesReport{CheckedAt: now.UnixMilli(), Issues: []parserIssue{}, Limit: issuesJobLimit}
 	if r.DB == nil {
 		return report, "", ErrSettingsStorage
@@ -284,6 +284,49 @@ func (r IssuesRepository) collect(ctx context.Context, now time.Time) (report pa
 			report.Issues[index].Description = fmt.Sprintf("Зафиксировано до %d последних заданий этой группы; полный список доступен в очереди.", n)
 		}
 	}
+	// Исторические задачи из JS-эталона показываем только при чтении панели.
+	// Штатный 15-минутный снимок не перечитывает весь архив вакансий:
+	// backlog не влияет на активные P1/P2 и на дневные максимумы.
+	if includeBacklog {
+		legacy, queryErr := tx.QueryContext(ctx, `SELECT company_name,COUNT(*) AS n
+			FROM company_vacancies WHERE entity_type='company'
+			AND LEFT(loaded_at,10)='2026-10-20'
+			AND (level IS NULL OR TRIM(level)='')
+			GROUP BY company_name`)
+		if queryErr != nil {
+			return report, "", settingsFailure(ctx, queryErr)
+		}
+		var missing int64
+		for legacy.Next() {
+			var company string
+			var count int64
+			if err = legacy.Scan(&company, &count); err != nil {
+				break
+			}
+			name := strings.ToLower(company)
+			if strings.Contains(name, "сбер") || strings.Contains(name, "sber") {
+				missing += count
+			}
+		}
+		if err == nil {
+			err = legacy.Err()
+		}
+		legacy.Close()
+		if err != nil {
+			return report, "", settingsFailure(ctx, err)
+		}
+		if missing > 0 {
+			add("sber-levels", 2, "Уровни ранее загруженных вакансий Сбера", "verification",
+				fmt.Sprintf("Без уровня: %d. Проверяются карточки от 20.10.2026; это не текущая авария источника.", missing),
+				"Сравните старые карточки с исходным текстом. Не перезаписывайте ручные правки.", "fulltext")
+			report.Issues[len(report.Issues)-1].ReviewedAt = "2026-10-21"
+			report.Issues[len(report.Issues)-1].Affected = missing
+		}
+		add("yoomoney-cycle", 2, "ЮMoney: проверить полный автоматический цикл", "verification",
+			"Каталог и адаптер ранее проверены; требуется подтверждение обычного прохода от планирования до импорта.",
+			"Сверьте штатный запуск, полноту страниц и сохранённый результат. Это не текущий сигнал отказа.", "source")
+		report.Issues[len(report.Issues)-1].ReviewedAt = "2026-10-21"
+	}
 	// Поддерживаемый перечень проверок отделён от фактических P1/P2.
 	add("hh-completeness", 2, "HH: проверить частичные результаты Apify", "verification",
 		"Незавершённые Actor могли вернуть частичный Dataset; требуется отдельная сверка.", "Сверьте Actor и сохранённые кандидаты, не запуская новый Actor.", "source")
@@ -307,7 +350,7 @@ func (r IssuesRepository) collect(ctx context.Context, now time.Time) (report pa
 // ReadIssues не пишет дневную историю: чтение страницы не создаёт наблюдения.
 func (r IssuesRepository) ReadIssues(ctx context.Context) (json.RawMessage, error) {
 	now := r.clock()
-	report, owner, err := r.collect(ctx, now)
+	report, owner, err := r.collect(ctx, now, true)
 	if err != nil {
 		return nil, settingsFailure(ctx, err)
 	}
@@ -329,7 +372,7 @@ func (r IssuesRepository) ReadIssues(ctx context.Context) (json.RawMessage, erro
 // Sample вызывается только штатным защищённым тиком планировщика.
 func (r IssuesRepository) Sample(ctx context.Context) error {
 	now := r.clock()
-	report, owner, err := r.collect(ctx, now)
+	report, owner, err := r.collect(ctx, now, false)
 	if err != nil {
 		return settingsFailure(ctx, err)
 	}
