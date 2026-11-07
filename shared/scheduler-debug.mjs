@@ -4,7 +4,10 @@ export function schedulerOverviewSnapshot(d) {
   return {
     summary:{
       enabled:d.settings.enabled,cloudStatus:d.cloudStatus,
-      lastSignalAt:d.lastSignalAt,lastSuccessAt:d.lastSuccessAt,nextSignalAt:d.nextSignalAt,
+      lastSignalAt:d.lastSignalAt,lastSuccessAt:d.lastSuccessAt,
+      // API хранит часовую оценку, но установленный timer может быть 15-минутным.
+      // До чтения реального systemd расписания точное время следующего тика неизвестно.
+      nextSignalAt:null,
       counts:d.counts,statistics:d.statistics,
       // dayUsd включает резервы — это НЕ подтверждённая стоимость.
       spending:{upperEstimateUsd:d.spending.dayUsd},
