@@ -5,6 +5,7 @@ export interface QueueDebugResponse {
   total:number;
   coverage:'server_latest';
   limit:number;
+  checkedAt?:number;
 }
 export declare function schedulerOverviewSnapshot(d:any):Snapshot;
 export declare function schedulerQueueSnapshot(d:QueueDebugResponse, filters:{status:string;type:string;searchApplied:boolean}):Snapshot;
