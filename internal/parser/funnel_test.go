@@ -34,7 +34,7 @@ func TestFunnelFilterCalendarAndCounts(t *testing.T) {
 	if _,e:=(FunnelRepository{}).ReadFunnel(context.Background(),"wrong","all");!errors.Is(e,ErrFunnelInput){
 		t.Fatal("invalid filters should fail before SQL")
 	}
-	if _,e:=(FunnelRepository{}).ReadFunnel(t.Context(),"all","all");!errors.Is(e,ErrFunnelStorage){
+	if _,e:=(FunnelRepository{}).ReadFunnel(context.Background(),"all","all");!errors.Is(e,ErrFunnelStorage){
 		t.Fatal("missing SQL must fail closed")
 	}
 	c:=funnelCounts{}
