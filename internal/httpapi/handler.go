@@ -83,7 +83,7 @@ type Options struct {
 	SchedulerJobActions  SchedulerJobActionWriter
 	SchedulerSettings    SchedulerSettingsWriter
 	SchedulerDashboard   SchedulerDashboardReader
-	SchedulerIssues      SchedulerIssuesReader
+	SchedulerIssues      SchedulerIssuesStore
 }
 
 // NewHandlerWithOptions constructs only explicitly implemented routes.
