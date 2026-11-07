@@ -16,7 +16,7 @@ import (
 
 // S11-DIAG-02: SQL-окно из ВСЕХ совпавших jobs, а не из видимой
 // пагинированной страницы. Доступ только администратору, без payload.
-func TestMariaDBSchedulerQueueDebugLatestTen(t *testing.T) {
+func TestMariaDBSchedulerQueueDebugLatestTenDisposable(t *testing.T) {
     requireSettingsCI(t)
     f := queueReadFixture(t)
     f.exec("DELETE FROM scheduler_jobs")
