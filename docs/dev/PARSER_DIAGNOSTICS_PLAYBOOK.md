@@ -173,7 +173,7 @@ systemctl status itmap@main.service --no-pager
 
 ## 9. Планируется: кнопки «Копировать JSON» (ПОКА НЕ РЕАЛИЗОВАНО)
 
-**Статус на 07.11.2026: только спецификация.** Кнопки не существуют в работающем Go/React. Полные задачи лежат в [`tasks/sprint-01-subtasks/README.md`](../../tasks/sprint-01-subtasks/README.md) и отдельных `PARSER-JSON-01…05.md`:
+**Статус на 07.11.2026:** общая основа JSON/React-компонент подготовлены в [PR #259](https://github.com/meInteractive/it-map/pull/259); **кнопки на страницах ещё НЕ реализованы и не доступны пользователю**. Основа в `shared/debug-json.mjs`, типовой контракт `shared/debug-json.d.mts`, React-компонент `frontend/features/settings/CopyDebugJSON.tsx` (компонент не используется на страницах до S11-DIAG-02…05). Перед использованием нужны проверенный allowlist конкретной секции, admin/session guard и безопасный read-only backend. Полные задачи лежат в [`tasks/sprint-01-subtasks/README.md`](../../tasks/sprint-01-subtasks/README.md) и отдельных `PARSER-JSON-01…05.md`:
 
 - `S11-DIAG-01`: общий безопасный React serializer/button, schema version, allowlist, ограничения списков, admin auth.
 - `S11-DIAG-02`: JSON обзора, очереди, последних 10 циклов + последних 10 попыток.
