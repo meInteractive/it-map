@@ -83,6 +83,7 @@ type Options struct {
 	SchedulerJobActions  SchedulerJobActionWriter
 	SchedulerSettings    SchedulerSettingsWriter
 	SchedulerDashboard   SchedulerDashboardReader
+	SchedulerAISpending SchedulerAISpendingReader
 	SchedulerIssues      SchedulerIssuesStore
 	SchedulerFunnel      SchedulerFunnelReader
 }
@@ -143,6 +144,7 @@ func NewHandlerWithOptions(logger *slog.Logger, opts Options) http.Handler {
 		mux.HandleFunc("/api/scheduler/queue/debug", SchedulerQueueDebugHandler(opts.Auth, debugQueue))
 		mux.HandleFunc("/api/scheduler/jobs/", SchedulerJobActionsHandler(opts.Auth, opts.SchedulerJobActions))
 		mux.HandleFunc("/api/scheduler/settings", SchedulerSettingsHandler(opts.Auth, opts.SchedulerSettings))
+		mux.HandleFunc("/api/scheduler/ai-spending/debug", SchedulerAISpendingDebugHandler(opts.Auth, opts.SchedulerAISpending))
 		mux.HandleFunc("/api/scheduler", SchedulerDashboardHandler(opts.Auth, opts.SchedulerDashboard))
 		mux.HandleFunc("/api/scheduler/issues", SchedulerIssuesHandler(opts.Auth, opts.SchedulerIssues))
 		mux.HandleFunc("/api/scheduler/funnel", SchedulerFunnelHandler(opts.Auth, opts.SchedulerFunnel))

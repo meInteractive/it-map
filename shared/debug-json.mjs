@@ -6,7 +6,7 @@ const stage = 'code', number = 'number', time = 'time', bool = 'boolean', day = 
 const counts = {pending:number,running:number,completed:number,failed:number,cancelled:number};
 const stages = {scan_source:number,classify_title:number,fetch_full_text:number,extract_vacancy:number,assign_roles:number,import_vacancy:number,score_relevance:number};
 const spent = {confirmedUsd:number,unknownReservedUsd:number,upperEstimateUsd:number,credits:number,unknownCostOperations:number};
-const stageEvent = {jobId:stage,runId:stage,type:stage,sourceId:stage,status:stage,reasonCode:stage,startedAt:time,finishedAt:time,provider:stage,model:stage,reservedUsd:number,costUsd:number,credits:number};
+const stageEvent = {attemptId:stage,jobId:stage,runId:stage,type:stage,sourceId:stage,status:stage,reasonCode:stage,startedAt:time,finishedAt:time,provider:stage,model:stage,reservedUsd:number,costUsd:number,credits:number};
 const dailyError = {day,p1:number,p2:number,observedAt:time};
 const dailyFunnel = {day,received:number,accepted:number,fulltext:number,structured:number,roles:number,published:number};
 const funnelStage = {received:number,accepted:number,fulltext:number,structured:number,roles:number,published:number};
@@ -34,7 +34,18 @@ const SCHEMA = Object.freeze({
     sortTime:'startedAt',sortId:'attemptId',
   },
   ai_spending:{
-    filters:{provider:stage,model:stage,type:stage},summary:{dayBudgetUsd:number,monthBudgetUsd:number,dayUsd:number,monthUsd:number,...spent},items:stageEvent,sortTime:'startedAt',sortId:'jobId',
+    filters:{provider:stage,model:stage,type:stage},
+    summary:{
+      ...spent,
+      dayBudgetUsd:number,monthBudgetUsd:number,dayStart:time,monthStart:time,
+      dayConfirmedUsd:number,dayUnknownReservedUsd:number,dayUpperEstimateUsd:number,
+      monthConfirmedUsd:number,monthUnknownReservedUsd:number,monthUpperEstimateUsd:number,
+      monthUnknownCostOperations:number,monthUnpricedOperations:number,
+      modelBreakdownAvailable:bool,duplicateAICallsAvailable:bool,
+      providers:{openai:spent,openrouter:spent},
+    },
+    items:stageEvent,sortTime:'startedAt',sortId:'attemptId',
+    breakdown:{provider:stage,model:stage,type:stage,...spent,unpricedOperations:number},
   },
   apify_usage:{
     filters:{profile:stage},
@@ -153,6 +164,15 @@ export function buildDebugJSON(input) {
   if (typeof input.appVersion === 'string' && /^[a-f0-9]{7,40}$/i.test(input.appVersion)) output.appVersion = input.appVersion;
   if (Object.keys(config.items).length && input.available !== false && input.items !== undefined) {
     output.recentItems = listProjection(input,config);
+  }
+  if (config.breakdown && input.available !== false && input.breakdown !== undefined) {
+    if (!Array.isArray(input.breakdown) || input.breakdown.some(x=>!isRecord(x))) throw new Error('invalid_debug_breakdown');
+    // Только десять самых затратных сочетаний provider/model/stage.
+    // Полная сумма остаётся в summary, без переумножения на найденные вакансии.
+    const limited=input.breakdown.slice(0,DEBUG_JSON_EVENT_LIMIT);
+    output.breakdown={total:input.breakdown.length,returned:limited.length,
+      truncated:input.breakdown.length>limited.length,
+      items:limited.map(x=>project(x,config.breakdown))};
   }
   if (config.daily && input.available !== false && input.daily !== undefined) {
     if (!Array.isArray(input.daily) || input.daily.length !== 30 || input.daily.some(x=>!isRecord(x))) throw new Error('invalid_debug_daily');

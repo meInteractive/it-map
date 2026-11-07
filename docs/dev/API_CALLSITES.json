@@ -1,7 +1,7 @@
 {
   "scope": "Current frontend/web direct transport sites and reviewed JSX/download bindings; no runtime/golden coverage inferred",
   "typescript": "5.9.3",
-  "files": 66,
+  "files": 67,
   "transportModule": "frontend/api/client.ts",
   "sites": [
     {
@@ -407,6 +407,38 @@
         "catalog"
       ],
       "dynamicURL": true
+    },
+    {
+      "id": "9892dbe29a661339",
+      "file": "frontend/features/settings/AISpendingDebug.tsx",
+      "line": 10,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/scheduler/ai-spending/debug'",
+      "literalFragments": [
+        "/api/scheduler/ai-spending/debug"
+      ],
+      "families": [
+        "scheduler"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "3880d78969e131bf",
+      "file": "frontend/features/settings/AISpendingDebug.tsx",
+      "line": 11,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/session'",
+      "literalFragments": [
+        "/api/session"
+      ],
+      "families": [
+        "session"
+      ],
+      "dynamicURL": false
     },
     {
       "id": "a700cef598cd7540",
@@ -1433,7 +1465,7 @@
     {
       "id": "ab313e001aa9f9bc",
       "file": "frontend/features/settings/Scheduler.tsx",
-      "line": 26,
+      "line": 27,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
@@ -1449,7 +1481,7 @@
     {
       "id": "ab313e001aa9f9bc-2",
       "file": "frontend/features/settings/Scheduler.tsx",
-      "line": 34,
+      "line": 35,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
@@ -1465,7 +1497,7 @@
     {
       "id": "f2ce3fed5be3c776",
       "file": "frontend/features/settings/Scheduler.tsx",
-      "line": 48,
+      "line": 49,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -1481,7 +1513,7 @@
     {
       "id": "ac1ac72b61790922",
       "file": "frontend/features/settings/Scheduler.tsx",
-      "line": 52,
+      "line": 53,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -1497,7 +1529,7 @@
     {
       "id": "75e59256bf1a7125",
       "file": "frontend/features/settings/Scheduler.tsx",
-      "line": 54,
+      "line": 55,
       "call": "mutate",
       "method": "POST",
       "methodExpression": "'POST'",
@@ -1513,7 +1545,7 @@
     {
       "id": "68c3e8b7ba26363a",
       "file": "frontend/features/settings/Scheduler.tsx",
-      "line": 54,
+      "line": 55,
       "call": "mutate",
       "method": "POST",
       "methodExpression": "'POST'",
@@ -1529,7 +1561,7 @@
     {
       "id": "e64433429e4391ad",
       "file": "frontend/features/settings/Scheduler.tsx",
-      "line": 59,
+      "line": 60,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -1545,7 +1577,7 @@
     {
       "id": "4b60146604c370b2",
       "file": "frontend/features/settings/Scheduler.tsx",
-      "line": 59,
+      "line": 60,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -1561,7 +1593,7 @@
     {
       "id": "c85278915ad72425",
       "file": "frontend/features/settings/Scheduler.tsx",
-      "line": 60,
+      "line": 61,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -1577,7 +1609,7 @@
     {
       "id": "ab313e001aa9f9bc-3",
       "file": "frontend/features/settings/Scheduler.tsx",
-      "line": 71,
+      "line": 72,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
@@ -1593,7 +1625,7 @@
     {
       "id": "0f8303a5216fa000",
       "file": "frontend/features/settings/Scheduler.tsx",
-      "line": 91,
+      "line": 92,
       "call": "mutate",
       "method": "POST",
       "methodExpression": "'POST'",
@@ -1609,7 +1641,7 @@
     {
       "id": "952a1852bfcc4624",
       "file": "frontend/features/settings/Scheduler.tsx",
-      "line": 91,
+      "line": 92,
       "call": "mutate",
       "method": "POST",
       "methodExpression": "'POST'",

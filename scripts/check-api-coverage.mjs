@@ -57,5 +57,16 @@ const md=['# Покрытие API текущего React-клиента','',
 'Все references проверяются на существование, SQL parents — также на явное включение в required workflow. Это подтверждает связь с проверкой, не доказывает покрытие каждого URL/метода: строка gap сохраняется даже при зелёном CI.','',
 'Границы discovery: named imports request/mutate/load/useApi (включая import aliases), direct fetch, form/link и JSX url/download forwarding. Внешние SDK, произвольные новые wrapper/alias/data-flow и серверные automation/MCP endpoints не выводятся автоматически. Namespace/default imports клиента отвергаются до review. Хеши центрального transport, Go router и legacy route source закреплены в API_COVERAGE_REVIEW.json: изменение требует проверки matrix и осмысленного обновления хеша, а не только --write.','',
 'Очередь critical работ и внешние блокировки — [PLANS.md](../../PLANS.md), результаты PR/CI — [tasks/STACK.md](../../tasks/STACK.md), исходный полный server inventory — [LEGACY_API_BASELINE.md](LEGACY_API_BASELINE.md). Полный source HTTP golden, catalog/vacancy filters/null/flags, остальные negative rights и pipeline/import остаются открытыми; статический аудит не закрывает их.',''].join('\n');
-for(const [file,content] of [['docs/dev/API_CALLSITES.json',JSON.stringify(snapshot,null,2)+'\n'],['docs/dev/API_COVERAGE.md',md]]){if(process.argv.includes('--write'))fs.writeFileSync(new URL(file,root),content);else assert.equal(read(file),content,`API inventory/review drift: ${file}; review then regenerate with --write`);}
+for(const [file,content] of [['docs/dev/API_CALLSITES.json',JSON.stringify(snapshot,null,2)+'\n'],['docs/dev/API_COVERAGE.md',md]]){if(process.argv.includes('--write'))fs.writeFileSync(new URL(file,root),content);else {
+  const stored=read(file);
+  if(stored!==content){
+    let offset=0;
+    while(offset<stored.length&&offset<content.length&&stored[offset]===content[offset])offset++;
+    const left=Math.max(0,offset-140),right=offset+220;
+    console.error('API inventory first mismatch',file,'offset',offset,
+      'stored',JSON.stringify(stored.slice(left,right)),
+      'generated',JSON.stringify(content.slice(left,right)));
+  }
+  assert.equal(stored,content,`API inventory/review drift: ${file}; review then regenerate with --write`);
+}}
 console.log(`PASS: ${sites.length} frontend transport sites,${bindings.length} URL bindings,${forwarders.length} forwarding sites; ${review.families.length} reviewed evidence/gap families; no runtime parity claim`);
