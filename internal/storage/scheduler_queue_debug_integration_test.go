@@ -20,7 +20,7 @@ func TestMariaDBSchedulerQueueDebugLatestTenDisposable(t *testing.T) {
     requireSettingsCI(t)
     f := queueReadFixture(t)
     f.exec("DELETE FROM scheduler_jobs")
-    f.exec("UPDATE company_identity SET company_name='CI DEBUG COMPANY' WHERE id=1")
+    f.exec("INSERT INTO company_identity(id,company_name) VALUES(1,'CI DEBUG COMPANY')")
     for i:=0;i<28;i++ {
         status := "failed"
         if i>=25 {status="completed"}
