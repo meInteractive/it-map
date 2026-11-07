@@ -12,7 +12,7 @@ import (
 )
 
 // Тест выполняется исключительно на одноразовой itmap_ci с проверенным nonce.
-func TestMariaDBParserIssuesAndAutomaticHistoryDisposable(t *testing.T) {
+func TestMariaDBSchedulerErrorHistoryIssuesDisposable(t *testing.T) {
 	requireSettingsCI(t)
 	f := dashboardFixture(t)
 	for _, table := range []string{"parser_error_daily", "vacancy_role_classification"} {
