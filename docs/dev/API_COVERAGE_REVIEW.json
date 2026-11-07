@@ -783,7 +783,7 @@
   ],
   "sourceHashes": {
     "frontend/api/client.ts": "b6880480b3eed65bf7caa043f5e41c8e899b672e5c9629666ccbd6d8f80c14ad",
-    "internal/httpapi/handler.go": "7b16288c9b36320a00bc9f9814b857a4f01e14d8cf081339997872a71d74e89e",
+    "internal/httpapi/handler.go": "07933dff05342d979fef0d4e87d6dfbc176c4334ec86226c80703b819be505f2",
     "server/routes/index.js": "6134004f682975cb51ea13cd2ec4de8e85a5957deff6a5392fbad3fd70ccb1e4"
   },
   "clientExports": [
