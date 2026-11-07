@@ -411,7 +411,7 @@
     {
       "id": "a700cef598cd7540",
       "file": "frontend/features/settings/Apify.tsx",
-      "line": 13,
+      "line": 15,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
@@ -427,7 +427,7 @@
     {
       "id": "e119cd8c11236b90",
       "file": "frontend/features/settings/Apify.tsx",
-      "line": 13,
+      "line": 15,
       "call": "mutate",
       "method": "POST",
       "methodExpression": "'POST'",
@@ -443,7 +443,7 @@
     {
       "id": "5a327ec1abad41b8",
       "file": "frontend/features/settings/Apify.tsx",
-      "line": 19,
+      "line": 21,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
@@ -459,7 +459,7 @@
     {
       "id": "681ccd135d8a836a",
       "file": "frontend/features/settings/Apify.tsx",
-      "line": 23,
+      "line": 25,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -473,9 +473,25 @@
       "dynamicURL": false
     },
     {
+      "id": "a31ce83493a38633",
+      "file": "frontend/features/settings/Apify.tsx",
+      "line": 26,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/session'",
+      "literalFragments": [
+        "/api/session"
+      ],
+      "families": [
+        "session"
+      ],
+      "dynamicURL": false
+    },
+    {
       "id": "5006e486312542d3",
       "file": "frontend/features/settings/Apify.tsx",
-      "line": 29,
+      "line": 33,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
@@ -491,7 +507,7 @@
     {
       "id": "09abb7df931d88f0",
       "file": "frontend/features/settings/Apify.tsx",
-      "line": 32,
+      "line": 36,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -507,7 +523,7 @@
     {
       "id": "97a6926cc087d3be",
       "file": "frontend/features/settings/Apify.tsx",
-      "line": 35,
+      "line": 39,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -715,7 +731,7 @@
     {
       "id": "ef5a601382b193d6",
       "file": "frontend/features/settings/Firecrawl.tsx",
-      "line": 12,
+      "line": 14,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -731,7 +747,7 @@
     {
       "id": "c6ec562c5310b769",
       "file": "frontend/features/settings/Firecrawl.tsx",
-      "line": 14,
+      "line": 16,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
@@ -747,7 +763,7 @@
     {
       "id": "a392a7d8b75dff5a",
       "file": "frontend/features/settings/Firecrawl.tsx",
-      "line": 14,
+      "line": 16,
       "call": "mutate",
       "method": "POST",
       "methodExpression": "'POST'",
@@ -763,7 +779,7 @@
     {
       "id": "7104c96eb3ab4e15",
       "file": "frontend/features/settings/Firecrawl.tsx",
-      "line": 20,
+      "line": 22,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
@@ -779,7 +795,7 @@
     {
       "id": "d60571794bc9550e",
       "file": "frontend/features/settings/Firecrawl.tsx",
-      "line": 25,
+      "line": 27,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -793,9 +809,25 @@
       "dynamicURL": true
     },
     {
-      "id": "fab5d3db70d5fd2b",
+      "id": "635e6f72e1c417aa",
       "file": "frontend/features/settings/Firecrawl.tsx",
       "line": 28,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/session'",
+      "literalFragments": [
+        "/api/session"
+      ],
+      "families": [
+        "session"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "fab5d3db70d5fd2b",
+      "file": "frontend/features/settings/Firecrawl.tsx",
+      "line": 32,
       "call": "mutate",
       "method": "POST",
       "methodExpression": "'POST'",
@@ -811,7 +843,7 @@
     {
       "id": "cee933ffeb9e8391",
       "file": "frontend/features/settings/Firecrawl.tsx",
-      "line": 33,
+      "line": 37,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
@@ -827,7 +859,7 @@
     {
       "id": "ef5a601382b193d6-2",
       "file": "frontend/features/settings/Firecrawl.tsx",
-      "line": 36,
+      "line": 40,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -843,7 +875,7 @@
     {
       "id": "e807c7e69af4bf78",
       "file": "frontend/features/settings/Firecrawl.tsx",
-      "line": 39,
+      "line": 43,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
@@ -859,7 +891,7 @@
     {
       "id": "3b4feade0d08f8f6",
       "file": "frontend/features/settings/Firecrawl.tsx",
-      "line": 45,
+      "line": 49,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -875,7 +907,7 @@
     {
       "id": "4a3022fe5a95ab19",
       "file": "frontend/features/settings/Firecrawl.tsx",
-      "line": 47,
+      "line": 51,
       "call": "request",
       "method": "GET",
       "methodExpression": "GET",
@@ -891,7 +923,7 @@
     {
       "id": "7f57af15acf71057",
       "file": "frontend/features/settings/Firecrawl.tsx",
-      "line": 47,
+      "line": 51,
       "call": "mutate",
       "method": "POST",
       "methodExpression": "'POST'",
@@ -907,7 +939,7 @@
     {
       "id": "368fb224786723a7",
       "file": "frontend/features/settings/Firecrawl.tsx",
-      "line": 47,
+      "line": 51,
       "call": "mutate",
       "method": "POST",
       "methodExpression": "'POST'",
@@ -923,7 +955,7 @@
     {
       "id": "22769b7c89d328f4",
       "file": "frontend/features/settings/Firecrawl.tsx",
-      "line": 47,
+      "line": 51,
       "call": "mutate",
       "method": "POST",
       "methodExpression": "'POST'",
@@ -939,7 +971,7 @@
     {
       "id": "dd379cb2333a99e2",
       "file": "frontend/features/settings/Firecrawl.tsx",
-      "line": 50,
+      "line": 54,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -955,7 +987,7 @@
     {
       "id": "ef5a601382b193d6-3",
       "file": "frontend/features/settings/Firecrawl.tsx",
-      "line": 50,
+      "line": 54,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -971,7 +1003,7 @@
     {
       "id": "59850f804d40ceb9",
       "file": "frontend/features/settings/Firecrawl.tsx",
-      "line": 50,
+      "line": 54,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -987,7 +1019,7 @@
     {
       "id": "ef5a601382b193d6-4",
       "file": "frontend/features/settings/Firecrawl.tsx",
-      "line": 55,
+      "line": 59,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
