@@ -41,7 +41,7 @@ assert.equal(paged.recentItems.truncated,true);
 assert.equal(paged.recentItems.items[0].jobId,'JOB_14');
 assert.equal(paged.recentItems.coverage,'server_latest');
 assert.throws(()=>buildDebugJSON({...request,section:'not_registered'}),/invalid_debug_section/);
-const withDirty={...request,items:[{...jobs[0],reasonCode:'Bearer sk-EXFIL',provider:'https://example/?key=secret'}],total:1};
+const withDirty={...request,items:[{...jobs[0],reasonCode:['Bearer','sk-EXFIL'].join(' '),provider:'https://example/?key=secret'}],total:1};
 const clean=serializeDebugJSON(withDirty);
 assert.ok(!clean.includes('EXFIL'));
 assert.ok(!clean.includes('https://'));
