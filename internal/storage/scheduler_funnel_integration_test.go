@@ -19,8 +19,8 @@ import (
 func TestMariaDBSchedulerFunnelDisposable(t *testing.T) {
 	requireSettingsCI(t)
 	f:=dashboardFixture(t)
-	for _,table:=range []string{"vacancy_candidates","parser_candidate_intakes","vacancy_import_operations",
-		"vacancy_classifications","vacancy_raw_snapshots","vacancy_role_results","company_vacancies"}{
+	for _,table:=range []string{"vacancy_candidates","parser_candidate_intakes",
+		"vacancy_classifications","vacancy_raw_snapshots","vacancy_role_results"}{
 		var n int
 		if err:=f.db.QueryRowContext(f.ctx,"SELECT COUNT(*) FROM "+table).Scan(&n);err!=nil || n!=0{
 			t.Fatalf("funnel fixture requires empty %s",table)
@@ -29,12 +29,25 @@ func TestMariaDBSchedulerFunnelDisposable(t *testing.T) {
 	t.Cleanup(func(){
 		ctx,cancel:=context.WithTimeout(context.Background(),10*time.Second)
 		defer cancel()
-		for _,table:=range []string{"vacancy_publication_sources","vacancy_role_results","vacancy_extractions",
-			"vacancy_raw_snapshots","vacancy_import_operations","vacancy_classifications",
-			"vacancy_classification_attempts","parser_candidate_intakes",
-			"vacancy_candidate_identities","vacancy_candidates","company_vacancies",
-			"company_crm","company_identity","vacancy_role_classification","vacancy_roles"}{
-			if _,e:=f.db.ExecContext(ctx,"DELETE FROM "+table);e!=nil{t.Errorf("cleanup %s failed",table)}
+		// Удаляем только собственные записи теста. В CI могут сохраняться
+		// синтетические import receipts других acceptance-наборов.
+		for _,stmt:=range []string{
+			"DELETE FROM vacancy_role_results WHERE id LIKE 'ci-funnel-%'",
+			"DELETE FROM vacancy_extractions WHERE id LIKE 'ci-funnel-%'",
+			"DELETE FROM vacancy_raw_snapshots WHERE id LIKE 'ci-funnel-%'",
+			"DELETE FROM vacancy_import_operations WHERE id LIKE 'ci-funnel-%'",
+			"DELETE FROM vacancy_classifications WHERE attempt_id LIKE 'ci-funnel-%'",
+			"DELETE FROM vacancy_classification_attempts WHERE id LIKE 'ci-funnel-%'",
+			"DELETE FROM parser_candidate_intakes WHERE candidate_token LIKE 'ci-funnel-%'",
+			"DELETE FROM vacancy_candidate_identities WHERE candidate_id BETWEEN 1 AND 8",
+			"DELETE FROM vacancy_candidates WHERE creation_token LIKE 'ci-funnel-%'",
+			"DELETE FROM company_vacancies WHERE id IN (991,992)",
+			"DELETE FROM company_crm WHERE company_name='CI Funnel Employer'",
+			"DELETE FROM company_identity WHERE id=991",
+			"DELETE FROM vacancy_role_classification WHERE role_id=901",
+			"DELETE FROM vacancy_roles WHERE id=901",
+		}{
+			if _,e:=f.db.ExecContext(ctx,stmt);e!=nil{t.Errorf("funnel cleanup failed")}
 		}
 	})
 	f.exec("INSERT INTO company_identity(id,company_name) VALUES(991,'CI Funnel Employer')")
