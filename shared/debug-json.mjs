@@ -111,7 +111,7 @@ function listProjection(source, config) {
   const timeField = config.sortTime || 'startedAt',idField = config.sortId || 'jobId';
   const sorted = items.map((value,index)=>({value,index})).sort((a,b)=>
     milliseconds(b.value,timeField)-milliseconds(a.value,timeField) ||
-    String(b.value[idField]??'').localeCompare(String(a.value[idField]??'')) || a.index-b.index);
+    (String(a.value[idField]??'') < String(b.value[idField]??'') ? 1 : String(a.value[idField]??'') > String(b.value[idField]??'') ? -1 : 0) || a.index-b.index);
   const kept = sorted.slice(0,DEBUG_JSON_EVENT_LIMIT).map(x=>project(x.value,config.items));
   return {
     total,returned:kept.length,limit:DEBUG_JSON_EVENT_LIMIT,
@@ -130,7 +130,8 @@ export function buildDebugJSON(input) {
     capturedAt,timezone:'Europe/Moscow',
     available:input.available !== false,
     filters:project(input.filters,config.filters),
-    summary:project(input.summary,config.summary),
+    // Недоступный endpoint не может подтверждать старые данные из кэша.
+    summary:input.available === false ? {} : project(input.summary,config.summary),
   };
   if (input.available === false) {
     output.errorCode = projectScalar(input.errorCode,stage) || 'unavailable';
