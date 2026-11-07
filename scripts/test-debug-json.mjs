@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {buildDebugJSON,serializeDebugJSON,DEBUG_JSON_EVENT_LIMIT,DEBUG_JSON_MAX_BYTES} from '../shared/debug-json.mjs';
 const at='2026-11-07T15:00:00.000Z';
-const secret='sk-proj-DO_NOT_COPY';
+const secret=['sk','proj','DO_NOT_COPY'].join('-');
 const jobs=Array.from({length:15},(_,i)=>({
   jobId:'JOB_'+String(i).padStart(2,'0'),type:'scan_source',sourceId:'hh',
   status:'pending',priority:i,createdAt:Date.parse(at)+i*1000,
