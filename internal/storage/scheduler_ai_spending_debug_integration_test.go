@@ -35,8 +35,8 @@ func TestMariaDBSchedulerAISpendingDebugDisposable(t *testing.T) {
 		if i == 9 { cost = 0.0 }
 		if i == 10 { cost = nil; reserve = 0.05 }
 		f.exec(`INSERT INTO scheduler_attempts
-		  (id,job_id,type,source_id,started_at,status,provider,model,reserved_usd,cost_usd)
-		  VALUES(?,?,'classify_title','hh',?,'completed',?,'ci-model',?,?)`,
+		  (id,job_id,run_id,type,source_id,started_at,status,provider,model,reserved_usd,cost_usd)
+		  VALUES(?,?,'CI_AI_SYNTHETIC_RUN','classify_title','hh',?,'completed',?,'ci-model',?,?)`,
 			fmt.Sprintf("CI_AI_ATT_%02d", i), jobID, at, provider, reserve, cost)
 	}
 	before := dashboardFingerprint(f)
