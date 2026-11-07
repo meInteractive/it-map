@@ -52,6 +52,7 @@ try{
   assert.equal(writes.length,4);
   assert.deepEqual(writes.slice(1).map(v=>v.section),['scheduler_queue','scheduler_runs','scheduler_attempts']);
   assert.equal(writes[1].recentItems.total,25);
+  assert.equal(writes[1].dataAsOf,new Date(now).toISOString());
   assert.equal(writes[1].recentItems.returned,10);
   assert.equal(writes[2].recentItems.items[0].runId,'R_13');
   assert.equal(writes[3].recentItems.items[0].costUsd,null);
