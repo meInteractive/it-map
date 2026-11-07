@@ -14,6 +14,15 @@ type SchedulerIssuesReader interface {
 	ReadIssues(context.Context) (json.RawMessage, error)
 }
 
+type SchedulerIssueSampler interface {
+	Sample(context.Context) error
+}
+
+type SchedulerIssuesStore interface {
+	SchedulerIssuesReader
+	SchedulerIssueSampler
+}
+
 func SchedulerIssuesHandler(manager *auth.Manager, store SchedulerIssuesReader) http.HandlerFunc {
 	return RequireSession(manager, func(w http.ResponseWriter, r *http.Request) {
 		user, _ := sessionFromRequest(manager, r)
