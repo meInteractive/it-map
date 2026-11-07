@@ -14,7 +14,7 @@ export function schedulerOverviewSnapshot(d) {
 export function schedulerQueueSnapshot(d,filters) {
   return {
     filters:{status:filters.status,type:filters.type,searchApplied:Boolean(filters.searchApplied)},
-    summary:{totalMatched:d.total},
+    summary:{totalMatched:d.total},dataAsOf:d.checkedAt,
     items:d.items,total:d.total,coverage:'server_latest',
   };
 }
