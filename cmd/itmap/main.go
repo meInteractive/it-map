@@ -52,6 +52,7 @@ func httpHandler(logger *slog.Logger, db *sql.DB, manager *auth.Manager) http.Ha
 		opts.HHRoleSettings = parser.HHRoleSettingsRepository{DB: db}
 		opts.SchedulerJobActions = parser.JobActionsRepository{DB: db}
 		opts.SchedulerDashboard = parser.DashboardRepository{DB: db}
+		opts.SchedulerIssues = parser.IssuesRepository{DB: db}
 		opts.SchedulerQueue = parser.QueueRepository{DB: db}
 		opts.SchedulerRunRead = parser.RunReadRepository{DB: db}
 		configureScheduler(&opts, db)
