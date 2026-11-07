@@ -190,6 +190,8 @@ jobs:
           node scripts/test-debug-json-ui.mjs
           node scripts/test-scheduler-debug-json.mjs
           node scripts/test-scheduler-debug-ui.mjs
+          node scripts/test-provider-debug-json.mjs
+          node scripts/test-provider-debug-ui.mjs
       - name: Verify synthetic creation contract against unchanged legacy JS
         run: |
           node scripts/check-api-coverage.mjs
