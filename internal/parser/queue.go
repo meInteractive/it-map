@@ -8,6 +8,7 @@ import (
 	"math"
 	"regexp"
 	"strings"
+	"time"
 
 	"itmap/internal/backup"
 )
@@ -25,7 +26,21 @@ func (r QueueRepository) PrepareQueue(ctx context.Context) (func(context.Context
 		return nil, settingsFailure(ctx, ErrSettingsStorage)
 	}
 	return func(ctx context.Context, query json.RawMessage) (json.RawMessage, error) {
-		return r.read(ctx, query, expected)
+		return r.read(ctx, query, expected, false)
+	}, nil
+}
+// PrepareQueueDebug возвращает только разрешённые поля десяти последних заданий
+// по всей отфильтрованной очереди. Как и PrepareQueue, не запускает парсер.
+func (r QueueRepository) PrepareQueueDebug(ctx context.Context) (func(context.Context, json.RawMessage) (json.RawMessage, error), error) {
+	if r.DB == nil {
+		return nil, ErrSettingsStorage
+	}
+	var expected string
+	if e := r.DB.QueryRowContext(ctx, "SELECT generation FROM app_runtime_generation WHERE id=1").Scan(&expected); e != nil || !generationPattern.MatchString(expected) {
+		return nil, settingsFailure(ctx, ErrSettingsStorage)
+	}
+	return func(ctx context.Context, query json.RawMessage) (json.RawMessage, error) {
+		return r.read(ctx, query, expected, true)
 	}, nil
 }
 func (r QueueRepository) ReadQueue(ctx context.Context, query json.RawMessage) (json.RawMessage, error) {
@@ -52,7 +67,7 @@ func queueOwnerID(text string) (int64, bool) {
 	}
 	return int64(n), true
 }
-func (r QueueRepository) read(ctx context.Context, raw json.RawMessage, expected string) (body json.RawMessage, failure error) {
+func (r QueueRepository) read(ctx context.Context, raw json.RawMessage, expected string, debug bool) (body json.RawMessage, failure error) {
 	defer func() { failure = settingsFailure(ctx, failure) }()
 	tx, e := r.DB.BeginTx(ctx, &sql.TxOptions{ReadOnly: true, Isolation: sql.LevelRepeatableRead})
 	if e != nil {
@@ -139,15 +154,31 @@ func (r QueueRepository) read(ctx context.Context, raw json.RawMessage, expected
 	if e = tx.QueryRowContext(ctx, "SELECT COUNT(*) AS total FROM scheduler_jobs j WHERE "+where, args...).Scan(&total); e != nil {
 		return nil, e
 	}
-	// Payload и невидимые служебные столбцы не читаются и не попадают в DTO.
-	columns := "j.id,j.generation,j.dedupe_key,j.type,j.company_id,j.agency_id,j.candidate_id,j.source_id,j.status,j.priority,j.run_after,j.attempts,j.max_attempts,j.locked_by,j.locked_until,j.last_error,j.reason_code,j.created_at,j.updated_at,j.completed_at"
-	query := "SELECT " + columns + ",CASE WHEN j.agency_id IS NOT NULL THEN (SELECT agency_name FROM agency_identity WHERE id=j.agency_id) ELSE (SELECT company_name FROM company_identity WHERE id=j.company_id) END AS companyName,(SELECT title_raw FROM vacancy_candidates WHERE id=j.candidate_id) AS candidateTitle FROM scheduler_jobs j WHERE " + where + " ORDER BY j.created_at DESC,BINARY j.id LIMIT 30 OFFSET ?"
-	pageArgs := append(append([]any{}, args...), (f.Page-1)*30)
+	// Для нового GET-only debug endpoint не читать ни название вакансии,
+	// ни имя организации, ни last_error, payload, ключи/курсоры/lease.
+	// Выборка охватывает ВСЮ область фильтрации, не страницу UI.
+	query := ""
+	pageArgs := append([]any{}, args...)
+	if debug {
+		if f.Page != 1 {
+			return nil, &SettingsError{Message: "Диагностика не поддерживает номер страницы."}
+		}
+		query = "SELECT j.id AS jobId,j.type,j.company_id AS companyId,j.agency_id AS agencyId,j.candidate_id AS candidateId,j.source_id AS sourceId,j.status,j.priority,j.run_after AS runAfter,j.attempts,j.max_attempts AS maxAttempts,j.reason_code AS reasonCode,j.created_at AS createdAt,j.updated_at AS updatedAt FROM scheduler_jobs j WHERE " + where + " ORDER BY j.created_at DESC,BINARY j.id DESC LIMIT 10"
+	} else {
+		// Сохраняем прежний UI-контракт и SQLite parity без изменений.
+		columns := "j.id,j.generation,j.dedupe_key,j.type,j.company_id,j.agency_id,j.candidate_id,j.source_id,j.status,j.priority,j.run_after,j.attempts,j.max_attempts,j.locked_by,j.locked_until,j.last_error,j.reason_code,j.created_at,j.updated_at,j.completed_at"
+		query = "SELECT " + columns + ",CASE WHEN j.agency_id IS NOT NULL THEN (SELECT agency_name FROM agency_identity WHERE id=j.agency_id) ELSE (SELECT company_name FROM company_identity WHERE id=j.company_id) END AS companyName,(SELECT title_raw FROM vacancy_candidates WHERE id=j.candidate_id) AS candidateTitle FROM scheduler_jobs j WHERE " + where + " ORDER BY j.created_at DESC,BINARY j.id LIMIT 30 OFFSET ?"
+		pageArgs = append(pageArgs, (f.Page-1)*30)
+	}
 	jobs, e := dashboardRows(ctx, tx, query, pageArgs...)
 	if e != nil {
 		return nil, e
 	}
-	rawBody, e := json.Marshal(map[string]any{"jobs": jobs, "total": total, "page": f.Page, "pageSize": 30})
+	var response any = map[string]any{"jobs": jobs, "total": total, "page": f.Page, "pageSize": 30}
+	if debug {
+		response = map[string]any{"items": jobs, "total": total, "coverage": "server_latest", "limit": 10, "checkedAt": time.Now().UTC().UnixMilli()}
+	}
+	rawBody, e := json.Marshal(response)
 	if e != nil {
 		return nil, e
 	}

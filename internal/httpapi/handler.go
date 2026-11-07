@@ -138,6 +138,9 @@ func NewHandlerWithOptions(logger *slog.Logger, opts Options) http.Handler {
 		mux.HandleFunc("POST /api/scheduler/target-hh/continue", SchedulerTargetContinuationHandler(opts.Auth, continuation))
 		mux.HandleFunc("POST /api/scheduler/probe", SchedulerProbeHandler(opts.Auth, opts.SchedulerProbe))
 		mux.HandleFunc("/api/scheduler/queue", SchedulerQueueHandler(opts.Auth, opts.SchedulerQueue))
+		// GET-only диагностический срез не расширяет обычный JSON очереди.
+		debugQueue, _ := opts.SchedulerQueue.(SchedulerQueueDebugReader)
+		mux.HandleFunc("/api/scheduler/queue/debug", SchedulerQueueDebugHandler(opts.Auth, debugQueue))
 		mux.HandleFunc("/api/scheduler/jobs/", SchedulerJobActionsHandler(opts.Auth, opts.SchedulerJobActions))
 		mux.HandleFunc("/api/scheduler/settings", SchedulerSettingsHandler(opts.Auth, opts.SchedulerSettings))
 		mux.HandleFunc("/api/scheduler", SchedulerDashboardHandler(opts.Auth, opts.SchedulerDashboard))

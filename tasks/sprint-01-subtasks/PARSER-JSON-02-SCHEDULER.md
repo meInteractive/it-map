@@ -1,6 +1,6 @@
 # S11-DIAG-02 — обзор, очередь и журнал парсера: кнопки «Копировать JSON»
 
-**Статус:** [ ] Запланировано. **Приоритет:** высокий. **Зависимость:** S11-DIAG-01 (общий сериализатор/кнопка); выполнять после GO-107/108, если их реализация уже использует общий компонент. Отдельный PR, без изменений платного конвейера.
+**Статус:** [ ] Реализация в черновом [PR #260](https://github.com/meInteractive/it-map/pull/260); исходный код добавлен, CI/приёмка ещё проверяются. **Не считать задеплоенным или принятым до merge и проверки.** **Приоритет:** высокий. **Зависимость:** S11-DIAG-01 (общий сериализатор/кнопка); выполнять после GO-107/108, если их реализация уже использует общий компонент. Отдельный PR, без изменений платного конвейера.
 
 ## Куда поставить кнопки
 
@@ -34,4 +34,4 @@
 
 **Ключевые файлы:** `frontend/features/settings/Scheduler.tsx`, `frontend/api/client.ts`, `internal/parser/{dashboard,queue,run_read}.go`, `internal/httpapi/scheduler_*routes.go`, `cmd/itmap/main.go`. Для дополнительных полей нужен безопасный bounded read-only Go endpoint; не раздувать существующий `GET /api/scheduler` сырыми записями.
 
-**Отчёт:** PR —; SHA —; CI —; ограничения —.
+**Отчёт:** [PR #260](https://github.com/meInteractive/it-map/pull/260), ветка `codex/S11-DIAG-02-scheduler-json-exports`. Изменены `frontend/features/settings/Scheduler.tsx`, `shared/scheduler-debug.mjs` (+ типы), `internal/parser/queue.go`, Go admin-only route и тесты Node/React/MariaDB. **Снимок очереди из всей SQL-области фильтрации**, `created_at DESC,BINARY id DESC LIMIT 10`, `total/coverage`, отдельный GET `/api/scheduler/queue/debug`. История берётся из уже возвращаемых Go dashboard 20 runs/50 attempts и обрезается до 10; *полное число всех исторических записей пока неизвестно и не должно подменяться длиной этого окна*. Подтверждённая стоимость не вычисляется из верхней оценки дневных резервов. **CI/конечный SHA:** перепроверить GitHub перед merge. Ни parser worker, ни провайдеры/таймеры не изменяются. Чекбокс не закрывать до успешного CI и браузерной приёмки.
