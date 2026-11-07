@@ -42,6 +42,7 @@ const q={total:25,limit:10,coverage:'server_latest',checkedAt:at,items:Array.fro
 }))};
 const queue=envelope('scheduler_queue',schedulerQueueSnapshot(q,{status:'failed',type:'classify_title',searchApplied:true}));
 assert.equal(queue.recentItems.total,25);
+assert.equal(queue.dataAsOf,new Date(at).toISOString());
 assert.equal(queue.recentItems.returned,10);
 assert.equal(queue.recentItems.truncated,true);
 assert.equal(queue.filters.searchApplied,true);
