@@ -37,11 +37,22 @@ const SCHEMA = Object.freeze({
     filters:{provider:stage,model:stage,type:stage},summary:{dayBudgetUsd:number,monthBudgetUsd:number,dayUsd:number,monthUsd:number,...spent},items:stageEvent,sortTime:'startedAt',sortId:'jobId',
   },
   apify_usage:{
-    filters:{profile:stage},summary:{providerUsedUsd:number,ownConfirmedUsd:number,readReserveUsd:number,unknownReserveUsd:number,unknownRuns:number,limitUsd:number,remainingUsd:number,checkedAt:time},
+    filters:{profile:stage},
+    // Provider usage и собственный ledger пересекаются. Профили не суммируются
+    // между собой без проверенной идентичности аккаунтов/периодов.
+    summary:{
+      providerLimitMode:bool,activeOnly:bool,operationHistoryAvailable:bool,
+      profiles:{
+        free:{providerUsedUsd:number,ownConfirmedUsd:number,readReserveUsd:number,unknownReserveUsd:number,unknownRuns:number,limitUsd:number,remainingUsd:number,periodStart:time,periodEnd:time,checkedAt:time},
+        starter:{providerUsedUsd:number,ownConfirmedUsd:number,readReserveUsd:number,unknownReserveUsd:number,unknownRuns:number,limitUsd:number,remainingUsd:number,periodStart:time,periodEnd:time,checkedAt:time},
+      },
+    },
     items:{operationId:stage,profile:stage,state:stage,createdAt:time,updatedAt:time,chargedUsd:number,reservedUsd:number,errorCode:stage},sortTime:'createdAt',sortId:'operationId',
   },
   firecrawl_usage:{
-    filters:{mode:stage},summary:{planCredits:number,providerRemainingCredits:number,reportedCredits:number,estimatedCredits:number,reservedCredits:number,effectiveUsedCredits:number,remainingCredits:number,checkedAt:time,fresh:bool,status:stage},items:EMPTY,
+    filters:{mode:stage},
+    summary:{mode:stage,limitsCredits:number,providerPlanCredits:number,providerRemainingCredits:number,providerUsedEstimateCredits:number,reportedCredits:number,estimatedCredits:number,reservedCredits:number,effectiveUsedCredits:number,remainingCredits:number,periodStart:time,periodEnd:time,checkedAt:time,fresh:bool,budgetAvailable:bool,operationHistoryAvailable:bool,status:stage},
+    items:EMPTY,
   },
   parser_issues:{
     filters:{priority:number,sourceId:stage},
