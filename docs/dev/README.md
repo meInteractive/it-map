@@ -10,6 +10,7 @@
 - [Правила работы](../../AGENTS.md), [текущий план](../../PLANS.md), [реестр задач](../../tasks/README.md) и [результаты проверок](../../tasks/STACK.md).
 - [Архитектура](ARCHITECTURE.md), [структура Go](GO_BACKEND_STRUCTURE.md), [целевая MariaDB](MARIADB.md), [архитектурные решения](DECISIONS.md).
 - [Поддержка документации](MAINTENANCE.md).
+- **[Практические способы диагностики парсера](PARSER_DIAGNOSTICS_PLAYBOOK.md)** — очередь, журнал, Apify, расходы JEV/LLM, дедупликация, безопасные SQL/CI и гипотезы; **кнопки «Копировать JSON» пока планируются** в [подзадачах спринта 1.1](../../tasks/sprint-01-subtasks/README.md).
 
 Контракты и проверка переноса:
 
