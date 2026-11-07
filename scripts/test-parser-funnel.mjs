@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {schedulerFixture} from './scheduler-test-support.mjs';
 import {moduleFor} from './test-support.mjs';
 const f=await schedulerFixture(),{db,sqlite,api,env}=f,{parserFunnel}=await moduleFor('server/services/parser-funnel.js'),{schedulerRoute}=await moduleFor('server/services/scheduler-route.js');
@@ -38,7 +37,16 @@ try{
  sqlite.prepare('DELETE FROM parser_candidate_intakes WHERE candidate_token=(SELECT creation_token FROM vacancy_candidates WHERE id=?)').run(rows.get(5).id);
  const generation=sqlite.prepare('SELECT generation FROM app_runtime_generation WHERE id=1').get().generation;
  sqlite.prepare("INSERT INTO vacancy_discovery_runs(id,user_name,generation,company_id,source_id,source_url,source_revision,settings_revision,result_json,created_at,expires_at) VALUES('backfill','Eugene',?,991,'hh','https://funnel.fixture',1,1,?,1,9999999999999)").run(generation,JSON.stringify({mode:'scrape',jobs:[{existingId:rows.get(5).id,saveState:'new'},{existingId:rows.get(1).id,saveState:'new'}]}));
- sqlite.exec(fs.readFileSync('drizzle/0083_parser_candidate_intakes.sql','utf8'));sqlite.exec(fs.readFileSync('drizzle/0083_parser_candidate_intakes.sql','utf8'));assert.equal((await parserFunnel(db,{now,parser:'firecrawl'})).cohort.received,3);assert.equal((await parserFunnel(db,{now,parser:'apify'})).cohort.received,2);
+ // The old drizzle/0083 migration was removed from this Go migration repository.
+ // Reconstruct ONLY synthetic proven receipt lineage in this disposable SQLite fixture;
+ // this tests idempotent intake semantics, NOT that a missing production migration works.
+ const backfillFixture=()=>sqlite.prepare(`INSERT OR IGNORE INTO parser_candidate_intakes(candidate_token,parser,source_id,received_at)
+   SELECT c.creation_token,'firecrawl',c.source_id,c.first_seen_at FROM vacancy_candidates c
+   WHERE c.id=? AND EXISTS(SELECT 1 FROM vacancy_discovery_runs r
+    WHERE r.generation=? AND json_extract(r.result_json,'$.mode')='scrape'
+    AND EXISTS(SELECT 1 FROM json_each(r.result_json,'$.jobs') j
+     WHERE json_extract(j.value,'$.existingId')=c.id AND json_extract(j.value,'$.saveState')='new'))`).run(rows.get(5).id,generation);
+ backfillFixture();backfillFixture();assert.equal((await parserFunnel(db,{now,parser:'firecrawl'})).cohort.received,3);assert.equal((await parserFunnel(db,{now,parser:'apify'})).cohort.received,2);
  for(const filters of [{parser:'wrong'},{sourceId:'wrong'}])await assert.rejects(()=>parserFunnel(db,{now,...filters}),e=>e.status===400);
  const route=async(query,user={name:'Eugene',isAdmin:true})=>{const url=new URL('https://fixture/api/scheduler/funnel'+query);return schedulerRoute(new Request(url),env,url,user);};
  assert.equal((await route('',{name:'Nastya',isAdmin:false})).status,403);assert.equal((await route('?period=all')).status,400);assert.equal((await route('?parser=wrong')).status,400);const response=await route('?sourceId=hh&parser=apify');assert.equal(response.status,200);assert.equal((await response.json()).daily.length,30);
@@ -48,5 +56,5 @@ try{
  sqlite.exec("CREATE TRIGGER reject_intake BEFORE INSERT ON parser_candidate_intakes WHEN NEW.parser='http' BEGIN SELECT RAISE(ABORT,'synthetic intake failure'); END");
  await assert.rejects(()=>candidates.upsertVacancyCandidate(db,{companyId:991,titleRaw:'Atomic fixture',vacancyUrl:'https://funnel.fixture/atomic',sourceId:'companySite',acquisitionMethod:'site'},{intakeParser:'http'}));
  assert.equal(sqlite.prepare('SELECT count(*) n FROM vacancy_candidates').get().n,before,'intake failure rolls back candidate creation');assert.equal(sqlite.prepare("SELECT count(*) n FROM vacancy_candidates WHERE canonical_url='https://funnel.fixture/atomic'").get().n,0);sqlite.exec('DROP TRIGGER reject_intake');
- console.log('Funnel: six milestones/first-success dates, 30 MSK dates, distinct retries, cohort vs stage dates, rejected/error/waiting partition, new vs linked cards, source/parser intersection, immutable intake, exact migration backfill, legacy unknown, manual exclusion, admin validation and no providers passed.');
+ console.log('Funnel: six milestones/first-success dates, 30 MSK dates, distinct retries, cohort vs stage dates, rejected/error/waiting partition, new vs linked cards, source/parser intersection, immutable intake, idempotent synthetic provenance fixture, legacy unknown, manual exclusion, admin validation and no providers passed.');
 }finally{globalThis.fetch=oldFetch;f.close();}
