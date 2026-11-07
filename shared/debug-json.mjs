@@ -53,12 +53,13 @@ const SCHEMA = Object.freeze({
     // между собой без проверенной идентичности аккаунтов/периодов.
     summary:{
       providerLimitMode:bool,activeOnly:bool,operationHistoryAvailable:bool,
+      actorStartCountAvailable:bool,reconcileReadCountAvailable:bool,
       profiles:{
         free:{providerUsedUsd:number,ownConfirmedUsd:number,readReserveUsd:number,unknownReserveUsd:number,unknownRuns:number,limitUsd:number,remainingUsd:number,periodStart:time,periodEnd:time,checkedAt:time},
         starter:{providerUsedUsd:number,ownConfirmedUsd:number,readReserveUsd:number,unknownReserveUsd:number,unknownRuns:number,limitUsd:number,remainingUsd:number,periodStart:time,periodEnd:time,checkedAt:time},
       },
     },
-    items:{operationId:stage,profile:stage,state:stage,createdAt:time,updatedAt:time,chargedUsd:number,reservedUsd:number,errorCode:stage},sortTime:'createdAt',sortId:'operationId',
+    items:{operationId:stage,profile:stage,state:stage,createdAt:time,updatedAt:time,chargedUsd:number,reservedUsd:number,errorCode:stage,hasProviderRunId:bool,startOutcomeKnown:bool},sortTime:'createdAt',sortId:'operationId',
   },
   firecrawl_usage:{
     filters:{mode:stage},
