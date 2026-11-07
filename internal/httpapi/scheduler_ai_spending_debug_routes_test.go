@@ -61,6 +61,9 @@ func TestAISpendingDebugHTTPAdminOnlyReadAndErrors(t *testing.T) {
 	if w := call("POST", "eugene", "/api/scheduler/ai-spending/debug", probe); w.Code != 405 {
 		t.Fatal("write method accepted")
 	}
+	if w := call("GET", "eugene", "/api/scheduler/ai-spending/debug?profile=all", probe); w.Code != 400 {
+		t.Fatal("unreviewed query parameters accepted")
+	}
 	if probe.calls != 0 { t.Fatal("method validation reached storage") }
 	w := call("GET", "eugene", "/api/scheduler/ai-spending/debug", probe)
 	if w.Code != 200 || probe.calls != 1 || w.Header().Get("Cache-Control") != "private, no-store" {
