@@ -39,6 +39,35 @@ assert.ok(!JSON.stringify(apify).includes(secret));
 assert.ok(!JSON.stringify(apify).includes('accountId'));
 assert.equal(apify.summary.totalUsd,undefined,'do not add provider-used and own-confirmed');
 
+const history={
+  checkedAt:now-1000,coverage:'server_latest',total:12,
+  items:Array.from({length:10},(_,i)=>({
+    operationId:'PAID_'+String(11-i),profile:'free',
+    state:i===0?'uncertain':'succeeded',
+    createdAt:now-i*1000,updatedAt:now-i*1000,
+    chargedUsd:i===0?null:0.05,reservedUsd:0.25,errorCode:'ci_operation',
+    accountId:secret,runId:secret,key_hash:secret,datasetId:secret,
+  })),
+};
+const historic=JSON.parse(serializeDebugJSON({
+  section:'apify_usage',capturedAt:now,
+  ...apifyUsageSnapshot({profiles:budgets,active,providerLimitMode:true},history),
+}));
+assert.equal(historic.summary.activeOnly,false);
+assert.equal(historic.summary.operationHistoryAvailable,true);
+assert.equal(historic.recentItems.coverage,'server_latest');
+assert.equal(historic.recentItems.total,12);
+assert.equal(historic.recentItems.returned,10);
+assert.equal(historic.recentItems.items[0].operationId,'PAID_11');
+assert.equal(historic.recentItems.items[0].chargedUsd,null);
+assert.equal(historic.recentItems.items[0].reservedUsd,0.25);
+assert.equal(historic.dataAsOf,new Date(now-1000).toISOString());
+assert.ok(!JSON.stringify(historic).includes(secret));
+assert.throws(()=>serializeDebugJSON({
+  section:'apify_usage',capturedAt:now,
+  ...apifyUsageSnapshot({profiles:budgets,active}, {...history,items:history.items.slice(0,2)}),
+}),/incomplete_debug_latest/);
+
 const fb={
   mode:'free',fresh:true,status:'available',checkedAt:now-5000,reason:secret,
   limits:{credits:1000,privateKey:secret},
