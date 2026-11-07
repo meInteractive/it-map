@@ -2,7 +2,9 @@ package apifyruns
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"math"
 	"regexp"
 )
@@ -48,8 +50,8 @@ func readUsageOperations(ctx context.Context, tx *sql.Tx, out *UsageView) error 
 			&item.ReservedUSD,&charged,&item.CreatedAt,&item.UpdatedAt); err != nil {
 			return ErrStorage
 		}
-		if !safeOperationID.MatchString(id) || (profile != "free" && profile != "starter") ||
-			!validApifyState(state) || item.CreatedAt < 0 || item.UpdatedAt < item.CreatedAt ||
+		if (profile != "free" && profile != "starter") ||
+			!validApifyState(state) || item.CreatedAt < 0 || item.UpdatedAt < 0 ||
 			item.ReservedUSD < 0 || math.IsNaN(item.ReservedUSD) || math.IsInf(item.ReservedUSD,0) {
 			return ErrStorage
 		}
@@ -60,7 +62,7 @@ func readUsageOperations(ctx context.Context, tx *sql.Tx, out *UsageView) error 
 			value := charged.Float64
 			item.ChargedUSD = &value
 		}
-		item.OperationID, item.Profile, item.State = id, profile, state
+		item.OperationID, item.Profile, item.State = safeHistoryOperationID(id), profile, state
 		// Do not return run_id. Known provider identity is enough to distinguish
 		// a safe GET reconciliation path from an unresolved start.
 		item.HasProviderRunID = runID != ""
@@ -85,4 +87,16 @@ func validApifyState(s string) bool {
 	default:
 		return false
 	}
+}
+
+
+// Legacy rows and synthetic fixtures can contain non-hex operation IDs.
+// Preserve stable correlation for native 32-hex IDs, but never disclose an
+// arbitrary historic string (which may contain user data or provider tokens).
+func safeHistoryOperationID(id string) string {
+	if safeOperationID.MatchString(id) {
+		return id
+	}
+	digest := sha256.Sum256([]byte(id))
+	return "legacy_" + hex.EncodeToString(digest[:12])
 }
