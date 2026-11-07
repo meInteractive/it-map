@@ -1,7 +1,7 @@
 {
   "scope": "Current frontend/web direct transport sites and reviewed JSX/download bindings; no runtime/golden coverage inferred",
   "typescript": "5.9.3",
-  "files": 65,
+  "files": 66,
   "transportModule": "frontend/api/client.ts",
   "sites": [
     {
