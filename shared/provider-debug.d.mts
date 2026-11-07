@@ -10,7 +10,18 @@ interface ApifyUsageSnapshot {
   profiles?:{free:ApifyBudgetSnapshot|null;starter:ApifyBudgetSnapshot|null};
   active?:Array<{id:string;profile:string;state:string;created_at:number}>;
 }
-export declare function apifyUsageSnapshot(usage:ApifyUsageSnapshot):Omit<DebugJSONInput,'section'>;
+interface ApifyOperationsHistory {
+  checkedAt:number;coverage:'server_latest';total:number;
+  items:Array<{
+    operationId:string;profile:string;state:string;
+    createdAt:number;updatedAt:number;chargedUsd:number|null;
+    reservedUsd:number;errorCode:string|null;
+  }>;
+}
+export declare function apifyUsageSnapshot(
+  usage:ApifyUsageSnapshot,
+  operations?:ApifyOperationsHistory|null,
+):Omit<DebugJSONInput,'section'>;
 
 interface FirecrawlBudgetSnapshot {
   providerPlanCredits:number;
