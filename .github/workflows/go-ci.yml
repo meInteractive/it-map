@@ -182,6 +182,10 @@ jobs:
           node scripts/test-parser-issues.mjs
           node scripts/test-parser-error-history.mjs
           node scripts/test-parser-error-history-ui.mjs
+      - name: Проверить безопасный JSON-экспорт и кнопку копирования
+        run: |
+          node scripts/test-debug-json.mjs
+          node scripts/test-debug-json-ui.mjs
       - name: Verify synthetic creation contract against unchanged legacy JS
         run: |
           node scripts/check-api-coverage.mjs
