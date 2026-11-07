@@ -21,9 +21,22 @@ function apifyProfile(budget) {
   };
 }
 export function apifyUsageSnapshot(usage) {
-  // GET /api/apify/usage возвращает только активные операции. Не выдавать
-  // их за последние 10 оплаченных операций за всю историю.
-  const items = (Array.isArray(usage.active) ? usage.active : []).map(run=>({
+  const hasHistory=usage.operationHistoryAvailable === true &&
+    Array.isArray(usage.recentOperations) && Number.isSafeInteger(usage.operationsTotal);
+  // Fallback for old server versions or incomplete fixtures: usage.active
+  // includes at most five unsettled rows, NEVER the full paid history.
+  const items=hasHistory ? usage.recentOperations.map(op=>({
+    operationId:op.operationId,
+    profile:op.profile,
+    state:op.state,
+    createdAt:op.createdAt,
+    updatedAt:op.updatedAt,
+    chargedUsd:op.chargedUsd,
+    reservedUsd:op.reservedUsd,
+    errorCode:op.errorCode,
+    hasProviderRunId:op.hasProviderRunId,
+    startOutcomeKnown:op.startOutcomeKnown,
+  })) : (Array.isArray(usage.active) ? usage.active : []).map(run=>({
     operationId:run.id,
     profile:run.profile,
     state:run.state,
@@ -33,19 +46,21 @@ export function apifyUsageSnapshot(usage) {
     reservedUsd:null,
   }));
   return {
+    dataAsOf:hasHistory ? usage.operationsCheckedAt : null,
     filters:{profile:'all'},
     summary:{
       providerLimitMode:usage.providerLimitMode ?? null,
-      activeOnly:true,
-      operationHistoryAvailable:false,
+      activeOnly:!hasHistory,
+      operationHistoryAvailable:hasHistory,
+      actorStartCountAvailable:false,
+      reconcileReadCountAvailable:false,
       profiles:{
         free:apifyProfile(usage.profiles?.free),
         starter:apifyProfile(usage.profiles?.starter),
       },
     },
-    // Полнота касается исключительно списка активных записей в сохранённом
-    // API-снимке, а не всех когда-либо оплаченных запусков.
-    items,total:items.length,coverage:'complete',
+    items,total:hasHistory ? usage.operationsTotal : items.length,
+    coverage:hasHistory ? 'server_latest' : 'complete',
   };
 }
 export function firecrawlUsageSnapshot(view,now=Date.now()) {

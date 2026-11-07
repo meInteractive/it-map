@@ -192,6 +192,7 @@ jobs:
           node scripts/test-scheduler-debug-ui.mjs
           node scripts/test-provider-debug-json.mjs
           node scripts/test-provider-debug-ui.mjs
+          node scripts/test-apify-paid-history-json.mjs
           node scripts/test-ai-spending-debug-json.mjs
           node scripts/test-ai-spending-debug-ui.mjs
       - name: Verify synthetic creation contract against unchanged legacy JS

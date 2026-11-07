@@ -9,6 +9,14 @@ interface ApifyUsageSnapshot {
   providerLimitMode?:boolean;
   profiles?:{free:ApifyBudgetSnapshot|null;starter:ApifyBudgetSnapshot|null};
   active?:Array<{id:string;profile:string;state:string;created_at:number}>;
+  recentOperations?:Array<{
+    operationId:string;profile:string;state:string;
+    createdAt:number;updatedAt:number;chargedUsd:number|null;reservedUsd:number;
+    errorCode?:string|null;hasProviderRunId:boolean;startOutcomeKnown:boolean;
+  }>;
+  operationsTotal?:number;
+  operationsCheckedAt?:number;
+  operationHistoryAvailable?:boolean;
 }
 export declare function apifyUsageSnapshot(usage:ApifyUsageSnapshot):Omit<DebugJSONInput,'section'>;
 
