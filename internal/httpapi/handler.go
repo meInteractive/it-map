@@ -144,6 +144,8 @@ func NewHandlerWithOptions(logger *slog.Logger, opts Options) http.Handler {
 		mux.HandleFunc("/api/scheduler/queue/debug", SchedulerQueueDebugHandler(opts.Auth, debugQueue))
 		mux.HandleFunc("/api/scheduler/jobs/", SchedulerJobActionsHandler(opts.Auth, opts.SchedulerJobActions))
 		mux.HandleFunc("/api/scheduler/settings", SchedulerSettingsHandler(opts.Auth, opts.SchedulerSettings))
+		apifyOperations, _ := opts.ApifyUsage.(ApifyOperationsDebugReader)
+		mux.HandleFunc("/api/apify/operations/debug", ApifyOperationsDebugHandler(opts.Auth, apifyOperations))
 		mux.HandleFunc("/api/scheduler/ai-spending/debug", SchedulerAISpendingDebugHandler(opts.Auth, opts.SchedulerAISpending))
 		mux.HandleFunc("/api/scheduler", SchedulerDashboardHandler(opts.Auth, opts.SchedulerDashboard))
 		mux.HandleFunc("/api/scheduler/issues", SchedulerIssuesHandler(opts.Auth, opts.SchedulerIssues))
