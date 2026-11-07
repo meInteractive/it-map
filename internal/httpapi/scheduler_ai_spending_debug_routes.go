@@ -26,6 +26,10 @@ func SchedulerAISpendingDebugHandler(manager *auth.Manager, reader SchedulerAISp
 			jsonReply(w, http.StatusMethodNotAllowed, map[string]string{"error": "Метод не поддерживается."})
 			return
 		}
+		if r.URL.RawQuery != "" {
+			jsonReply(w, http.StatusBadRequest, map[string]string{"error": "Неизвестные параметры запроса."})
+			return
+		}
 		if reader == nil {
 			jsonReply(w, http.StatusServiceUnavailable, map[string]string{"error": "Хранилище не подключено."})
 			return
