@@ -8,6 +8,7 @@ import (
 	"math"
 	"regexp"
 	"strings"
+	"time"
 
 	"itmap/internal/backup"
 )
@@ -175,7 +176,7 @@ func (r QueueRepository) read(ctx context.Context, raw json.RawMessage, expected
 	}
 	var response any = map[string]any{"jobs": jobs, "total": total, "page": f.Page, "pageSize": 30}
 	if debug {
-		response = map[string]any{"items": jobs, "total": total, "coverage": "server_latest", "limit": 10}
+		response = map[string]any{"items": jobs, "total": total, "coverage": "server_latest", "limit": 10, "checkedAt": time.Now().UTC().UnixMilli()}
 	}
 	rawBody, e := json.Marshal(response)
 	if e != nil {
