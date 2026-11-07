@@ -11,6 +11,7 @@ import (
     "testing"
 
     "itmap/internal/parser"
+    "itmap/internal/auth"
 )
 
 // S11-DIAG-02: SQL-окно из ВСЕХ совпавших jobs, а не из видимой
@@ -41,7 +42,7 @@ func TestMariaDBSchedulerQueueDebugLatestTen(t *testing.T) {
     call:=func(user,method,url string) *httptest.ResponseRecorder {
         t.Helper()
         req:=httptest.NewRequest(method,url,strings.NewReader("{}"))
-        if user!="" {req.AddCookie(&http.Cookie{Name:"itmap_session",Value:tokens[user]})}
+        if user!="" {req.AddCookie(&http.Cookie{Name:auth.CookieName,Value:tokens[user]})}
         w:=httptest.NewRecorder()
         handler.ServeHTTP(w,req)
         return w
