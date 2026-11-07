@@ -409,8 +409,8 @@
       "dynamicURL": true
     },
     {
-      "file": "frontend/features/settings/AISpendingDebug.tsx",
       "id": "9892dbe29a661339",
+      "file": "frontend/features/settings/AISpendingDebug.tsx",
       "line": 10,
       "call": "useApi",
       "method": "GET",
@@ -425,8 +425,8 @@
       "dynamicURL": false
     },
     {
-      "file": "frontend/features/settings/AISpendingDebug.tsx",
       "id": "3880d78969e131bf",
+      "file": "frontend/features/settings/AISpendingDebug.tsx",
       "line": 11,
       "call": "useApi",
       "method": "GET",
