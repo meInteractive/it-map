@@ -289,8 +289,8 @@
     {
       "id": "scheduler",
       "implementation": "partial",
-      "level": "Settings/dashboard/retry/cancel/queue/GET saved run; ручной запуск с NDJSON, probe и tick за серверным флагом, mock SQL/HTTP приёмка GO-404; ручное продолжение выбранного HH dataset; точечная команда HH одной компании; продолжение одного этапа выбранного HH сканирования",
-      "gap": "Cloud-owner, issues/funnel и полный source HTTP golden, включая timing потока, остаются открыты; планирование ограничено разрешёнными HH-источниками. Реальные провайдеры и автоматический timer не включены.",
+      "level": "Settings/dashboard/retry/cancel/queue/GET saved run; ручной запуск с NDJSON, probe и tick за серверным флагом, mock SQL/HTTP приёмка GO-404; ручное продолжение выбранного HH dataset; точечная команда HH одной компании; продолжение одного этапа выбранного HH сканирования; GO-107: admin-only issues, read-only P1/P2 и автоматические дневные замеры",
+      "gap": "Cloud-owner, GO-108 funnel, полноценный source HTTP golden для issues и остальных маршрутов, включая timing потока, остаются открыты; планирование ограничено разрешёнными HH-источниками. Реальные провайдеры и автоматический timer не включены.",
       "evidence": [
         {
           "file": "internal/storage/scheduler_jobs_integration_test.go",
@@ -469,6 +469,18 @@
         {
           "file": "internal/httpapi/scheduler_target_continue_routes_test.go",
           "symbol": "TestSchedulerTargetContinuationAuthorizationAndInput"
+        },
+        {
+          "file": "internal/httpapi/scheduler_issues_routes_test.go",
+          "symbol": "TestSchedulerIssuesHTTPAccessAndFailure"
+        },
+        {
+          "file": "internal/httpapi/scheduler_issues_routes_test.go",
+          "symbol": "TestSchedulerTickSamplesWithoutUIAndWithoutPaidSideEffects"
+        },
+        {
+          "file": "internal/storage/parser_issues_integration_test.go",
+          "symbol": "TestMariaDBSchedulerErrorHistoryIssuesDisposable"
         }
       ]
     },
@@ -762,7 +774,7 @@
   ],
   "sourceHashes": {
     "frontend/api/client.ts": "b6880480b3eed65bf7caa043f5e41c8e899b672e5c9629666ccbd6d8f80c14ad",
-    "internal/httpapi/handler.go": "18d4d5602f483459997607ec2e06e9c8cd9a78cf72eb4d8fd780d2d7c4e78b50",
+    "internal/httpapi/handler.go": "77e6e9e05445193701cb27e06690335d43c218681c00eb065c93c8999bba81f8",
     "server/routes/index.js": "6134004f682975cb51ea13cd2ec4de8e85a5957deff6a5392fbad3fd70ccb1e4"
   },
   "clientExports": [

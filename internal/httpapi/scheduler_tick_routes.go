@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -25,7 +26,7 @@ type SchedulerProfileTickRunner interface {
 	PrepareProfileTick(context.Context) (func(context.Context, string, string) (json.RawMessage, error), error)
 }
 
-func SchedulerTickHandler(runner SchedulerTickRunner, token string) http.HandlerFunc {
+func SchedulerTickHandler(runner SchedulerTickRunner, token string, samplers ...SchedulerIssueSampler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if runner == nil || token == "" {
 			jsonReply(w, 503, map[string]string{"error": "Хранилище не подключено."})
@@ -111,6 +112,17 @@ func SchedulerTickHandler(runner SchedulerTickRunner, token string) http.Handler
 				schedulerSettingsFailure(w, &parser.SettingsError{Message: "Профиль очереди не поддерживается."})
 				return
 			}
+		}
+		// История записывается при штатном сигнале, даже если админ-панель закрыта.
+		// Отказ аналитики не должен прерывать оплаченный конвейер или менять его ответ.
+		if !diagnostic && len(samplers) > 0 && samplers[0] != nil {
+			defer func() {
+				sampleCtx, sampleCancel := context.WithTimeout(context.WithoutCancel(r.Context()), 3*time.Second)
+				defer sampleCancel()
+				if err := samplers[0].Sample(sampleCtx); err != nil {
+					slog.Warn("scheduler issues sample failed", "component", "parser_error_daily")
+				}
+			}()
 		}
 		var result json.RawMessage
 		if profile != "" {

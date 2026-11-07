@@ -177,6 +177,11 @@ jobs:
           node scripts/test-apify-ui.mjs
           node scripts/test-apify-source-cache.mjs
           node scripts/test-target-hh-ui.mjs
+      - name: Проверить историю ошибок парсера и интерфейс
+        run: |
+          node scripts/test-parser-issues.mjs
+          node scripts/test-parser-error-history.mjs
+          node scripts/test-parser-error-history-ui.mjs
       - name: Verify synthetic creation contract against unchanged legacy JS
         run: |
           node scripts/check-api-coverage.mjs
