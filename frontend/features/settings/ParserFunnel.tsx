@@ -1,6 +1,8 @@
 import {useId,useRef,useState,type Dispatch,type SetStateAction} from 'react';
 import {useApi} from '../../api/client';
 import {State} from '../../components/Common';
+import CopyDebugJSON from './CopyDebugJSON';
+import {parserFunnelSnapshot} from '../../../shared/parser-statistics-debug.mjs';
 import {funnelStages,type FunnelStage,type ParserFunnelReport} from '../../../shared/parser-funnel';
 
 const shortDate=(day:string)=>day.slice(8,10)+'.'+day.slice(5,7);
@@ -31,13 +33,18 @@ export function FunnelView({report,selected:controlled,onSelectedChange}:{report
   <details><summary>Значения этапов по дням</summary><div className="docs-table-wrap"><table className="parser-history-table"><thead><tr><th>Дата</th>{funnelStages.map(s=><th key={s.id}>{s.title}</th>)}</tr></thead><tbody>{daily.map(p=><tr key={p.day}><td>{shortDate(p.day)}.{p.day.slice(0,4)}</td>{funnelStages.map(s=><td key={s.id}>{p[s.id]}</td>)}</tr>)}</tbody></table></div></details>
  </>;
 }
-export default function ParserFunnel(){
+export default function ParserFunnel({isAuthorized}:{isAuthorized?:()=>boolean}={}){
  const [sourceId,setSourceId]=useState('all'),[parser,setParser]=useState('all');
  const [selected,setSelected]=useState<FunnelStage[]>(['received','published']),options=useRef<ParserFunnelReport|null>(null);
  const q=useApi<ParserFunnelReport>('/api/scheduler/funnel?sourceId='+encodeURIComponent(sourceId)+'&parser='+encodeURIComponent(parser),{refreshIntervalMs:30000});
  const report=q.data&&Array.isArray(q.data.daily)?q.data:undefined;
+ const currentReport=report?.filters.sourceId===sourceId&&report?.filters.parser===parser&&!q.error?report:undefined;
  if(report)options.current=report;
- return <article className="settings-card parser-funnel"><div className="parser-line"><h2>Воронка обработки вакансий</h2><button className="settings-button secondary" type="button" onClick={q.reload}>Обновить статистику</button></div>
+ return <article className="settings-card parser-funnel"><div className="parser-line"><h2>Воронка обработки вакансий</h2>
+  <div className="scheduler-actions"><CopyDebugJSON section="parser_funnel"
+   isAuthorized={isAuthorized??(()=>false)} disabled={!isAuthorized?.()||(!currentReport&&!q.error)}
+   getSnapshot={()=>currentReport?parserFunnelSnapshot(currentReport):{available:false,errorCode:'funnel_unavailable'}}/>
+   <button className="settings-button secondary" type="button" onClick={q.reload}>Обновить статистику</button></div></div>
   <div className="parser-funnel-filters"><label><span>Источник вакансий</span><select className="settings-select" aria-label="Источник воронки" value={sourceId} onChange={e=>setSourceId(e.target.value)}><option value="all">Все источники</option>{options.current?.sourceOptions.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></label><label><span>Парсер списка</span><select className="settings-select" aria-label="Парсер воронки" value={parser} onChange={e=>setParser(e.target.value)}><option value="all">Все парсеры</option>{options.current?.parserOptions.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label></div>
   <p className="resume-hint">Источник и парсер выбираются независимо. «Не определён» — исторические записи без доказанного парсера получения списка. Ручной ввод и Excel сюда не входят.</p>
   <State loading={!report&&q.loading} error={q.error}>{report?<FunnelView report={report} selected={selected} onSelectedChange={setSelected}/>:!q.loading&&<p>Статистика пока не получена.</p>}</State>
