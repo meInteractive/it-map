@@ -17,6 +17,16 @@ const apify={
     starter:null,
   },
   active:[{id:'OP01',profile:'free',state:'uncertain',run_id:'HIDDEN_RUN',created_at:now}],
+  operationHistoryAvailable:true,operationsTotal:2,operationsCheckedAt:now,
+  recentOperations:[
+    {operationId:'a'.repeat(32),profile:'free',state:'succeeded',
+      createdAt:now-1000,updatedAt:now,chargedUsd:0.2,reservedUsd:0.25,
+      hasProviderRunId:true,startOutcomeKnown:true,run_id:'HIDDEN_RUN'},
+    {operationId:'b'.repeat(32),profile:'free',state:'uncertain',
+      createdAt:now-2000,updatedAt:now,chargedUsd:null,reservedUsd:0.25,
+      errorCode:'apify_uncertain',hasProviderRunId:false,startOutcomeKnown:false,
+      dataset_id:'HIDDEN_DATASET'},
+  ],
 };
 const firecrawl={mode:'free',fresh:true,checkedAt:now,status:'available',reason:'SECRET_REASON',
   limits:{credits:1000,scrapePerMinute:10,appConcurrency:1},
@@ -48,9 +58,16 @@ try{
   assert.equal(requests.length,before,'copy has no network side effects');
   assert.equal(writes[0].section,'apify_usage');
   assert.equal(writes[0].summary.profiles.free.ownConfirmedUsd,2);
-  assert.equal(writes[0].summary.operationHistoryAvailable,false);
+  assert.equal(writes[0].summary.operationHistoryAvailable,true);
+  assert.equal(writes[0].summary.activeOnly,false);
+  assert.equal(writes[0].summary.actorStartCountAvailable,false);
+  assert.equal(writes[0].recentItems.total,2);
+  assert.equal(writes[0].recentItems.items[0].operationId,'a'.repeat(32));
+  assert.equal(writes[0].recentItems.items[1].chargedUsd,null);
+  assert.equal(writes[0].recentItems.items[1].hasProviderRunId,false);
   assert.ok(!JSON.stringify(writes[0]).includes('HIDDEN_RUN'));
   assert.ok(!JSON.stringify(writes[0]).includes('HIDDEN_ACCOUNT'));
+  assert.ok(!JSON.stringify(writes[0]).includes('HIDDEN_DATASET'));
 
   await act(async()=>{f=create(h(FirecrawlBudget,{mode:'free'}));});
   await flush();await flush();
