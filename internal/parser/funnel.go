@@ -120,7 +120,7 @@ type funnelCandidate struct {
 // Для актуального результата классификации проверяем hash заголовка, модель и
 // SHA-256 действующего промпта, чтобы смена промпта не считалась отказом.
 const funnelCandidateSQL = `SELECT c.id,
-  COALESCE(NULLIF(i.source_id,''),NULLIF(c.source_id,''),'unknown') intake_source,
+  CASE WHEN i.candidate_token IS NOT NULL THEN COALESCE(i.source_id,'unknown') ELSE COALESCE(c.source_id,'unknown') END intake_source,
   COALESCE(i.parser,'unknown') intake_parser,
   COALESCE(i.received_at,c.first_seen_at) received_at,
   c.main_vacancy_id,
@@ -150,7 +150,7 @@ const funnelCandidateSQL = `SELECT c.id,
  FROM vacancy_candidates c LEFT JOIN parser_candidate_intakes i ON i.candidate_token=c.creation_token
  WHERE (i.parser IN ('apify','firecrawl','http','unknown') OR
    (i.parser IS NULL AND c.acquisition_method IN ('site','firecrawl')))
- AND (?='all' OR COALESCE(NULLIF(i.source_id,''),NULLIF(c.source_id,''),'unknown')=?)
+ AND (?='all' OR CASE WHEN i.candidate_token IS NOT NULL THEN COALESCE(i.source_id,'unknown') ELSE COALESCE(c.source_id,'unknown') END=?)
  AND (?='all' OR COALESCE(i.parser,'unknown')=?)
  ORDER BY c.id`
 
@@ -239,7 +239,7 @@ func (r FunnelRepository) ReadFunnel(ctx context.Context, sourceID, parserID str
 			if !f.Published.Valid {cohort.UndatedPublished++}
 		} else if f.ActiveRoles>0 && f.ResolvedRoles==f.ActiveRoles && f.MatchedRoles==0 {
 			cohort.Rejected++
-		} else if f.AttemptError || jobErrors[entry.id] {
+		} else if (f.ActiveRoles>f.ResolvedRoles && f.AttemptError) || jobErrors[entry.id] {
 			cohort.Error++
 		} else {cohort.Waiting++}
 	}
