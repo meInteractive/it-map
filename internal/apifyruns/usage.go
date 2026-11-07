@@ -26,16 +26,20 @@ type ActiveRun struct {
 	CreatedAt int64  `json:"created_at"`
 }
 type UsageView struct {
-	Profiles          map[string]*UsageProfile `json:"profiles"`
-	Active            []ActiveRun              `json:"active"`
-	ProviderLimitMode bool                     `json:"providerLimitMode"`
+	Profiles                  map[string]*UsageProfile `json:"profiles"`
+	Active                    []ActiveRun              `json:"active"`
+	ProviderLimitMode         bool                     `json:"providerLimitMode"`
+	RecentOperations          []PaidOperationView      `json:"recentOperations"`
+	OperationsTotal           int64                    `json:"operationsTotal"`
+	OperationsCheckedAt       int64                    `json:"operationsCheckedAt"`
+	OperationHistoryAvailable bool                     `json:"operationHistoryAvailable"`
 }
 
 var safeRunID = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
 
 // ReadUsage is a local snapshot: it does not call Apify or change its ledger.
 func (r Repository) ReadUsage(ctx context.Context) (UsageView, error) {
-	out := UsageView{Profiles: map[string]*UsageProfile{"free": nil, "starter": nil}, Active: []ActiveRun{}, ProviderLimitMode: r.TrustFreeProviderLimit}
+	out := UsageView{Profiles: map[string]*UsageProfile{"free": nil, "starter": nil}, Active: []ActiveRun{}, RecentOperations: []PaidOperationView{}, ProviderLimitMode: r.TrustFreeProviderLimit}
 	if r.DB == nil {
 		return out, ErrStorage
 	}
@@ -95,6 +99,12 @@ func (r Repository) ReadUsage(ctx context.Context) (UsageView, error) {
 		return out, ErrStorage
 	}
 	rows.Close()
+	if err := readUsageOperations(ctx, tx, &out); err != nil {
+		return out, ErrStorage
+	}
+	out.OperationsCheckedAt = time.Now().UnixMilli()
+	// POST Start and GET Reconcile counts are not stored in apify_runs.
+	// Their absence must not be substituted with reserved-operation counts.
 	if tx.Commit() != nil {
 		return out, ErrStorage
 	}
