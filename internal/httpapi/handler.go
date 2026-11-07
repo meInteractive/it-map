@@ -83,6 +83,7 @@ type Options struct {
 	SchedulerJobActions  SchedulerJobActionWriter
 	SchedulerSettings    SchedulerSettingsWriter
 	SchedulerDashboard   SchedulerDashboardReader
+	SchedulerIssues      SchedulerIssuesReader
 }
 
 // NewHandlerWithOptions constructs only explicitly implemented routes.
@@ -107,7 +108,7 @@ func NewHandlerWithOptions(logger *slog.Logger, opts Options) http.Handler {
 		}
 		jsonReply(w, http.StatusServiceUnavailable, map[string]any{"status": "not_ready", "reason": reason})
 	})
-	mux.HandleFunc("POST /api/internal/scheduler/tick", SchedulerTickHandler(opts.SchedulerTick, opts.SchedulerToken))
+	mux.HandleFunc("POST /api/internal/scheduler/tick", SchedulerTickHandler(opts.SchedulerTick, opts.SchedulerToken, opts.SchedulerIssues))
 	unmigrated := func(w http.ResponseWriter, _ *http.Request) {
 		jsonReply(w, http.StatusServiceUnavailable, map[string]any{"error": "backend_not_migrated"})
 	}
@@ -139,6 +140,7 @@ func NewHandlerWithOptions(logger *slog.Logger, opts Options) http.Handler {
 		mux.HandleFunc("/api/scheduler/jobs/", SchedulerJobActionsHandler(opts.Auth, opts.SchedulerJobActions))
 		mux.HandleFunc("/api/scheduler/settings", SchedulerSettingsHandler(opts.Auth, opts.SchedulerSettings))
 		mux.HandleFunc("/api/scheduler", SchedulerDashboardHandler(opts.Auth, opts.SchedulerDashboard))
+		mux.HandleFunc("/api/scheduler/issues", SchedulerIssuesHandler(opts.Auth, opts.SchedulerIssues))
 		download := BackupDownloadHandler(opts.Auth, opts.BackupExports)
 		restore := BackupRestoreHandler(opts.Auth, opts.BackupRestores, false)
 		mux.HandleFunc("/api/backup", func(w http.ResponseWriter, r *http.Request) {
