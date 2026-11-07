@@ -15,7 +15,7 @@ import (
 func TestMariaDBSchedulerErrorHistoryIssuesDisposable(t *testing.T) {
 	requireSettingsCI(t)
 	f := dashboardFixture(t)
-	for _, table := range []string{"parser_error_daily", "vacancy_role_classification"} {
+	for _, table := range []string{"parser_error_daily", "vacancy_role_classification", "company_vacancies"} {
 		var count int
 		if err := f.db.QueryRowContext(f.ctx, "SELECT COUNT(*) FROM "+table).Scan(&count); err != nil || count != 0 {
 			t.Fatal("issues fixture requires an empty private namespace")
@@ -24,13 +24,17 @@ func TestMariaDBSchedulerErrorHistoryIssuesDisposable(t *testing.T) {
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		if _, err := f.db.ExecContext(ctx, "DELETE FROM parser_error_daily"); err != nil {
-			t.Error("issues cleanup failed")
+		for _, table := range []string{"parser_error_daily", "company_vacancies"} {
+			if _, err := f.db.ExecContext(ctx, "DELETE FROM "+table); err != nil {
+				t.Error("issues cleanup failed: ", table)
+			}
 		}
 	})
 	const settings = `{"enabled":true,"ownerName":"Eugene","sourceIds":["hh"],"favoritesOnly":false,"agenciesEnabled":false,"intervalDays":7,"vacancyAgeDays":3,"dayBudgetUsd":5,"monthBudgetUsd":10,"revision":1}`
 	f.exec("INSERT INTO firecrawl_settings(id,scheduler_json,favorites_only,revision) VALUES(1,?,0,1)", settings)
 	f.exec("INSERT INTO company_identity(id,company_name) VALUES(1,'CI Issues Employer')")
+	f.exec("INSERT INTO company_vacancies(company_name,title,url,loaded_at) VALUES('СБЕР','CI previous role','https://example.invalid/ci-sber-legacy','2026-10-20')")
+	f.exec("INSERT INTO company_vacancies(company_name,title,url,loaded_at) VALUES('sber','CI previous role 2','https://example.invalid/ci-sber-legacy-2','2026-10-20T22:00:00Z')")
 	f.exec("INSERT INTO vacancy_source_parsing(company_id,source_id,source_url,enabled) VALUES(1,'hh','https://example.invalid/ci',1)")
 	base := time.Date(2026, 11, 7, 18, 0, 0, 0, time.UTC)
 	now := base.UnixMilli()
@@ -74,6 +78,18 @@ func TestMariaDBSchedulerErrorHistoryIssuesDisposable(t *testing.T) {
 	// READ не записывает снимки, без открытой страницы архив остаётся без подставных нулей.
 	first := read()
 	check(first, 2, 2, 0)
+	byID := map[string]map[string]any{}
+	for _, raw := range first["issues"].([]any) {
+		item := raw.(map[string]any)
+		byID[item["id"].(string)] = item
+	}
+	if byID["sber-levels"]["status"] != "verification" || byID["sber-levels"]["affected"] != float64(2) ||
+		byID["yoomoney-cycle"]["status"] != "verification" {
+		t.Fatal("Go issues report lost historical JS verification backlog")
+	}
+	if byID["sber-levels"]["priority"] != float64(2) || byID["yoomoney-cycle"]["priority"] != float64(2) {
+		t.Fatal("verification entries must remain separate from active P1/P2 counts")
+	}
 	if err := repo.Sample(f.ctx); err != nil {
 		t.Fatal("automated snapshot failed", err)
 	}
