@@ -6,7 +6,7 @@ export interface QueueDebugResponse {
   coverage:'server_latest';
   limit:number;
 }
-export declare function schedulerOverviewSnapshot(d:Record<string,any>):Snapshot;
+export declare function schedulerOverviewSnapshot(d:any):Snapshot;
 export declare function schedulerQueueSnapshot(d:QueueDebugResponse, filters:{status:string;type:string;searchApplied:boolean}):Snapshot;
-export declare function schedulerRunsSnapshot(d:{runs:Record<string,any>[]}):Snapshot;
-export declare function schedulerAttemptsSnapshot(d:{attempts:Record<string,any>[]}):Snapshot;
+export declare function schedulerRunsSnapshot(d:any):Snapshot;
+export declare function schedulerAttemptsSnapshot(d:any):Snapshot;
