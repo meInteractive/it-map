@@ -29,10 +29,15 @@ func TestMariaDBSchedulerErrorHistoryIssuesDisposable(t *testing.T) {
 				t.Error("issues cleanup failed: ", table)
 			}
 		}
+		if _, err := f.db.ExecContext(ctx, "DELETE FROM company_crm WHERE company_name IN ('СБЕР','sber')"); err != nil {
+			t.Error("issues cleanup failed: company_crm")
+		}
 	})
 	const settings = `{"enabled":true,"ownerName":"Eugene","sourceIds":["hh"],"favoritesOnly":false,"agenciesEnabled":false,"intervalDays":7,"vacancyAgeDays":3,"dayBudgetUsd":5,"monthBudgetUsd":10,"revision":1}`
 	f.exec("INSERT INTO firecrawl_settings(id,scheduler_json,favorites_only,revision) VALUES(1,?,0,1)", settings)
 	f.exec("INSERT INTO company_identity(id,company_name) VALUES(1,'CI Issues Employer')")
+	// company_vacancies ссылается на company_crm: тестовые компании нужны до вакансий.
+	f.exec("INSERT INTO company_crm(company_name) VALUES('СБЕР'),('sber')")
 	f.exec("INSERT INTO company_vacancies(company_name,title,url,loaded_at) VALUES('СБЕР','CI previous role','https://example.invalid/ci-sber-legacy','2026-10-20')")
 	f.exec("INSERT INTO company_vacancies(company_name,title,url,loaded_at) VALUES('sber','CI previous role 2','https://example.invalid/ci-sber-legacy-2','2026-10-20T22:00:00Z')")
 	f.exec("INSERT INTO vacancy_source_parsing(company_id,source_id,source_url,enabled) VALUES(1,'hh','https://example.invalid/ci',1)")
