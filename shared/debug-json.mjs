@@ -36,6 +36,7 @@ const SCHEMA = Object.freeze({
   ai_spending:{
     filters:{provider:stage,model:stage,type:stage},
     summary:{
+      ...spent,
       dayBudgetUsd:number,monthBudgetUsd:number,dayStart:time,monthStart:time,
       dayConfirmedUsd:number,dayUnknownReservedUsd:number,dayUpperEstimateUsd:number,
       monthConfirmedUsd:number,monthUnknownReservedUsd:number,monthUpperEstimateUsd:number,
