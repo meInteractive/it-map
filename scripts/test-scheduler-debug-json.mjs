@@ -5,7 +5,7 @@ const at=Date.parse('2026-11-07T15:00:00.000Z');
 const secret=['sk','proj','CANNOT_COPY'].join('-');
 const d={
   settings:{enabled:true,ownerName:'Private owner',dayBudgetUsd:10},
-  cloudStatus:'signal_received',lastSignalAt:at,lastSuccessAt:null,nextSignalAt:null,
+  cloudStatus:'signal_received',lastSignalAt:at,lastSuccessAt:null,nextSignalAt:at+3600000,
   counts:{pending:3,running:0,failed:1,token:secret},
   statistics:{sources:11,found:100,accepted:40,imported:28,rawPrompt:secret},
   spending:{dayUsd:1.154459,monthUsd:1.3,providerKey:secret},
@@ -31,6 +31,7 @@ assert.equal(overview.summary.statistics.imported,28);
 assert.equal(overview.summary.spending.upperEstimateUsd,1.154459);
 assert.equal(overview.summary.lastSignalAt,new Date(at).toISOString());
 assert.equal(overview.summary.lastSuccessAt,null);
+assert.equal(overview.summary.nextSignalAt,null,'unknown real systemd schedule must not be fabricated');
 assert.equal(overview.summary.spending.confirmedUsd,undefined,'upper estimate is not confirmed cost');
 assert.ok(!JSON.stringify(overview).includes(secret));
 assert.ok(!JSON.stringify(overview).includes('Private owner'));
