@@ -35,7 +35,9 @@ export function parserIssuesSnapshot(report) {
         p1:today?.observedAt===null || today?.observedAt===undefined ? null : today.p1,
         p2:today?.observedAt===null || today?.observedAt===undefined ? null : today.p2,
       },
-      p2Breakdown:{available:false},
+      // Достоверная серверная разбивка по ВСЕМ активным проблемным заданиям,
+      // а не реконструкция причин по двум датам или по 10 issues в интерфейсе.
+      p2Breakdown:report.p2Breakdown??{available:false},
       historicalP2BreakdownAvailable:false,
     },
     items:issues,
