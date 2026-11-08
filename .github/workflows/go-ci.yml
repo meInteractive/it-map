@@ -197,6 +197,8 @@ jobs:
           node scripts/test-ai-spending-debug-ui.mjs
           node scripts/test-parser-statistics-debug-json.mjs
           node scripts/test-parser-statistics-debug-ui.mjs
+          node scripts/test-all-diagnostics-debug-json.mjs
+          node scripts/test-all-diagnostics-debug-ui.mjs
       - name: Verify synthetic creation contract against unchanged legacy JS
         run: |
           node scripts/check-api-coverage.mjs
