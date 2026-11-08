@@ -135,7 +135,7 @@ func TestMariaDBCoverLetterGenerationDisposable(t *testing.T){
 		t.Fatal("paid model selection unexpectedly logged a provider attempt",err,receiptsBeforePaid,receiptsAfterPaid)
 	}
 	cached,err:=svc.Generate(f.ctx,user,vacancyID,false,nil)
-	if err!=nil||cached.CoverLetterSubject!="CI New"{t.Fatal("existing text lost after paid model selection",err)}
+	if err!=nil||cached!=winner{t.Fatal("winning personal letter lost after paid model selection",cached,winner,err)}
 	if strings.Contains(mock.Output,"PRIVATE"){t.Fatal("invalid mock fixture")}
 	t.Log("PASS: saved/personal/regenerate, CAS input and provider, free-only billing, no OpenAI calls, read-only GET, one row, no PII in ledger")
 }
