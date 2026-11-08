@@ -49,7 +49,7 @@ func TestClassificationSettingsHTTPIsAdminOnlyAndDoesNotCallProviders(t *testing
 	if err!=nil {t.Fatal(err)}
 	tokens:=map[string]string{}
 	for _,login:=range []string{"eugene","nastya","demo"}{
-		u,e:=m.Authenticate(login,"CI_pw");if e!=nil{t.Fatal(e)}
+		u,ok:=m.Authenticate(login,"CI_pw");if !ok{t.Fatal("synthetic auth failed")}
 		token,e:=m.Issue(u,time.Now());if e!=nil{t.Fatal(e)}
 		tokens[login]=token
 	}
