@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"itmap/internal/profiles"
-	"itmap/internal/storage"
 )
 
 // Input — согласованный SQL-снимок всех зависимостей генерации. В него входят
@@ -210,7 +209,13 @@ func (r Repository) Release(l Lease){
 func (r Repository) Save(ctx context.Context,l Lease,in Input,answer Parsed,regenerate bool)(Letter,error){
 	if r.DB==nil||answer.Subject==""||answer.Markdown==""{return Letter{},ErrInvalid}
 	if len([]rune(answer.Subject))>MaxSubject||len([]rune(answer.Markdown))>MaxBody{return Letter{},ErrInvalid}
-	err:=storage.WithinGenerationTx(ctx,r.DB,l.Generation,func(tx *sql.Tx)error{
+	tx,err:=r.DB.BeginTx(ctx,&sql.TxOptions{Isolation:sql.LevelReadCommitted})
+	if err!=nil{return Letter{},ErrUnavailable}
+	defer tx.Rollback()
+	var generation string
+	if err=tx.QueryRowContext(ctx,"SELECT generation FROM app_runtime_generation WHERE id=1 FOR UPDATE").Scan(&generation);err!=nil{return Letter{},ErrUnavailable}
+	if generation!=l.Generation{return Letter{},ErrChanged}
+	err=func()error{
 		var exists int64
 		if e:=tx.QueryRowContext(ctx,"SELECT id FROM company_vacancies WHERE id=? FOR UPDATE",l.VacancyID).Scan(&exists);e!=nil{
 			if errors.Is(e,sql.ErrNoRows){return ErrMissing};return ErrUnavailable
@@ -235,8 +240,8 @@ func (r Repository) Save(ctx context.Context,l Lease,in Input,answer Parsed,rege
 		 VALUES(?,?,?,?,?,?)`,l.User,l.VacancyID,answer.Subject,answer.Markdown,override,revision)
 		if e!=nil{return ErrUnavailable}
 		return nil
-	})
-	if errors.Is(err,storage.ErrGenerationChanged){return Letter{},ErrChanged}
+	}()
 	if err!=nil{return Letter{},err}
+	if err=tx.Commit();err!=nil{return Letter{},ErrUnavailable}
 	return Letter{answer.Subject,answer.Markdown,"personal"},nil
 }
