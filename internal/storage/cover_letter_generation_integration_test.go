@@ -8,6 +8,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	"itmap/internal/aiproviders"
 	"itmap/internal/coverletters"
@@ -136,6 +137,74 @@ func TestMariaDBCoverLetterGenerationDisposable(t *testing.T){
 	}
 	cached,err:=svc.Generate(f.ctx,user,vacancyID,false,nil)
 	if err!=nil||cached!=winner{t.Fatal("winning personal letter lost after paid model selection",cached,winner,err)}
+
+	// CI-only: Claim may lose a race after Read but before acquiring the
+	// vacancy lock. An updated prompt must yield a conflict, not the old letter.
+	f.exec("UPDATE prompt_model_settings SET provider='openrouter',openai_model='',openrouter_model='best_free',revision=revision+1 WHERE kind='cover_letter'")
+	callsBeforeRace:=mock.Calls
+	_,err=svc.Generate(f.ctx,user,vacancyID,true,func(stage string){
+		if stage=="preparing"{
+			f.exec("UPDATE system_prompts SET markdown='CI pre-claim update',revision=revision+1 WHERE kind='cover_letter'")
+		}
+	})
+	if !errors.Is(err,coverletters.ErrChanged)||mock.Calls!=callsBeforeRace{
+		t.Fatal("pre-claim prompt change reported as successful generation",err,mock.Calls,callsBeforeRace)
+	}
+	// However, an actually newer personal letter saved between Read and
+	// Claim should be returned to the other tab without a provider request.
+	var preclaimWinner coverletters.Letter
+	preclaimWinner,err=svc.Generate(f.ctx,user,vacancyID,true,func(stage string){
+		if stage=="preparing"{
+			f.exec("UPDATE vacancy_cover_letters SET subject='CI Preclaim Winner',markdown='CI Newer preclaim letter',revision=revision+1 WHERE user_name=? AND vacancy_id=?",user,vacancyID)
+		}
+	})
+	if err!=nil||preclaimWinner.CoverLetterSubject!="CI Preclaim Winner"||mock.Calls!=callsBeforeRace{
+		t.Fatal("new pre-claim saved letter not returned",preclaimWinner,err,mock.Calls,callsBeforeRace)
+	}
+	// Two tabs: while the other request holds a lease, changing only a
+	// shared manual letter must NOT return the unchanged personal override.
+	currentInput,err:=repo.Read(f.ctx,user,vacancyID)
+	if err!=nil||!currentInput.PersonalOverride{t.Fatal("missing effective personal override",err)}
+	heldLease,err:=repo.Claim(f.ctx,user,currentInput,true)
+	if err!=nil{t.Fatal("CI setup failed to hold owner lease",err)}
+	waitCtx,stopWait:=context.WithTimeout(f.ctx,6*time.Second)
+	waiting:=make(chan struct{},1)
+	waitResult:=make(chan error,1)
+	go func(){
+		_,e:=svc.Generate(waitCtx,user,vacancyID,true,func(stage string){
+			if stage=="waiting"{select{case waiting<-struct{}{}:default:}}
+		})
+		waitResult<-e
+	}()
+	select{
+	case <-waiting:
+	case <-time.After(3*time.Second):
+		stopWait();repo.Release(heldLease);t.Fatal("second request did not enter waiting state")
+	}
+	f.exec("UPDATE company_vacancies SET cover_letter_subject='CI Shared',cover_letter_md='CI Updated shared letter' WHERE id=?",vacancyID)
+	select{
+	case e:=<-waitResult:
+		if !errors.Is(e,coverletters.ErrChanged){t.Fatal("waiting request returned stale personal letter on shared-only update",e)}
+	case <-time.After(4*time.Second):
+		stopWait();repo.Release(heldLease);t.Fatal("waiting request failed to report changed input")
+	}
+	stopWait()
+	repo.Release(heldLease)
+	// Cancellation while waiting terminates promptly and never calls the
+	// model. The owner lease remains fenced and is released explicitly.
+	currentInput,err=repo.Read(f.ctx,user,vacancyID)
+	if err!=nil{t.Fatal(err)}
+	cancelLease,err:=repo.Claim(f.ctx,user,currentInput,true)
+	if err!=nil{t.Fatal("CI setup failed to claim cancellation lease",err)}
+	cancelCtx,cancelWaiting:=context.WithCancel(f.ctx)
+	_,err=svc.Generate(cancelCtx,user,vacancyID,true,func(stage string){
+		if stage=="waiting"{cancelWaiting()}
+	})
+	cancelWaiting()
+	repo.Release(cancelLease)
+	if !errors.Is(err,context.Canceled)||mock.Calls!=callsBeforeRace{
+		t.Fatal("cancelled waiting request called provider or lost cancellation",err,mock.Calls,callsBeforeRace)
+	}
 	if strings.Contains(mock.Output,"PRIVATE"){t.Fatal("invalid mock fixture")}
 	t.Log("PASS: saved/personal/regenerate, CAS input and provider, free-only billing, no OpenAI calls, read-only GET, one row, no PII in ledger")
 }
