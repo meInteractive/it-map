@@ -23,6 +23,7 @@ import (
 	"itmap/internal/channels"
 	"itmap/internal/config"
 	"itmap/internal/contacts"
+	"itmap/internal/coverletters"
 	"itmap/internal/crm"
 	"itmap/internal/httpapi"
 	"itmap/internal/integrations/hhpublic"
