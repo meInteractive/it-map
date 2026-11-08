@@ -28,7 +28,8 @@ func TestMariaDBClassificationSettingsDisposable(t *testing.T) {
 		defer cancel()
 		for _,sql := range []string{
 			"DELETE FROM vacancy_role_classification WHERE role_id IN (1904381,1904382,1904383)",
-			"DELETE FROM vacancy_roles WHERE id IN (1904382,1904383,1904381)",
+			"DELETE FROM vacancy_roles WHERE id=1904382",
+			"DELETE FROM vacancy_roles WHERE id IN (1904381,1904383)",
 		}{
 			if _,err:=f.db.ExecContext(ctx,sql);err!=nil {t.Errorf("GO-438 cleanup: %v",err)}
 		}
