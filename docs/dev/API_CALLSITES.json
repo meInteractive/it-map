@@ -1,7 +1,7 @@
 {
   "scope": "Current frontend/web direct transport sites and reviewed JSX/download bindings; no runtime/golden coverage inferred",
   "typescript": "5.9.3",
-  "files": 67,
+  "files": 68,
   "transportModule": "frontend/api/client.ts",
   "sites": [
     {
@@ -709,6 +709,118 @@
       ],
       "families": [
         "classification"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "c9dc4b057a4660b7",
+      "file": "frontend/features/settings/CopyAllDiagnostics.tsx",
+      "line": 24,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/scheduler/queue/debug?page=1&status=&type=&search='",
+      "literalFragments": [
+        "/api/scheduler/queue/debug?page=1&status=&type=&search="
+      ],
+      "families": [
+        "scheduler"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "5820df540093e70e",
+      "file": "frontend/features/settings/CopyAllDiagnostics.tsx",
+      "line": 25,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/scheduler/ai-spending/debug'",
+      "literalFragments": [
+        "/api/scheduler/ai-spending/debug"
+      ],
+      "families": [
+        "scheduler"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "ec8ae6a44c3f62ef",
+      "file": "frontend/features/settings/CopyAllDiagnostics.tsx",
+      "line": 26,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/apify/usage'",
+      "literalFragments": [
+        "/api/apify/usage"
+      ],
+      "families": [
+        "apify"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "36adb33dd301f2dd",
+      "file": "frontend/features/settings/CopyAllDiagnostics.tsx",
+      "line": 27,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/firecrawl/settings'",
+      "literalFragments": [
+        "/api/firecrawl/settings"
+      ],
+      "families": [
+        "firecrawl"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "45548d44e24a1fcf",
+      "file": "frontend/features/settings/CopyAllDiagnostics.tsx",
+      "line": 29,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "mode?'/api/firecrawl/usage?mode='+mode:null",
+      "literalFragments": [
+        "/api/firecrawl/usage?mode="
+      ],
+      "families": [
+        "firecrawl"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "34b7c64522818a46",
+      "file": "frontend/features/settings/CopyAllDiagnostics.tsx",
+      "line": 30,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/scheduler/issues'",
+      "literalFragments": [
+        "/api/scheduler/issues"
+      ],
+      "families": [
+        "scheduler"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "55d91a571b5b6d99",
+      "file": "frontend/features/settings/CopyAllDiagnostics.tsx",
+      "line": 31,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/scheduler/funnel?sourceId=all&parser=all'",
+      "literalFragments": [
+        "/api/scheduler/funnel?sourceId=all&parser=all"
+      ],
+      "families": [
+        "scheduler"
       ],
       "dynamicURL": false
     },
@@ -1465,7 +1577,7 @@
     {
       "id": "ab313e001aa9f9bc",
       "file": "frontend/features/settings/Scheduler.tsx",
-      "line": 27,
+      "line": 28,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
@@ -1481,7 +1593,7 @@
     {
       "id": "ab313e001aa9f9bc-2",
       "file": "frontend/features/settings/Scheduler.tsx",
-      "line": 35,
+      "line": 36,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
@@ -1497,7 +1609,7 @@
     {
       "id": "f2ce3fed5be3c776",
       "file": "frontend/features/settings/Scheduler.tsx",
-      "line": 49,
+      "line": 50,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -1513,7 +1625,7 @@
     {
       "id": "ac1ac72b61790922",
       "file": "frontend/features/settings/Scheduler.tsx",
-      "line": 53,
+      "line": 54,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -1529,7 +1641,7 @@
     {
       "id": "75e59256bf1a7125",
       "file": "frontend/features/settings/Scheduler.tsx",
-      "line": 55,
+      "line": 56,
       "call": "mutate",
       "method": "POST",
       "methodExpression": "'POST'",
@@ -1545,7 +1657,7 @@
     {
       "id": "68c3e8b7ba26363a",
       "file": "frontend/features/settings/Scheduler.tsx",
-      "line": 55,
+      "line": 56,
       "call": "mutate",
       "method": "POST",
       "methodExpression": "'POST'",
@@ -1561,7 +1673,7 @@
     {
       "id": "e64433429e4391ad",
       "file": "frontend/features/settings/Scheduler.tsx",
-      "line": 60,
+      "line": 61,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -1577,7 +1689,7 @@
     {
       "id": "4b60146604c370b2",
       "file": "frontend/features/settings/Scheduler.tsx",
-      "line": 60,
+      "line": 61,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -1593,7 +1705,7 @@
     {
       "id": "c85278915ad72425",
       "file": "frontend/features/settings/Scheduler.tsx",
-      "line": 61,
+      "line": 62,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -1609,7 +1721,7 @@
     {
       "id": "ab313e001aa9f9bc-3",
       "file": "frontend/features/settings/Scheduler.tsx",
-      "line": 72,
+      "line": 73,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
@@ -1625,7 +1737,7 @@
     {
       "id": "0f8303a5216fa000",
       "file": "frontend/features/settings/Scheduler.tsx",
-      "line": 92,
+      "line": 94,
       "call": "mutate",
       "method": "POST",
       "methodExpression": "'POST'",
@@ -1641,7 +1753,7 @@
     {
       "id": "952a1852bfcc4624",
       "file": "frontend/features/settings/Scheduler.tsx",
-      "line": 92,
+      "line": 94,
       "call": "mutate",
       "method": "POST",
       "methodExpression": "'POST'",
