@@ -684,10 +684,23 @@
     },
     {
       "id": "cover-letter",
-      "implementation": "unported",
-      "level": "Stored letter read fields only",
-      "gap": "POST generation/regeneration stream и retries ещё не подключены.",
+      "implementation": "partial",
+      "level": "GO-018: personal saved letter, generation/regeneration free OpenRouter, HTTP JSON/NDJSON, durable lease and disposable SQL tests",
+      "gap": "Платные OpenAI письма и полный billing ledger/unknown ACK не подключены; provider fail-closed, live UI/paid acceptance и полная legacy stream parity остаются.",
       "evidence": [
+        {
+          "file": "internal/coverletters/parse_test.go",
+          "symbol": "TestParseAnswerContract"
+        },
+        {
+          "file": "internal/httpapi/vacancy_cover_letter_routes_test.go",
+          "symbol": "TestVacancyCoverLetterHTTPNoProviderCalls"
+        },
+        {
+          "file": "internal/storage/cover_letter_generation_integration_test.go",
+          "symbol": "TestMariaDBCoverLetterGenerationDisposable",
+          "required": true
+        },
         {
           "file": "internal/httpapi/handler.go"
         }
@@ -792,7 +805,7 @@
   ],
   "sourceHashes": {
     "frontend/api/client.ts": "b6880480b3eed65bf7caa043f5e41c8e899b672e5c9629666ccbd6d8f80c14ad",
-    "internal/httpapi/handler.go": "8fd7a35464acec383c6c610bc98611d92ef2694944a4fe032fe9882ee06fb30f",
+    "internal/httpapi/handler.go": "74747f72f93b19f714baec4cbf197c880ea05710a0c3a6a2b65f447dd3768644",
     "server/routes/index.js": "6134004f682975cb51ea13cd2ec4de8e85a5957deff6a5392fbad3fd70ccb1e4"
   },
   "clientExports": [

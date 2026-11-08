@@ -56,6 +56,7 @@ type Options struct {
 	ApplicationWrites    ApplicationMutator
 	ApplicationCreates   ApplicationCreator
 	VacancyApplies       VacancyApplicationCreator
+	VacancyCoverLetters  VacancyCoverLetterGenerator
 	CompanyFlags         CompanyFlagLister
 	CompanyFlagWrites    CompanyFlagWriter
 	CompanyCRM           CompanyCRMReader
@@ -236,6 +237,8 @@ func NewHandlerWithOptions(logger *slog.Logger, opts Options) http.Handler {
 		} else if opts.TaskCompletion != nil {
 			mux.HandleFunc("PUT /api/tasks/{id}", TaskCompletionHandler(opts.Auth, opts.TaskCompletion))
 		}
+		mux.HandleFunc("POST /api/vacancies/{id}/cover-letter", VacancyCoverLetterHandler(opts.Auth, opts.VacancyCoverLetters, false))
+		mux.HandleFunc("POST /api/vacancies/{id}/cover-letter/regenerate", VacancyCoverLetterHandler(opts.Auth, opts.VacancyCoverLetters, true))
 		mux.HandleFunc("GET /api/vacancies/list", VacancyListHandler(opts.Auth, opts.Vacancies, time.Now))
 		if opts.VacancyCreates != nil {
 			mux.HandleFunc("POST /api/vacancies", ManualVacancyCreateHandler(opts.Auth, opts.VacancyCreates))

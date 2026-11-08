@@ -23,6 +23,7 @@ import (
 	"itmap/internal/channels"
 	"itmap/internal/config"
 	"itmap/internal/contacts"
+	"itmap/internal/coverletters"
 	"itmap/internal/crm"
 	"itmap/internal/httpapi"
 	"itmap/internal/integrations/hhpublic"
@@ -73,6 +74,7 @@ func httpHandler(logger *slog.Logger, db *sql.DB, manager *auth.Manager) http.Ha
 		opts.ClassificationSettings = classification.Repository{DB: db}
 		opts.Vacancies = vacancies.Repository{DB: db}
 		opts.VacancyDetails = vacancies.Repository{DB: db}
+		opts.VacancyCoverLetters = coverletters.Service{Repository: coverletters.Repository{DB: db}, Generator: aiproviders.NewGenerator(openAI, router)}
 		opts.VacancyCreates = vacancies.Repository{DB: db}
 		opts.VacancyDeletes = vacancies.Repository{DB: db}
 		opts.VacancyUpdates = vacancies.Repository{DB: db}
