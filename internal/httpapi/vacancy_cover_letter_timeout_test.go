@@ -35,7 +35,7 @@ func (g delayedCoverLetterGenerator) Generate(ctx context.Context, _ string, _ i
 
 func coverLetterDeadlineSession(t *testing.T) (*auth.Manager, string) {
 	t.Helper()
-	manager, err := auth.NewManager(strings.Repeat("d", 64), map[string]string{"demo": "CI_PASSWORD"})
+	manager, err := auth.NewManager(strings.Repeat("d", 64), map[string]string{"eugene": "CI_PASSWORD", "nastya": "CI_PASSWORD", "demo": "CI_PASSWORD"})
 	if err != nil {
 		t.Fatal(err)
 	}
