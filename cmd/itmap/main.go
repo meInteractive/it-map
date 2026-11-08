@@ -19,6 +19,7 @@ import (
 	"itmap/internal/auth"
 	"itmap/internal/backup"
 	"itmap/internal/catalog"
+	"itmap/internal/classification"
 	"itmap/internal/channels"
 	"itmap/internal/config"
 	"itmap/internal/contacts"
