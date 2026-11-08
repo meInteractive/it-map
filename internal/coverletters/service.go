@@ -49,7 +49,16 @@ func (s Service) Generate(ctx context.Context,user string,id int64,regenerate bo
 	if progress!=nil{progress("preparing")}
 	lease,err:=s.Repository.Claim(ctx,user,in,regenerate)
 	if errors.Is(err,ErrBusy){
-		return s.wait(ctx,user,id,in,regenerate,progress)
+		return s.wait(ctx,user,id,in,progress)
+	}
+	if errors.Is(err,ErrChanged){
+		// Другой запрос мог сохранить письмо между первоначальным Read
+		// и Claim. Не запускаем модель повторно и возвращаем только
+		// действительно новую сохранённую версию.
+		current,e:=s.Repository.Read(ctx,user,id)
+		if e==nil{
+			if saved,ok:=advancedLetter(in,current);ok{return saved,nil}
+		}
 	}
 	if err!=nil{return Letter{},err}
 	defer s.Repository.Release(lease)
@@ -126,7 +135,7 @@ func advancedLetter(before,after Input)(Letter,bool){
 
 // Если второй браузер открыл ту же вакансию, его запрос не запускает модель:
 // ожидает уже сохранённую запись. После ошибки владельца не делает POST retry.
-func (s Service) wait(ctx context.Context,user string,id int64,previous Input,regenerate bool,progress Progress)(Letter,error){
+func (s Service) wait(ctx context.Context,user string,id int64,previous Input,progress Progress)(Letter,error){
 	if progress!=nil{progress("waiting")}
 	ticker:=time.NewTicker(time.Second)
 	defer ticker.Stop()
@@ -140,11 +149,9 @@ func (s Service) wait(ctx context.Context,user string,id int64,previous Input,re
 			now,e:=s.Repository.Read(ctx,user,id)
 			if e!=nil{return Letter{},e}
 			if now.Hash()!=previous.Hash(){
-				if saved,ok:=now.Effective();ok{
-					if !regenerate||now.PersonalRevision!=previous.PersonalRevision||now.SharedMD!=previous.SharedMD{
-						return saved,nil
-					}
-				}
+				// Обновление резюме, промта, модели или неэффективного
+				// общего письма не является успехом ожидаемой генерации.
+				if saved,ok:=advancedLetter(previous,now);ok{return saved,nil}
 				return Letter{},ErrChanged
 			}
 			var active int64
