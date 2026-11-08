@@ -70,6 +70,7 @@ func httpHandler(logger *slog.Logger, db *sql.DB, manager *auth.Manager) http.Ha
 		opts.ChannelWrites = channels.Repository{DB: db, CatalogSources: backup.StoredCatalogSourceURLs}
 		opts.Contacts = contacts.Repository{DB: db, CatalogNames: backup.StoredCatalogNames}
 		opts.Roles = roles.Repository{DB: db}
+		opts.ClassificationSettings = classification.Repository{DB: db}
 		opts.Vacancies = vacancies.Repository{DB: db}
 		opts.VacancyDetails = vacancies.Repository{DB: db}
 		opts.VacancyCreates = vacancies.Repository{DB: db}
