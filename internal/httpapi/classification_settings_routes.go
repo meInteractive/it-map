@@ -51,8 +51,8 @@ func classificationRoleID(path, surface string) (int64, bool) {
 	return value, err == nil && value > 0 && value <= classification.MaxSafeRevision
 }
 
-// Отдельный ограниченный JSON-контракт; не принимает неизвестные/дублирующие
-// свойства и не читает неограниченное тело даже при chunked запросе.
+// Отдельный ограниченный JSON-контракт; не принимает неизвестные поля
+// и не читает неограниченное тело даже при chunked запросе.
 func classificationBody(w http.ResponseWriter, r *http.Request, surface string) (int64, *bool, *string, error) {
 	if r.Body == nil {
 		return 0, nil, nil, classification.ErrInput
