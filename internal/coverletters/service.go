@@ -152,7 +152,7 @@ func (b *freeBilling) Run(ctx context.Context,request json.RawMessage,work func(
 		} `json:"payload"`
 	}
 	if json.Unmarshal(request,&meta)!=nil||meta.Provider!="openrouter"||!meta.Free||meta.Model==""||
-		meta.Payload.Provider.MaxPrice==nil||
+		len(meta.Payload.Provider.MaxPrice)!=3||
 		meta.Payload.Provider.MaxPrice["prompt"]!=0||
 		meta.Payload.Provider.MaxPrice["completion"]!=0||
 		meta.Payload.Provider.MaxPrice["request"]!=0{
