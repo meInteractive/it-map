@@ -28,7 +28,7 @@ func TestParseAnswerContract(t *testing.T){
 	}
 	raw:=`{"subject":"Лидер","markdown":"`+strings.Repeat("а",1900)+". "+strings.Repeat("б",400)+`"}`
 	result,e:=ParseAnswer(raw)
-	if e!=nil||len([]rune(result.Markdown))!=1902||!strings.HasSuffix(result.Markdown,"."){t.Fatalf("sentence trim got length %d err=%v",len([]rune(result.Markdown)),e)}
+	if e!=nil||len([]rune(result.Markdown))!=1901||!strings.HasSuffix(result.Markdown,"."){t.Fatalf("sentence trim got length %d err=%v",len([]rune(result.Markdown)),e)}
 	raw=`{"subject":"Лидер","markdown":"`+strings.Repeat("б",2300)+`"}`
 	result,e=ParseAnswer(raw)
 	if e!=nil||len([]rune(result.Markdown))!=2000{t.Fatalf("2000 Unicode truncation failed %+v %v",result,e)}
