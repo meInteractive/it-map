@@ -622,15 +622,24 @@
     },
     {
       "id": "classification",
-      "implementation": "unported",
-      "level": "Source settings model only",
-      "gap": "settings/prompts/roles/jobs/test/resume HTTP и строгие классификационные стадии ещё не приняты.",
+      "implementation": "partial",
+      "level": "GET settings + PUT root enabled/prompt CAS: Go HTTP, disposable MariaDB and strict access checks",
+      "gap": "POST /api/classification/test, JEV jobs/resume, реальное выполнение классификации, полный legacy JS→Go golden и UI live-smoke ещё не приняты.",
       "evidence": [
         {
-          "file": "scripts/check-parser-settings-contract.mjs"
+          "file": "internal/httpapi/classification_settings_routes_test.go",
+          "symbol": "TestClassificationSettingsHTTPIsAdminOnlyAndDoesNotCallProviders"
+        },
+        {
+          "file": "internal/storage/classification_settings_integration_test.go",
+          "symbol": "TestMariaDBClassificationSettingsDisposable",
+          "required": true
         },
         {
           "file": "internal/httpapi/handler.go"
+        },
+        {
+          "file": "server/repositories/classification-prompts.js"
         }
       ]
     },
@@ -783,7 +792,7 @@
   ],
   "sourceHashes": {
     "frontend/api/client.ts": "b6880480b3eed65bf7caa043f5e41c8e899b672e5c9629666ccbd6d8f80c14ad",
-    "internal/httpapi/handler.go": "4140b9edb2462b4184f542498920502bf33efecbb1e19629b96bd0d3a0338784",
+    "internal/httpapi/handler.go": "8fd7a35464acec383c6c610bc98611d92ef2694944a4fe032fe9882ee06fb30f",
     "server/routes/index.js": "6134004f682975cb51ea13cd2ec4de8e85a5957deff6a5392fbad3fd70ccb1e4"
   },
   "clientExports": [

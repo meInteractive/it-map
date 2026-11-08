@@ -42,6 +42,7 @@ type Options struct {
 	ChannelWrites        ChannelWriter
 	Contacts             HiringContactStore
 	Roles                RoleReader
+	ClassificationSettings ClassificationSettingsStore
 	HHProfessionalRoles  HHProfessionalRolesReader
 	HHRoleSettings       HHRoleSettingsStore
 	Vacancies            VacancyLister
@@ -119,6 +120,9 @@ func NewHandlerWithOptions(logger *slog.Logger, opts Options) http.Handler {
 		mux.HandleFunc("POST /auth", loginHandler(opts.Auth, opts.WebDir))
 		mux.HandleFunc("GET /logout", LogoutHandler())
 		mux.HandleFunc("GET /api/session", SessionHandler(opts.Auth))
+		mux.HandleFunc("/api/classification/settings", ClassificationSettingsHandler(opts.Auth, opts.ClassificationSettings, "settings"))
+		mux.HandleFunc("/api/classification/roles/", ClassificationSettingsHandler(opts.Auth, opts.ClassificationSettings, "roles"))
+		mux.HandleFunc("/api/classification/prompts/", ClassificationSettingsHandler(opts.Auth, opts.ClassificationSettings, "prompts"))
 		mux.HandleFunc("GET /api/hh/professional-roles", HHProfessionalRolesHandler(opts.Auth, opts.HHProfessionalRoles))
 		mux.HandleFunc("/api/hh/role-settings", HHRoleSettingsHandler(opts.Auth, opts.HHRoleSettings, opts.HHProfessionalRoles))
 		mux.HandleFunc("/api/openai", OpenAISettingsHandler(opts.Auth, opts.OpenAISettings, opts.AIConnectionTests))
