@@ -122,10 +122,17 @@ func TestMariaDBCoverLetterGenerationDisposable(t *testing.T){
 	}
 	mock.After=nil
 	// Включение платной модели блокирует POST ДО модели, а старое письмо читается.
+	callsBeforePaid:=mock.Calls
+	var receiptsBeforePaid int
+	if err=f.db.QueryRowContext(f.ctx,"SELECT COUNT(*) FROM openrouter_ai_logs WHERE task='cover_letter' AND requested_primary_model='ci/mock:free'").Scan(&receiptsBeforePaid);err!=nil{t.Fatal("missing technical receipts before paid check",err)}
 	f.exec("UPDATE prompt_model_settings SET provider='openai',openai_model='gpt-6-luna',revision=revision+1 WHERE kind='cover_letter'")
 	_,err=svc.Generate(f.ctx,user,vacancyID,true,nil)
-	if !errors.Is(err,coverletters.ErrPaidBilling)||mock.Calls!=3{
-		t.Fatal("paid OpenAI call was not blocked",err,mock.Calls)
+	if !errors.Is(err,coverletters.ErrPaidBilling)||mock.Calls!=callsBeforePaid{
+		t.Fatal("paid OpenAI call was not blocked",err,mock.Calls,callsBeforePaid)
+	}
+	var receiptsAfterPaid int
+	if err=f.db.QueryRowContext(f.ctx,"SELECT COUNT(*) FROM openrouter_ai_logs WHERE task='cover_letter' AND requested_primary_model='ci/mock:free'").Scan(&receiptsAfterPaid);err!=nil||receiptsAfterPaid!=receiptsBeforePaid{
+		t.Fatal("paid model selection unexpectedly logged a provider attempt",err,receiptsBeforePaid,receiptsAfterPaid)
 	}
 	cached,err:=svc.Generate(f.ctx,user,vacancyID,false,nil)
 	if err!=nil||cached.CoverLetterSubject!="CI New"{t.Fatal("existing text lost after paid model selection",err)}
