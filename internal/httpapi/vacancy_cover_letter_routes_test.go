@@ -61,7 +61,7 @@ func TestVacancyCoverLetterHTTPNoProviderCalls(t *testing.T){
 	if p.Calls!=1{t.Fatal("invalid requests reached generation",p.Calls)}
 	for _,user:=range []string{"eugene","nastya","demo"}{
 		w:=call(user,"POST","/api/vacancies/123/cover-letter","","","")
-		if w.Code!=200||p.User!=user{t.Fatalf("cross-user scope lost %s %d",user,w.Code)}
+		if w.Code!=200||p.User!=map[string]string{"eugene":"Eugene","nastya":"Nastya","demo":"Demo"}[user]{t.Fatalf("cross-user scope lost %s %d: %s",user,w.Code,p.User)}
 		var letter coverletters.Letter
 		if json.Unmarshal(w.Body.Bytes(),&letter)!=nil||letter.Source!="personal"{t.Fatal("response contract",w.Body.String())}
 	}
