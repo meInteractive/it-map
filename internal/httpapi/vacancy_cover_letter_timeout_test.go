@@ -95,7 +95,7 @@ func TestCoverLetterResponseOutlivesServerWriteTimeout(t *testing.T) {
 					t.Fatalf("expected progress and final done: %s", body)
 				}
 				var last struct {
-					Type string `json:"type"`
+					Type   string              `json:"type"`
 					Letter coverletters.Letter `json:"letter"`
 				}
 				if err := json.Unmarshal([]byte(frames[len(frames)-1]), &last); err != nil ||
@@ -109,7 +109,7 @@ func TestCoverLetterResponseOutlivesServerWriteTimeout(t *testing.T) {
 
 type canceledCoverLetterGenerator struct {
 	started chan struct{}
-	done chan struct{}
+	done    chan struct{}
 }
 
 func (g canceledCoverLetterGenerator) Generate(ctx context.Context, _ string, _ int64, _ bool, _ coverletters.Progress) (coverletters.Letter, error) {
