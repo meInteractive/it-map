@@ -56,6 +56,7 @@ type Options struct {
 	ApplicationWrites    ApplicationMutator
 	ApplicationCreates   ApplicationCreator
 	VacancyApplies       VacancyApplicationCreator
+	VacancyCoverLetters  VacancyCoverLetterGenerator
 	CompanyFlags         CompanyFlagLister
 	CompanyFlagWrites    CompanyFlagWriter
 	CompanyCRM           CompanyCRMReader
