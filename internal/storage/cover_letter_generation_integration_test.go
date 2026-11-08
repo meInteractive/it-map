@@ -18,6 +18,7 @@ type letterMockGenerator struct{
 	Calls int
 	Output string
 	Before func()
+	After func()
 }
 func(g *letterMockGenerator)Automatic(ctx context.Context,request aiproviders.GenerationRequest,config profiles.ModelInput,billing aiproviders.Billing)(aiproviders.AIResult,error){
 	g.Calls++
@@ -32,6 +33,8 @@ func(g *letterMockGenerator)Automatic(ctx context.Context,request aiproviders.Ge
 	if request.ValidateContent!=nil{
 		if err=request.ValidateContent(g.Output);err!=nil{return aiproviders.AIResult{},err}
 	}
+	// Хук симулирует запись в SQL между ответом провайдера и Save.
+	if g.After!=nil{g.After()}
 	return aiproviders.AIResult{Model:"ci/mock:free",Message:aiproviders.Message{Content:g.Output}},nil
 }
 
@@ -100,6 +103,24 @@ func TestMariaDBCoverLetterGenerationDisposable(t *testing.T){
 	if err=f.db.QueryRowContext(f.ctx,"SELECT COUNT(*) FROM openrouter_ai_logs WHERE task='cover_letter' AND requested_primary_model='ci/mock:free' AND success=1").Scan(&logs);err!=nil||logs!=2{
 		t.Fatal("free-provider usage ledger missing",err,logs)
 	}
+	// Если промт изменился ПОСЛЕ успешного mock provider result,
+	// Save должен вернуть ErrChanged, а не старый текст как новый успех.
+	mock.Before=nil
+	mock.After=func(){f.exec("UPDATE system_prompts SET markdown='CI changed after provider',revision=revision+1 WHERE kind='cover_letter'")}
+	mock.Output=`{"subject":"CI Uncommitted","markdown":"CI Не сохранено."}`
+	_,err=svc.Generate(f.ctx,user,vacancyID,true,nil)
+	if !errors.Is(err,coverletters.ErrChanged){t.Fatal("stale prompt was misreported as successful regeneration",err)}
+	stillSaved,err:=repo.Read(f.ctx,user,vacancyID)
+	if err!=nil||stillSaved.PersonalSubject!="CI New"{t.Fatal("stale regeneration modified previous letter",err)}
+	// Если другой запрос действительно сохранил новый персональный текст,
+	// возвращаем победивший результат, не повторяя вызов модели.
+	mock.After=func(){f.exec("UPDATE vacancy_cover_letters SET subject='CI Winner',markdown='CI Winner content',revision=revision+1 WHERE user_name=? AND vacancy_id=?",user,vacancyID)}
+	mock.Output=`{"subject":"CI Lost Race","markdown":"CI Lost content."}`
+	winner,err:=svc.Generate(f.ctx,user,vacancyID,true,nil)
+	if err!=nil||winner.CoverLetterSubject!="CI Winner"||winner.CoverLetterMD!="CI Winner content"{
+		t.Fatal("newer personal letter not returned after concurrent update",winner,err)
+	}
+	mock.After=nil
 	// Включение платной модели блокирует POST ДО модели, а старое письмо читается.
 	f.exec("UPDATE prompt_model_settings SET provider='openai',openai_model='gpt-6-luna',revision=revision+1 WHERE kind='cover_letter'")
 	_,err=svc.Generate(f.ctx,user,vacancyID,true,nil)
