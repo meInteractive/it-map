@@ -34,7 +34,7 @@ export default function CopyAllDiagnostics({dashboard,dashboardError,isAuthorize
  useEffect(()=>onCacheEvent(e=>{
    if(e.type==='reset'){epoch.current++;setStatus('');}
  }),[]);
- const loading=[queue,ai,apify,fireSettings,firecrawl,issues,funnel]
+ const loading=[queue,ai,apify,fireSettings,issues,funnel,...(mode?[firecrawl]:[])]
    .some(q=>q.loading&&!q.data&&!q.error);
  const copy=async()=>{
    if(inFlight.current||loading||!isAuthorized())return;
