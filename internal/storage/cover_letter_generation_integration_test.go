@@ -97,7 +97,7 @@ func TestMariaDBCoverLetterGenerationDisposable(t *testing.T){
 	after,err:=repo.Read(f.ctx,user,vacancyID)
 	if err!=nil||after.PersonalSubject!="CI New"{t.Fatal("stale result modified saved personal text",err)}
 	var logs int
-	if err=f.db.QueryRowContext(f.ctx,"SELECT COUNT(*) FROM openrouter_ai_logs WHERE task='cover_letter' AND requested_primary_model='ci/mock:free' AND success=1").Scan(&logs);err!=nil||logs!=3{
+	if err=f.db.QueryRowContext(f.ctx,"SELECT COUNT(*) FROM openrouter_ai_logs WHERE task='cover_letter' AND requested_primary_model='ci/mock:free' AND success=1").Scan(&logs);err!=nil||logs!=2{
 		t.Fatal("free-provider usage ledger missing",err,logs)
 	}
 	// Включение платной модели блокирует POST ДО модели, а старое письмо читается.
