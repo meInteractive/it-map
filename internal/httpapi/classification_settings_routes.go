@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -57,10 +58,14 @@ func classificationBody(w http.ResponseWriter, r *http.Request, surface string) 
 	if r.Body == nil {
 		return 0, nil, nil, classification.ErrInput
 	}
+	// Сначала проверяем физический размер всего тела, даже если JSON
+	// ошибочен уже в первом байте: переполнение должно давать HTTP 413.
+	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 32768))
+	if err != nil { return 0, nil, nil, err }
 	var data map[string]json.RawMessage
-	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, 32768))
+	dec := json.NewDecoder(bytes.NewReader(body))
 	if err := dec.Decode(&data); err != nil {
-		return 0, nil, nil, err
+		return 0, nil, nil, classification.ErrInput
 	}
 	if err := dec.Decode(&struct{}{}); err != io.EOF || data == nil {
 		return 0, nil, nil, classification.ErrInput
@@ -71,7 +76,7 @@ func classificationBody(w http.ResponseWriter, r *http.Request, surface string) 
 		return 0, nil, nil, classification.ErrInput
 	}
 	var revision int64
-	if err := json.Unmarshal(data["revision"], &revision); err != nil || revision < 0 || revision >= classification.MaxSafeRevision {
+	if err := json.Unmarshal(data["revision"], &revision); err != nil || string(data["revision"]) == "null" || revision < 0 || revision >= classification.MaxSafeRevision {
 		return 0, nil, nil, classification.ErrInput
 	}
 	if surface == "roles" {
