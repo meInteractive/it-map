@@ -88,15 +88,40 @@ func (s Service) Generate(ctx context.Context,user string,id int64,regenerate bo
 	if progress!=nil{progress("saving")}
 	letter,err:=s.Repository.Save(ctx,lease,in,answer,regenerate)
 	if errors.Is(err,ErrChanged){
-		// Не теряем готовое письмо другой вкладки и не дублируем генерацию.
+		// Только действительно заменённое другим запросом письмо может
+		// считаться успехом. Изменение резюме/промта/модели не означает, что
+		// устаревшая генерация завершилась успешно.
 		current,e:=s.Repository.Read(ctx,user,id)
 		if e==nil{
-			if saved,ok:=current.Effective();ok && current.Hash()!=in.Hash(){
-				return saved,nil
-			}
+			if saved,ok:=advancedLetter(in,current);ok{return saved,nil}
 		}
 	}
 	return letter,err
+}
+
+
+ // advancedLetter возвращает только письмо, которое действительно изменилось
+ // после снимка генерации. Стабильное личное письмо при смене промта/резюме
+ // остаётся сохранённым, но не выдаётся за результат нового запроса.
+func advancedLetter(before,after Input)(Letter,bool){
+	saved,ok:=after.Effective()
+	if !ok||strings.TrimSpace(saved.CoverLetterMD)==""{return Letter{},false}
+	switch saved.Source{
+	case "personal":
+		changed:=after.HasPersonal && (!before.HasPersonal ||
+			after.PersonalRevision!=before.PersonalRevision ||
+			after.PersonalSubject!=before.PersonalSubject ||
+			after.PersonalMD!=before.PersonalMD ||
+			after.PersonalOverride!=before.PersonalOverride)
+		if !changed{return Letter{},false}
+	case "vacancy":
+		if before.SharedSubject==after.SharedSubject && before.SharedMD==after.SharedMD{
+			return Letter{},false
+		}
+	default:
+		return Letter{},false
+	}
+	return saved,true
 }
 
 // Если второй браузер открыл ту же вакансию, его запрос не запускает модель:
