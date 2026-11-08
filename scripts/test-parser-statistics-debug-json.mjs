@@ -41,6 +41,39 @@ assert.equal(issues.summary.average.p2,100.5);
 assert.equal(issues.summary.todayPeak.p2,null,'last day without sample is unknown');
 assert.equal(issues.summary.p2Breakdown.available,false);
 assert.equal(issues.summary.historicalP2BreakdownAvailable,false);
+
+const p2Breakdown={
+  available:true,totalActiveP2:125,sampleLimited:true,limit:10,
+  truncated:true,groupTruncated:false,
+  byStatus:[{value:'failed',count:100},{value:'pending',count:25}],
+  byType:[{value:'extract_vacancy',count:125}],
+  bySourceId:[{value:'hh',count:125}],
+  byReasonCode:[{value:'extract_failed',count:100},{value:'retry_due',count:25}],
+  recentJobs:Array.from({length:10},(_,i)=>({
+    jobId:'job-'+String(i).padStart(16,'0'),status:'failed',
+    type:'extract_vacancy',sourceId:'hh',reasonCode:'extract_failed',
+    updatedAt:now-i*1000,message:secret,companyName:secret,
+  })),
+  rawError:secret,
+};
+const detailed=JSON.parse(serializeDebugJSON({
+  section:'parser_issues',capturedAt:now,
+  ...parserIssuesSnapshot({...report,p2Breakdown}),
+}));
+assert.equal(detailed.summary.p2Breakdown.available,true);
+assert.equal(detailed.summary.p2Breakdown.totalActiveP2,125);
+assert.equal(detailed.summary.p2Breakdown.truncated,true);
+assert.equal(detailed.summary.p2Breakdown.sampleLimited,true);
+assert.equal(detailed.summary.p2Breakdown.byStatus[1].count,25);
+assert.equal(detailed.summary.p2Breakdown.recentJobs.length,10);
+assert.ok(!JSON.stringify(detailed).includes(secret));
+assert.throws(()=>serializeDebugJSON({
+  section:'parser_issues',capturedAt:now,
+  ...parserIssuesSnapshot({...report,p2Breakdown:{
+    ...p2Breakdown,recentJobs:[...p2Breakdown.recentJobs,p2Breakdown.recentJobs[0]],
+  }}),
+}),/invalid_debug_array/,'nested jobs cannot exceed ten');
+
 assert.equal(issues.daily.length,30);
 assert.equal(issues.daily.filter(day=>day.p2===null).length,28);
 assert.equal(issues.daily[5].p2,100);
@@ -100,4 +133,4 @@ assert.equal(noIssues.available,false);
 assert.equal(noIssues.errorCode,'issues_unavailable');
 assert.deepEqual(noIssues.summary,{});
 assert.equal(noIssues.daily,undefined);
-console.log('S11-DIAG-04: 30 P1/P2 points, 28 unknown days, observed-only average, 10 sanitized issues, P2 breakdown unavailable, complete funnel events and cohort counts, 0 denominator, no PII passed');
+console.log('S11-DIAG-04: 30 P1/P2 points, 28 unknown days, observed-only average, 10 sanitized issues, P2 breakdown available or unavailable with real full-scope counts, complete funnel events and cohort counts, 0 denominator, no PII passed');
