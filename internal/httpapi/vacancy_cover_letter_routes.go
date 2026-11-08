@@ -69,7 +69,13 @@ func VacancyCoverLetterHandler(m *auth.Manager,service VacancyCoverLetterGenerat
 			}
 		}
 		if service==nil{jsonReply(w,503,map[string]string{"error":"Генератор писем не подключён."});return}
-		ctx,cancel:=context.WithTimeout(r.Context(),15*time.Minute)
+		// Server.WriteTimeout is an absolute 60s response deadline. Heartbeat
+		// frames do not extend it, while letter generation can take 15 minutes.
+		// Override only after session, origin and input validation. The request
+		// context still cancels work on disconnect and after generationTimeout.
+		const generationTimeout = 15 * time.Minute
+		_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(generationTimeout + time.Minute))
+		ctx,cancel:=context.WithTimeout(r.Context(),generationTimeout)
 		defer cancel()
 		if !strings.Contains(strings.ToLower(r.Header.Get("Accept")),"application/x-ndjson"){
 			letter,err:=service.Generate(ctx,user.Name,id,regenerate,nil)
