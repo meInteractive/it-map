@@ -19,7 +19,7 @@ ORDER BY period_start,profile,state;
 
 -- B. Provider Actor identity collisions. One (account_id, run_id) should
 -- represent one provider execution, not several independent invoices.
--- Identity is a truncated hash in output; confirm suspected collisions
+-- Identity is a truncated hash in output, confirm suspected collisions
 -- against the private provider ledger before classifying paid repeats.
 SELECT LEFT(SHA2(CONCAT(account_id,':',run_id),256),20) operation_fingerprint,
        COUNT(*) local_receipts,
@@ -42,7 +42,7 @@ FROM apify_runs
 WHERE run_id=''
 GROUP BY profile,state ORDER BY profile,state;
 
--- D. Scheduler attempt costs. Each ID counted ONCE; never add stage tables
+-- D. Scheduler attempt costs. Each ID counted ONCE, never add stage tables
 -- to these totals. A cost=NULL, reserve=0 row is unpriced, not proved free.
 SELECT COALESCE(provider,'unknown') provider,type,status,
        COUNT(*) attempts,
@@ -84,7 +84,7 @@ GROUP BY stage ORDER BY stage;
 
 -- G. Firecrawl snapshot credit observations (NOT an invoice/charge ledger).
 -- Cached/reused snapshots and unknown monetary rates cannot be treated as
--- zero USD; do not multiply credits by today's plan price.
+-- zero USD, do not multiply credits by today's plan price.
 SELECT firecrawl_mode,content_status,COUNT(*) snapshots,
        SUM(CASE WHEN firecrawl_credits IS NULL THEN 1 ELSE 0 END) unknown_credit_rows,
        SUM(CASE WHEN firecrawl_credits IS NOT NULL THEN firecrawl_credits ELSE 0 END) observed_snapshot_credits,
@@ -113,7 +113,7 @@ FROM vacancy_publication_sources;
 
 -- J. Scheduler attempt -> job -> candidate -> published link when available.
 -- This does NOT make a scan/Actor cost directly attributable to every child.
--- Avoid joining candidate to MANY stage rows; those multiply cost sums.
+-- Avoid joining candidate to MANY stage rows, those multiply cost sums.
 SELECT COALESCE(a.provider,'unknown') provider,a.type,
        COUNT(DISTINCT a.id) attempts,
        SUM(CASE WHEN a.cost_usd IS NOT NULL THEN a.cost_usd ELSE 0 END) attempt_cost_usd,
