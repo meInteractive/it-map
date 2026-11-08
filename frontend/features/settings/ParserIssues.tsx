@@ -2,7 +2,14 @@ import {State,dateLabel} from '../../components/Common';
 import ParserErrorHistory,{type ErrorHistory} from './ParserErrorHistory';
 import CopyDebugJSON from './CopyDebugJSON';
 export interface ParserIssue {id:string;priority:1|2|3;title:string;status:'observed'|'verification'|'planned';description:string;nextAction:string;target:string;observedAt?:number|null;reviewedAt?:string;jobs?:{id:string;companyName:string;agencyId:number|null;candidateId:number|null;status:string;runAfter:number;message:string}[];}
-export interface IssuesReport {checkedAt:number;issues:ParserIssue[];historicalFailed:number;sampleLimited:boolean;limit:number;activeCounts?:{p1:number;p2:number};history?:ErrorHistory;}
+// Серверный read-only срез актуальных P2. Не включает имён, payload и error message.
+export interface P2DebugBreakdown {
+ available:boolean;totalActiveP2:number;sampleLimited:boolean;limit:number;truncated:boolean;groupTruncated:boolean;
+ byStatus:{value:string;count:number}[];byType:{value:string;count:number}[];
+ bySourceId:{value:string;count:number}[];byReasonCode:{value:string;count:number}[];
+ recentJobs:{jobId:string;status:string;type:string;sourceId:string;reasonCode:string;updatedAt:number}[];
+}
+export interface IssuesReport {checkedAt:number;issues:ParserIssue[];historicalFailed:number;sampleLimited:boolean;limit:number;activeCounts?:{p1:number;p2:number};history?:ErrorHistory;p2Breakdown?:P2DebugBreakdown;}
 const priorities=[{id:1,title:'P1 · Критичные',hint:'Мешают работе всего конвейера.'},{id:2,title:'P2 · Обработка и полнота данных',hint:'Отдельные сбои и известные задачи проверки.'},{id:3,title:'P3 · Улучшения и сверка',hint:'Не блокируют основной сбор.'}] as const;
 const statuses={observed:'Наблюдаемый сигнал',verification:'Нужна проверка',planned:'Запланировано'};
 export function IssueSummary({report,onOpen}:{report?:IssuesReport;onOpen:()=>void}){return <article className="settings-card parser-attention"><div className="parser-line"><h2>Требуют внимания</h2><button type="button" className="settings-button secondary" onClick={onOpen}>Все проблемы и задачи</button></div>{report?<><div className="parser-priorities">{priorities.map(p=><button key={p.id} type="button" className={'parser-priority priority-'+p.id} onClick={onOpen}><span>{p.title}</span><strong>{report.issues.filter(i=>i.priority===p.id).length}</strong></button>)}</div><p className="resume-hint">Сигналов из очереди: {report.issues.filter(i=>i.status==='observed').length}. Известных проверок и улучшений: {report.issues.filter(i=>i.status!=='observed').length}. Исторические ошибки показаны отдельно.</p></>:<p>Состояние диагностики ещё не получено.</p>}</article>;}

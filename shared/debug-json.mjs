@@ -74,7 +74,15 @@ const SCHEMA = Object.freeze({
       sampleLimited:bool,limit:number,observedDays:number,days:number,
       average:{p1:number,p2:number},todayPeak:{p1:number,p2:number},
       lastMeasuredAt:time,
-      p2Breakdown:{available:bool},historicalP2BreakdownAvailable:bool,
+      p2Breakdown:{
+        available:bool,totalActiveP2:number,sampleLimited:bool,limit:number,
+        truncated:bool,groupTruncated:bool,
+        byStatus:[{value:stage,count:number}],
+        byType:[{value:stage,count:number}],
+        bySourceId:[{value:stage,count:number}],
+        byReasonCode:[{value:stage,count:number}],
+        recentJobs:[{jobId:stage,status:stage,type:stage,sourceId:stage,reasonCode:stage,updatedAt:time}],
+      },historicalP2BreakdownAvailable:bool,
     },
     items:{issueId:stage,priority:number,status:stage,target:stage,reasonCode:stage,type:stage,sourceId:stage,observedAt:time,affected:number},
     daily:dailyError,sortTime:'observedAt',sortId:'issueId',
@@ -122,6 +130,11 @@ function project(input, schema) {
     if (typeof spec === 'string') {
       const value = projectScalar(raw, spec);
       if (value !== undefined) out[key] = value;
+    } else if (Array.isArray(spec)) {
+      // Вложенные безопасные списки P2 не могут обойти лимиты общего экспорта.
+      const limit = key === 'recentJobs' ? DEBUG_JSON_EVENT_LIMIT : 31;
+      if (!Array.isArray(raw) || raw.length > limit || raw.some(item=>!isRecord(item))) throw new Error('invalid_debug_array');
+      out[key] = raw.map(item=>project(item,spec[0]));
     } else if (isRecord(spec)) {
       if (raw === null) out[key] = null;
       else if (isRecord(raw)) out[key] = project(raw, spec);
