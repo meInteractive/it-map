@@ -105,7 +105,10 @@ func VacancyCoverLetterHandler(m *auth.Manager,service VacancyCoverLetterGenerat
 		}
 		report(stage)
 		stopped:=make(chan struct{})
+		var heartbeat sync.WaitGroup
+		heartbeat.Add(1)
 		go func(){
+			defer heartbeat.Done()
 			ticker:=time.NewTicker(8*time.Second)
 			defer ticker.Stop()
 			for {
@@ -120,6 +123,7 @@ func VacancyCoverLetterHandler(m *auth.Manager,service VacancyCoverLetterGenerat
 		}()
 		letter,err:=service.Generate(ctx,user.Name,id,regenerate,report)
 		close(stopped)
+		heartbeat.Wait()
 		if err!=nil{
 			_,message:=letterFailure(err)
 			send(map[string]any{"type":"error","error":message})
