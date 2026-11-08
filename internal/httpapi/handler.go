@@ -42,6 +42,7 @@ type Options struct {
 	ChannelWrites        ChannelWriter
 	Contacts             HiringContactStore
 	Roles                RoleReader
+	ClassificationSettings ClassificationSettingsStore
 	HHProfessionalRoles  HHProfessionalRolesReader
 	HHRoleSettings       HHRoleSettingsStore
 	Vacancies            VacancyLister
