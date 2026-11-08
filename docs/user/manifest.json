@@ -1,6 +1,6 @@
 {
-  "revision": 227,
-  "updatedAt": "2026-10-29",
+  "revision": 228,
+  "updatedAt": "2026-11-08",
   "versions": {
     "api": "Без версии в URL; контракт 2026-10-22",
     "schema": "0083_parser_candidate_intakes",
