@@ -42,7 +42,7 @@ func TestMariaDBSchedulerFunnelNov7Disposable(t *testing.T) {
 	f.exec("INSERT INTO company_identity(id,company_name) VALUES(1901,'CI GO436 Employer')")
 	f.exec("INSERT INTO company_crm(company_name) VALUES('CI GO436 Employer')")
 	f.exec(`INSERT INTO company_vacancies(id,company_name,url,title,created_at) VALUES
-		(1901,'CI GO436 Employer','https://example.invalid/ci-go436/new','CI New 436','2026-11-07T00:00:00Z'),
+		(1901,'CI GO436 Employer','https://example.invalid/ci-go436/new','CI New 436','2026-11-06T21:00:00Z'),
 		(1902,'CI GO436 Employer','https://example.invalid/ci-go436/existing','CI Old 436','2026-10-01T00:00:00Z')`)
 
 	// 61 кандидатов получают первый успешный импорт именно 7 ноября по Москве.
@@ -54,7 +54,7 @@ func TestMariaDBSchedulerFunnelNov7Disposable(t *testing.T) {
 		at := "2026-11-07T10:00:00Z"
 		switch i {
 		case 0:
-			received = "2026-11-07T09:00:00Z"
+			received = "2026-11-06T20:00:00Z"
 			at = "2026-11-06T21:00:00Z" // В Москве уже 07.11 00:00
 		case 1:
 			at = "2026-11-07T20:59:59Z" // В Москве ещё 07.11
