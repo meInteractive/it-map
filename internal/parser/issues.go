@@ -50,6 +50,7 @@ type parserIssuesReport struct {
 	SampleLimited    bool               `json:"sampleLimited"`
 	Limit            int                `json:"limit"`
 	ActiveCounts     ErrorHistoryCounts `json:"activeCounts"`
+	P2Breakdown      *issueP2Breakdown  `json:"p2Breakdown,omitempty"`
 	History          json.RawMessage    `json:"history,omitempty"`
 	Generation       string             `json:"-"`
 }
@@ -115,6 +116,9 @@ func (r IssuesRepository) clock() time.Time {
 // задания. Транзакция только для чтения, без сетевых и платных вызовов.
 func (r IssuesRepository) collect(ctx context.Context, now time.Time, includeBacklog bool) (report parserIssuesReport, owner string, err error) {
 	report = parserIssuesReport{CheckedAt: now.UnixMilli(), Issues: []parserIssue{}, Limit: issuesJobLimit}
+	if includeBacklog {
+		report.P2Breakdown = newIssueP2Breakdown()
+	}
 	if r.DB == nil {
 		return report, "", ErrSettingsStorage
 	}
@@ -232,6 +236,7 @@ func (r IssuesRepository) collect(ctx context.Context, now time.Time, includeBac
 				continue
 			}
 			report.ActiveCounts.P2++
+			report.P2Breakdown.add(id, kind, source, status, rawReason, updatedAt)
 			if report.ActiveCounts.P2 > issuesJobLimit {
 				report.SampleLimited = true
 				continue
@@ -341,6 +346,7 @@ func (r IssuesRepository) collect(ctx context.Context, now time.Time, includeBac
 			report.ActiveCounts.P1++
 		}
 	}
+	report.P2Breakdown.finish(report.ActiveCounts.P2, report.SampleLimited)
 	if err = tx.Commit(); err != nil {
 		return report, "", settingsFailure(ctx, err)
 	}
