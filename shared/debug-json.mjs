@@ -68,13 +68,26 @@ const SCHEMA = Object.freeze({
   },
   parser_issues:{
     filters:{priority:number,sourceId:stage},
-    summary:{activeCounts:{p1:number,p2:number},historicalFailed:number,sampleLimited:bool,observedDays:number,days:number,average:{p1:number,p2:number},todayPeak:{p1:number,p2:number},lastMeasuredAt:time},
-    items:{issueId:stage,priority:number,status:stage,reasonCode:stage,type:stage,sourceId:stage,observedAt:time,jobId:stage},
+    summary:{
+      checkedAt:time,metric:stage,
+      activeCounts:{p1:number,p2:number},historicalFailed:number,
+      sampleLimited:bool,limit:number,observedDays:number,days:number,
+      average:{p1:number,p2:number},todayPeak:{p1:number,p2:number},
+      lastMeasuredAt:time,
+      p2Breakdown:{available:bool},historicalP2BreakdownAvailable:bool,
+    },
+    items:{issueId:stage,priority:number,status:stage,target:stage,reasonCode:stage,type:stage,sourceId:stage,observedAt:time,affected:number},
     daily:dailyError,sortTime:'observedAt',sortId:'issueId',
   },
   parser_funnel:{
     filters:{sourceId:stage,parser:stage},
-    summary:{from:day,to:day,days:number,totals:funnelStage,averages:funnelStage,cohort:{...funnelStage,rejected:number,error:number,waiting:number,created:number,linked:number,undatedPublished:number}},
+    summary:{
+      checkedAt:time,metric:stage,from:day,to:day,days:number,
+      totals:funnelStage,averages:funnelStage,
+      cohort:{...funnelStage,rejected:number,error:number,waiting:number,created:number,linked:number,undatedPublished:number},
+      newVacanciesPublished:number,linkedToExisting:number,
+      conversionBase:stage,stageConversionPercent:funnelStage,
+    },
     items:EMPTY,daily:dailyFunnel,
   },
 });

@@ -1,4 +1,7 @@
 import {useId} from 'react';
+import CopyDebugJSON from './CopyDebugJSON';
+import {parserIssuesSnapshot} from '../../../shared/parser-statistics-debug.mjs';
+import type {IssuesReport} from './ParserIssues';
 
 export interface ErrorHistory {
  timezone:string;metric:'daily_peak_active';days:number;observedDays:number;
@@ -9,13 +12,16 @@ const priorities=[{key:'p1',title:'P1 · Критичные',color:'#b3263d'},{k
 const value=(n:number|null)=>n===null?'—':n.toLocaleString('ru-RU',{maximumFractionDigits:1});
 const date=(day:string)=>day.slice(8,10)+'.'+day.slice(5,7);
 
-export default function ParserErrorHistory({history}:{history:ErrorHistory}){
+export default function ParserErrorHistory({history,report,isAuthorized}:{history:ErrorHistory;report?:IssuesReport;isAuthorized?:()=>boolean}){
  const id=useId(),{points,average}=history,today=points.at(-1),lastMeasured=[...points].reverse().find(p=>p.observedAt!==null);
  const lastSample=lastMeasured?.observedAt===null||lastMeasured?.observedAt===undefined?'ещё нет':new Intl.DateTimeFormat('ru-RU',{timeZone:'Europe/Moscow',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(lastMeasured.observedAt))+' МСК';
  const width=920,left=40,top=16,bottom=184,plotWidth=width-left-12,step=plotWidth/Math.max(1,points.length);
  const tick=Math.max(1,Math.ceil(Math.max(1,...points.flatMap(p=>[p.p1??0,p.p2??0]))/4)),max=tick*4,y=(n:number)=>bottom-n/max*(bottom-top);
  return <article className="settings-card parser-error-history">
-  <div><h2>Ошибки за 30 дней</h2><p className="resume-hint">Дневной пик активных ошибок по Москве. P1 — критичные сигналы, P2 — проблемные задания.</p></div>
+  <div className="parser-line"><div><h2>Ошибки за 30 дней</h2><p className="resume-hint">Дневной пик активных ошибок по Москве. P1 — критичные сигналы, P2 — проблемные задания.</p></div>
+   <CopyDebugJSON section="parser_issues" isAuthorized={isAuthorized??(()=>false)}
+    disabled={!report||!isAuthorized?.()} getSnapshot={()=>parserIssuesSnapshot(report!)}/>
+  </div>
   <div className="parser-history-metrics">{priorities.map(p=><div key={p.key} className={'parser-history-metric '+p.key}>
    <h3>{p.title}</h3><strong>{value(average[p.key])}<span> в день</span></strong><p>Среднее за дни с наблюдениями</p><p className="resume-hint">Сегодня, пик: {value(today?.[p.key]??null)}</p>
   </div>)}</div>

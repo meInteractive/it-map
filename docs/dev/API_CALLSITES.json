@@ -1211,7 +1211,7 @@
     {
       "id": "bfe3f5bcca644f68",
       "file": "frontend/features/settings/ParserFunnel.tsx",
-      "line": 37,
+      "line": 39,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",

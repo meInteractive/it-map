@@ -45,17 +45,25 @@ try{
 
   await act(async()=>{root.root.findByProps({id:'parser-tab-diagnostics'}).props.onClick();});
   await flush();await flush();
-  assert.equal(buttons().length,4,'overview, queue, runs and attempts exports');
+  // Two additional read-only controls now appear in Diagnostics, and both
+  // must fail closed when Go issues/funnel endpoints return 503. Keep the
+  // old queue/run/attempt checks rather than dropping them.
+  assert.equal(buttons().length,6,'overview, unavailable funnel/issues, queue, runs and attempts');
   const before=requests.length;
   for(const b of buttons().slice(1)) await act(async()=>{await b.props.onClick();});
-  assert.equal(requests.length,before,'click does not fetch or run stages');
-  assert.equal(writes.length,4);
-  assert.deepEqual(writes.slice(1).map(v=>v.section),['scheduler_queue','scheduler_runs','scheduler_attempts']);
-  assert.equal(writes[1].recentItems.total,25);
-  assert.equal(writes[1].dataAsOf,new Date(now).toISOString());
-  assert.equal(writes[1].recentItems.returned,10);
-  assert.equal(writes[2].recentItems.items[0].runId,'R_13');
-  assert.equal(writes[3].recentItems.items[0].costUsd,null);
+  assert.equal(requests.length,before,'copy does not fetch or run stages');
+  assert.equal(writes.length,6);
+  assert.deepEqual(writes.slice(1).map(v=>v.section),
+    ['parser_funnel','parser_issues','scheduler_queue','scheduler_runs','scheduler_attempts']);
+  assert.equal(writes[1].available,false,'unavailable funnel not represented by zeros');
+  assert.equal(writes[1].errorCode,'funnel_unavailable');
+  assert.equal(writes[2].available,false,'unavailable P1/P2 not represented by zeros');
+  assert.equal(writes[2].errorCode,'issues_unavailable');
+  assert.equal(writes[3].recentItems.total,25);
+  assert.equal(writes[3].dataAsOf,new Date(now).toISOString());
+  assert.equal(writes[3].recentItems.returned,10);
+  assert.equal(writes[4].recentItems.items[0].runId,'R_13');
+  assert.equal(writes[5].recentItems.items[0].costUsd,null);
   assert.ok(!JSON.stringify(writes).includes('PRIVATE_RESULT'));
   assert.ok(requests.some(x=>x.startsWith('/api/scheduler/queue/debug?')));
   console.log('S11-DIAG-02 UI: overview, queue, runs/attempts, read-only export and safe clipboard passed');
