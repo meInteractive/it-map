@@ -49,7 +49,7 @@ func TestVacancyCoverLetterHTTPNoProviderCalls(t *testing.T){
 	for _,tc:=range []struct{who,method,path,origin,accept,body string;status int}{
 		{"","POST","/api/vacancies/123/cover-letter","","","",401},
 		{"eugene","POST","/api/vacancies/123/cover-letter","https://evil.invalid","","",403},
-		{"eugene","POST","/api/vacancies/not-number/cover-letter","","","",503},
+		{"eugene","POST","/api/vacancies/not-number/cover-letter","","","",400},
 		{"eugene","POST","/api/vacancies/0/cover-letter","","","",400},
 		{"eugene","POST","/api/vacancies/123/cover-letter","","",`{"resume":"injected"}`,400},
 		{"eugene","POST","/api/vacancies/123/cover-letter","","","x",400},
