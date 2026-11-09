@@ -58,7 +58,7 @@ func TestGO434AIRepeatedAttemptsAreNotProviderVerified(t *testing.T) {
 		t.Fatalf("unexpected classify evidence: %+v",got.Stages[0])
 	}
 	if got.Stages[1].Type!="extract_vacancy" || got.Stages[1].ExtraAttempts!=1 ||
-		got.Stages[1].KnownLocalCostUSD!=.23 {
+		math.Abs(got.Stages[1].KnownLocalCostUSD-.23)>1e-10 {
 		t.Fatalf("unexpected extraction evidence: %+v",got.Stages[1])
 	}
 	if repeatStageType("PRIVATE_USER_INPUT")!="other" {t.Fatal("unexpected type exposed")}
