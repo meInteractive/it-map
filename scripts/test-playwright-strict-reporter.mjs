@@ -26,4 +26,18 @@ try {
 } finally {
   console.error = previousError;
 }
+// Проверяем именно CLI discovery: --list должен показывать имена без запуска браузера.
+const listed = new StrictBrowserReporter();
+listed.onBegin({}, {allTests: () => missing});
+const originalLog = console.log;
+process.argv.push('--list');
+try {
+  console.log = () => {};
+  assert.deepEqual(listed.onEnd({status: 'passed'}), {status: 'passed'});
+  listed.onBegin({}, {allTests: () => []});
+  assert.deepEqual(listed.onEnd({status: 'passed'}), {status: 'failed'});
+} finally {
+  process.argv.pop();
+  console.log = originalLog;
+}
 console.log('GO-117: строгий reporter отвергает пустые, skipped и частичные прогоны.');
