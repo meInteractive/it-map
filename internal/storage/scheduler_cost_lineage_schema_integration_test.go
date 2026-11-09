@@ -4,7 +4,6 @@ package storage
 
 import (
 	"context"
-	"database/sql"
 	"os"
 	"regexp"
 	"strings"
