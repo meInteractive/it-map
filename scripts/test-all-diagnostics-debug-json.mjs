@@ -5,7 +5,7 @@ import {DEBUG_JSON_MAX_BYTES} from '../shared/debug-json.mjs';
 const now='2026-11-08T10:00:00.000Z',secret='SECRET_TOKEN_PRIVATE';
 const days=Array.from({length:30},(_,i)=>new Date(Date.UTC(2026,9,10+i)).toISOString().slice(0,10));
 const daily=days.map(day=>({day,p1:null,p2:null,observedAt:null,message:secret}));
-const funnelDaily=days.map(day=>({day,received:1,accepted:1,fulltext:1,structured:1,roles:1,published:1}));
+const funnelDaily=days.map((day,i)=>({day,received:1,accepted:1,fulltext:1,structured:1,roles:1,published:1,newVacancies:i===29?1:0}));
 const fields={received:30,accepted:30,fulltext:30,structured:30,roles:30,published:30};
 const snapshots={
   schedulerOverview:{summary:{enabled:true,cloudStatus:'signal_received',counts:{pending:1},privateKey:secret}},
@@ -25,8 +25,11 @@ const snapshots={
     p2Breakdown:{available:false},
   },items:[],total:0,coverage:'complete',daily},
   funnel:{dataAsOf:now,filters:{sourceId:'all',parser:'all'},
-    summary:{checkedAt:now,metric:'stage_event_daily_counts',
-      from:days[0],to:days.at(-1),days:30,totals:fields,averages:fields,
+    summary:{checkedAt:now,metric:'candidate_stage_events_and_unique_vacancy_creates',
+      from:days[0],to:days.at(-1),days:30,
+      totals:{...fields,newVacancies:1},averages:{...fields,newVacancies:1/30},
+      uniqueNewVacanciesInPeriod:1,undatedNewVacancies:0,
+      cohortCandidatesWithCreate:0,cohortCandidatesLinkedToExisting:0,
       cohort:{...fields,created:0,linked:0,rejected:0,error:0,waiting:0,undatedPublished:0}},
     daily:funnelDaily},
 };
@@ -39,6 +42,10 @@ assert.equal(v.sections.queue.recentItems.truncated,true);
 assert.deepEqual(v.sections.queue.filters,{status:'all',type:'all',searchApplied:false});
 assert.equal(v.sections.issues.daily.length,30);
 assert.equal(v.sections.funnel.daily.length,30);
+assert.equal(v.sections.funnel.summary.uniqueNewVacanciesInPeriod,1);
+assert.equal(v.sections.funnel.summary.cohortCandidatesWithCreate,0);
+assert.equal(v.sections.funnel.summary.totals.newVacancies,1);
+assert.equal(v.sections.funnel.daily.at(-1).newVacancies,1);
 assert.equal(v.sections.aiSpending.available,false);
 assert.equal(v.sections.firecrawl.errorCode,'firecrawl_unavailable');
 assert.equal(v.sections.issues.stale,false);
