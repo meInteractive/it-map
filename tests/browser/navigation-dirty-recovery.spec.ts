@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import {test as browserTest, expect, type Page} from './component-fixtures.js';
 import { build } from 'esbuild';
 
 // Реальная навигация Workspace и реальный VacancyEditor в Chromium, только фиктивные API.
@@ -25,10 +25,12 @@ const bundle = await build({
 });
 const source = bundle.outputFiles[0].text;
 
-test('26–30: настоящие переходы с изменённой формой и подтверждением', async ({ page }) => {
-  // Serve a minimal same-origin HTML fixture without the production CSP header.
-  // Unlike about:blank it allows sessionStorage; unlike the real app it permits
-  // this explicitly bundled synthetic test script (production CSP stays intact).
+
+// Real Workspace + VacancyEditor, each test gets a fresh browser Page and
+// isolated synthetic data. No server, real user data, paid calls or persistent DB.
+async function mountDirtyWorkspace(page: Page) {
+  // A local synthetic same-origin path permits sessionStorage and normal
+  // navigation, without changing the production content security policy.
   const fixturePath = '/__ci_navigation_dirty_fixture';
   await page.route('**/*', route => {
     if (new URL(route.request().url()).pathname === fixturePath)
@@ -37,8 +39,6 @@ test('26–30: настоящие переходы с изменённой фо�
     return route.abort('blockedbyclient');
   });
   await page.goto(fixturePath);
-  const pageErrors: string[] = [];
-  page.on('pageerror', error => pageErrors.push(error.message));
   await page.evaluate(() => {
     (window as any).__confirmAnswers = [];
     (window as any).__confirmMessages = [];
@@ -80,8 +80,8 @@ test('26–30: настоящие переходы с изменённой фо�
   });
   await page.addScriptTag({ content: source });
   const section = page.locator('.app');
-  const titleButton = page.getByRole('button', { name: 'Синтетическая вакансия', exact: true });
-  const editor = page.getByRole('dialog', { name: 'Редактирование вакансии' });
+  const titleButton = page.getByRole('button', {name: 'Синтетическая вакансия', exact: true});
+  const editor = page.getByRole('dialog', {name: 'Редактирование вакансии'});
   const titleInput = () => editor.locator('input[maxlength="300"]').first();
   const enterVacancies = async () => {
     await page.locator('.entity-nav[data-section-menu="vacancies"] > .settings-nav-trigger').click();
@@ -89,71 +89,115 @@ test('26–30: настоящие переходы с изменённой фо�
   };
   const openEditor = async () => {
     await titleButton.click();
-    const detail = page.getByRole('dialog', { name: 'Синтетическая вакансия' });
-    await detail.getByRole('button', { name: 'Редактировать' }).click();
+    const detail = page.getByRole('dialog', {name: 'Синтетическая вакансия'});
+    await detail.getByRole('button', {name: 'Редактировать'}).click();
     await expect(editor).toBeVisible();
   };
   const nextConfirm = async (accepted: boolean) => page.evaluate(allow => {
     (window as any).__confirmAnswers.push(allow);
   }, accepted);
   const confirmationCount = () => page.evaluate(() => (window as any).__confirmMessages.length);
+  const writeCount = () => page.evaluate(() => (window as any).__writes.length as number);
+  return {section, editor, titleInput, enterVacancies, openEditor, nextConfirm, confirmationCount, writeCount};
+}
 
-  await enterVacancies();
-  await openEditor();
-  await titleInput().fill('Мой несохранённый заголовок');
-  // Отмена Back сохраняет позицию истории; следующий Back/Forward возвращает ту же карточку.
-  await nextConfirm(false);
-  await page.goBack();
-  await expect(titleInput()).toHaveValue('Мой несохранённый заголовок');
-  await nextConfirm(true);
-  await page.goBack();
-  await expect(editor).toHaveCount(0);
-  await page.goForward();
-  await expect(page.getByRole('dialog', {name:'Синтетическая вакансия',exact:true})).toBeVisible();
-  await page.getByRole('dialog', {name:'Синтетическая вакансия',exact:true}).getByRole('button',{name:'Редактировать'}).click();
-  await expect(editor).toBeVisible();
-  await titleInput().fill('Мой несохранённый заголовок');
-  await page.evaluate(() => { (window as any).__confirmMessages=[]; });
-  // 26. Отказ блокирует реальный переход по кнопке раздела.
-  await nextConfirm(false);
-  await page.getByRole('button', { name: 'Задачи', exact: true }).click();
-  await expect(section).toHaveAttribute('data-section', 'vacancies');
-  await expect(titleInput()).toHaveValue('Мой несохранённый заголовок');
-  expect(await confirmationCount()).toBe(1);
-
-  // 27. Подтверждение разрешает переход, форма размонтируется.
-  await nextConfirm(true);
-  await page.getByRole('button', { name: 'Задачи', exact: true }).click();
-  await expect(section).toHaveAttribute('data-section', 'tasks');
-  await expect(editor).toHaveCount(0);
-  expect(await confirmationCount()).toBe(2);
-
-  // 28. Закрытие самой панели также требует подтверждения.
-  await enterVacancies();
-  await openEditor();
-  await titleInput().fill('Правка при закрытии');
-  await nextConfirm(false);
-  await editor.getByRole('button', { name: 'Закрыть' }).click();
-  await expect(editor).toBeVisible();
-  await expect(titleInput()).toHaveValue('Правка при закрытии');
-  await nextConfirm(true);
-  await editor.getByRole('button', { name: 'Закрыть' }).click();
-  await expect(editor).toHaveCount(0);
-
-  // 29. После успешного сохранения dirty-подписка исчезает.
-  await openEditor();
-  await titleInput().fill('Успешно сохранённый заголовок');
-  await editor.getByRole('button', { name: 'Сохранить изменения' }).click();
-  await expect(editor).toHaveCount(0);
-  const before = await confirmationCount();
-  await page.getByRole('button', { name: 'Задачи', exact: true }).click();
-  await expect(section).toHaveAttribute('data-section', 'tasks');
-  expect(await confirmationCount()).toBe(before);
-  expect(await page.evaluate(() => (window as any).__writes)).toHaveLength(1);
-
-  // 30. Workspace хранит одну переменную editor и одну активную секцию.
-  // Параллельное состояние двух отдельных редакторов штатной навигацией
-  // не создаётся; два независимых useDirty уже проверяет test-dirty-navigation.mjs.
-  await page.evaluate(() => (window as any).__unmountApplication());
-  expect(pageErrors).toEqual([]);
+type DirtyWorkspace = Awaited<ReturnType<typeof mountDirtyWorkspace>>;
+const test = browserTest.extend<{workspace: DirtyWorkspace}>({
+  workspace: async ({page}, use) => {
+    const workspace = await mountDirtyWorkspace(page);
+    await use(workspace);
+    // Playwright closes the isolated Page and context. Browser exceptions
+    // are checked by component-fixtures.ts without leaking their messages.
+  },
 });
+
+test('26: Back отменяется при dirty-форме, подтверждённый Back/Forward восстанавливает карточку',
+  async ({page, workspace}) => {
+    const {editor, titleInput, enterVacancies, openEditor, nextConfirm, confirmationCount, writeCount} = workspace;
+    await enterVacancies();
+    await openEditor();
+    await titleInput().fill('Мой несохранённый заголовок');
+    await test.step('Отмена Back не закрывает редактор и не теряет введённый текст', async () => {
+      await nextConfirm(false);
+      await page.goBack();
+      await expect(editor).toBeVisible();
+      await expect(titleInput()).toHaveValue('Мой несохранённый заголовок');
+      expect(await confirmationCount()).toBe(1);
+    });
+    await test.step('Подтверждение Back закрывает редактор, Forward возвращает карточку', async () => {
+      await nextConfirm(true);
+      await page.goBack();
+      await expect(editor).toHaveCount(0);
+      await page.goForward();
+      const detail = page.getByRole('dialog', {name: 'Синтетическая вакансия', exact: true});
+      await expect(detail).toBeVisible();
+      await expect(detail.getByRole('button', {name: 'Редактировать'})).toBeVisible();
+      expect(await confirmationCount()).toBe(2);
+      expect(await writeCount()).toBe(0);
+    });
+  });
+
+test('26–27: отказ сохраняет dirty-форму, подтверждение разрешает сменить раздел',
+  async ({page, workspace}) => {
+    const {section, editor, titleInput, enterVacancies, openEditor, nextConfirm, confirmationCount, writeCount} = workspace;
+    await enterVacancies();
+    await openEditor();
+    await titleInput().fill('Мой несохранённый заголовок');
+    await test.step('Отказ отменяет переход по кнопке Задачи', async () => {
+      await nextConfirm(false);
+      await page.getByRole('button', {name: 'Задачи', exact: true}).click();
+      await expect(section).toHaveAttribute('data-section', 'vacancies');
+      await expect(titleInput()).toHaveValue('Мой несохранённый заголовок');
+      expect(await confirmationCount()).toBe(1);
+    });
+    await test.step('Подтверждение меняет раздел и размонтирует редактор', async () => {
+      await nextConfirm(true);
+      await page.getByRole('button', {name: 'Задачи', exact: true}).click();
+      await expect(section).toHaveAttribute('data-section', 'tasks');
+      await expect(editor).toHaveCount(0);
+      expect(await confirmationCount()).toBe(2);
+      expect(await writeCount()).toBe(0);
+    });
+  });
+
+test('28: закрытие dirty-редактора требует подтверждения и сохраняет данные при отказе',
+  async ({workspace}) => {
+    const {editor, titleInput, enterVacancies, openEditor, nextConfirm, confirmationCount, writeCount} = workspace;
+    await enterVacancies();
+    await openEditor();
+    await titleInput().fill('Правка при закрытии');
+    await test.step('Отказ оставить изменения не закрывает редактор', async () => {
+      await nextConfirm(false);
+      await editor.getByRole('button', {name: 'Закрыть'}).click();
+      await expect(editor).toBeVisible();
+      await expect(titleInput()).toHaveValue('Правка при закрытии');
+      expect(await confirmationCount()).toBe(1);
+    });
+    await test.step('Подтверждённое закрытие удаляет редактор без записи', async () => {
+      await nextConfirm(true);
+      await editor.getByRole('button', {name: 'Закрыть'}).click();
+      await expect(editor).toHaveCount(0);
+      expect(await confirmationCount()).toBe(2);
+      expect(await writeCount()).toBe(0);
+    });
+  });
+
+test('29–30: успешное сохранение снимает dirty-блокировку и не порождает второй PUT',
+  async ({page, workspace}) => {
+    const {section, editor, titleInput, enterVacancies, openEditor, confirmationCount, writeCount} = workspace;
+    await enterVacancies();
+    await openEditor();
+    await titleInput().fill('Успешно сохранённый заголовок');
+    await test.step('Сохранение вызывает один синтетический PUT и закрывает редактор', async () => {
+      await editor.getByRole('button', {name: 'Сохранить изменения'}).click();
+      await expect(editor).toHaveCount(0);
+      expect(await writeCount()).toBe(1);
+    });
+    await test.step('После сохранения можно перейти без повторного confirm и PUT', async () => {
+      const before = await confirmationCount();
+      await page.getByRole('button', {name: 'Задачи', exact: true}).click();
+      await expect(section).toHaveAttribute('data-section', 'tasks');
+      expect(await confirmationCount()).toBe(before);
+      expect(await writeCount()).toBe(1);
+    });
+  });
