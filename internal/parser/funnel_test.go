@@ -43,7 +43,12 @@ func TestFunnelFilterCalendarAndCounts(t *testing.T) {
 	for _,key:=range funnelKeys {if math.Abs(avg[key]-1.0/30)>1e-12 {t.Fatalf("wrong 30-calendar-day average for %s",key)}}
 	raw,_:=json.Marshal(funnelDay{Day:"2026-11-07",funnelCounts:c})
 	var v map[string]any
-	if json.Unmarshal(raw,&v)!=nil || len(v)!=7 || v["published"]!=float64(1) {t.Fatal("daily stage contract changed")}
+	if json.Unmarshal(raw,&v)!=nil || len(v)!=8 || v["published"]!=float64(1) || v["newVacancies"]!=float64(0) {t.Fatal("daily stage/new vacancy contract changed")}
+	newTotals,_:=json.Marshal(funnelTotals{NewVacancies:2,funnelCounts:c})
+	var summary map[string]any
+	if json.Unmarshal(newTotals,&summary)!=nil || len(summary)!=7 || summary["newVacancies"]!=float64(2) || summary["published"]!=float64(1){
+		t.Fatal("new unique publication count must coexist with candidate import count")
+	}
 	r,_:=json.Marshal(funnelCohort{funnelCounts:c,Rejected:1,Created:1})
 	v=map[string]any{} // Unmarshal into an existing map retains unrelated daily fields.
 	if json.Unmarshal(r,&v)!=nil || len(v)!=12 || v["rejected"]!=float64(1) {t.Fatal("cohort shape changed")}
