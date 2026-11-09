@@ -39,7 +39,7 @@ func TestMariaDBSchedulerUnitCostDisposable(t *testing.T) {
 	f.exec("INSERT INTO company_crm(company_name) VALUES('CI GO433 Employer')")
 	f.exec(`INSERT INTO company_vacancies(id,company_name,url,title,created_at) VALUES
 	  (43300,'CI GO433 Employer','https://example.invalid/ci-go433/1','CI New HH','2026-11-08T21:00:00Z'),
-	  (43301,'CI GO433 Employer','https://example.invalid/ci-go433/2','CI New Site','2026-11-09T12:00:00Z'),
+	  (43301,'CI GO433 Employer','https://example.invalid/ci-go433/2','CI New Site','2026-11-09T21:00:00Z'),
 	  (43302,'CI GO433 Employer','https://example.invalid/ci-go433/3','CI Old Site','2026-10-19T12:00:00Z')`)
 	for idx:=0;idx<4;idx++{
 		id:=int64(43300+idx)
@@ -62,7 +62,7 @@ func TestMariaDBSchedulerUnitCostDisposable(t *testing.T) {
 	}{
 		{"ci-go433-create-hh",43300,43300,"create","success","2026-11-08T21:00:00Z"},
 		{"ci-go433-create-site-retry",43302,43300,"create","success","2026-11-09T13:00:00Z"},
-		{"ci-go433-create-site",43301,43301,"create","success","2026-11-09T12:00:00Z"},
+		{"ci-go433-create-site",43301,43301,"create","success","2026-11-09T21:00:00Z"},
 		{"ci-go433-duplicate-update",43303,43301,"update","success","2026-11-09T13:00:00Z"},
 		{"ci-go433-failed",43303,43302,"create","failed","2026-11-09T13:00:00Z"},
 	}{
