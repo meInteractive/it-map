@@ -102,6 +102,26 @@ func TestMariaDBSchedulerUnitCostDisposable(t *testing.T) {
 		 VALUES(?,?,'ci-go433-scheduler-cycle','classify_title',? ,?,'completed',?,'ci-model',?,?)`,
 			fmt.Sprintf("ci-go433-attempt-%d",i),job,row.source,at,row.provider,row.reserve,row.cost)
 	}
+	// Attribution coverage: two AI attempts have an actual first CREATE,
+	// one points to an existing main vacancy without matching create and one
+	// is a source scan without candidate. None of these links is a provider
+	// invoice or proof that the model created the main vacancy.
+	f.exec("UPDATE scheduler_jobs SET candidate_id=43300 WHERE id='ci-go433-job-0'")
+	f.exec("UPDATE scheduler_jobs SET candidate_id=43301 WHERE id='ci-go433-job-2'")
+	f.exec("UPDATE scheduler_jobs SET candidate_id=43303,source_id='hh' WHERE id='ci-go433-job-3'")
+	// Missing job and dangling candidate must be counted without JOIN
+	// multiplication, and do not create new paid charges (known zero).
+	f.exec(`INSERT INTO scheduler_attempts
+	 (id,job_id,run_id,type,source_id,started_at,status,provider,model,reserved_usd,cost_usd)
+	 VALUES('ci-go433-orphan-attempt','ci-go433-orphan-job','ci-cycle',
+	 'classify_title','hh',?,'failed','openrouter','ci-model',0,0)`,at)
+	f.exec(`INSERT INTO scheduler_jobs(id,generation,dedupe_key,type,candidate_id,source_id,payload,status,priority,run_after,created_at,updated_at)
+	 VALUES('ci-go433-dangling-job',?,'ci-go433-dangling-job','classify_title',999999,
+	 'hh','{}','completed',1,?,?,?)`,f.generation,at,at,at)
+	f.exec(`INSERT INTO scheduler_attempts
+	 (id,job_id,run_id,type,source_id,started_at,status,provider,model,reserved_usd,cost_usd)
+	 VALUES('ci-go433-dangling-attempt','ci-go433-dangling-job','ci-cycle',
+	 'classify_title','hh',?,'failed','openrouter','ci-model',0,0)`,at)
 	now:=time.Date(2026,11,10,10,0,0,0,time.UTC)
 	repo:=parser.UnitCostRepository{DB:f.reader,Now:func()time.Time{return now}}
 	read:=func(days int,source string)map[string]any{
@@ -129,6 +149,14 @@ func TestMariaDBSchedulerUnitCostDisposable(t *testing.T) {
 	must(all["ai"].(map[string]any),"unknownReservedUsd",0.5)
 	must(all,"firecrawlCredits",2.5)
 	must(all,"unknownCreditRows",1)
+	lineage:=all["aiLineage"].(map[string]any)
+	for k,v:=range map[string]float64{
+		"attempts":6,"withJob":5,"withCandidate":3,"withMainVacancy":3,
+		"withMatchingCreate":2,"missingJob":1,"missingCandidate":1,
+		"missingMainVacancy":0,"sourceMismatch":1,
+		"knownUsdWithMainLink":0.3,"knownUsdWithoutMainLink":0,
+	}{must(lineage,k,v)}
+	if lineage["verifiedProviderAttribution"]!=false{t.Fatal("false provider attribution claim")}
 	if len(all["daily"].([]any))!=7{t.Fatal("missing seven Moscow daily points")}
 	if all["calendarProxy"]!=true||all["incompleteCosts"]!=true{t.Fatal("false complete-cohort claim")}
 	if all["daily"].([]any)[5].(map[string]any)["newVacancies"]!=float64(1) ||
@@ -139,11 +167,18 @@ func TestMariaDBSchedulerUnitCostDisposable(t *testing.T) {
 	must(hh,"newUniqueVacancies",1)
 	must(hh,"totalConfirmedUsd",0.2)
 	must(hh,"partialPeriodRatioUsd",0.2)
+	must(hh["aiLineage"].(map[string]any),"withMainVacancy",1)
+	must(hh["aiLineage"].(map[string]any),"missingJob",1)
+	must(hh["aiLineage"].(map[string]any),"missingCandidate",1)
+	must(hh["aiLineage"].(map[string]any),"knownUsdWithMainLink",0.2)
 	if hh["apify"].(map[string]any)["unavailableForSource"]!=true{t.Fatal("Apify incorrectly attributed to HH")}
 	site:=read(7,"companySite")
 	must(site,"newUniqueVacancies",1)
 	must(site,"totalConfirmedUsd",0.1)
 	must(site,"partialPeriodRatioUsd",0.1)
+	must(site["aiLineage"].(map[string]any),"withMainVacancy",2)
+	must(site["aiLineage"].(map[string]any),"withMatchingCreate",1)
+	must(site["aiLineage"].(map[string]any),"sourceMismatch",1)
 	zero:=parser.UnitCostRepository{DB:f.reader,Now:func()time.Time{return time.Date(2026,12,15,12,0,0,0,time.UTC)}}
 	raw,err:=zero.ReadUnitCost(f.ctx,7,"all")
 	if err!=nil{t.Fatal(err)}
