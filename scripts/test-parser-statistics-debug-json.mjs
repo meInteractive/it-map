@@ -93,14 +93,14 @@ assert.throws(()=>parserIssuesSnapshot({...report,history:{...report.history,poi
 const stageNames=['received','accepted','fulltext','structured','roles','published'];
 const counts={received:4,accepted:3,fulltext:4,structured:2,roles:2,published:2};
 const daily=days.map((day,i)=>({day,...Object.fromEntries(
-  stageNames.map(stage=>[stage,i===29?counts[stage]:0]))}));
+  stageNames.map(stage=>[stage,i===29?counts[stage]:0])),newVacancies:i===29?1:0}));
 const cohort={...counts,rejected:1,waiting:0,error:1,created:1,linked:1,undatedPublished:0};
 const funnelReport={
   checkedAt:now,timezone:'Europe/Moscow',from:days[0],to:days.at(-1),days:30,
   filters:{sourceId:'hh',parser:'apify'},sourceOptions:[],parserOptions:[],
-  daily,totals:counts,
-  averages:Object.fromEntries(stageNames.map(stage=>[stage,counts[stage]/30])),
-  cohort,privateDataset:secret,
+  daily,totals:{...counts,newVacancies:1},
+  averages:{...Object.fromEntries(stageNames.map(stage=>[stage,counts[stage]/30])),newVacancies:1/30},
+  undatedNewVacancies:0,cohort,privateDataset:secret,
 };
 const funnel=JSON.parse(serializeDebugJSON({
   section:'parser_funnel',capturedAt:now,...parserFunnelSnapshot(funnelReport),
@@ -111,13 +111,19 @@ assert.equal(funnel.summary.checkedAt,new Date(now).toISOString());
 assert.equal(funnel.summary.conversionBase,'cohort_received');
 assert.equal(funnel.summary.stageConversionPercent.accepted,75);
 assert.equal(funnel.summary.stageConversionPercent.fulltext,100);
-assert.equal(funnel.summary.newVacanciesPublished,1);
-assert.equal(funnel.summary.linkedToExisting,1);
+assert.equal(funnel.summary.uniqueNewVacanciesInPeriod,1);
+assert.equal(funnel.summary.undatedNewVacancies,0);
+assert.equal(funnel.summary.cohortCandidatesWithCreate,1);
+assert.equal(funnel.summary.cohortCandidatesLinkedToExisting,1);
+assert.equal(funnel.summary.metric,'candidate_stage_events_and_unique_vacancy_creates');
 assert.equal(funnel.summary.cohort.undatedPublished,0);
 assert.equal(funnel.summary.cohort.created,1);
 assert.equal(funnel.summary.cohort.linked,1);
 assert.equal(funnel.daily.length,30);
 assert.equal(funnel.daily.at(-1).published,2);
+assert.equal(funnel.daily.at(-1).newVacancies,1);
+assert.equal(funnel.summary.totals.newVacancies,1);
+assert.equal(funnel.summary.averages.newVacancies,1/30);
 assert.ok(!JSON.stringify(funnel).includes(secret));
 const empty={...funnelReport,cohort:{...cohort,...Object.fromEntries(
   [...stageNames,'created','linked','error','waiting','rejected','undatedPublished'].map(k=>[k,0]))}};
