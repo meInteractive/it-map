@@ -8,8 +8,9 @@ const stages = {scan_source:number,classify_title:number,fetch_full_text:number,
 const spent = {confirmedUsd:number,unknownReservedUsd:number,upperEstimateUsd:number,credits:number,unknownCostOperations:number};
 const stageEvent = {attemptId:stage,jobId:stage,runId:stage,type:stage,sourceId:stage,status:stage,reasonCode:stage,startedAt:time,finishedAt:time,provider:stage,model:stage,reservedUsd:number,costUsd:number,credits:number};
 const dailyError = {day,p1:number,p2:number,observedAt:time};
-const dailyFunnel = {day,received:number,accepted:number,fulltext:number,structured:number,roles:number,published:number};
+const dailyFunnel = {day,received:number,accepted:number,fulltext:number,structured:number,roles:number,published:number,newVacancies:number};
 const funnelStage = {received:number,accepted:number,fulltext:number,structured:number,roles:number,published:number};
+const funnelTotals = {...funnelStage,newVacancies:number};
 const EMPTY = Object.freeze({});
 // Эти списки — единственный источник разрешённых полей. Произвольный payload,
 // result_json, message, URL, keyMask, имя компании, название вакансии сюда не входят.
@@ -91,9 +92,10 @@ const SCHEMA = Object.freeze({
     filters:{sourceId:stage,parser:stage},
     summary:{
       checkedAt:time,metric:stage,from:day,to:day,days:number,
-      totals:funnelStage,averages:funnelStage,
+      totals:funnelTotals,averages:funnelTotals,
       cohort:{...funnelStage,rejected:number,error:number,waiting:number,created:number,linked:number,undatedPublished:number},
-      newVacanciesPublished:number,linkedToExisting:number,
+      uniqueNewVacanciesInPeriod:number,undatedNewVacancies:number,
+      cohortCandidatesWithCreate:number,cohortCandidatesLinkedToExisting:number,
       conversionBase:stage,stageConversionPercent:funnelStage,
     },
     items:EMPTY,daily:dailyFunnel,
