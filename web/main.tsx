@@ -7,4 +7,8 @@ import './layout.css';
 
 const target = document.getElementById('root');
 if (!target) throw new Error('Missing React root');
-createRoot(target).render(<React.StrictMode><Application /></React.StrictMode>);
+createRoot(target).render(
+  <React.StrictMode>
+    <Application />
+  </React.StrictMode>,
+);
