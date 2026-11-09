@@ -42,6 +42,7 @@ const tiny={...report,ai:{...ledger,confirmedUsd:0.000001},apify:{...ledger,conf
  daily:report.daily.map((d,i)=>({...d,aiUsd:i===29?0.000001:0,apifyUsd:0}))};
 assert.equal(isUnitCostReport(tiny),true);
 assert.match(render(UnitCostView,{report:tiny}),/менее \$0,00001/);
+assert.match(render(UnitCostView,{report:tiny}),/height="148"/,'tiny positive spend must remain visible in chart');
 const html=render(UnitCostView,{report});
 assert.match(html,/Прослеживаемость расходов ИИ/);
 assert.match(html,/С кандидатом/);
