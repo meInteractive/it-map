@@ -77,6 +77,7 @@ try{
 
  mode='broken';
  await act(async()=>period().props.onChange({target:{value:'30'}}));
+ await act(async()=>refresh().props.onClick());
  await flush();await flush();
  assert.match(view(),/Некорректный ответ диагностики повторов/);
  assert.doesNotMatch(view(),/Apify · повторные квитанции/);
@@ -86,6 +87,7 @@ try{
 
  mode='network';
  await act(async()=>period().props.onChange({target:{value:'7'}}));
+ await act(async()=>refresh().props.onClick());
  await flush();await flush();
  assert.match(view(),/Синтетический сетевой сбой/);
  mode='ok';
