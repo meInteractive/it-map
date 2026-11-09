@@ -76,7 +76,11 @@ export function isUnitCostReport(v:unknown):v is UnitCostReport {
  return v.partialPeriodRatioUsd===null||
    sameAmount(v.partialPeriodRatioUsd,v.totalConfirmedUsd/v.newUniqueVacancies);
 }
-const money=(n:number)=>n>0&&n<0.00001?'менее $0,00001':'
+const money=(n:number)=>n>0&&n<0.00001?'менее $0,00001':'$'+n.toLocaleString('ru-RU',{maximumFractionDigits:5});
+const count=(n:number)=>n.toLocaleString('ru-RU');
+const date=(v:string)=>v.slice(8,10)+'.'+v.slice(5,7);
+const axisAmount=(n:number)=>n===0?'0':n.toLocaleString('ru-RU',{maximumSignificantDigits:3});
+
 export function UnitCostView({report}:{report:UnitCostReport}){
  const {apify,ai,daily}=report;
  const barMax=Math.max(0,...daily.map(d=>d.aiUsd+d.apifyUsd)),scale=barMax>0?barMax:1;
