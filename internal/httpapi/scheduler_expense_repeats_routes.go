@@ -29,9 +29,7 @@ func SchedulerExpenseRepeatsHandler(m *auth.Manager, reader SchedulerExpenseRepe
 				jsonReply(w, http.StatusForbidden, map[string]string{"error": "Недопустимый источник запроса."})
 				return
 			}
-			if _, ok := schedulerRequestInput(w, r); ok {
-				jsonReply(w, http.StatusMethodNotAllowed, map[string]string{"error": "Метод не поддерживается."})
-			}
+			jsonReply(w, http.StatusMethodNotAllowed, map[string]string{"error": "Метод не поддерживается."})
 			return
 		}
 		if r.URL.EscapedPath() != "/api/scheduler/expense-repeats" {
