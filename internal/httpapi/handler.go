@@ -88,6 +88,7 @@ type Options struct {
 	SchedulerAISpending SchedulerAISpendingReader
 	SchedulerIssues      SchedulerIssuesStore
 	SchedulerFunnel      SchedulerFunnelReader
+	SchedulerUnitCost    SchedulerUnitCostReader
 }
 
 // NewHandlerWithOptions constructs only explicitly implemented routes.
@@ -153,6 +154,7 @@ func NewHandlerWithOptions(logger *slog.Logger, opts Options) http.Handler {
 		mux.HandleFunc("/api/scheduler", SchedulerDashboardHandler(opts.Auth, opts.SchedulerDashboard))
 		mux.HandleFunc("/api/scheduler/issues", SchedulerIssuesHandler(opts.Auth, opts.SchedulerIssues))
 		mux.HandleFunc("/api/scheduler/funnel", SchedulerFunnelHandler(opts.Auth, opts.SchedulerFunnel))
+		mux.HandleFunc("/api/scheduler/unit-cost", SchedulerUnitCostHandler(opts.Auth, opts.SchedulerUnitCost))
 		download := BackupDownloadHandler(opts.Auth, opts.BackupExports)
 		restore := BackupRestoreHandler(opts.Auth, opts.BackupRestores, false)
 		mux.HandleFunc("/api/backup", func(w http.ResponseWriter, r *http.Request) {
