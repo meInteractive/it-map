@@ -35,8 +35,7 @@ CREATE TABLE `cost_provider_operations` (
   CHECK (`provider_kind` IN ('apify_actor','apify_dataset_read','ai_provider_request','firecrawl_request','ai_attempt')),
   CHECK (`source_ledger` IN ('apify_runs','scheduler_attempts','provider_receipts','firecrawl_requests','apify_dataset_reads')),
   CHECK (`created_at_ms`>0),
-  CHECK ((`billing_scope` IS NULL AND `provider_operation_id` IS NULL) OR
-         (`billing_scope` IS NOT NULL AND `provider_operation_id` IS NOT NULL)),
+  CHECK (`provider_operation_id` IS NULL OR `billing_scope` IS NOT NULL),
   CHECK (`provider_kind`<>'ai_attempt' OR `provider_operation_id` IS NULL)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_nopad_bin ROW_FORMAT=DYNAMIC;
 
