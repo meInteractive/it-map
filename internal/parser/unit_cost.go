@@ -30,6 +30,24 @@ type unitCostSpend struct {
 	UnavailableForSource bool `json:"unavailableForSource"`
 }
 
+// Lineage is a read-only coverage diagnostic for scheduler AI attempts.
+// A link to a main vacancy is NOT evidence that the charge was incurred
+// for acquiring that vacancy; it must not be used for allocation.
+type unitCostLineage struct {
+	Attempts int64 `json:"attempts"`
+	WithJob int64 `json:"withJob"`
+	WithCandidate int64 `json:"withCandidate"`
+	WithMainVacancy int64 `json:"withMainVacancy"`
+	WithMatchingCreate int64 `json:"withMatchingCreate"`
+	MissingJob int64 `json:"missingJob"`
+	MissingCandidate int64 `json:"missingCandidate"`
+	MissingMainVacancy int64 `json:"missingMainVacancy"`
+	SourceMismatch int64 `json:"sourceMismatch"`
+	KnownUSDWithMainLink float64 `json:"knownUsdWithMainLink"`
+	KnownUSDWithoutMainLink float64 `json:"knownUsdWithoutMainLink"`
+	VerifiedProviderAttribution bool `json:"verifiedProviderAttribution"`
+}
+
 type unitCostDay struct {
 	Day string `json:"day"`
 	NewVacancies int64 `json:"newVacancies"`
@@ -50,6 +68,7 @@ type unitCostReport struct {
 	UndatedCreates int64 `json:"undatedCreates"`
 	Apify unitCostSpend `json:"apify"`
 	AI unitCostSpend `json:"ai"`
+	AILineage unitCostLineage `json:"aiLineage"`
 	FirecrawlCredits float64 `json:"firecrawlCredits"`
 	UnknownCreditRows int64 `json:"unknownCreditRows"`
 	TotalConfirmedUSD float64 `json:"totalConfirmedUsd"`
@@ -200,19 +219,47 @@ func (r UnitCostRepository) ReadUnitCost(ctx context.Context, days int, source s
 
 	// The id is the local scheduler billing receipt, NOT a per-candidate or
 	// per-role paid operation. Failed/empty requests remain part of spend.
-	ai,err:=tx.QueryContext(ctx,`SELECT COALESCE(source_id,'unknown'),started_at,reserved_usd,cost_usd
-	 FROM scheduler_attempts
-	 WHERE started_at>=? AND started_at<? AND provider IN ('openai','openrouter')`,window.start,window.end)
+	ai,err:=tx.QueryContext(ctx,`SELECT COALESCE(a.source_id,'unknown'),a.started_at,a.reserved_usd,a.cost_usd,
+	  j.id IS NOT NULL AS has_job,
+	  j.candidate_id IS NOT NULL AS has_candidate_ref,
+	  c.id IS NOT NULL AS has_candidate,
+	  c.main_vacancy_id IS NOT NULL AS has_main_ref,
+	  v.id IS NOT NULL AS has_main,
+	  EXISTS(SELECT 1 FROM vacancy_import_operations o
+	    WHERE o.candidate_id=c.id AND o.vacancy_id=v.id
+	      AND o.status='success' AND o.action='create') AS matching_create,
+	  (j.id IS NOT NULL AND j.source_id IS NOT NULL AND a.source_id IS NOT NULL
+	    AND BINARY j.source_id<>BINARY a.source_id) AS source_mismatch
+	 FROM scheduler_attempts a
+	 LEFT JOIN scheduler_jobs j ON j.id=a.job_id
+	 LEFT JOIN vacancy_candidates c ON c.id=j.candidate_id
+	 LEFT JOIN company_vacancies v ON v.id=c.main_vacancy_id
+	 WHERE a.started_at>=? AND a.started_at<? AND a.provider IN ('openai','openrouter')`,window.start,window.end)
 	if err!=nil{return nil,ErrUnitCostStorage}
 	for ai.Next(){
 		var origin string
 		var at int64
 		var reserve float64
 		var cost sql.NullFloat64
-		if err=ai.Scan(&origin,&at,&reserve,&cost);err!=nil{break}
+		var hasJob,hasCandidateRef,hasCandidate,hasMainRef,hasMain,hasMatchingCreate,sourceMismatch int64
+		if err=ai.Scan(&origin,&at,&reserve,&cost,
+			&hasJob,&hasCandidateRef,&hasCandidate,&hasMainRef,&hasMain,&hasMatchingCreate,&sourceMismatch);err!=nil{break}
 		if source!="all"&&source!=origin{continue}
+		lineage:=&report.AILineage
+		lineage.Attempts++
+		if hasJob!=0{lineage.WithJob++}else{lineage.MissingJob++}
+		if hasCandidate!=0{lineage.WithCandidate++}
+		if hasCandidateRef!=0&&hasCandidate==0{lineage.MissingCandidate++}
+		if hasMain!=0{lineage.WithMainVacancy++}
+		if hasMainRef!=0&&hasMain==0{lineage.MissingMainVacancy++}
+		if hasMatchingCreate!=0{lineage.WithMatchingCreate++}
+		if sourceMismatch!=0{lineage.SourceMismatch++}
 		if !finiteMoney(reserve) || (cost.Valid&&!finiteMoney(cost.Float64)){
 			report.AI.ConflictingOperations++;continue
+		}
+		if cost.Valid{
+			if hasMain!=0{lineage.KnownUSDWithMainLink+=cost.Float64
+			}else{lineage.KnownUSDWithoutMainLink+=cost.Float64}
 		}
 		if cost.Valid{
 			report.AI.ConfirmedOperations++

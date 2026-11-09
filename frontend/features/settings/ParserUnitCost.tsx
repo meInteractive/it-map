@@ -18,7 +18,7 @@ export interface UnitCostReport {
  checkedAt:number;timezone:string;from:string;to:string;periodDays:7|30;
  sourceId:string;sourceOptions:{id:string;name:string}[];
  newUniqueVacancies:number;undatedCreates:number;
- apify:Spending;ai:Spending;
+ apify:Spending;ai:Spending;aiLineage:AILineage;
  firecrawlCredits:number;unknownCreditRows:number;
  totalConfirmedUsd:number;partialPeriodRatioUsd:number|null;
  calendarProxy:boolean;incompleteCosts:boolean;daily:CostDay[];
@@ -57,7 +57,7 @@ export function UnitCostView({report}:{report:UnitCostReport}){
   </div>
   <p className="resume-hint">Неопределённые резервы: ИИ {money(ai.unknownReservedUsd)} ({count(ai.unknownOperations)}), Apify {apify.unavailableForSource?'без распределения':money(apify.unknownReservedUsd)+' ('+count(apify.unknownOperations)+')'}. Операций без цены: ИИ {count(ai.unpricedOperations)}, Apify {apify.unavailableForSource?'—':count(apify.unpricedOperations)}. Конфликтующих записей: {count(ai.conflictingOperations+(apify.unavailableForSource?0:apify.conflictingOperations))}.</p>
   {report.undatedCreates>0&&<p className="resume-hint">Созданий с недостоверной датой: {report.undatedCreates}. Они не добавлены в периодный знаменатель.</p>}
-  <h3>Динамика локально подтверждённых расходов</h3>
+  <AILineageView lineage={report.aiLineage}/><h3>Динамика локально подтверждённых расходов</h3>
   <p className="resume-hint">По дате операции, московское время; <span style={{color:'#627fbd'}}>■</span> ИИ, <span style={{color:'#b58a49'}}>■</span> Apify. Количество новых вакансий по дням — в таблице под графиком. Неподтверждённые списания на график не попадают.</p>
   <div className="parser-history-scroll"><svg className="parser-history-chart" viewBox={'0 0 '+width+' 224'} role="img" aria-label="Подтверждённые локальные расходы Apify и ИИ по дням в USD">
    {[0,1,2,3,4].map(i=><g key={i}><line className="parser-history-grid" x1={left} x2={width-right} y1={bottom-chartHeight*i/4} y2={bottom-chartHeight*i/4}/><text x={left-6} y={bottom-chartHeight*i/4+4} textAnchor="end" fontSize="11">{(barMax*i/4).toFixed(2)}</text></g>)}
@@ -79,4 +79,31 @@ export default function ParserUnitCost(){
   <label><span>Источник</span><select className="settings-select" aria-label="Источник расчёта стоимости" value={sourceId} onChange={e=>setSourceId(e.target.value)}><option value="all">Все источники</option>{options.current?.sourceOptions.map(o=><option key={o.id} value={o.id}>{o.name}</option>)}</select></label></div>
   <State loading={!report&&q.loading} error={q.error}>{report?<><p className="resume-hint">{date(report.from)}–{date(report.to)}.{report.to.slice(0,4)}, по Москве.</p><UnitCostView report={report}/></>:!q.loading&&<p>Статистика стоимости пока недоступна.</p>}</State>
  </article>;
+}
+
+interface AILineage {
+ attempts:number;withJob:number;withCandidate:number;withMainVacancy:number;
+ withMatchingCreate:number;missingJob:number;missingCandidate:number;missingMainVacancy:number;
+ sourceMismatch:number;knownUsdWithMainLink:number;knownUsdWithoutMainLink:number;
+ verifiedProviderAttribution:boolean;
+}
+
+// Only evidence coverage. An AI attempt with a vacancy link is NOT a cost
+// assigned to that vacancy: the provider request may serve several objects.
+export function AILineageView({lineage:l}:{lineage:AILineage}){
+ const fraction=l.attempts?Math.round(l.withMainVacancy/l.attempts*100):null;
+ return <section className="parser-unit-cost-lineage" aria-label="Прослеживаемость расходов ИИ">
+  <h3>Прослеживаемость расходов ИИ</h3>
+  <p className="resume-hint">Связи в локальной БД, а не доказанная финансовая атрибуция. Один ИИ-запрос мог обслужить несколько задач, а существующая карточка могла быть создана другим запуском.</p>
+  <div className="parser-funnel-totals">
+   <div><span>ИИ-попыток за период</span><strong>{count(l.attempts)}</strong><span>С заданием: {count(l.withJob)}</span></div>
+   <div><span>С кандидатом</span><strong>{count(l.withCandidate)}</strong><span>Из сохранённых попыток</span></div>
+   <div><span>С действующей основной карточкой</span><strong>{count(l.withMainVacancy)}</strong><span>{fraction===null?'Нет операций':fraction+'% попыток'} · с matching create: {count(l.withMatchingCreate)}</span></div>
+  </div>
+  <p className="resume-hint">Известные локальные расходы ИИ со связью до основной карточки: {money(l.knownUsdWithMainLink)}; без такой связи: {money(l.knownUsdWithoutMainLink)}. Эти суммы <strong>не распределены</strong> между вакансиями.</p>
+  <details><summary>Разрывы и расхождения связей</summary>
+   <p>Задание отсутствует: {count(l.missingJob)}. Указанный кандидат отсутствует: {count(l.missingCandidate)}. Указанная основная карточка отсутствует: {count(l.missingMainVacancy)}. Источник попытки и задания расходится: {count(l.sourceMismatch)}.</p>
+   <p className="resume-hint">Для Apify нет универсального ключа Actor → задание/кандидат; для Firecrawl нет подтверждённой исторической стоимости USD. Этот отчёт показывает только покрытие записей ИИ планировщика, а не завершённость всей цепочки расходов.</p>
+  </details>
+ </section>;
 }
