@@ -1,7 +1,7 @@
 {
   "scope": "Current frontend/web direct transport sites and reviewed JSX/download bindings; no runtime/golden coverage inferred",
   "typescript": "5.9.3",
-  "files": 69,
+  "files": 70,
   "transportModule": "frontend/api/client.ts",
   "sites": [
     {
@@ -1319,6 +1319,22 @@
         "openrouter"
       ],
       "dynamicURL": false
+    },
+    {
+      "id": "05f53f187333121e",
+      "file": "frontend/features/settings/ParserExpenseRepeats.tsx",
+      "line": 74,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/scheduler/expense-repeats?days='+days",
+      "literalFragments": [
+        "/api/scheduler/expense-repeats?days="
+      ],
+      "families": [
+        "scheduler"
+      ],
+      "dynamicURL": true
     },
     {
       "id": "bfe3f5bcca644f68",
