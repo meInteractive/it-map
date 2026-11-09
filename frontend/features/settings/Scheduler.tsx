@@ -2,6 +2,7 @@ import {runScheduler} from './scheduler-run';
 import {useEffect,useRef,useState,type ReactNode} from 'react';
 import ParserIssues,{IssueSummary,type IssuesReport} from './ParserIssues';
 import ParserFunnel from './ParserFunnel';
+import ParserUnitCost from './ParserUnitCost';
 import CopyDebugJSON from './CopyDebugJSON';
 import CopyAllDiagnostics from './CopyAllDiagnostics';
 import AISpendingDebug from './AISpendingDebug';
@@ -85,6 +86,7 @@ export default function Scheduler({roles,services,tools,onSettings}:{roles?:Reac
   <section id="parser-panel-services" role="tabpanel" aria-labelledby="parser-tab-services" hidden={view!=='services'} className="parser-tab-panel">{visited.includes('services')&&<><article className="settings-card"><div className="scheduler-actions"><h2>Бюджеты JEV и LLM</h2><AISpendingDebug dayBudgetUsd={s.dayBudgetUsd} monthBudgetUsd={s.monthBudgetUsd}/></div><p>Сегодня: {usd(d.spending.dayUsd)}. В этом месяце: {usd(d.spending.monthUsd)}. Включая неизвестные резервы.</p><BudgetForm settings={s}/><details><summary>Расходы по этапам</summary>{d.spending.byType.map(r=><p key={r.type}>{types[r.type]||r.type}: {usd(r.usd)} · неизвестных резервов: {r.unknown} · Firecrawl: {r.credits===null?'—':r.credits+' кредитов'}</p>)}<p className="resume-hint">Кредиты Firecrawl и доллары учитываются отдельно. Расходы сопроводительных писем сюда не входят.</p></details></article>{services}{onSettings&&<button type="button" className="settings-button secondary" onClick={()=>onSettings('ai')}>Открыть настройки нейросетей</button>}</>}</section>
   <section id="parser-panel-diagnostics" role="tabpanel" aria-labelledby="parser-tab-diagnostics" hidden={view!=='diagnostics'} className="parser-tab-panel">{visited.includes('diagnostics')&&<>
    <ParserFunnel isAuthorized={isAuthorized}/>
+   <ParserUnitCost/>
    <ParserIssues report={report} loading={issues.loading} error={issues.error} onReload={issues.reload} onOpen={openIssue} isAuthorized={isAuthorized}/>
    <div id="parser-queue" className="settings-card"><h2>Очередь и история</h2><Queue enabled={s.enabled} isAuthorized={isAuthorized}/><details><summary>Журнал циклов и последних попыток</summary><div className="scheduler-actions" aria-label="Экспорт журнала">
     <span className="resume-hint">Циклы:</span><CopyDebugJSON section="scheduler_runs" isAuthorized={isAuthorized} disabled={!isAuthorized()} getSnapshot={()=>schedulerRunsSnapshot(d)}/>
