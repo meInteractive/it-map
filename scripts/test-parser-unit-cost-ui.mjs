@@ -13,7 +13,7 @@ const lineage={attempts:6,withJob:5,withCandidate:3,withMainVacancy:3,withMatchi
  knownUsdWithMainLink:0.3,knownUsdWithoutMainLink:0,verifiedProviderAttribution:false};
 const report={
  checkedAt:Date.now(),timezone:'Europe/Moscow',from:days[0],to:days.at(-1),periodDays:30,
- sourceId:'all',sourceOptions:[{id:'hh',name:'HH'},{id:'companySite',name:'Сайт компании'}],
+ sourceId:'all',sourceOptions:[{id:'hh',name:'HH'},{id:'companySite',name:'Сайт компании'},{id:'unknown',name:'Не указан'}],
  newUniqueVacancies:2,undatedCreates:0,
  apify:ledger,ai:{...ledger,confirmedUsd:0.3,unknownReservedUsd:0.5},
  aiLineage:lineage,
@@ -41,7 +41,7 @@ const tiny={...report,ai:{...ledger,confirmedUsd:0.000001},apify:{...ledger,conf
  totalConfirmedUsd:0.000001,partialPeriodRatioUsd:0.0000005,
  daily:report.daily.map((d,i)=>({...d,aiUsd:i===29?0.000001:0,apifyUsd:0}))};
 assert.equal(isUnitCostReport(tiny),true);
-assert.match(render(UnitCostView,{report:tiny}),/менее \\$0,00001/);
+assert.match(render(UnitCostView,{report:tiny}),/менее \$0,00001/);
 const html=render(UnitCostView,{report});
 assert.match(html,/Прослеживаемость расходов ИИ/);
 assert.match(html,/С кандидатом/);
@@ -73,10 +73,10 @@ globalThis.fetch=async(url,options={})=>{
  if(mode==='network')throw new Error('Синтетический сбой сети');
  if(mode==='malformed')return new Response('{malformed',{status:200,headers:{'content-type':'application/json'}});
  const daily=report.daily.slice(-days).map(d=>({...d,
-  newVacancies:source==='hh'&&d.day===days.at(-2)?0:d.newVacancies,
+  newVacancies:source==='hh'&&d.day===report.daily.at(-2).day?0:d.newVacancies,
   apifyUsd:source==='all'?d.apifyUsd:0}));
  const newUniqueVacancies=daily.reduce((sum,d)=>sum+d.newVacancies,0);
- const aiUsd=source==='all'?0.3:0.3,apifyUsd=source==='all'?0.5:0;
+ const aiUsd=0.3,apifyUsd=source==='all'?0.5:0;
  const result={...report,periodDays:days,sourceId:source,from:daily[0].day,to:daily.at(-1).day,
   apify:source==='all'?ledger:{...ledger,confirmedUsd:0,confirmedOperations:0,unavailableForSource:true},
   ai:{...ledger,confirmedUsd:aiUsd},
