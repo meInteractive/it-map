@@ -1,4 +1,4 @@
-# Go source layout (migration 1.1)
+# Расположение Go/React-кода (срез 09.11.2026)
 
 ## Начать разработку
 
@@ -19,7 +19,7 @@ internal/catalog/, crm/           каталог, CRM и пользовател�
 internal/vacancies/               вакансии, роли и пользовательское состояние
 internal/applications/            отклики, receipts, версии и история
 internal/tasks/, channels/, roles/ задачи, каналы и справочники
-internal/parser/                  отдельные settings/budget/cycle-lease контракты
+internal/parser/                  действующий HH/Apify/ИИ-конвейер, цикл, расписание, очередь, бюджет и read-only диагностика
 internal/legacycrypto/            совместимость legacy AES-GCM
 internal/integrations/apify/      изолированный HTTP-адаптер на mocks
 frontend/                        React и TypeScript
@@ -30,7 +30,7 @@ db/schema.ts                    историческая D1-схема
 docs/, tasks/                   документация и критерии задач
 ```
 
-Go-бекенд находится в `cmd/` и `internal/`, а не в `server/`. Для поиска файлов: `rg --files cmd internal -g '*.go'`. JavaScript сохраняется как эталон миграции; наличие JS-модуля не означает, что соответствующая функция уже подключена в Go. Модули `parser`, `legacycrypto` и Apify пока не составляют работающий полный Go-конвейер.
+Go-бекенд находится в `cmd/` и `internal/`, а не в `server/`. Для поиска файлов: `rg --files cmd internal -g '*.go'`. JavaScript сохраняется как эталон миграции; наличие JS-модуля не означает, что соответствующая функция уже подключена в Go. По состоянию на 09.11.2026 **Go-конвейер HH существует и выполняет отдельные stages** (worker, очередь, Apify listing, ИИ, импорт). Реализация не охватывает автоматически все legacy-источники: наличие адаптера не гарантирует его запуск в автоматическом HH-расписании. [Матрица доказательств GO-119](GO-119-ARCHITECTURE-EVIDENCE.md) разделяет код, CI, staging и не принятые функции.
 
 HTTP использует стандартный `net/http`, не Gin; хранилище — `database/sql`. MariaDB-драйвер включается build tag `mariadb`. Приложение читает окружение процесса, но не загружает `.env` автоматически; [.env.example](../../.env.example) содержит безопасный шаблон параметров, не реальные секреты.
 
