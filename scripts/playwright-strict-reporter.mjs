@@ -26,6 +26,15 @@ export default class StrictBrowserReporter {
   }
 
   onEnd(result) {
+    // Playwright вызывает onEnd и в режиме --list: браузеры ещё не запускались.
+    // Режим обнаружения должен иметь хотя бы один test case, но не обязан иметь results.
+    // Реальный "playwright test" без --list по-прежнему строго запрещает skipped.
+    if (process.argv.includes('--list')) {
+      const okay = result.status === 'passed' && this.cases.length > 0;
+      if (!okay) console.error('Playwright discovery failed: no test cases or runner error.');
+      else console.log('Playwright discovery: ' + this.cases.length + ' named cases.');
+      return {status: okay ? 'passed' : 'failed'};
+    }
     const summary = classifyBrowserRun(this.cases, result.status);
     if (summary.status !== 'passed') {
       console.error(
