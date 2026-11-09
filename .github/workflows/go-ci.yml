@@ -163,11 +163,17 @@ jobs:
     needs: safe-source
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
           cache: npm
       - run: npm ci --no-audit --no-fund
+      - name: GO-114 — проверка форматирования изменённого React/TypeScript
+        run: |
+          node scripts/test-web-format-guard.mjs
+          npm run format:check
       - name: GO-113 — обязательная строгая проверка типов React/Vite
         run: |
           node scripts/test-web-typecheck-guard.mjs
