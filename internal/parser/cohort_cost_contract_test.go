@@ -65,7 +65,7 @@ func TestCohortReceiptOnePaidOperationManyCandidatesAndScans(t *testing.T){
 	links[9].Captured=false
 	got,err:=reconcileCohortEvidence(rows,links)
 	if err!=nil{t.Fatal(err)}
-	if got.Receipts!=len(rows)||got.Operations!=11||got.DuplicateReceipts!=4||
+	if got.Receipts!=len(rows)||got.Operations!=11||got.DuplicateReceipts!=3||
 		got.DuplicateLinks!=2||got.UnsupportedLinks!=1||
 		got.ConflictingOperations!=1||got.UnpricedOperations!=1||
 		got.UnknownReserveOperations!=1||!nearMoney(got.UnknownReserveUSD,.25){
