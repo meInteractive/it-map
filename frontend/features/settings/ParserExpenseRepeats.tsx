@@ -28,7 +28,7 @@ const nonnegative=(v:unknown):v is number=>typeof v==='number'&&Number.isFinite(
 const integer=(v:unknown):v is number=>nonnegative(v)&&Number.isSafeInteger(v);
 const date=(v:unknown):v is string=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v)&&
  Number.isFinite(Date.parse(v+'T00:00:00Z'))&&new Date(v+'T00:00:00Z').toISOString().slice(0,10)===v;
-const validCounts=(v:unknown,keys:string[])=>object(v)&&keys.every(k=>integer(v[k]));
+const validCounts=(v:unknown,keys:string[]):v is Record<string,unknown>=>object(v)&&keys.every(k=>integer(v[k]));
 export function isExpenseRepeatsReport(v:unknown):v is ExpenseRepeatsReport {
  if(!object(v)||!(v.periodDays===7||v.periodDays===30)||v.timezone!=='Europe/Moscow'||
     !integer(v.checkedAt)||!date(v.from)||!date(v.to)||v.from>v.to||
