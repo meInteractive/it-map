@@ -15,7 +15,9 @@ export default defineConfig({
   retries: 0,
   forbidOnly: true,
   timeout: 30_000,
-  reporter: process.env.GITHUB_ACTIONS ? [['list'], ['github']] : 'list',
+  reporter: process.env.GITHUB_ACTIONS
+    ? [['list'], ['github'], ['./scripts/playwright-strict-reporter.mjs']]
+    : [['list'], ['./scripts/playwright-strict-reporter.mjs']],
   outputDir: path.join(process.env.RUNNER_TEMP || '/tmp', 'itmap-browser-results'),
   use: {
     baseURL,

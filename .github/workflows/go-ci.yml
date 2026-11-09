@@ -240,6 +240,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          node scripts/test-playwright-strict-reporter.mjs
           npx playwright test --config=playwright.config.ts --list
           ITMAP_COMPANY_BROWSER_WRITES=1 npx playwright test --config=playwright.company-flags.config.ts --list
       - run: npm run build:web
