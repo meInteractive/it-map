@@ -70,6 +70,12 @@ func TestMariaDBSchedulerFunnelNov7Disposable(t *testing.T) {
 		if i == 0 {
 			mainID = 1901
 			action = "create"
+		} else if i == 61 {
+			// A different parser finds the same already-created vacancy on
+			// Nov 8. A second successful CREATE must not increase the catalog
+			// numerator or steal the first creator's source attribution.
+			mainID = 1901
+			action = "create"
 		} else if i <= 20 {
 			action = "update"
 		}
@@ -130,6 +136,21 @@ func TestMariaDBSchedulerFunnelNov7Disposable(t *testing.T) {
 	if got := findDay(all, "2026-11-07")["published"]; got != float64(61) {
 		t.Fatalf("61 successful first imports are not 61 daily events: %v", got)
 	}
+	if got:=findDay(all,"2026-11-07")["newVacancies"];got!=float64(1) {
+		t.Fatalf("GO-436: 61 imported candidates must yield only ONE unique first CREATE: %v",got)
+	}
+	if got:=all["totals"].(map[string]any)["newVacancies"];got!=float64(1) {
+		t.Fatalf("GO-436 total of new unique cards must be 1: %v",got)
+	}
+	if got:=all["averages"].(map[string]any)["newVacancies"];got!=float64(1)/30 {
+		t.Fatalf("GO-436 unique vacancy daily average must be 1/30: %v",got)
+	}
+	if got:=findDay(all,"2026-11-08")["newVacancies"];got!=float64(0) {
+		t.Fatalf("later CREATE receipt for same main vacancy was counted twice: %v",got)
+	}
+	if got:=findDay(all,"2026-11-06")["newVacancies"];got!=float64(0) {
+		t.Fatalf("update/unchanged became a new vacancy: %v",got)
+	}
 	if got := findDay(all, "2026-11-08")["published"]; got != float64(1) {
 		t.Fatalf("Moscow midnight failed (08.11): %v", got)
 	}
@@ -138,6 +159,15 @@ func TestMariaDBSchedulerFunnelNov7Disposable(t *testing.T) {
 	}
 	if got := findDay(report("hh", "apify"), "2026-11-07")["published"]; got != float64(61) {
 		t.Fatalf("HH/Apify filter changed 61: %v", got)
+	}
+	if got:=findDay(report("hh","apify"),"2026-11-07")["newVacancies"];got!=float64(1) {
+		t.Fatalf("first creator's HH/Apify source attribution lost: %v",got)
+	}
+	if got:=report("hh","firecrawl")["totals"].(map[string]any)["newVacancies"];got!=float64(0) {
+		t.Fatalf("later Firecrawl creator stole same main vacancy's origin: %v",got)
+	}
+	if got:=report("companySite","http")["totals"].(map[string]any)["newVacancies"];got!=float64(0) {
+		t.Fatalf("non-create import was counted as new: %v",got)
 	}
 	if got := findDay(report("hh", "firecrawl"), "2026-11-07")["published"]; got != float64(0) {
 		t.Fatalf("source/parser filtering mixed events: %v", got)
@@ -179,5 +209,5 @@ func TestMariaDBSchedulerFunnelNov7Disposable(t *testing.T) {
 	if before != dashboardFingerprint(f) {
 		t.Fatal("read-only diagnostics changed MariaDB")
 	}
-	t.Log("PASS: synthetic 61 published import events = 61 candidates = 2 main vacancies = 1 create + 20 updates + 40 unchanged, with retries, failed receipt, 30-day cohort and MSK boundaries; NO production evidence")
+	t.Log("PASS: synthetic 61 candidate first imports = 1 unique first CREATE + 20 updates + 40 unchanged; second CREATE on Nov 8 for same main vacancy excluded from first-creator source attribution, with retries, failed receipt and MSK boundaries; NO production evidence")
 }

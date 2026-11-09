@@ -69,14 +69,17 @@ export function parserFunnelSnapshot(report) {
     summary:{
       checkedAt:report.checkedAt,
       from:report.from,to:report.to,days:report.days,
-      metric:'stage_event_daily_counts',
+      metric:'candidate_stage_events_and_unique_vacancy_creates',
       totals:report.totals,
       averages:report.averages,
       cohort:report.cohort,
-      // These values concern the selected incoming cohort, not all
-      // historically published vacancies or a count of scheduler attempts.
-      newVacanciesPublished:report.cohort.created,
-      linkedToExisting:report.cohort.linked,
+      // The unique CREATE denominator uses first successful CREATE globally
+      // for each real company_vacancies.id. Cohort.created counts candidates
+      // with a CREATE, not distinct new catalog vacancies.
+      uniqueNewVacanciesInPeriod:report.totals.newVacancies??null,
+      undatedNewVacancies:report.undatedNewVacancies??null,
+      cohortCandidatesWithCreate:report.cohort.created,
+      cohortCandidatesLinkedToExisting:report.cohort.linked,
       conversionBase:'cohort_received',
       stageConversionPercent:cohortRates,
     },
@@ -85,6 +88,7 @@ export function parserFunnelSnapshot(report) {
       received:day.received,accepted:day.accepted,
       fulltext:day.fulltext,structured:day.structured,
       roles:day.roles,published:day.published,
+      newVacancies:day.newVacancies??null,
     })),
   };
 }

@@ -52,15 +52,30 @@ func (c funnelCounts) average(days float64) map[string]float64 {
 		"roles":float64(c.Roles)/days, "published":float64(c.Published)/days,
 	}
 }
+// NewVacancies counts first successful CREATE of an existing main vacancy,
+// globally deduplicated by vacancy_id across all candidate/source histories.
+// It is a distinct population from the candidate-stage funnelCounts.
 type funnelDay struct {
 	Day string `json:"day"`
+	NewVacancies int64 `json:"newVacancies"`
 	funnelCounts
 }
 func (d funnelDay) MarshalJSON() ([]byte,error) {
 	return json.Marshal(struct{
 		Day string `json:"day"`
+		NewVacancies int64 `json:"newVacancies"`
 		funnelCounts
-	}{d.Day,d.funnelCounts})
+	}{d.Day,d.NewVacancies,d.funnelCounts})
+}
+type funnelTotals struct {
+	NewVacancies int64 `json:"newVacancies"`
+	funnelCounts
+}
+func (t funnelTotals) MarshalJSON() ([]byte,error) {
+	return json.Marshal(struct{
+		NewVacancies int64 `json:"newVacancies"`
+		funnelCounts
+	}{t.NewVacancies,t.funnelCounts})
 }
 type funnelCohort struct {
 	funnelCounts
@@ -154,6 +169,23 @@ const funnelCandidateSQL = `SELECT c.id,
  AND (?='all' OR COALESCE(i.parser,'unknown')=?)
  ORDER BY c.id`
 
+// The first successful CREATE of a real main vacancy determines its unique
+// publication date and source. Source/parser filters MUST run AFTER the first
+// CREATE has been selected globally. Otherwise a later source or duplicate
+// receipt could claim an already-created vacancy for itself.
+const funnelFirstCreateSQL = `SELECT o.vacancy_id,o.processed_at,
+  c.id IS NOT NULL AS candidate_exists,
+  CASE WHEN i.candidate_token IS NOT NULL THEN COALESCE(i.source_id,'unknown')
+       ELSE COALESCE(c.source_id,'unknown') END AS intake_source,
+  COALESCE(i.parser,'unknown') AS intake_parser,
+  COALESCE(c.acquisition_method,'unknown') AS acquisition_method
+ FROM vacancy_import_operations o
+ JOIN company_vacancies v ON v.id=o.vacancy_id
+ LEFT JOIN vacancy_candidates c ON c.id=o.candidate_id
+ LEFT JOIN parser_candidate_intakes i ON i.candidate_token=c.creation_token
+ WHERE o.status='success' AND o.action='create'
+ ORDER BY o.vacancy_id,o.processed_at,BINARY o.id`
+
 // Ошибки очереди привязаны к текущему поколению и активному состоянию.
 // Старые сбои с более поздним успешным/работающим повтором не считаются.
 const funnelJobSQL = `SELECT j.candidate_id,j.status,j.reason_code FROM scheduler_jobs j
@@ -216,6 +248,34 @@ func (r FunnelRepository) ReadFunnel(ctx context.Context, sourceID, parserID str
 	if err==nil { err=jobs.Err() }
 	jobs.Close()
 	if err!=nil { return nil,ErrFunnelStorage }
+
+	// Do not multiply vacancies by their candidates, source observations or
+	// reimports. The first CREATE across the entire history owns the date;
+	// missing candidate evidence and manual/Excel origins are excluded.
+	createdRows,err:=tx.QueryContext(ctx,funnelFirstCreateSQL)
+	if err!=nil {return nil,ErrFunnelStorage}
+	firstVacancy:=int64(-1)
+	newVacancies,undatedNewVacancies:=int64(0),int64(0)
+	for createdRows.Next() {
+		var vacancyID,exists int64
+		var timestamp sql.NullString
+		var origin,method,acquisition string
+		if err=createdRows.Scan(&vacancyID,&timestamp,&exists,&origin,&method,&acquisition);err!=nil{break}
+		if vacancyID==firstVacancy{continue}
+		firstVacancy=vacancyID
+		if exists==0 || (method!="apify"&&method!="firecrawl"&&method!="http"&&method!="unknown") ||
+			(method=="unknown"&&acquisition!="site"&&acquisition!="firecrawl") ||
+			(sourceID!="all"&&origin!=sourceID) || (parserID!="all"&&method!=parserID) {continue}
+		date:=funnelDate(timestamp)
+		if date==""{undatedNewVacancies++;continue}
+		if i,ok:=index[date];ok {
+			days[i].NewVacancies++
+			newVacancies++
+		}
+	}
+	if err==nil{err=createdRows.Err()}
+	createdRows.Close()
+	if err!=nil{return nil,ErrFunnelStorage}
 	if err=tx.Commit();err!=nil {return nil,ErrFunnelStorage}
 	totals,cohort:=funnelCounts{},funnelCohort{}
 	for _, entry:=range candidates {
@@ -256,10 +316,14 @@ func (r FunnelRepository) ReadFunnel(ctx context.Context, sourceID, parserID str
 		SourceOptions []funnelOption `json:"sourceOptions"`
 		ParserOptions []funnelOption `json:"parserOptions"`
 		Daily []funnelDay `json:"daily"`
-		Totals funnelCounts `json:"totals"`
+		Totals funnelTotals `json:"totals"`
 		Averages map[string]float64 `json:"averages"`
 		Cohort funnelCohort `json:"cohort"`
-	}{now.UnixMilli(),"Europe/Moscow",from,to,30,map[string]string{"sourceId":sourceID,"parser":parserID},sources,funnelParsers,days,totals,totals.average(30),cohort}
+		UndatedNewVacancies int64 `json:"undatedNewVacancies"`
+	}{now.UnixMilli(),"Europe/Moscow",from,to,30,map[string]string{"sourceId":sourceID,"parser":parserID},sources,funnelParsers,days,
+		funnelTotals{NewVacancies:newVacancies,funnelCounts:totals},
+		func()map[string]float64{avg:=totals.average(30);avg["newVacancies"]=float64(newVacancies)/30;return avg}(),
+		cohort,undatedNewVacancies}
 	encoded,e:=json.Marshal(body)
 	if e!=nil {return nil,ErrFunnelStorage}
 	return encoded,nil

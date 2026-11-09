@@ -14,9 +14,11 @@ const report={
   checkedAt:now,timezone:'Europe/Moscow',from:dates[0],to:dates[29],days:30,
   filters:{sourceId:'all',parser:'all'},
   sourceOptions:[{id:'hh',name:'HH'}],parserOptions:[{id:'apify',name:'Apify'}],
-  totals:counts,averages:Object.fromEntries(Object.entries(counts).map(([k,v])=>[k,v/30])),
+  totals:{...counts,newVacancies:1},
+  averages:{...Object.fromEntries(Object.entries(counts).map(([k,v])=>[k,v/30])),newVacancies:1/30},
+  undatedNewVacancies:0,
   cohort:{...counts,rejected:0,error:0,waiting:1,created:1,linked:0,undatedPublished:0},
-  daily:dates.map((day,i)=>({day,...Object.fromEntries(Object.entries(counts).map(([k,v])=>[k,i===29?v:0]))})),
+  daily:dates.map((day,i)=>({day,...Object.fromEntries(Object.entries(counts).map(([k,v])=>[k,i===29?v:0])),newVacancies:i===29?1:0})),
 };
 const issues={checkedAt:now,issues:[{
   id:'p2_fail',priority:2,status:'observed',title:'CI PRIVATE TITLE',
@@ -75,7 +77,10 @@ try {
   assert.equal(writes[1].section,'parser_funnel');
   assert.deepEqual(writes[1].filters,{sourceId:'all',parser:'all'});
   assert.equal(writes[1].daily.length,30);
-  assert.equal(writes[1].summary.newVacanciesPublished,1);
+  assert.equal(writes[1].summary.uniqueNewVacanciesInPeriod,1);
+  assert.equal(writes[1].summary.cohortCandidatesWithCreate,1);
+  assert.equal(writes[1].summary.totals.newVacancies,1);
+  assert.equal(writes[1].daily.at(-1).newVacancies,1);
 
   await act(async()=>{funnelRoot.root.findByProps({'aria-label':'Источник воронки'})
     .props.onChange({target:{value:'hh'}});});
