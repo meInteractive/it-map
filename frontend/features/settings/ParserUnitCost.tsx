@@ -79,13 +79,13 @@ export function isUnitCostReport(v:unknown):v is UnitCostReport {
 const money=(n:number)=>n>0&&n<0.00001?'менее $0,00001':'
 export function UnitCostView({report}:{report:UnitCostReport}){
  const {apify,ai,daily}=report;
- const barMax=Math.max(0.001,...daily.map(d=>d.aiUsd+d.apifyUsd));
+ const barMax=Math.max(0,...daily.map(d=>d.aiUsd+d.apifyUsd)),scale=barMax>0?barMax:1;
  const width=820,left=42,right=16,bottom=184,chartHeight=148;
  const step=(width-left-right)/daily.length,barWidth=Math.min(23,step*.65);
  const bars=daily.map((d,i)=>{
   const x=left+i*step+(step-barWidth)/2;
-  const aiH=d.aiUsd/barMax*chartHeight;
-  const apifyH=d.apifyUsd/barMax*chartHeight;
+  const aiH=d.aiUsd/scale*chartHeight;
+  const apifyH=d.apifyUsd/scale*chartHeight;
   return <g key={d.day}><title>{date(d.day)}: ИИ {money(d.aiUsd)}, Apify {money(d.apifyUsd)}; новых вакансий {d.newVacancies}</title>
    <rect x={x} y={bottom-aiH} width={barWidth} height={aiH} fill="#627fbd"/>
    <rect x={x} y={bottom-aiH-apifyH} width={barWidth} height={apifyH} fill="#b58a49"/>
