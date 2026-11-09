@@ -289,8 +289,8 @@
     {
       "id": "scheduler",
       "implementation": "partial",
-      "level": "Settings/dashboard/retry/cancel/queue/GET saved run; ручной запуск с NDJSON, probe и tick за серверным флагом, mock SQL/HTTP приёмка GO-404; ручное продолжение выбранного HH dataset; точечная команда HH одной компании; продолжение одного этапа выбранного HH сканирования; GO-107: admin-only issues, read-only P1/P2 и автоматические дневные замеры; GO-108: admin-only funnel с фактами стадий, независимыми датами событий/когорты и фильтрами source/parser",
-      "gap": "Cloud-owner, приёмка реального пилота GO-108 и полноценный source HTTP golden для issues и остальных маршрутов, включая timing потока, остаются открыты; планирование ограничено разрешёнными HH-источниками. Реальные провайдеры и автоматический timer не включены.",
+      "level": "Settings/dashboard/retry/cancel/queue/GET saved run; ручной запуск с NDJSON, probe и tick за серверным флагом, mock SQL/HTTP приёмка GO-404; ручное продолжение выбранного HH dataset; точечная команда HH одной компании; продолжение одного этапа выбранного HH сканирования; GO-107: admin-only issues, read-only P1/P2 и автоматические дневные замеры; GO-108: admin-only funnel с фактами стадий, независимыми датами событий/когорты и фильтрами source/parser; GO-433: админский SELECT-only расчёт частичной стоимости новой уникальной карточки за 7/30 дней, фильтр источника и синтетическая MariaDB-проверка",
+      "gap": "Cloud-owner, приёмка реального пилота GO-108 и полноценный source HTTP golden для issues и остальных маршрутов, включая timing потока, остаются открыты; планирование ограничено разрешёнными HH-источниками. Реальные провайдеры и автоматический timer не включены. GO-433: нет полной когортной атрибуции Apify/Firecrawl и provider-verified USD, произвольных периодов, реального пилота.",
       "evidence": [
         {
           "file": "internal/storage/scheduler_jobs_integration_test.go",
@@ -489,6 +489,15 @@
         {
           "file": "internal/storage/scheduler_funnel_integration_test.go",
           "symbol": "TestMariaDBSchedulerFunnelDisposable",
+          "required": true
+        },
+        {
+          "file": "internal/httpapi/scheduler_unit_cost_routes_test.go",
+          "symbol": "TestSchedulerUnitCostHTTPAccessAndFilters"
+        },
+        {
+          "file": "internal/storage/scheduler_unit_cost_integration_test.go",
+          "symbol": "TestMariaDBSchedulerUnitCostDisposable",
           "required": true
         }
       ]
@@ -805,7 +814,7 @@
   ],
   "sourceHashes": {
     "frontend/api/client.ts": "b6880480b3eed65bf7caa043f5e41c8e899b672e5c9629666ccbd6d8f80c14ad",
-    "internal/httpapi/handler.go": "74747f72f93b19f714baec4cbf197c880ea05710a0c3a6a2b65f447dd3768644",
+    "internal/httpapi/handler.go": "5adfe2d7a0613c4c41f8c2a6cb580be0bbc10c4144156cd3012567ea65acc1a5",
     "server/routes/index.js": "6134004f682975cb51ea13cd2ec4de8e85a5957deff6a5392fbad3fd70ccb1e4"
   },
   "clientExports": [
