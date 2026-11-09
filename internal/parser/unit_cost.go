@@ -106,8 +106,10 @@ func (r UnitCostRepository) ReadUnitCost(ctx context.Context, days int, source s
 		CheckedAt:now.UnixMilli(),Timezone:"Europe/Moscow",
 		From:daily[0].Day,To:daily[len(daily)-1].Day,PeriodDays:days,
 		SourceID:source,CalendarProxy:true,IncompleteCosts:true,Daily:daily,
-		SourceOptions:append(append([]funnelOption{},SourceOptions()...),funnelOption{ID:"unknown",Name:"Источник не указан"}),
+		SourceOptions:[]funnelOption{},
 	}
+	for _,opt:=range SourceOptions(){report.SourceOptions=append(report.SourceOptions,funnelOption{ID:opt.ID,Name:opt.Name})}
+	report.SourceOptions=append(report.SourceOptions,funnelOption{ID:"unknown",Name:"Источник не указан"})
 	tx,err:=r.DB.BeginTx(ctx,&sql.TxOptions{ReadOnly:true,Isolation:sql.LevelRepeatableRead})
 	if err!=nil{return nil,ErrUnitCostStorage}
 	defer tx.Rollback()
