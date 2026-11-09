@@ -10,7 +10,7 @@ func TestGO290HHScanScheduleAfterIntervalChange(t *testing.T) {
 	success := sql.NullString{String:"2026-11-08T10:00:00.000Z", Valid:true}
 	oldNext := time.Date(2026,11,15,10,0,0,0,time.UTC).UnixMilli()
 	due := time.Date(2026,11,9,10,0,0,0,time.UTC).UnixMilli()
-	now := due + int64(time.Minute)
+	now := due + int64(time.Minute/time.Millisecond)
 	rows := []HHScanScheduleSource{
 		{Enabled:true,Favorite:true,NextRunAt:oldNext,IntervalDays:7,LastSuccessAt:success},
 		{Enabled:true,Favorite:true,NextRunAt:oldNext,IntervalDays:7,LastSuccessAt:success,HasActiveScan:true},
