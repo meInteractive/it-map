@@ -17,7 +17,7 @@ func cohortCaptured(kind,local,cohort string) cohortEdge{
 func nearMoney(a,b float64)bool{return math.Abs(a-b)<1e-9}
 
 func TestCohortReceiptOnePaidOperationManyCandidatesAndScans(t *testing.T){
-	const a="scan-one",b="scan-two"
+	const a, b = "scan-one", "scan-two"
 	rows:=[]cohortOperation{
 		// A single Actor can yield several candidates and can be reread
 		// from Dataset. It remains exactly one invoice.
