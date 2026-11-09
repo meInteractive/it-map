@@ -4,6 +4,7 @@ import ParserIssues,{IssueSummary,type IssuesReport} from './ParserIssues';
 import ParserFunnel from './ParserFunnel';
 import ParserUnitCost from './ParserUnitCost';
 import ParserExpenseRepeats from './ParserExpenseRepeats';
+import ParserHHScanSchedule from './ParserHHScanSchedule';
 import CopyDebugJSON from './CopyDebugJSON';
 import CopyAllDiagnostics from './CopyAllDiagnostics';
 import AISpendingDebug from './AISpendingDebug';
@@ -86,6 +87,7 @@ export default function Scheduler({roles,services,tools,onSettings}:{roles?:Reac
   <section id="parser-panel-scope" role="tabpanel" aria-labelledby="parser-tab-scope" hidden={view!=='scope'} className="parser-tab-panel">{visited.includes('scope')&&<><article className="settings-card"><ScopeForm settings={s} options={d.sourceOptions||[]}/></article>{roles}</>}</section>
   <section id="parser-panel-services" role="tabpanel" aria-labelledby="parser-tab-services" hidden={view!=='services'} className="parser-tab-panel">{visited.includes('services')&&<><article className="settings-card"><div className="scheduler-actions"><h2>Бюджеты JEV и LLM</h2><AISpendingDebug dayBudgetUsd={s.dayBudgetUsd} monthBudgetUsd={s.monthBudgetUsd}/></div><p>Сегодня: {usd(d.spending.dayUsd)}. В этом месяце: {usd(d.spending.monthUsd)}. Включая неизвестные резервы.</p><BudgetForm settings={s}/><details><summary>Расходы по этапам</summary>{d.spending.byType.map(r=><p key={r.type}>{types[r.type]||r.type}: {usd(r.usd)} · неизвестных резервов: {r.unknown} · Firecrawl: {r.credits===null?'—':r.credits+' кредитов'}</p>)}<p className="resume-hint">Кредиты Firecrawl и доллары учитываются отдельно. Расходы сопроводительных писем сюда не входят.</p></details></article>{services}{onSettings&&<button type="button" className="settings-button secondary" onClick={()=>onSettings('ai')}>Открыть настройки нейросетей</button>}</>}</section>
   <section id="parser-panel-diagnostics" role="tabpanel" aria-labelledby="parser-tab-diagnostics" hidden={view!=='diagnostics'} className="parser-tab-panel">{visited.includes('diagnostics')&&<>
+   <ParserHHScanSchedule/>
    <ParserFunnel isAuthorized={isAuthorized}/>
    <ParserUnitCost/>
    <ParserExpenseRepeats/>
