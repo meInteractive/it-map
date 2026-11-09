@@ -31,7 +31,7 @@ const amount=(v:unknown):v is number=>typeof v==='number'&&Number.isFinite(v)&&v
 const integer=(v:unknown):v is number=>amount(v)&&Number.isSafeInteger(v);
 const sameAmount=(a:number,b:number)=>Math.abs(a-b)<=1e-8*Math.max(1,Math.abs(a),Math.abs(b));
 const validDay=(v:unknown):v is string=>{
- if(typeof v!=='string'||!/^\\d{4}-\\d{2}-\\d{2}$/.test(v))return false;
+ if(typeof v!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(v))return false;
  const time=Date.parse(v+'T00:00:00Z');
  return Number.isFinite(time)&&new Date(time).toISOString().slice(0,10)===v;
 };
