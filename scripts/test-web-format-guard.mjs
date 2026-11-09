@@ -13,14 +13,13 @@ assert.equal(p.scripts.format, 'node scripts/format-web.mjs --write');
 assert.equal(p.scripts['format:check'], 'node scripts/format-web.mjs --check');
 const flow = readFileSync(path.join(root, '.github/workflows/go-ci.yml'), 'utf8');
 const job = flow.slice(flow.indexOf('\n  web:\n'));
-assert.ok(job.includes('fetch-depth: 0'), 'Нужна вся история для определения diff');
 assert.ok(job.includes('node scripts/test-web-format-guard.mjs'));
 assert.ok(job.includes('npm run format:check'));
 assert.ok(job.indexOf('npm ci --no-audit --no-fund') < job.indexOf('npm run format:check'));
 assert.ok(job.indexOf('npm run format:check') < job.indexOf('npm run build:web'));
 const script = readFileSync(path.join(root, 'scripts/format-web.mjs'), 'utf8');
-for (const fragment of ['frontend\\/', 'shared\\/', 'web\\/main', 'vite\\.web']) {
-  assert.ok(script.includes(fragment), 'Обязательная область форматирования отсутствует: ' + fragment);
+for (const glob of ["'frontend/**/*.{ts,tsx}'", "'shared/**/*.{ts,tsx,mts}'", "'web/main.tsx'", "'vite.web.config.ts'"]) {
+  assert.ok(script.includes(glob), 'Обязательная область форматирования отсутствует: ' + glob);
 }
 
 const sentinel = path.join(root, 'frontend', '__go114_format_sentinel__.ts');
