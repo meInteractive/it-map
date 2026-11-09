@@ -66,7 +66,7 @@ type expenseRepeatsReport struct {
 type repeatActorEvidence struct {
 	Account      string
 	OperationKey string
-	Generation   int64
+	Generation   string
 	RunID        string
 	ReservedUSD  float64
 	ChargedUSD   sql.NullFloat64
@@ -132,7 +132,7 @@ func summarizeRepeatApify(items []repeatActorEvidence) (repeatApifySummary, erro
 		// An operation_key is a scheduler idempotency scope, not an invoice.
 		// Only DISTINCT provider Actor IDs within the SAME scope are suspicious.
 		if item.OperationKey != "" {
-			key := repeatKey(item.Account, strconv.FormatInt(item.Generation, 10), item.OperationKey)
+			key := repeatKey(item.Account, item.Generation, item.OperationKey)
 			if launches[key] == nil {
 				launches[key] = map[string]struct{}{}
 			}
