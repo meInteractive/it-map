@@ -181,6 +181,7 @@ jobs:
         run: |
           node scripts/test-parser-funnel.mjs
           node scripts/test-parser-funnel-ui.mjs
+          node scripts/test-parser-unit-cost-ui.mjs
           node scripts/test-parser-issues.mjs
           node scripts/test-parser-error-history.mjs
           node scripts/test-parser-error-history-ui.mjs
