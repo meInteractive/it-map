@@ -14,18 +14,23 @@ export interface HHScanScheduleReport {
 }
 const nonnegative=(v:unknown):v is number=>typeof v==='number'&&Number.isSafeInteger(v)&&v>=0;
 const object=(v:unknown):v is Record<string,unknown>=>v!==null&&typeof v==='object'&&!Array.isArray(v);
+// A named type guard carries the numeric runtime checks into the arithmetic
+// below. A dynamic keys.every alone cannot narrow Record<string, unknown>.
+const isHHScheduleSummary=(v:unknown):v is HHScheduleSummary=>{
+ if(!object(v))return false;
+ const keys=['configured','disabled','outsideScope','activeScan','waiting',
+  'potentiallyDue','recalculated','unknownLastSuccess'];
+ return keys.every(k=>nonnegative(v[k]))&&
+  (v.nextDueAt===null||nonnegative(v.nextDueAt));
+};
 export function isHHScanScheduleReport(v:unknown):v is HHScanScheduleReport {
  if(!object(v)||!nonnegative(v.checkedAt)||v.sourceId!=='hh'||
   typeof v.enabled!=='boolean'||typeof v.sourceSelected!=='boolean'||
   typeof v.favoritesOnly!=='boolean'||![1,3,7].includes(v.intervalDays as number)||
   ![0,3,7,14].includes(v.vacancyAgeDays as number)||
-  v.finalEligibilityVerified!==false||!object(v.summary)||
+  v.finalEligibilityVerified!==false||!isHHScheduleSummary(v.summary)||
   !nonnegative(v.pendingHHScans)||!nonnegative(v.runningHHScans))return false;
  const s=v.summary;
- const keys=['configured','disabled','outsideScope','activeScan','waiting',
-  'potentiallyDue','recalculated','unknownLastSuccess'];
- if(!keys.every(k=>nonnegative(s[k]))||
-  s.nextDueAt!==null&&!nonnegative(s.nextDueAt))return false;
  return s.disabled+s.outsideScope+s.activeScan+s.waiting+s.potentiallyDue===s.configured&&
   (s.waiting>0)===(s.nextDueAt!==null)&&
   (s.nextDueAt===null||s.nextDueAt>v.checkedAt);

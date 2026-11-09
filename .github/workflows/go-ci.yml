@@ -168,6 +168,10 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci --no-audit --no-fund
+      - name: GO-113 — обязательная строгая проверка типов React/Vite
+        run: |
+          node scripts/test-web-typecheck-guard.mjs
+          npm run typecheck:web
       - name: Проверить раздел документации и стабильность генерации
         run: |
           node scripts/test-documentation.mjs
