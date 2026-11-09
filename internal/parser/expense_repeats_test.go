@@ -13,14 +13,14 @@ func repeatPrice(n float64) sql.NullFloat64 { return sql.NullFloat64{Valid: true
 
 func TestGO434ApifyRepeatEvidenceDoesNotClaimSecondCharge(t *testing.T) {
 	rows := []repeatActorEvidence{
-		{Account: "ci", OperationKey: "scan", Generation: 1, RunID: "actor-a", ReservedUSD: .3, ChargedUSD: repeatPrice(.4)},
-		{Account: "ci", OperationKey: "scan", Generation: 1, RunID: "actor-a", ReservedUSD: .3, ChargedUSD: repeatPrice(.4)},
-		{Account: "ci", OperationKey: "scan", Generation: 1, RunID: "actor-b", ReservedUSD: .3, ChargedUSD: repeatPrice(.2)},
-		{Account: "other", OperationKey: "scan", Generation: 1, RunID: "actor-a", ChargedUSD: repeatPrice(.1)},
-		{Account: "ci", OperationKey: "scan", Generation: 2, RunID: "actor-c", ChargedUSD: repeatPrice(.1)},
-		{Account: "ci", OperationKey: "retry", Generation: 1, RunID: "actor-conflict", ChargedUSD: repeatPrice(.5)},
-		{Account: "ci", OperationKey: "retry", Generation: 1, RunID: "actor-conflict", ChargedUSD: repeatPrice(.6)},
-		{Account: "ci", OperationKey: "lost-ack", Generation: 1, RunID: "", ReservedUSD: .9},
+		{Account: "ci", OperationKey: "scan", Generation: "g1", RunID: "actor-a", ReservedUSD: .3, ChargedUSD: repeatPrice(.4)},
+		{Account: "ci", OperationKey: "scan", Generation: "g1", RunID: "actor-a", ReservedUSD: .3, ChargedUSD: repeatPrice(.4)},
+		{Account: "ci", OperationKey: "scan", Generation: "g1", RunID: "actor-b", ReservedUSD: .3, ChargedUSD: repeatPrice(.2)},
+		{Account: "other", OperationKey: "scan", Generation: "g1", RunID: "actor-a", ChargedUSD: repeatPrice(.1)},
+		{Account: "ci", OperationKey: "scan", Generation: "g2", RunID: "actor-c", ChargedUSD: repeatPrice(.1)},
+		{Account: "ci", OperationKey: "retry", Generation: "g1", RunID: "actor-conflict", ChargedUSD: repeatPrice(.5)},
+		{Account: "ci", OperationKey: "retry", Generation: "g1", RunID: "actor-conflict", ChargedUSD: repeatPrice(.6)},
+		{Account: "ci", OperationKey: "lost-ack", Generation: "g1", RunID: "", ReservedUSD: .9},
 	}
 	got, err := summarizeRepeatApify(rows)
 	if err != nil { t.Fatal(err) }
