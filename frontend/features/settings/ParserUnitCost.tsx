@@ -23,19 +23,73 @@ export interface UnitCostReport {
  totalConfirmedUsd:number;partialPeriodRatioUsd:number|null;
  calendarProxy:boolean;incompleteCosts:boolean;daily:CostDay[];
 }
-const money=(n:number)=>'$'+n.toLocaleString('ru-RU',{maximumFractionDigits:5});
+// The API cache accepts untyped JSON. Never turn a partial/invalid financial
+// report into a displayed zero, a misleading USD total or an uncaught render error.
+type ReportObject=Record<string,unknown>;
+const object=(v:unknown):v is ReportObject=>v!==null&&typeof v==='object'&&!Array.isArray(v);
+const amount=(v:unknown):v is number=>typeof v==='number'&&Number.isFinite(v)&&v>=0;
+const integer=(v:unknown):v is number=>amount(v)&&Number.isSafeInteger(v);
+const sameAmount=(a:number,b:number)=>Math.abs(a-b)<=1e-8*Math.max(1,Math.abs(a),Math.abs(b));
+const validDay=(v:unknown):v is string=>{
+ if(typeof v!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(v))return false;
+ const time=Date.parse(v+'T00:00:00Z');
+ return Number.isFinite(time)&&new Date(time).toISOString().slice(0,10)===v;
+};
+const validSpend=(v:unknown):v is Spending=>object(v)&&
+ ['confirmedUsd','unknownReservedUsd'].every(k=>amount(v[k]))&&
+ ['confirmedOperations','unknownOperations','unpricedOperations','conflictingOperations'].every(k=>integer(v[k]))&&
+ typeof v.unavailableForSource==='boolean';
+const validLineage=(v:unknown):v is AILineage=>object(v)&&
+ ['attempts','withJob','withCandidate','withMainVacancy','withMatchingCreate','missingJob',
+ 'missingCandidate','missingMainVacancy','sourceMismatch'].every(k=>integer(v[k]))&&
+ ['knownUsdWithMainLink','knownUsdWithoutMainLink'].every(k=>amount(v[k]))&&
+ typeof v.verifiedProviderAttribution==='boolean';
+
+export function isUnitCostReport(v:unknown):v is UnitCostReport {
+ if(!object(v)||!(v.periodDays===7||v.periodDays===30)||typeof v.sourceId!=='string'||!v.sourceId||
+    v.timezone!=='Europe/Moscow'||!integer(v.checkedAt)||!validDay(v.from)||!validDay(v.to)||
+    !integer(v.newUniqueVacancies)||!integer(v.undatedCreates)||
+    !validSpend(v.apify)||!validSpend(v.ai)||!validLineage(v.aiLineage)||
+    !amount(v.firecrawlCredits)||!integer(v.unknownCreditRows)||
+    !amount(v.totalConfirmedUsd)||(v.partialPeriodRatioUsd!==null&&!amount(v.partialPeriodRatioUsd))||
+    v.calendarProxy!==true||v.incompleteCosts!==true||
+    !Array.isArray(v.sourceOptions)||!v.sourceOptions.every(x=>object(x)&&typeof x.id==='string'&&
+      x.id.length>0&&typeof x.name==='string')||
+    !Array.isArray(v.daily)||v.daily.length!==v.periodDays)return false;
+ let totalNew=0,totalAI=0,totalApify=0;
+ let previous=0;
+ for(const day of v.daily){
+  if(!object(day)||!validDay(day.day)||!integer(day.newVacancies)||!amount(day.aiUsd)||
+     !amount(day.apifyUsd)||!amount(day.observedCredits))return false;
+  const epoch=Date.parse(day.day+'T00:00:00Z');
+  if(previous&&epoch-previous!==86400000)return false;
+  previous=epoch;
+  totalNew+=day.newVacancies;
+  totalAI+=day.aiUsd;
+  totalApify+=day.apifyUsd;
+ }
+ if(v.daily[0].day!==v.from||v.daily[v.daily.length-1].day!==v.to||
+    !Number.isSafeInteger(totalNew)||totalNew!==v.newUniqueVacancies||
+    !sameAmount(v.totalConfirmedUsd,v.ai.confirmedUsd+v.apify.confirmedUsd)||
+    !sameAmount(totalAI,v.ai.confirmedUsd)||!sameAmount(totalApify,v.apify.confirmedUsd)||
+    (v.newUniqueVacancies===0&&v.partialPeriodRatioUsd!==null))return false;
+ return v.partialPeriodRatioUsd===null||
+   sameAmount(v.partialPeriodRatioUsd,v.totalConfirmedUsd/v.newUniqueVacancies);
+}
+const money=(n:number)=>n>0&&n<0.00001?'менее $0,00001':'$'+n.toLocaleString('ru-RU',{maximumFractionDigits:5});
 const count=(n:number)=>n.toLocaleString('ru-RU');
 const date=(v:string)=>v.slice(8,10)+'.'+v.slice(5,7);
+const axisAmount=(n:number)=>n===0?'0':n.toLocaleString('ru-RU',{maximumSignificantDigits:3});
 
 export function UnitCostView({report}:{report:UnitCostReport}){
  const {apify,ai,daily}=report;
- const barMax=Math.max(0.001,...daily.map(d=>d.aiUsd+d.apifyUsd));
+ const barMax=Math.max(0,...daily.map(d=>d.aiUsd+d.apifyUsd)),scale=barMax>0?barMax:1;
  const width=820,left=42,right=16,bottom=184,chartHeight=148;
  const step=(width-left-right)/daily.length,barWidth=Math.min(23,step*.65);
  const bars=daily.map((d,i)=>{
   const x=left+i*step+(step-barWidth)/2;
-  const aiH=d.aiUsd/barMax*chartHeight;
-  const apifyH=d.apifyUsd/barMax*chartHeight;
+  const aiH=d.aiUsd/scale*chartHeight;
+  const apifyH=d.apifyUsd/scale*chartHeight;
   return <g key={d.day}><title>{date(d.day)}: ИИ {money(d.aiUsd)}, Apify {money(d.apifyUsd)}; новых вакансий {d.newVacancies}</title>
    <rect x={x} y={bottom-aiH} width={barWidth} height={aiH} fill="#627fbd"/>
    <rect x={x} y={bottom-aiH-apifyH} width={barWidth} height={apifyH} fill="#b58a49"/>
@@ -60,7 +114,7 @@ export function UnitCostView({report}:{report:UnitCostReport}){
   <AILineageView lineage={report.aiLineage}/><h3>Динамика локально подтверждённых расходов</h3>
   <p className="resume-hint">По дате операции, московское время; <span style={{color:'#627fbd'}}>■</span> ИИ, <span style={{color:'#b58a49'}}>■</span> Apify. Количество новых вакансий по дням — в таблице под графиком. Неподтверждённые списания на график не попадают.</p>
   <div className="parser-history-scroll"><svg className="parser-history-chart" viewBox={'0 0 '+width+' 224'} role="img" aria-label="Подтверждённые локальные расходы Apify и ИИ по дням в USD">
-   {[0,1,2,3,4].map(i=><g key={i}><line className="parser-history-grid" x1={left} x2={width-right} y1={bottom-chartHeight*i/4} y2={bottom-chartHeight*i/4}/><text x={left-6} y={bottom-chartHeight*i/4+4} textAnchor="end" fontSize="11">{(barMax*i/4).toFixed(2)}</text></g>)}
+   {[0,1,2,3,4].map(i=><g key={i}><line className="parser-history-grid" x1={left} x2={width-right} y1={bottom-chartHeight*i/4} y2={bottom-chartHeight*i/4}/><text x={left-6} y={bottom-chartHeight*i/4+4} textAnchor="end" fontSize="11">{axisAmount(barMax*i/4)}</text></g>)}
    {bars}
   </svg></div>
   <details><summary>Подробные значения по дням</summary><div className="docs-table-wrap"><table className="parser-history-table"><thead><tr><th>Дата</th><th>Новых карточек</th><th>Apify USD</th><th>ИИ USD</th><th>Кредиты Firecrawl (наблюдения)</th></tr></thead><tbody>{daily.map(d=><tr key={d.day}><td>{d.day}</td><td>{d.newVacancies}</td><td>{money(d.apifyUsd)}</td><td>{money(d.aiUsd)}</td><td>{d.observedCredits}</td></tr>)}</tbody></table></div></details>
@@ -71,13 +125,15 @@ export default function ParserUnitCost(){
  const [days,setDays]=useState<7|30>(30),[sourceId,setSourceId]=useState('all');
  const options=useRef<UnitCostReport|null>(null);
  const q=useApi<UnitCostReport>('/api/scheduler/unit-cost?days='+days+'&sourceId='+encodeURIComponent(sourceId),{refreshIntervalMs:60000});
- const raw=q.data&&Array.isArray(q.data.daily)?q.data:undefined;
+ const raw=isUnitCostReport(q.data)?q.data:undefined;
  if(raw)options.current=raw;
+ const invalidResponse=q.data!==undefined&&!raw&&!q.loading&&!q.error;
  const report=raw?.periodDays===days&&raw.sourceId===sourceId&&!q.error?raw:undefined;
+ const displayError=q.error??(invalidResponse?new Error('Некорректный ответ статистики. Повторите загрузку.'):undefined);
  return <article className="settings-card parser-unit-cost"><div className="parser-line"><div><h2>Себестоимость новой вакансии</h2><p className="resume-hint">Частичный календарный расчёт · GO-433</p></div><button className="settings-button secondary" type="button" onClick={q.reload}>Обновить</button></div>
   <div className="parser-funnel-filters"><label><span>Период</span><select className="settings-select" aria-label="Период расчёта стоимости" value={days} onChange={e=>setDays(Number(e.target.value) as 7|30)}><option value={7}>7 дней</option><option value={30}>30 дней</option></select></label>
   <label><span>Источник</span><select className="settings-select" aria-label="Источник расчёта стоимости" value={sourceId} onChange={e=>setSourceId(e.target.value)}><option value="all">Все источники</option>{options.current?.sourceOptions.map(o=><option key={o.id} value={o.id}>{o.name}</option>)}</select></label></div>
-  <State loading={!report&&q.loading} error={q.error}>{report?<><p className="resume-hint">{date(report.from)}–{date(report.to)}.{report.to.slice(0,4)}, по Москве.</p><UnitCostView report={report}/></>:!q.loading&&<p>Статистика стоимости пока недоступна.</p>}</State>
+  <State loading={!report&&q.loading} error={displayError}>{report?<><p className="resume-hint">{date(report.from)}–{date(report.to)}.{report.to.slice(0,4)}, по Москве.</p><UnitCostView report={report}/></>:!q.loading&&<p>Статистика стоимости пока недоступна.</p>}</State>
  </article>;
 }
 

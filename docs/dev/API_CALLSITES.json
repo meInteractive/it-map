@@ -1339,7 +1339,7 @@
     {
       "id": "27b4f9a8e26ad7e0",
       "file": "frontend/features/settings/ParserUnitCost.tsx",
-      "line": 73,
+      "line": 127,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
