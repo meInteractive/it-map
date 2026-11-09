@@ -1,0 +1,23 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "allowJs": false,
+    "incremental": false,
+    "plugins": [],
+    "types": ["node", "vite/client"]
+  },
+  "include": [
+    "web/main.tsx",
+    "frontend/**/*.ts",
+    "frontend/**/*.tsx",
+    "shared/**/*.ts",
+    "shared/**/*.d.mts",
+    "vite.web.config.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "examples",
+    ".next",
+    "dist"
+  ]
+}
