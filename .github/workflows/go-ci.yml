@@ -168,7 +168,7 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci --no-audit --no-fund
-      - name: GO-114 — проверка форматирования изменённого React/TypeScript
+      - name: GO-114 — проверка форматирования всего React/TypeScript
         run: |
           node scripts/test-web-format-guard.mjs
           npm run format:check
