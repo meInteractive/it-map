@@ -1753,7 +1753,7 @@
     {
       "id": "0f8303a5216fa000",
       "file": "frontend/features/settings/Scheduler.tsx",
-      "line": 95,
+      "line": 96,
       "call": "mutate",
       "method": "POST",
       "methodExpression": "'POST'",
@@ -1769,7 +1769,7 @@
     {
       "id": "952a1852bfcc4624",
       "file": "frontend/features/settings/Scheduler.tsx",
-      "line": 95,
+      "line": 96,
       "call": "mutate",
       "method": "POST",
       "methodExpression": "'POST'",
