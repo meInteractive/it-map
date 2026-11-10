@@ -155,7 +155,9 @@ const hhSchedule={
   pendingHHScans:6,runningHHScans:0,
   pendingBreakdown:{pending:6,notDue:0,unverifiedCursor:1,
     unverifiedLineage:1,unverifiedSourceChanged:0,
-    unverifiedLegacyFilters:1,unverifiedMalformedCursor:0,unverifiedOtherProof:0,
+    unverifiedLegacyFilters:1,unverifiedLegacyVersion:1,unverifiedLegacyLineage:1,
+    unverifiedLegacyMoscow:0,unverifiedLegacyDate:0,unverifiedLegacyTitle:0,
+    unverifiedLegacyRoles:1,unverifiedMalformedCursor:0,unverifiedOtherProof:0,
     missingOperation:0,orphanPaid:0,
     reconcileCandidate:1,launchCooldown:4,launchCandidate:0,other:0,
     unconfirmedRunId:0,oldestUnconfirmedAt:null,
@@ -181,6 +183,12 @@ assert.equal(hhJSON.summary.pendingBreakdown.pending,6);
 assert.equal(hhJSON.summary.pendingBreakdown.launchCooldown,4);
 assert.equal(hhJSON.summary.pendingBreakdown.unverifiedLineage,1);
 assert.equal(hhJSON.summary.pendingBreakdown.unverifiedLegacyFilters,1);
+assert.equal(hhJSON.summary.pendingBreakdown.unverifiedLegacyVersion,1);
+assert.equal(hhJSON.summary.pendingBreakdown.unverifiedLegacyLineage,1);
+assert.equal(hhJSON.summary.pendingBreakdown.unverifiedLegacyMoscow,0);
+assert.equal(hhJSON.summary.pendingBreakdown.unverifiedLegacyDate,0);
+assert.equal(hhJSON.summary.pendingBreakdown.unverifiedLegacyTitle,0);
+assert.equal(hhJSON.summary.pendingBreakdown.unverifiedLegacyRoles,1);
 assert.equal(hhJSON.summary.pendingBreakdown.unverifiedSourceChanged,0);
 assert.equal(hhJSON.summary.pendingBreakdown.unverifiedMalformedCursor,0);
 assert.equal(hhJSON.summary.pendingBreakdown.unverifiedOtherProof,0);
@@ -235,6 +243,8 @@ assert.ok(!JSON.stringify(uncertainJSON).includes('providerRunId'));
 const reasonReport={...hhSchedule,pendingBreakdown:{...hhSchedule.pendingBreakdown,
   unverifiedLineage:4,unverifiedCursor:4,
   unverifiedSourceChanged:1,unverifiedLegacyFilters:1,
+  unverifiedLegacyVersion:1,unverifiedLegacyLineage:1,unverifiedLegacyMoscow:1,
+  unverifiedLegacyDate:1,unverifiedLegacyTitle:1,unverifiedLegacyRoles:1,
   unverifiedMalformedCursor:1,unverifiedOtherProof:1,
   payload:secret,companyName:secret,sourceUrl:'https://private.example/'+secret,
 }};
@@ -244,6 +254,8 @@ const reasonJSON=JSON.parse(serializeDebugJSON({
 const reasonBreakdown=reasonJSON.summary.pendingBreakdown;
 assert.equal(reasonBreakdown.unverifiedSourceChanged+reasonBreakdown.unverifiedLegacyFilters+
   reasonBreakdown.unverifiedMalformedCursor+reasonBreakdown.unverifiedOtherProof,4);
+assert.equal(reasonBreakdown.unverifiedLegacyRoles,1);
+assert.equal(reasonBreakdown.unverifiedLegacyMoscow,1);
 assert.ok(!JSON.stringify(reasonJSON).includes(secret));
 assert.ok(!JSON.stringify(reasonJSON).includes('sourceUrl'));
 
@@ -252,7 +264,9 @@ const oldFields={...hhSchedule,summary:{...hhSchedule.summary},
 for(const field of ['noSuccess48hWaiting','noSuccess48hActive','noSuccess48hDue',
   'noSuccess48hWaitPartial'])delete oldFields.summary[field];
 for(const field of ['unverifiedLineage','unverifiedSourceChanged',
-  'unverifiedLegacyFilters','unverifiedMalformedCursor','unverifiedOtherProof',
+  'unverifiedLegacyFilters','unverifiedLegacyVersion','unverifiedLegacyLineage',
+  'unverifiedLegacyMoscow','unverifiedLegacyDate','unverifiedLegacyTitle',
+  'unverifiedLegacyRoles','unverifiedMalformedCursor','unverifiedOtherProof',
   'missingOperation','oldestUnverifiedAt',
   'oldestReconcileAt','oldestCooldownAt','unconfirmedRunId','oldestUnconfirmedAt'])delete oldFields.pendingBreakdown[field];
 const legacy=JSON.parse(serializeDebugJSON({
@@ -262,6 +276,9 @@ assert.equal(legacy.summary.noSuccess48hWaiting,null);
 assert.equal(legacy.summary.pendingBreakdown.unverifiedLineage,null);
 assert.equal(legacy.summary.pendingBreakdown.unverifiedSourceChanged,null);
 assert.equal(legacy.summary.pendingBreakdown.unverifiedLegacyFilters,null);
+for (const k of ['unverifiedLegacyVersion','unverifiedLegacyLineage',
+ 'unverifiedLegacyMoscow','unverifiedLegacyDate','unverifiedLegacyTitle',
+ 'unverifiedLegacyRoles']) assert.equal(legacy.summary.pendingBreakdown[k],null);
 assert.equal(legacy.summary.pendingBreakdown.unverifiedMalformedCursor,null);
 assert.equal(legacy.summary.pendingBreakdown.unverifiedOtherProof,null);
 assert.equal(legacy.summary.pendingBreakdown.oldestUnverifiedAt,null);

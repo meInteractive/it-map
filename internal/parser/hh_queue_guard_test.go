@@ -114,3 +114,32 @@ func TestHHBlockedLineageReasonReadOnlyClassification(t *testing.T) {
 		})
 	}
 }
+
+func TestHHLegacyFactorsOverlapWithoutAllowingUnverifiedCursor(t *testing.T) {
+    const generation="00000000-0000-4000-8000-000000000001"
+    const source="https://hh.ru/employer/456"
+    from,to:="2026-11-01T00:00:00+03:00","2026-11-03T23:59:59+03:00"
+    base:=hhListingCursor{Version:1,LineageVersion:1,MoscowFilter:true,DateFilterApplied:true,
+        VacancyAgeDays:3,DateFrom:&from,DateTo:&to,ProfessionalRoles:[]string{"36"},
+        Operation:apifysettings.OperationVersion{Generation:generation,CompanyID:7,SourceURL:source,SourceRevision:2}}
+    if legacyFactors(base).any(){t.Fatal("валидный формат не должен помечаться")}
+    cases:=[]struct{name string;alter func(*hhListingCursor);flag func(hhLegacyFactors)bool}{
+        {"version",func(c *hhListingCursor){c.Version=0},func(x hhLegacyFactors)bool{return x.Version}},
+        {"lineage",func(c *hhListingCursor){c.LineageVersion=0},func(x hhLegacyFactors)bool{return x.Lineage}},
+        {"moscow",func(c *hhListingCursor){c.MoscowFilter=false},func(x hhLegacyFactors)bool{return x.Moscow}},
+        {"date",func(c *hhListingCursor){c.DateFilterApplied=false},func(x hhLegacyFactors)bool{return x.Date}},
+        {"title",func(c *hhListingCursor){s:="manager";c.TitleQuery=&s},func(x hhLegacyFactors)bool{return x.Title}},
+        {"roles",func(c *hhListingCursor){c.ProfessionalRoles=nil},func(x hhLegacyFactors)bool{return x.Roles}},
+    }
+    for _,tc:=range cases {
+        t.Run(tc.name,func(t *testing.T){
+            c:=base;tc.alter(&c)
+            if !tc.flag(legacyFactors(c)) {t.Fatal("пропущен признак",tc.name)}
+            raw,_:=json.Marshal(c)
+            if hhBlockedLineageReason(raw,true)!=hhBlockedLegacyFilters {t.Fatal("не legacy класс")}
+            if _,ok:=hhCursorProof(raw,generation,7,source,2);ok{t.Fatal("нельзя допускать старый курсор")}
+        })
+    }
+    both:=base;both.MoscowFilter=false;both.ProfessionalRoles=nil
+    if factors:=legacyFactors(both);!factors.Moscow||!factors.Roles{t.Fatal("счётчики должны перекрываться")}
+}

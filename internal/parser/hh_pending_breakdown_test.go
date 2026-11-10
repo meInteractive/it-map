@@ -127,3 +127,21 @@ func TestHHPendingBreakdownUnverifiedLineageReasonsPartition(t *testing.T) {
 	got = summarizeHHPending(jobs,now,DefaultSettings(),view)
 	if got.UnverifiedOtherProof!=4 || got.UnverifiedLineage!=4 {t.Fatalf("неизвестная причина блокировки: %+v",got)}
 }
+
+func TestHHPendingLegacyFactorsCanOverlap(t *testing.T) {
+    now:=time.Date(2026,11,10,19,0,0,0,time.UTC).UnixMilli()
+    source:="hh"
+    jobs:=[]Job{{ID:"one",Type:"scan_source",Status:"pending",SourceID:&source,RunAfter:now},
+        {ID:"two",Type:"scan_source",Status:"pending",SourceID:&source,RunAfter:now}}
+    view:=claimView{blockedHHScans:map[string]bool{"one":true,"two":true}}
+    reasons:=map[string]string{"one":hhBlockedLegacyFilters,"two":hhBlockedLegacyFilters}
+    legacy:=map[string]hhLegacyFactors{"one":{true,true,true,true,true,true},"two":{Roles:true}}
+    b:=summarizeHHPendingWithDetails(jobs,now,DefaultSettings(),view,reasons,legacy)
+    if b.Pending!=2||b.UnverifiedLineage!=2||b.UnverifiedLegacyFilters!=2||
+        b.UnverifiedLegacyVersion!=1||b.UnverifiedLegacyLineage!=1||
+        b.UnverifiedLegacyMoscow!=1||b.UnverifiedLegacyDate!=1||
+        b.UnverifiedLegacyTitle!=1||b.UnverifiedLegacyRoles!=2||
+        b.ReconcileCandidate!=0||b.LaunchCandidate!=0 {
+        t.Fatalf("вложенные признаки не должны изменять статус задания: %+v",b)
+    }
+}

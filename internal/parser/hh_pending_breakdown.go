@@ -15,6 +15,12 @@ type HHPendingBreakdown struct {
 	UnverifiedLineage   int64  `json:"unverifiedLineage"`
 	UnverifiedSourceChanged int64 `json:"unverifiedSourceChanged"`
 	UnverifiedLegacyFilters  int64 `json:"unverifiedLegacyFilters"`
+    UnverifiedLegacyVersion int64 `json:"unverifiedLegacyVersion"`
+    UnverifiedLegacyLineage int64 `json:"unverifiedLegacyLineage"`
+    UnverifiedLegacyMoscow int64 `json:"unverifiedLegacyMoscow"`
+    UnverifiedLegacyDate int64 `json:"unverifiedLegacyDate"`
+    UnverifiedLegacyTitle int64 `json:"unverifiedLegacyTitle"`
+    UnverifiedLegacyRoles int64 `json:"unverifiedLegacyRoles"`
 	UnverifiedMalformedCursor int64 `json:"unverifiedMalformedCursor"`
 	UnverifiedOtherProof int64 `json:"unverifiedOtherProof"`
 	MissingOperation    int64  `json:"missingOperation"`
@@ -46,6 +52,9 @@ func summarizeHHPending(jobs []Job, now int64, settings Settings, view claimView
 }
 
 func summarizeHHPendingWithReasons(jobs []Job, now int64, settings Settings, view claimView, reasons map[string]string) HHPendingBreakdown {
+    return summarizeHHPendingWithDetails(jobs,now,settings,view,reasons,nil)
+}
+func summarizeHHPendingWithDetails(jobs []Job, now int64, settings Settings, view claimView, reasons map[string]string, legacy map[string]hhLegacyFactors) HHPendingBreakdown {
 	var out HHPendingBreakdown
 	source := "hh"
 	types := map[string]bool{"scan_source": true}
@@ -67,7 +76,14 @@ func summarizeHHPendingWithReasons(jobs []Job, now int64, settings Settings, vie
 			case hhBlockedSourceChanged:
 				out.UnverifiedSourceChanged++
 			case hhBlockedLegacyFilters:
-				out.UnverifiedLegacyFilters++
+                out.UnverifiedLegacyFilters++
+                factors:=legacy[job.ID]
+                if factors.Version {out.UnverifiedLegacyVersion++}
+                if factors.Lineage {out.UnverifiedLegacyLineage++}
+                if factors.Moscow {out.UnverifiedLegacyMoscow++}
+                if factors.Date {out.UnverifiedLegacyDate++}
+                if factors.Title {out.UnverifiedLegacyTitle++}
+                if factors.Roles {out.UnverifiedLegacyRoles++}
 			case hhBlockedMalformedCursor:
 				out.UnverifiedMalformedCursor++
 			default:
@@ -125,7 +141,7 @@ func readHHPendingBreakdown(ctx context.Context, tx *sql.Tx, generation string, 
 	if err != nil {
 		return empty, err
 	}
-	_, blocked, reasons, err := readVerifiedHHLineageReasons(ctx, tx, generation)
+	_, blocked, reasons, legacy, err := readVerifiedHHLineageReasons(ctx, tx, generation)
 	if err != nil {
 		return empty, err
 	}
@@ -148,5 +164,5 @@ func readHHPendingBreakdown(ctx context.Context, tx *sql.Tx, generation string, 
 	if err != nil {
 		return empty, err
 	}
-	return summarizeHHPendingWithReasons(jobs, now, settings, view, reasons), nil
+	return summarizeHHPendingWithDetails(jobs, now, settings, view, reasons, legacy), nil
 }
