@@ -40,8 +40,8 @@ type claimView struct {
 	blockedHHScans  map[string]bool
 	goOperationKeys map[string]string
 	orphanPaidScans map[string]bool
-	// A reserved operation without provider Run ID cannot be safely reconciled.
-	// Keep it fenced in both HH phases; do not issue a second paid POST.
+	// Зарезервированную операцию без Run ID провайдера нельзя безопасно дочитать.
+	// Блокируем обе фазы HH и не допускаем повторного платного POST.
 	unconfirmedRunIDs map[string]bool
 	lastListingStart int64
 }
@@ -213,9 +213,9 @@ func claimEligible(job Job, now int64, settings Settings, options ClaimOptions, 
 					return false, false, nil
 				}
 			}
-			// The ledger can contain starting/uncertain with no provider
-			// Run ID. GET cannot reconcile it, while a fresh paid POST is
-			// unsafe. Never claim that job in either automated HH phase.
+			// В денежном журнале возможны starting/uncertain без Run ID.
+			// GET не сможет проверить запуск, а повторный POST опасен.
+			// Обе автоматические фазы пропускают такое задание.
 			if known && view.operations[key] && view.unconfirmedRunIDs[key] {
 				return false, false, nil
 			}

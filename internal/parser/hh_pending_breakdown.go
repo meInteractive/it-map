@@ -69,8 +69,8 @@ func summarizeHHPending(jobs []Job, now int64, settings Settings, view claimView
 			olderHHStamp(&out.OldestUnverifiedAt, job.CreatedAt)
 			continue
 		}
-		// A paid ledger entry without a provider Run ID is neither a
-		// valid GET/reconcile target nor permission for a new paid start.
+		// Запись оплаченной операции без Run ID не подходит для GET
+		// и не даёт разрешения на следующий платный запуск.
 		if key, known := view.goOperationKeys[job.ID]; known && view.operations[key] && view.unconfirmedRunIDs[key] {
 			out.Other++
 			out.UnconfirmedRunID++

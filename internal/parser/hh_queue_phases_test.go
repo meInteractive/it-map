@@ -90,8 +90,8 @@ func TestHHQueuePhaseRejectsPaidLedgerWithoutProviderRunID(t *testing.T) {
 			t.Fatalf("HH %s must not claim a paid operation without Run ID: ok=%v paid=%v err=%v", phase, ok, paid, err)
 		}
 	}
-	// Once the provider Run ID is durably confirmed, only GET/reconcile may resume,
-	// regardless of the 15-minute new-Actor cooldown.
+	// После сохранения Run ID допускается только GET/reconcile;
+	// пятнадцатиминутное ограничение нового Actor не мешает дочитыванию.
 	delete(view.unconfirmedRunIDs, key)
 	if ok, paid, err := claimEligible(job, now, settings, ClaimOptions{VerifiedHHOnly: true, HHScanPhase: "reconcile"}, types, view); !ok || !paid || err != nil {
 		t.Fatalf("confirmed provider Run ID must allow reconcile: ok=%v paid=%v err=%v", ok, paid, err)
