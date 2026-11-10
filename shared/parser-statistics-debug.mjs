@@ -78,6 +78,16 @@ export function parserFunnelSnapshot(report) {
       // with a CREATE, not distinct new catalog vacancies.
       uniqueNewVacanciesInPeriod:report.totals.newVacancies??null,
       undatedNewVacancies:report.undatedNewVacancies??null,
+      // Только обезличенные числовые группы; названия, URL и ID не экспортируются.
+      publicationWindow:report.publicationWindow&&Array.isArray(report.publicationWindow.days)
+        ? {
+          asOf:report.publicationWindow.asOf,
+          weekFrom:report.publicationWindow.weekFrom,
+          days:report.publicationWindow.days.map(day=>({
+            day:day.day,total:day.total,inWeek:day.inWeek,
+            older:day.older,future:day.future,undated:day.undated,
+          })),
+        } : null,
       cohortCandidatesWithCreate:report.cohort.created,
       cohortCandidatesLinkedToExisting:report.cohort.linked,
       conversionBase:'cohort_received',
