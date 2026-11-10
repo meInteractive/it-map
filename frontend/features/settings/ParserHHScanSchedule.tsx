@@ -15,27 +15,18 @@ interface HHScheduleSummary {
   successfulLast24h?: number;
   successfulLast48h?: number;
   successDateUnknown?: number;
-  noSuccess48hWaiting?: number;
-  noSuccess48hActive?: number;
-  noSuccess48hDue?: number;
-  noSuccess48hWaitPartial?: number;
   nextDueAt: number | null;
 }
 interface HHPendingBreakdown {
   pending: number;
   notDue: number;
   unverifiedCursor: number;
-  unverifiedLineage?: number;
-  missingOperation?: number;
   orphanPaid: number;
   reconcileCandidate: number;
   launchCooldown: number;
   launchCandidate: number;
   other: number;
   oldestPendingAt: number | null;
-  oldestUnverifiedAt?: number | null;
-  oldestReconcileAt?: number | null;
-  oldestCooldownAt?: number | null;
 }
 export interface HHScanScheduleReport {
   checkedAt: number;
@@ -69,11 +60,7 @@ const isHHScheduleSummary = (v: unknown): v is HHScheduleSummary => {
     'recalculated',
     'unknownLastSuccess',
   ];
-  const optional = [
-    'successfulLast24h', 'successfulLast48h', 'successDateUnknown',
-    'noSuccess48hWaiting', 'noSuccess48hActive', 'noSuccess48hDue',
-    'noSuccess48hWaitPartial',
-  ];
+  const optional = ['successfulLast24h', 'successfulLast48h', 'successDateUnknown'];
   return (
     keys.every((k) => nonnegative(v[k])) &&
     optional.every((k) => v[k] === undefined || nonnegative(v[k])) &&
@@ -95,12 +82,7 @@ const isHHPendingBreakdown = (v: unknown): v is HHPendingBreakdown => {
     nonnegative(v.pending) &&
     fields.every((key) => nonnegative(v[key])) &&
     fields.reduce((sum, key) => sum + Number(v[key]), 0) === v.pending &&
-    (v.oldestPendingAt === null || nonnegative(v.oldestPendingAt)) &&
-    ['oldestUnverifiedAt', 'oldestReconcileAt', 'oldestCooldownAt'].every((key) =>
-      v[key] === undefined || v[key] === null || nonnegative(v[key])) &&
-    (v.unverifiedLineage === undefined && v.missingOperation === undefined ||
-      nonnegative(v.unverifiedLineage) && nonnegative(v.missingOperation) &&
-      v.unverifiedLineage + v.missingOperation === v.unverifiedCursor)
+    (v.oldestPendingAt === null || nonnegative(v.oldestPendingAt))
   );
 };
 export function isHHScanScheduleReport(v: unknown): v is HHScanScheduleReport {
@@ -135,22 +117,8 @@ export function isHHScanScheduleReport(v: unknown): v is HHScanScheduleReport {
       s.successDateUnknown !== undefined &&
       s.successfulLast24h <= s.successfulLast48h &&
       s.successfulLast48h + s.successDateUnknown <= eligible);
-  const noSuccessKeys = [
-    'noSuccess48hWaiting', 'noSuccess48hActive', 'noSuccess48hDue',
-    'noSuccess48hWaitPartial',
-  ] as const;
-  const noSuccessPresent = noSuccessKeys.some((key) => s[key] !== undefined);
-  const noSuccessValid = !noSuccessPresent || (
-    noSuccessKeys.every((key) => nonnegative(s[key])) &&
-    s.successfulLast48h !== undefined &&
-    s.noSuccess48hWaiting! + s.noSuccess48hActive! + s.noSuccess48hDue! ===
-      eligible - s.successfulLast48h &&
-    s.noSuccess48hWaitPartial! <= s.noSuccess48hWaiting! &&
-    s.noSuccess48hWaiting! <= s.waiting && s.noSuccess48hActive! <= s.activeScan &&
-    s.noSuccess48hDue! <= s.potentiallyDue
-  );
   return (
-    coverageValid && noSuccessValid &&
+    coverageValid &&
     s.disabled + s.outsideScope + s.activeScan + s.waiting + s.potentiallyDue === s.configured &&
     s.waiting > 0 === (s.nextDueAt !== null) &&
     (s.nextDueAt === null || s.nextDueAt > v.checkedAt)
@@ -224,15 +192,6 @@ export function HHScanScheduleView({ report: r }: { report: HHScanScheduleReport
           обход каждого источника, не количество запусков Apify и не число новых вакансий.
         </p>
       )}
-      {s.noSuccess48hWaiting !== undefined && (
-        <p className="resume-hint">
-          Без подтверждённого полного обхода за 48 часов: ожидают сохранённого срока —{' '}
-          <strong>{n(s.noSuccess48hWaiting)}</strong> (из них после частичного результата —{' '}
-          {n(s.noSuccess48hWaitPartial ?? 0)}); имеют HH-задание — {n(s.noSuccess48hActive ?? 0)};
-          срок наступил без задания — {n(s.noSuccess48hDue ?? 0)}.
-          Эти числа не означают, что повторный платный запуск безопасен.
-        </p>
-      )}
       <p className="resume-hint">
         В очереди текущего поколения: HH ожидают — {n(r.pendingHHScans)}, выполняются —{' '}
         {n(r.runningHHScans)}. Это все локальные HH-задания, включая те, которые автоматический
@@ -250,19 +209,6 @@ export function HHScanScheduleView({ report: r }: { report: HHScanScheduleReport
             потенциально готовы к новому запуску — {n(r.pendingBreakdown.launchCandidate)};
             прочие причины — {n(r.pendingBreakdown.other)}.
           </p>
-          {r.pendingBreakdown.unverifiedLineage !== undefined && (
-            <p className="resume-hint">
-              Неподтверждённый курсор: происхождение или версия источника не подтверждены —{' '}
-              {n(r.pendingBreakdown.unverifiedLineage)}; ключ оплаченной операции не восстановлен —{' '}
-              {n(r.pendingBreakdown.missingOperation ?? 0)}.
-              {r.pendingBreakdown.oldestUnverifiedAt != null && (
-                <> Самое старое заблокированное: {moscow(r.pendingBreakdown.oldestUnverifiedAt)} МСК.</>
-              )}
-              {r.pendingBreakdown.oldestReconcileAt != null && (
-                <> Старейшее дочитывание Actor: {moscow(r.pendingBreakdown.oldestReconcileAt)} МСК.</>
-              )}
-            </p>
-          )}
           {r.pendingBreakdown.oldestPendingAt !== null && (
             <p className="resume-hint">
               Самое старое из ожидающих HH-заданий создано: {moscow(r.pendingBreakdown.oldestPendingAt)} МСК.
