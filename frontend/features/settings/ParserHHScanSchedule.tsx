@@ -12,6 +12,17 @@ interface HHScheduleSummary {
   unknownLastSuccess: number;
   nextDueAt: number | null;
 }
+interface HHPendingBreakdown {
+  pending: number;
+  notDue: number;
+  unverifiedCursor: number;
+  orphanPaid: number;
+  reconcileCandidate: number;
+  launchCooldown: number;
+  launchCandidate: number;
+  other: number;
+  oldestPendingAt: number | null;
+}
 export interface HHScanScheduleReport {
   checkedAt: number;
   sourceId: 'hh';
@@ -23,6 +34,7 @@ export interface HHScanScheduleReport {
   summary: HHScheduleSummary;
   pendingHHScans: number;
   runningHHScans: number;
+  pendingBreakdown?: HHPendingBreakdown;
   finalEligibilityVerified: false;
 }
 const nonnegative = (v: unknown): v is number =>
@@ -45,6 +57,24 @@ const isHHScheduleSummary = (v: unknown): v is HHScheduleSummary => {
   ];
   return keys.every((k) => nonnegative(v[k])) && (v.nextDueAt === null || nonnegative(v.nextDueAt));
 };
+const isHHPendingBreakdown = (v: unknown): v is HHPendingBreakdown => {
+  if (!object(v)) return false;
+  const fields = [
+    'notDue',
+    'unverifiedCursor',
+    'orphanPaid',
+    'reconcileCandidate',
+    'launchCooldown',
+    'launchCandidate',
+    'other',
+  ];
+  return (
+    nonnegative(v.pending) &&
+    fields.every((key) => nonnegative(v[key])) &&
+    fields.reduce((sum, key) => sum + Number(v[key]), 0) === v.pending &&
+    (v.oldestPendingAt === null || nonnegative(v.oldestPendingAt))
+  );
+};
 export function isHHScanScheduleReport(v: unknown): v is HHScanScheduleReport {
   if (
     !object(v) ||
@@ -58,7 +88,10 @@ export function isHHScanScheduleReport(v: unknown): v is HHScanScheduleReport {
     v.finalEligibilityVerified !== false ||
     !isHHScheduleSummary(v.summary) ||
     !nonnegative(v.pendingHHScans) ||
-    !nonnegative(v.runningHHScans)
+    !nonnegative(v.runningHHScans) ||
+    (v.pendingBreakdown !== undefined &&
+      (!isHHPendingBreakdown(v.pendingBreakdown) ||
+        v.pendingBreakdown.pending !== v.pendingHHScans))
   )
     return false;
   const s = v.summary;
@@ -132,6 +165,29 @@ export function HHScanScheduleView({ report: r }: { report: HHScanScheduleReport
         {n(r.runningHHScans)}. Это все локальные HH-задания, включая те, которые автоматический
         worker может не допустить.
       </p>
+      {r.pendingBreakdown && (
+        <div>
+          <p className="resume-hint">
+            Предварительная классификация {n(r.pendingBreakdown.pending)} ожидающих HH-заданий:
+            срок выполнения ещё не наступил — {n(r.pendingBreakdown.notDue)};
+            неподтверждённый курсор — {n(r.pendingBreakdown.unverifiedCursor)};
+            уже оплаченный запуск для дочитывания — {n(r.pendingBreakdown.reconcileCandidate)};
+            оплаченный запуск без подтверждённого receipt — {n(r.pendingBreakdown.orphanPaid)};
+            ограничение частоты нового запуска — {n(r.pendingBreakdown.launchCooldown)};
+            потенциально готовы к новому запуску — {n(r.pendingBreakdown.launchCandidate)};
+            прочие причины — {n(r.pendingBreakdown.other)}.
+          </p>
+          {r.pendingBreakdown.oldestPendingAt !== null && (
+            <p className="resume-hint">
+              Самое старое из ожидающих HH-заданий создано: {moscow(r.pendingBreakdown.oldestPendingAt)} МСК.
+            </p>
+          )}
+          <p className="resume-hint">
+            Это оценка на момент чтения. Она не проверяет квоты Apify, бюджет, lease, лимиты цикла
+            и фактическое разрешение на запуск. Для разблокировки не следует вручную повторять Actor.
+          </p>
+        </div>
+      )}
       {s.recalculated > 0 && (
         <p className="resume-hint">
           После изменения интервала пересчитан срок {n(s.recalculated)} источников на основе
