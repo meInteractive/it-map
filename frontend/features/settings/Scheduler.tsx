@@ -1058,7 +1058,7 @@ export default function Scheduler({
                 >
                   {visited.includes('diagnostics') && (
                     <>
-                      <ParserHHScanSchedule />
+                      <ParserHHScanSchedule isAuthorized={isAuthorized} />
                       <ParserFunnel isAuthorized={isAuthorized} />
                       <ParserUnitCost />
                       <ParserExpenseRepeats />

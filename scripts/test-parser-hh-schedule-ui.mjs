@@ -71,6 +71,12 @@ assert.match(render(HHScanScheduleView,{report:{...base,summary:{configured:0,di
  /не настроено ни одного источника HH/);
 
 const old=Object.fromEntries(['fetch','window','IS_REACT_ACT_ENVIRONMENT'].map(k=>[k,globalThis[k]]));
+const oldNavigator=Object.getOwnPropertyDescriptor(globalThis,'navigator');
+const writes=[];
+let authorized=true;
+Object.defineProperty(globalThis,'navigator',{configurable:true,value:{
+ clipboard:{async writeText(text){writes.push(JSON.parse(text));}},
+}});
 let root,mode='ok',calls=0;
 globalThis.window={addEventListener(){},removeEventListener(){}};
 globalThis.IS_REACT_ACT_ENVIRONMENT=true;
@@ -80,12 +86,15 @@ globalThis.fetch=async(url,options={})=>{
  calls++;
  if(mode==='network')throw new Error('Синтетический сетевой сбой');
  if(mode==='broken')return Response.json({...base,summary:null});
+ if(mode==='full')return Response.json({...withBreakdown,summary:{...withBreakdown.summary,
+  successfulLast24h:2,successfulLast48h:4,successDateUnknown:1},
+  companyName:'CI_PRIVATE_COMPANY',accessToken:'CI_PRIVATE_TOKEN'});
  return Response.json(base);
 };
 const flush=()=>act(async()=>{await new Promise(resolve=>setTimeout(resolve,0));});
 const view=()=>JSON.stringify(root.toJSON());
 try {
- await act(async()=>{root=create(h(ParserHHScanSchedule));});await flush();await flush();
+ await act(async()=>{root=create(h(ParserHHScanSchedule,{isAuthorized:()=>authorized}));});await flush();await flush();
  assert.equal(calls,1);
  assert.match(view(),/Срок проверки наступил/);
  const refresh=()=>root.root.findAllByType('button').find(b=>b.props.children==='Обновить');
@@ -97,8 +106,36 @@ try {
  mode='ok';await act(async()=>refresh().props.onClick());await flush();await flush();
  assert.match(view(),/Срок проверки наступил/);
  assert.equal(calls,4);
+ // Кнопка копирует кэшированный read-only снимок; новые запросы не выполняет.
+ mode='full';await act(async()=>refresh().props.onClick());await flush();await flush();
+ const copy=()=>root.root.findByProps({'aria-label':'Копировать JSON'});
+ assert.equal(copy().props.disabled,false);
+ const beforeCopy=calls;
+ await act(async()=>copy().props.onClick());
+ assert.equal(calls,beforeCopy,'копирование не запрашивает API и не запускает Actor');
+ assert.equal(writes.length,1);
+ assert.equal(writes[0].section,'parser_hh_schedule');
+ assert.equal(writes[0].summary.successfulLast24h,2);
+ assert.equal(writes[0].summary.successfulLast48h,4);
+ assert.equal(writes[0].summary.pendingBreakdown.pending,6);
+ assert.equal(writes[0].summary.pendingBreakdown.unverifiedCursor,1);
+ assert.equal(writes[0].summary.pendingBreakdown.reconcileCandidate,1);
+ assert.equal(writes[0].summary.pendingBreakdown.oldestPendingAt,new Date(now-day).toISOString());
+ assert.equal(writes[0].dataAsOf,new Date(now).toISOString());
+ assert.equal(writes[0].filters.intervalDays,1);
+ assert.equal(writes[0].summary.finalEligibilityVerified,false);
+ assert.ok(!JSON.stringify(writes[0]).includes('CI_PRIVATE'));
+ authorized=false;
+ await act(async()=>copy().props.onClick());
+ assert.equal(writes.length,1,'права проверяются в момент копирования');
+ authorized=true;
+ mode='broken';await act(async()=>refresh().props.onClick());await flush();await flush();
+ assert.equal(copy().props.disabled,true,'некорректный ответ нельзя скопировать как достоверный');
+ console.log('GO-439: HH JSON clipboard from cached GET, coverage, pending causes, no private fields, admin and error guards.');
  console.log('GO-290: read-only HH scheduling report, date gaps, exclusions, malformed JSON, network error and retry passed.');
 }finally {
  if(root)await act(async()=>root.unmount());
  Object.assign(globalThis,old);
+ if(oldNavigator)Object.defineProperty(globalThis,'navigator',oldNavigator);
+ else delete globalThis.navigator;
 }

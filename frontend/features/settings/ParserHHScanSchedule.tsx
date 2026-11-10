@@ -1,5 +1,7 @@
 import { useApi } from '../../api/client';
 import { State } from '../../components/Common';
+import CopyDebugJSON from './CopyDebugJSON';
+import { hhScanScheduleSnapshot } from '../../../shared/parser-statistics-debug.mjs';
 
 interface HHScheduleSummary {
   configured: number;
@@ -239,7 +241,7 @@ export function HHScanScheduleView({ report: r }: { report: HHScanScheduleReport
     </>
   );
 }
-export default function ParserHHScanSchedule() {
+export default function ParserHHScanSchedule({ isAuthorized }: { isAuthorized?: () => boolean } = {}) {
   const q = useApi<HHScanScheduleReport>('/api/scheduler/hh-schedule', {
     refreshIntervalMs: 60000,
   });
@@ -255,9 +257,21 @@ export default function ParserHHScanSchedule() {
             Планировщик · сохранённые сроки и фильтры без запуска сканирования
           </p>
         </div>
-        <button type="button" className="settings-button secondary" onClick={q.reload}>
-          Обновить
-        </button>
+        <div className="scheduler-actions">
+          <CopyDebugJSON
+            section="parser_hh_schedule"
+            isAuthorized={isAuthorized ?? (() => false)}
+            disabled={!report || !isAuthorized?.()}
+            getSnapshot={() =>
+              report
+                ? hhScanScheduleSnapshot(report)
+                : { available: false, errorCode: 'hh_schedule_unavailable' }
+            }
+          />
+          <button type="button" className="settings-button secondary" onClick={q.reload}>
+            Обновить
+          </button>
+        </div>
       </div>
       <State loading={!report && q.loading} error={error}>
         {report ? (

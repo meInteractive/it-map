@@ -67,6 +67,24 @@ const SCHEMA = Object.freeze({
     summary:{mode:stage,limitsCredits:number,providerPlanCredits:number,providerRemainingCredits:number,providerUsedEstimateCredits:number,reportedCredits:number,estimatedCredits:number,reservedCredits:number,effectiveUsedCredits:number,remainingCredits:number,periodStart:time,periodEnd:time,checkedAt:time,fresh:bool,budgetAvailable:bool,operationHistoryAvailable:bool,status:stage},
     items:EMPTY,
   },
+  parser_hh_schedule:{
+    filters:{sourceId:stage,favoritesOnly:bool,intervalDays:number,vacancyAgeDays:number},
+    summary:{
+      checkedAt:time,schedulerEnabled:bool,sourceSelected:bool,
+      configured:number,enabledInScope:number,disabled:number,outsideScope:number,
+      potentiallyDue:number,waiting:number,activeScan:number,nextDueAt:time,
+      recalculated:number,unknownLastSuccess:number,
+      coverageAvailable:bool,successfulLast24h:number,successfulLast48h:number,successDateUnknown:number,
+      pendingHHScans:number,runningHHScans:number,pendingBreakdownAvailable:bool,
+      pendingBreakdown:{
+        pending:number,notDue:number,unverifiedCursor:number,orphanPaid:number,
+        reconcileCandidate:number,launchCooldown:number,launchCandidate:number,other:number,
+        oldestPendingAt:time,
+      },
+      finalEligibilityVerified:bool,
+    },
+    items:EMPTY,
+  },
   parser_issues:{
     filters:{priority:number,sourceId:stage},
     summary:{
