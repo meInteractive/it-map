@@ -6,6 +6,7 @@ export type DebugJSONSection =
   | 'ai_spending'
   | 'apify_usage'
   | 'firecrawl_usage'
+  | 'parser_hh_schedule'
   | 'parser_issues'
   | 'parser_funnel';
 

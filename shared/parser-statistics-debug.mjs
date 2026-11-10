@@ -102,3 +102,43 @@ export function parserFunnelSnapshot(report) {
     })),
   };
 }
+
+// Только разрешённые числовые агрегаты HH и настройки расписания.
+// Копирование не перечитывает API, не раскрывает источники, jobs или Actor.
+export function hhScanScheduleSnapshot(report) {
+  if (!report || report.sourceId !== 'hh' || !report.summary)
+    throw new Error('hh_schedule_unavailable');
+  const s=report.summary;
+  const p=report.pendingBreakdown;
+  const coverage=s.successfulLast24h!==undefined &&
+    s.successfulLast48h!==undefined && s.successDateUnknown!==undefined;
+  return {
+    dataAsOf:report.checkedAt,
+    filters:{
+      sourceId:'hh',favoritesOnly:report.favoritesOnly,
+      intervalDays:report.intervalDays,vacancyAgeDays:report.vacancyAgeDays,
+    },
+    summary:{
+      checkedAt:report.checkedAt,schedulerEnabled:report.enabled,
+      sourceSelected:report.sourceSelected,
+      configured:s.configured,enabledInScope:s.configured-s.disabled-s.outsideScope,
+      disabled:s.disabled,outsideScope:s.outsideScope,
+      potentiallyDue:s.potentiallyDue,waiting:s.waiting,activeScan:s.activeScan,
+      nextDueAt:s.nextDueAt,recalculated:s.recalculated,
+      unknownLastSuccess:s.unknownLastSuccess,
+      coverageAvailable:coverage,
+      successfulLast24h:coverage?s.successfulLast24h:null,
+      successfulLast48h:coverage?s.successfulLast48h:null,
+      successDateUnknown:coverage?s.successDateUnknown:null,
+      pendingHHScans:report.pendingHHScans,runningHHScans:report.runningHHScans,
+      pendingBreakdownAvailable:Boolean(p),
+      pendingBreakdown:p?{
+        pending:p.pending,notDue:p.notDue,unverifiedCursor:p.unverifiedCursor,
+        orphanPaid:p.orphanPaid,reconcileCandidate:p.reconcileCandidate,
+        launchCooldown:p.launchCooldown,launchCandidate:p.launchCandidate,
+        other:p.other,oldestPendingAt:p.oldestPendingAt,
+      }:null,
+      finalEligibilityVerified:report.finalEligibilityVerified,
+    },
+  };
+}

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {serializeDebugJSON,DEBUG_JSON_MAX_BYTES} from '../shared/debug-json.mjs';
-import {parserIssuesSnapshot,parserFunnelSnapshot} from '../shared/parser-statistics-debug.mjs';
+import {parserIssuesSnapshot,parserFunnelSnapshot,hhScanScheduleSnapshot} from '../shared/parser-statistics-debug.mjs';
 
 const now=Date.parse('2026-11-07T15:00:00.000Z');
 const secret=['sk','PRIVATE','token'].join('_');
@@ -140,3 +140,55 @@ assert.equal(noIssues.errorCode,'issues_unavailable');
 assert.deepEqual(noIssues.summary,{});
 assert.equal(noIssues.daily,undefined);
 console.log('S11-DIAG-04: 30 P1/P2 points, 28 unknown days, observed-only average, 10 sanitized issues, P2 breakdown available or unavailable with real full-scope counts, complete funnel events and cohort counts, 0 denominator, no PII passed');
+
+// GO-439: HH-расписание содержит агрегаты, а не исходные job/source/actor записи.
+const hhSchedule={
+  checkedAt:now,sourceId:'hh',enabled:true,sourceSelected:true,
+  favoritesOnly:true,intervalDays:1,vacancyAgeDays:3,finalEligibilityVerified:false,
+  summary:{configured:30,disabled:0,outsideScope:0,activeScan:6,
+    waiting:23,potentiallyDue:1,nextDueAt:now+3*3600000,
+    recalculated:1,unknownLastSuccess:1,
+    successfulLast24h:21,successfulLast48h:21,successDateUnknown:1,
+    companyName:secret,providerToken:secret},
+  pendingHHScans:6,runningHHScans:0,
+  pendingBreakdown:{pending:6,notDue:0,unverifiedCursor:1,orphanPaid:0,
+    reconcileCandidate:1,launchCooldown:4,launchCandidate:0,other:0,
+    oldestPendingAt:now-6*86400000,jobId:secret,runId:secret},
+  companyIds:[secret],sourceUrl:'https://private.example/?token='+secret,
+};
+const hhJSON=JSON.parse(serializeDebugJSON({
+  section:'parser_hh_schedule',capturedAt:now,...hhScanScheduleSnapshot(hhSchedule),
+}));
+assert.equal(hhJSON.section,'parser_hh_schedule');
+assert.equal(hhJSON.dataAsOf,new Date(now).toISOString());
+assert.equal(hhJSON.filters.intervalDays,1);
+assert.equal(hhJSON.filters.vacancyAgeDays,3);
+assert.equal(hhJSON.summary.enabledInScope,30);
+assert.equal(hhJSON.summary.successfulLast24h,21);
+assert.equal(hhJSON.summary.successfulLast48h,21);
+assert.equal(hhJSON.summary.pendingBreakdown.pending,6);
+assert.equal(hhJSON.summary.pendingBreakdown.launchCooldown,4);
+assert.equal(hhJSON.summary.pendingBreakdown.reconcileCandidate,1);
+assert.equal(hhJSON.summary.pendingBreakdown.oldestPendingAt,
+  new Date(now-6*86400000).toISOString());
+assert.equal(hhJSON.summary.finalEligibilityVerified,false);
+assert.ok(!JSON.stringify(hhJSON).includes(secret));
+assert.ok(!JSON.stringify(hhJSON).includes('companyIds'));
+assert.ok(!JSON.stringify(hhJSON).includes('jobId'));
+assert.ok(!JSON.stringify(hhJSON).includes('runId'));
+assert.ok(!JSON.stringify(hhJSON).includes('sourceUrl'));
+const hhNoCoverage={...hhSchedule,summary:{...hhSchedule.summary},
+  pendingBreakdown:undefined};
+delete hhNoCoverage.summary.successfulLast24h;
+delete hhNoCoverage.summary.successfulLast48h;
+delete hhNoCoverage.summary.successDateUnknown;
+const hhUnknown=JSON.parse(serializeDebugJSON({
+  section:'parser_hh_schedule',capturedAt:now,...hhScanScheduleSnapshot(hhNoCoverage),
+}));
+assert.equal(hhUnknown.summary.coverageAvailable,false);
+assert.equal(hhUnknown.summary.successfulLast24h,null,'нет данных — не ноль');
+assert.equal(hhUnknown.summary.successfulLast48h,null);
+assert.equal(hhUnknown.summary.successDateUnknown,null);
+assert.equal(hhUnknown.summary.pendingBreakdownAvailable,false);
+assert.equal(hhUnknown.summary.pendingBreakdown,null);
+console.log('GO-439: HH schedule JSON has timestamps, configured/due/coverage/pending groups; missing is not zero; PII rejected.');
