@@ -190,6 +190,77 @@ function applyRelevanceResult(path: string, data: unknown) {
     }
   }
 }
+// Группы зависимостей сохраняют исходную семантику префиксов; сужать маршруты можно только после проверки контракта.
+function invalidatesCatalogCaches(path: string, key: string): boolean {
+  if (!/^\/api\/(companies|vacancies|applications|crm|backup)/.test(path)) return false;
+  return (
+    key === '/api/apify/hh-sources' ||
+    key.startsWith('/api/apify/hh-source?') ||
+    /^\/api\/(companies|agencies|vacancies|applications|crm|tasks|channels)/.test(key) ||
+    key.startsWith('/api/scheduler') ||
+    /^\/api\/firecrawl\/(sources|pending)(?:[?]|$)/.test(key)
+  );
+}
+
+function invalidatesParserCaches(path: string, key: string): boolean {
+  const apify = path.startsWith('/api/apify/');
+  const firecrawl = path.startsWith('/api/firecrawl/');
+  const scheduler = path.startsWith('/api/scheduler');
+  return (
+    ((firecrawl || scheduler) &&
+      (key === '/api/apify/hh-sources' || key.startsWith('/api/apify/hh-source?'))) ||
+    (apify &&
+      (key.startsWith('/api/apify/') ||
+        key.startsWith('/api/firecrawl/') ||
+        key.startsWith('/api/scheduler'))) ||
+    (firecrawl && (key.startsWith('/api/firecrawl/') || key.startsWith('/api/scheduler'))) ||
+    (scheduler && (key.startsWith('/api/scheduler') || key.startsWith('/api/firecrawl/')))
+  );
+}
+
+function invalidatesClassificationCaches(path: string, key: string): boolean {
+  if (
+    /^\/api\/vacancy-roles/.test(path) &&
+    /^\/api\/(vacancy-roles|vacancies|classification)/.test(key)
+  )
+    return true;
+  if (path.startsWith('/api/classification/'))
+    return (
+      key === '/api/classification/settings' ||
+      key === '/api/classification/jobs' ||
+      key.startsWith('/api/scheduler')
+    );
+  if (/^\/api\/vacancy-(details|import)/.test(path) && key.startsWith('/api/scheduler'))
+    return true;
+  return (
+    (path.startsWith('/api/firecrawl/') || path.startsWith('/api/vacancy-candidates')) &&
+    key === '/api/classification/jobs'
+  );
+}
+
+const scopedInvalidations: ReadonlyArray<{
+  mutation: RegExp;
+  key: RegExp;
+}> = [
+  { mutation: /^\/api\/tasks/, key: /^\/api\/tasks/ },
+  { mutation: /^\/api\/google-calendar/, key: /^\/api\/(google-calendar|tasks)/ },
+  { mutation: /^\/api\/channels/, key: /^\/api\/(channels|vacancies)/ },
+  { mutation: /^\/api\/hiring-contacts/, key: /^\/api\/hiring-contacts/ },
+  { mutation: /^\/api\/openrouter/, key: /^\/api\/openrouter/ },
+  { mutation: /^\/api\/openai/, key: /^\/api\/openai/ },
+  { mutation: /^\/api\/profile/, key: /^\/api\/profile/ },
+];
+
+function invalidatesMutationCacheKey(path: string, key: string): boolean {
+  return (
+    key === path ||
+    invalidatesCatalogCaches(path, key) ||
+    invalidatesParserCaches(path, key) ||
+    invalidatesClassificationCaches(path, key) ||
+    scopedInvalidations.some((rule) => rule.mutation.test(path) && rule.key.test(key))
+  );
+}
+
 export function invalidateMutation(path: string, method?: string) {
   if (/^\/api\/vacancies\/\d+\/relevance$/.test(path)) {
     notifyCache({ type: 'mutation', path });
@@ -203,41 +274,7 @@ export function invalidateMutation(path: string, method?: string) {
     invalidate((key) => key === path.replace('/cover-letter', ''));
     return;
   }
-  const catalog = /^\/api\/(companies|vacancies|applications|crm|backup)/.test(path);
-  invalidate(
-    (key) =>
-      key === path ||
-      ((catalog || path.startsWith('/api/firecrawl/') || path.startsWith('/api/scheduler')) &&
-        (key === '/api/apify/hh-sources' || key.startsWith('/api/apify/hh-source?'))) ||
-      (catalog &&
-        /^\/api\/(companies|agencies|vacancies|applications|crm|tasks|channels)/.test(key)) ||
-      (/^\/api\/vacancy-roles/.test(path) &&
-        /^\/api\/(vacancy-roles|vacancies|classification)/.test(key)) ||
-      (path.startsWith('/api/apify/') &&
-        (key.startsWith('/api/apify/') ||
-          key.startsWith('/api/firecrawl/') ||
-          key.startsWith('/api/scheduler'))) ||
-      (path.startsWith('/api/firecrawl/') &&
-        (key.startsWith('/api/firecrawl/') || key.startsWith('/api/scheduler'))) ||
-      (path.startsWith('/api/scheduler') &&
-        (key.startsWith('/api/scheduler') || key.startsWith('/api/firecrawl/'))) ||
-      (catalog && key.startsWith('/api/scheduler')) ||
-      (catalog && /^\/api\/firecrawl\/(sources|pending)(?:[?]|$)/.test(key)) ||
-      (path.startsWith('/api/classification/') &&
-        (key === '/api/classification/settings' ||
-          key === '/api/classification/jobs' ||
-          key.startsWith('/api/scheduler'))) ||
-      (/^\/api\/vacancy-(details|import)/.test(path) && key.startsWith('/api/scheduler')) ||
-      ((path.startsWith('/api/firecrawl/') || path.startsWith('/api/vacancy-candidates')) &&
-        key === '/api/classification/jobs') ||
-      (/^\/api\/tasks/.test(path) && key.startsWith('/api/tasks')) ||
-      (/^\/api\/google-calendar/.test(path) && /^\/api\/(google-calendar|tasks)/.test(key)) ||
-      (/^\/api\/channels/.test(path) && /^\/api\/(channels|vacancies)/.test(key)) ||
-      (/^\/api\/hiring-contacts/.test(path) && key.startsWith('/api/hiring-contacts')) ||
-      (/^\/api\/openrouter/.test(path) && key.startsWith('/api/openrouter')) ||
-      (/^\/api\/openai/.test(path) && key.startsWith('/api/openai')) ||
-      (/^\/api\/profile/.test(path) && key.startsWith('/api/profile')),
-  );
+  invalidate((key) => invalidatesMutationCacheKey(path, key));
 }
 export function useApi<T>(
   key: string | null,
