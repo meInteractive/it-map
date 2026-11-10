@@ -27,6 +27,24 @@ for(const bad of [
  {...base,finalEligibilityVerified:true}, {...base,intervalDays:5},
  {...base,summary:{...base.summary,nextDueAt:Infinity}},
 ])assert.equal(isHHScanScheduleReport(bad),false,'invalid schedule report accepted');
+const withBreakdown={...base,pendingHHScans:6,pendingBreakdown:{
+ pending:6,notDue:1,unverifiedCursor:1,orphanPaid:1,reconcileCandidate:1,
+ launchCooldown:1,launchCandidate:1,other:0,oldestPendingAt:now-day
+}};
+assert.equal(isHHScanScheduleReport(withBreakdown),true);
+const breakdownHTML=render(HHScanScheduleView,{report:withBreakdown});
+for(const text of ['Предварительная классификация','неподтверждённый курсор',
+ 'уже оплаченный запуск','ограничение частоты','Самое старое','не проверяет квоты Apify']){
+ assert.match(breakdownHTML,new RegExp(text,'i'));
+}
+for(const bad of [
+ {...withBreakdown,pendingBreakdown:{...withBreakdown.pendingBreakdown,orphanPaid:-1}},
+ {...withBreakdown,pendingBreakdown:{...withBreakdown.pendingBreakdown,orphanPaid:2}},
+ {...withBreakdown,pendingBreakdown:{...withBreakdown.pendingBreakdown,oldestPendingAt:NaN}},
+ {...withBreakdown,pendingHHScans:5},
+]){
+ assert.equal(isHHScanScheduleReport(bad),false,'invalid HH pending breakdown accepted');
+}
 const warning={...base,intervalDays:7,vacancyAgeDays:3};
 assert.match(render(HHScanScheduleView,{report:warning}),/часть вакансий может быть пропущена/);
 assert.doesNotMatch(render(HHScanScheduleView,{report:base}),/часть вакансий может быть пропущена/);
