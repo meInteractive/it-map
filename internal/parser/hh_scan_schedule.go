@@ -50,6 +50,7 @@ type HHScanScheduleReport struct {
 	Summary            HHScanScheduleSummary `json:"summary"`
 	PendingHHScans     int64                 `json:"pendingHHScans"`
 	RunningHHScans     int64                 `json:"runningHHScans"`
+	PendingBreakdown   HHPendingBreakdown    `json:"pendingBreakdown"`
 	FinalEligibilityVerified bool            `json:"finalEligibilityVerified"`
 }
 
@@ -211,7 +212,14 @@ func (r HHScanScheduleRepository) ReadHHScanSchedule(ctx context.Context) (json.
 		err = rows.Err()
 	}
 	rows.Close()
-	if err != nil || tx.Commit() != nil {
+	if err != nil {
+		return nil, ErrHHScanScheduleStorage
+	}
+	report.PendingBreakdown, err = readHHPendingBreakdown(ctx, tx, generation, now.UnixMilli(), settings)
+	if err != nil || report.PendingBreakdown.Pending != report.PendingHHScans {
+		return nil, ErrHHScanScheduleStorage
+	}
+	if err = tx.Commit(); err != nil {
 		return nil, ErrHHScanScheduleStorage
 	}
 	body, err := json.Marshal(report)
