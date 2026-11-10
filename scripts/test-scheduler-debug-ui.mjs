@@ -28,7 +28,7 @@ globalThis.fetch=async (url,options={})=>{
   if(value==='/api/scheduler')return Response.json(info);
   if(value.startsWith('/api/scheduler/queue/debug?'))return Response.json(queue);
   if(value.startsWith('/api/scheduler/queue?'))return Response.json({jobs:[],total:0,page:1,pageSize:30});
-  if(value.startsWith('/api/scheduler/issues')||value.startsWith('/api/scheduler/funnel'))return Response.json({error:'not ready'},{status:503});
+  if(value==='/api/scheduler/hh-schedule'||value.startsWith('/api/scheduler/issues')||value.startsWith('/api/scheduler/funnel'))return Response.json({error:'not ready'},{status:503});
   throw new Error('unexpected network: '+value);
 };
 let root=null;
@@ -45,10 +45,11 @@ try{
 
   await act(async()=>{root.root.findByProps({id:'parser-tab-diagnostics'}).props.onClick();});
   await flush();await flush();
-  // Two additional read-only controls now appear in Diagnostics, and both
-  // must fail closed when Go issues/funnel endpoints return 503. Keep the
-  // old queue/run/attempt checks rather than dropping them.
-  assert.equal(buttons().length,6,'overview, unavailable funnel/issues, queue, runs and attempts');
+  // HH, funnel и issues добавляют три независимые диагностические кнопки.
+  // Все три должны отказать в копировании без достоверного server GET;
+  // старые проверки очереди, циклов и попыток остаются обязательными.
+  assert.equal(buttons().length,7,'overview, HH, funnel, issues, queue, runs and attempts');
+  assert.equal(buttons()[1].props.disabled,true,'недоступный HH не превращается в пустой снимок');
   const before=requests.length;
   for(const b of buttons().slice(1)) await act(async()=>{await b.props.onClick();});
   assert.equal(requests.length,before,'copy does not fetch or run stages');
