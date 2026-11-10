@@ -58,6 +58,8 @@ func TestMariaDBSchedulerFunnelDisposable(t *testing.T) {
 	hash:=sha256.Sum256([]byte(prompt))
 	promptHash:=hex.EncodeToString(hash[:])
 	f.exec("INSERT INTO company_vacancies(id,company_name,url,title) VALUES(991,'CI Funnel Employer','https://example.invalid/funnel/991','CI Published 991'),(992,'CI Funnel Employer','https://example.invalid/funnel/992','CI Published 992')")
+	// Один первый импорт проходит по дате фильтр «Неделя», второй старше окна.
+	f.exec("UPDATE company_vacancies SET published_at=CASE WHEN id=991 THEN '2026-11-06' ELSE '2026-10-31' END WHERE id IN (991,992)")
 	const titleHash="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 	type specimen struct {id int64; parser,source,received,method string; mainID any}
 	specimens:=[]specimen{
@@ -152,6 +154,17 @@ func TestMariaDBSchedulerFunnelDisposable(t *testing.T) {
 		"published":3,"rejected":1,"error":1,"waiting":1,
 		"created":1,"linked":1,"undatedPublished":1,
 	})
+	window:=all["publicationWindow"].(map[string]any)
+	if window["asOf"]!="2026-11-07" || window["weekFrom"]!="2026-11-01"{
+		t.Fatalf("неверная недельная граница: %+v",window)
+	}
+	windowDays:=window["days"].([]any)
+	if len(windowDays)!=7{t.Fatalf("должно быть семь суток импорта: %d",len(windowDays))}
+	weekDay:=windowDays[6].(map[string]any)
+	must(weekDay,map[string]float64{"total":2,"inWeek":1,"older":1,"future":0,"undated":0})
+	if weekDay["day"]!="2026-11-07"{t.Fatal("неверная дата первого импорта",weekDay)}
+	filteredWindow:=read("companySite","http")["publicationWindow"].(map[string]any)
+	must(filteredWindow["days"].([]any)[6].(map[string]any),map[string]float64{"total":0,"inWeek":0})
 	must(all["totals"].(map[string]any),map[string]float64{
 		"received":6,"accepted":2,"fulltext":1,"structured":1,"roles":1,"published":3,
 	})

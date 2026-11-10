@@ -30,6 +30,23 @@ export function FunnelView({
     setSelected = onSelectedChange ?? setOwnSelection;
   const { daily, cohort, averages, totals } = report,
     visible = funnelChartSeries.filter((s) => selected.includes(s.id));
+  const week = report.publicationWindow;
+  const weekDays =
+    week &&
+    week.asOf === report.to &&
+    Array.isArray(week.days) &&
+    week.days.length === 7 &&
+    week.days.every((point) => {
+      const counts = [point.total, point.inWeek, point.older, point.future, point.undated];
+      return (
+        /^\d{4}-\d{2}-\d{2}$/.test(point.day) &&
+        counts.every((value) => Number.isSafeInteger(value) && value >= 0) &&
+        point.inWeek + point.older + point.future + point.undated === point.total &&
+        daily.find((item) => item.day === point.day)?.newVacancies === point.total
+      );
+    })
+      ? week.days
+      : undefined;
   const width = 920,
     left = 40,
     right = 18,
@@ -58,6 +75,53 @@ export function FunnelView({
           </div>
         ))}
       </div>
+      {week && weekDays && (
+        <section>
+          <h3>Почему количество новых карточек отличается от каталога</h3>
+          <p className="resume-hint">
+            Из первых уникальных импортов за указанный день по дате публикации подходят под фильтр
+            каталога «Неделя» ({shortDate(week.weekFrom)}–{shortDate(week.asOf)}). Это не число
+            видимых карточек: отдельно действуют фильтры работодателей, ролей, уровней, скрытия и
+            поиска. Срез актуален на дату проверки, а не на день импорта.
+          </p>
+          {weekDays.slice(-2).map((day) => (
+            <p className="resume-hint" key={day.day}>
+              <strong>{shortDate(day.day)}:</strong> новых {number(day.total)}, дата в недельном окне
+              — {number(day.inWeek)}, старше недели — {number(day.older)}, будущая —{' '}
+              {number(day.future)}, дата не определена — {number(day.undated)}.
+            </p>
+          ))}
+          <details>
+            <summary>Разбивка по датам первого импорта за семь дней</summary>
+            <div className="docs-table-wrap">
+              <table className="parser-history-table">
+                <thead>
+                  <tr>
+                    <th>Дата импорта</th>
+                    <th>Всего новых</th>
+                    <th>Дата в неделе</th>
+                    <th>Старше недели</th>
+                    <th>Будущая</th>
+                    <th>Нет даты</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {weekDays.map((day) => (
+                    <tr key={day.day}>
+                      <td>{shortDate(day.day)}</td>
+                      <td>{day.total}</td>
+                      <td>{day.inWeek}</td>
+                      <td>{day.older}</td>
+                      <td>{day.future}</td>
+                      <td>{day.undated}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </details>
+        </section>
+      )}
       <h3>Динамика по датам этапов</h3>
       <p className="resume-hint">
         {shortDate(report.from)}–{shortDate(report.to)}.{report.to.slice(0, 4)}, по Москве.
