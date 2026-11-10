@@ -209,7 +209,7 @@ assert.equal(hhUnknown.summary.pendingBreakdown,null);
 assert.equal(hhUnknown.summary.noSuccess48hWaiting,6);
 assert.equal(hhUnknown.summary.noSuccess48hActive,3);
 // Legacy data remains unknown (null), not a fabricated zero.
-// The reason count is a subset of "other", not a new top-level bucket.
+// Причина относится к подмножеству "other", а не к новой категории очереди.
 const uncertainReport={...hhSchedule,pendingBreakdown:{...hhSchedule.pendingBreakdown,
   other:1,launchCooldown:3,unconfirmedRunId:1,
   oldestUnconfirmedAt:now-5*86400000,
