@@ -7,7 +7,7 @@
     {
       "id": "be54e9adfe9f6137",
       "file": "frontend/Application.tsx",
-      "line": 32,
+      "line": 85,
       "call": "form",
       "method": "POST",
       "methodExpression": "POST",
@@ -23,7 +23,7 @@
     {
       "id": "073edb066dcc58ad",
       "file": "frontend/Application.tsx",
-      "line": 133,
+      "line": 601,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -39,7 +39,7 @@
     {
       "id": "0524b7a331011a04",
       "file": "frontend/features/applications/ApplicationConflict.tsx",
-      "line": 59,
+      "line": 108,
       "call": "request",
       "method": "GET",
       "methodExpression": "GET",
@@ -55,7 +55,7 @@
     {
       "id": "b1e282f4628a4715",
       "file": "frontend/features/applications/Applications.tsx",
-      "line": 34,
+      "line": 118,
       "call": "mutate",
       "method": "DYNAMIC",
       "methodExpression": "base ? 'PUT' : 'POST'",
@@ -72,7 +72,7 @@
     {
       "id": "64aa30be5ee9c306",
       "file": "frontend/features/applications/Applications.tsx",
-      "line": 104,
+      "line": 355,
       "call": "mutate",
       "method": "DELETE",
       "methodExpression": "'DELETE'",
@@ -88,7 +88,7 @@
     {
       "id": "9a6930d78ebc4508",
       "file": "frontend/features/applications/Applications.tsx",
-      "line": 136,
+      "line": 412,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
@@ -104,7 +104,7 @@
     {
       "id": "d8a0e318e518dd82",
       "file": "frontend/features/applications/Applications.tsx",
-      "line": 174,
+      "line": 611,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -120,7 +120,7 @@
     {
       "id": "e40516acc87fa58c",
       "file": "frontend/features/applications/Applications.tsx",
-      "line": 177,
+      "line": 712,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -136,7 +136,7 @@
     {
       "id": "c22c0b5fe2e73d95",
       "file": "frontend/features/applications/useCreationIntent.ts",
-      "line": 17,
+      "line": 20,
       "call": "request",
       "method": "GET",
       "methodExpression": "GET",
@@ -152,7 +152,7 @@
     {
       "id": "00a57c8f59f98e08",
       "file": "frontend/features/channels/Channels.tsx",
-      "line": 14,
+      "line": 38,
       "call": "mutate",
       "method": "POST",
       "methodExpression": "'POST'",
@@ -168,7 +168,7 @@
     {
       "id": "a0bdff8fae83831a",
       "file": "frontend/features/channels/Channels.tsx",
-      "line": 31,
+      "line": 95,
       "call": "mutate",
       "method": "DELETE",
       "methodExpression": "'DELETE'",
@@ -184,7 +184,7 @@
     {
       "id": "b161490a751af4ac",
       "file": "frontend/features/channels/Channels.tsx",
-      "line": 41,
+      "line": 125,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
@@ -200,7 +200,7 @@
     {
       "id": "e1b8ec5ffd594f08",
       "file": "frontend/features/channels/Channels.tsx",
-      "line": 69,
+      "line": 209,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -216,7 +216,7 @@
     {
       "id": "69be0eb8e7f8d019",
       "file": "frontend/features/channels/Channels.tsx",
-      "line": 70,
+      "line": 210,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -232,7 +232,7 @@
     {
       "id": "3870f43a53481d18",
       "file": "frontend/features/companies/CompanyDrawer.tsx",
-      "line": 25,
+      "line": 69,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -248,7 +248,7 @@
     {
       "id": "ba20940e918d3319",
       "file": "frontend/features/companies/CompanyDrawer.tsx",
-      "line": 33,
+      "line": 88,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
@@ -262,13 +262,13 @@
       "dynamicURL": false
     },
     {
-      "id": "3a13fd3d39d94a06",
+      "id": "693f85528d623e31",
       "file": "frontend/features/companies/CompanyDrawer.tsx",
-      "line": 149,
+      "line": 410,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
-      "urlExpression": "'/api/' + (type === 'agency' ? 'agencies' : 'companies') + '/detail?name=' + encodeURIComponent(name)",
+      "urlExpression": "'/api/' +\n      (type === 'agency' ? 'agencies' : 'companies') +\n      '/detail?name=' +\n      encodeURIComponent(name)",
       "literalFragments": [
         "/api/"
       ],
@@ -278,13 +278,13 @@
       "dynamicURL": true
     },
     {
-      "id": "693a4e41e3758ddf",
+      "id": "0343de1abfc3a679",
       "file": "frontend/features/companies/CompanyDrawer.tsx",
-      "line": 151,
+      "line": 418,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
-      "urlExpression": "!type && q.error && 'status' in q.error && q.error.status === 404 ? '/api/agencies/detail?name=' + encodeURIComponent(name) : null",
+      "urlExpression": "!type && q.error && 'status' in q.error && q.error.status === 404\n      ? '/api/agencies/detail?name=' + encodeURIComponent(name)\n      : null",
       "literalFragments": [
         "/api/agencies/detail?name="
       ],
@@ -294,13 +294,13 @@
       "dynamicURL": true
     },
     {
-      "id": "8c0b5828d1089e85",
+      "id": "949b2dca183adec8",
       "file": "frontend/features/companies/CompanyDrawer.tsx",
-      "line": 155,
+      "line": 433,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
-      "urlExpression": "'/api/crm/' + (key === 'hidden' ? 'hidden-company' : 'favorite') + '?company=' + encodeURIComponent(name)",
+      "urlExpression": "'/api/crm/' +\n          (key === 'hidden' ? 'hidden-company' : 'favorite') +\n          '?company=' +\n          encodeURIComponent(name)",
       "literalFragments": [
         "/api/crm/"
       ],
@@ -310,13 +310,13 @@
       "dynamicURL": true
     },
     {
-      "id": "3b05cfaa7a4b4fda",
+      "id": "69d96541953b7f36",
       "file": "frontend/features/companies/CompanyList.tsx",
-      "line": 22,
+      "line": 64,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
-      "urlExpression": "type === 'channel' ? '/api/channels' : type === 'agency' ? '/api/agencies/list' : '/api/companies/list'",
+      "urlExpression": "type === 'channel'\n      ? '/api/channels'\n      : type === 'agency'\n        ? '/api/agencies/list'\n        : '/api/companies/list'",
       "literalFragments": [
         "/api/channels",
         "/api/agencies/list",
@@ -331,7 +331,7 @@
     {
       "id": "5a5375b643bbf0ad",
       "file": "frontend/features/companies/Contacts.tsx",
-      "line": 54,
+      "line": 87,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -347,7 +347,7 @@
     {
       "id": "f7a04fbd9e078cf0",
       "file": "frontend/features/companies/Contacts.tsx",
-      "line": 58,
+      "line": 142,
       "call": "mutate",
       "method": "DELETE",
       "methodExpression": "'DELETE'",
@@ -363,7 +363,7 @@
     {
       "id": "64470ba87cff5312",
       "file": "frontend/features/companies/Contacts.tsx",
-      "line": 62,
+      "line": 172,
       "call": "mutate",
       "method": "DYNAMIC",
       "methodExpression": "editor.id ? 'PUT' : 'POST'",
@@ -379,7 +379,7 @@
     {
       "id": "d51c33f8e5f656ba",
       "file": "frontend/features/map/Map.tsx",
-      "line": 31,
+      "line": 65,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -393,13 +393,13 @@
       "dynamicURL": false
     },
     {
-      "id": "489fe06c5acb3c6a",
+      "id": "3ef818e035dbf818",
       "file": "frontend/features/map/MapSearch.tsx",
-      "line": 43,
+      "line": 48,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
-      "urlExpression": "!dismissed && term && term === search\n        ? '/api/companies/search?q=' + encodeURIComponent(search) : null",
+      "urlExpression": "!dismissed && term && term === search\n      ? '/api/companies/search?q=' + encodeURIComponent(search)\n      : null",
       "literalFragments": [
         "/api/companies/search?q="
       ],
@@ -411,7 +411,7 @@
     {
       "id": "9892dbe29a661339",
       "file": "frontend/features/settings/AISpendingDebug.tsx",
-      "line": 10,
+      "line": 16,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -427,7 +427,7 @@
     {
       "id": "3880d78969e131bf",
       "file": "frontend/features/settings/AISpendingDebug.tsx",
-      "line": 11,
+      "line": 17,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -443,7 +443,7 @@
     {
       "id": "a700cef598cd7540",
       "file": "frontend/features/settings/Apify.tsx",
-      "line": 15,
+      "line": 65,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
@@ -459,7 +459,7 @@
     {
       "id": "e119cd8c11236b90",
       "file": "frontend/features/settings/Apify.tsx",
-      "line": 15,
+      "line": 95,
       "call": "mutate",
       "method": "POST",
       "methodExpression": "'POST'",
@@ -475,7 +475,7 @@
     {
       "id": "5a327ec1abad41b8",
       "file": "frontend/features/settings/Apify.tsx",
-      "line": 21,
+      "line": 155,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
@@ -491,7 +491,7 @@
     {
       "id": "681ccd135d8a836a",
       "file": "frontend/features/settings/Apify.tsx",
-      "line": 25,
+      "line": 206,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -507,7 +507,7 @@
     {
       "id": "a31ce83493a38633",
       "file": "frontend/features/settings/Apify.tsx",
-      "line": 26,
+      "line": 207,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -521,13 +521,13 @@
       "dynamicURL": false
     },
     {
-      "id": "5006e486312542d3",
+      "id": "aac6287bbe74cd46",
       "file": "frontend/features/settings/Apify.tsx",
-      "line": 33,
+      "line": 317,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
-      "urlExpression": "'/api/apify/hh-source?companyId='+source.companyId",
+      "urlExpression": "'/api/apify/hh-source?companyId=' + source.companyId",
       "literalFragments": [
         "/api/apify/hh-source?companyId="
       ],
@@ -539,7 +539,7 @@
     {
       "id": "09abb7df931d88f0",
       "file": "frontend/features/settings/Apify.tsx",
-      "line": 36,
+      "line": 349,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -555,7 +555,7 @@
     {
       "id": "97a6926cc087d3be",
       "file": "frontend/features/settings/Apify.tsx",
-      "line": 39,
+      "line": 372,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -571,7 +571,7 @@
     {
       "id": "7596bc34fb2dca2c",
       "file": "frontend/features/settings/CandidateClassification.tsx",
-      "line": 8,
+      "line": 51,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -587,7 +587,7 @@
     {
       "id": "ef642c13896a33a6",
       "file": "frontend/features/settings/CandidateClassification.tsx",
-      "line": 8,
+      "line": 52,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -603,7 +603,7 @@
     {
       "id": "b6e59606e787c6b0",
       "file": "frontend/features/settings/CandidateClassification.tsx",
-      "line": 20,
+      "line": 141,
       "call": "mutate",
       "method": "POST",
       "methodExpression": "'POST'",
@@ -617,13 +617,13 @@
       "dynamicURL": false
     },
     {
-      "id": "eb2dc20db0f5fb77",
+      "id": "b5533726689b4abf",
       "file": "frontend/features/settings/CandidateClassification.tsx",
-      "line": 22,
+      "line": 299,
       "call": "mutate",
       "method": "POST",
       "methodExpression": "'POST'",
-      "urlExpression": "'/api/classification/jobs/'+job.id+'/resume'",
+      "urlExpression": "'/api/classification/jobs/' + job.id + '/resume'",
       "literalFragments": [
         "/api/classification/jobs/"
       ],
@@ -633,13 +633,13 @@
       "dynamicURL": true
     },
     {
-      "id": "1a4cdcb91e79a1a4",
+      "id": "5666303aa24560a7",
       "file": "frontend/features/settings/Classification.tsx",
-      "line": 24,
+      "line": 64,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
-      "urlExpression": "'/api/classification/prompts/'+initial.roleId",
+      "urlExpression": "'/api/classification/prompts/' + initial.roleId",
       "literalFragments": [
         "/api/classification/prompts/"
       ],
@@ -651,7 +651,7 @@
     {
       "id": "2a25aa9f8dcd45a0",
       "file": "frontend/features/settings/Classification.tsx",
-      "line": 30,
+      "line": 124,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -665,13 +665,13 @@
       "dynamicURL": false
     },
     {
-      "id": "4555aacd79ce3e68",
+      "id": "04a01804b0242db6",
       "file": "frontend/features/settings/Classification.tsx",
-      "line": 35,
+      "line": 153,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
-      "urlExpression": "'/api/classification/roles/'+role.roleId",
+      "urlExpression": "'/api/classification/roles/' + role.roleId",
       "literalFragments": [
         "/api/classification/roles/"
       ],
@@ -683,7 +683,7 @@
     {
       "id": "2a25aa9f8dcd45a0-2",
       "file": "frontend/features/settings/Classification.tsx",
-      "line": 39,
+      "line": 196,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -699,7 +699,7 @@
     {
       "id": "cd15aa359895c579",
       "file": "frontend/features/settings/Classification.tsx",
-      "line": 51,
+      "line": 354,
       "call": "mutate",
       "method": "POST",
       "methodExpression": "'POST'",
@@ -715,7 +715,7 @@
     {
       "id": "c9dc4b057a4660b7",
       "file": "frontend/features/settings/CopyAllDiagnostics.tsx",
-      "line": 24,
+      "line": 48,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -731,7 +731,7 @@
     {
       "id": "5820df540093e70e",
       "file": "frontend/features/settings/CopyAllDiagnostics.tsx",
-      "line": 25,
+      "line": 51,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -747,7 +747,7 @@
     {
       "id": "ec8ae6a44c3f62ef",
       "file": "frontend/features/settings/CopyAllDiagnostics.tsx",
-      "line": 26,
+      "line": 52,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -763,7 +763,7 @@
     {
       "id": "36adb33dd301f2dd",
       "file": "frontend/features/settings/CopyAllDiagnostics.tsx",
-      "line": 27,
+      "line": 53,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -777,13 +777,13 @@
       "dynamicURL": false
     },
     {
-      "id": "45548d44e24a1fcf",
+      "id": "7e0617345fcc501c",
       "file": "frontend/features/settings/CopyAllDiagnostics.tsx",
-      "line": 29,
+      "line": 55,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
-      "urlExpression": "mode?'/api/firecrawl/usage?mode='+mode:null",
+      "urlExpression": "mode ? '/api/firecrawl/usage?mode=' + mode : null",
       "literalFragments": [
         "/api/firecrawl/usage?mode="
       ],
@@ -795,7 +795,7 @@
     {
       "id": "34b7c64522818a46",
       "file": "frontend/features/settings/CopyAllDiagnostics.tsx",
-      "line": 30,
+      "line": 58,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -811,7 +811,7 @@
     {
       "id": "55d91a571b5b6d99",
       "file": "frontend/features/settings/CopyAllDiagnostics.tsx",
-      "line": 31,
+      "line": 59,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -859,7 +859,7 @@
     {
       "id": "870c0b8e97cced9f",
       "file": "frontend/features/settings/Documentation.tsx",
-      "line": 29,
+      "line": 42,
       "call": "link",
       "method": "GET",
       "methodExpression": "GET",
@@ -875,7 +875,7 @@
     {
       "id": "ef5a601382b193d6",
       "file": "frontend/features/settings/Firecrawl.tsx",
-      "line": 14,
+      "line": 165,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -891,7 +891,7 @@
     {
       "id": "c6ec562c5310b769",
       "file": "frontend/features/settings/Firecrawl.tsx",
-      "line": 16,
+      "line": 184,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
@@ -907,7 +907,7 @@
     {
       "id": "a392a7d8b75dff5a",
       "file": "frontend/features/settings/Firecrawl.tsx",
-      "line": 16,
+      "line": 217,
       "call": "mutate",
       "method": "POST",
       "methodExpression": "'POST'",
@@ -923,7 +923,7 @@
     {
       "id": "7104c96eb3ab4e15",
       "file": "frontend/features/settings/Firecrawl.tsx",
-      "line": 22,
+      "line": 270,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
@@ -937,13 +937,13 @@
       "dynamicURL": false
     },
     {
-      "id": "d60571794bc9550e",
+      "id": "de2ac3976706545d",
       "file": "frontend/features/settings/Firecrawl.tsx",
-      "line": 27,
+      "line": 325,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
-      "urlExpression": "'/api/firecrawl/usage?mode='+mode",
+      "urlExpression": "'/api/firecrawl/usage?mode=' + mode",
       "literalFragments": [
         "/api/firecrawl/usage?mode="
       ],
@@ -955,7 +955,7 @@
     {
       "id": "635e6f72e1c417aa",
       "file": "frontend/features/settings/Firecrawl.tsx",
-      "line": 28,
+      "line": 327,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -971,7 +971,7 @@
     {
       "id": "fab5d3db70d5fd2b",
       "file": "frontend/features/settings/Firecrawl.tsx",
-      "line": 32,
+      "line": 406,
       "call": "mutate",
       "method": "POST",
       "methodExpression": "'POST'",
@@ -987,7 +987,7 @@
     {
       "id": "cee933ffeb9e8391",
       "file": "frontend/features/settings/Firecrawl.tsx",
-      "line": 37,
+      "line": 449,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
@@ -1003,7 +1003,7 @@
     {
       "id": "ef5a601382b193d6-2",
       "file": "frontend/features/settings/Firecrawl.tsx",
-      "line": 40,
+      "line": 547,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -1017,13 +1017,13 @@
       "dynamicURL": false
     },
     {
-      "id": "e807c7e69af4bf78",
+      "id": "532603c33f3c7536",
       "file": "frontend/features/settings/Firecrawl.tsx",
-      "line": 43,
+      "line": 564,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
-      "urlExpression": "'/api/firecrawl/'+(source.agencyId?'agency-sources/'+source.agencyId:'sources/'+source.companyId)+'/'+source.sourceId",
+      "urlExpression": "'/api/firecrawl/' +\n            (source.agencyId\n              ? 'agency-sources/' + source.agencyId\n              : 'sources/' + source.companyId) +\n            '/' +\n            source.sourceId",
       "literalFragments": [
         "/api/firecrawl/"
       ],
@@ -1033,13 +1033,13 @@
       "dynamicURL": true
     },
     {
-      "id": "3b4feade0d08f8f6",
+      "id": "c5427618b631d629",
       "file": "frontend/features/settings/Firecrawl.tsx",
-      "line": 49,
+      "line": 879,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
-      "urlExpression": "'/api/firecrawl/pending?'+(source.agencyId?'agencyId='+source.agencyId:'companyId='+source.companyId)+'&sourceId='+source.sourceId",
+      "urlExpression": "'/api/firecrawl/pending?' +\n      (source.agencyId ? 'agencyId=' + source.agencyId : 'companyId=' + source.companyId) +\n      '&sourceId=' +\n      source.sourceId",
       "literalFragments": [
         "/api/firecrawl/pending?"
       ],
@@ -1049,13 +1049,13 @@
       "dynamicURL": true
     },
     {
-      "id": "4a3022fe5a95ab19",
+      "id": "a1d118ab7cc0301f",
       "file": "frontend/features/settings/Firecrawl.tsx",
-      "line": 51,
+      "line": 918,
       "call": "request",
       "method": "GET",
       "methodExpression": "GET",
-      "urlExpression": "'/api/firecrawl/runs/'+run.runId",
+      "urlExpression": "'/api/firecrawl/runs/' + run.runId",
       "literalFragments": [
         "/api/firecrawl/runs/"
       ],
@@ -1067,7 +1067,7 @@
     {
       "id": "7f57af15acf71057",
       "file": "frontend/features/settings/Firecrawl.tsx",
-      "line": 51,
+      "line": 951,
       "call": "mutate",
       "method": "POST",
       "methodExpression": "'POST'",
@@ -1081,13 +1081,13 @@
       "dynamicURL": false
     },
     {
-      "id": "368fb224786723a7",
+      "id": "1e6e4aeff8e959c7",
       "file": "frontend/features/settings/Firecrawl.tsx",
-      "line": 51,
+      "line": 977,
       "call": "mutate",
       "method": "POST",
       "methodExpression": "'POST'",
-      "urlExpression": "'/api/firecrawl/runs/'+result.runId+'/resume'",
+      "urlExpression": "'/api/firecrawl/runs/' + result.runId + '/resume'",
       "literalFragments": [
         "/api/firecrawl/runs/"
       ],
@@ -1097,13 +1097,13 @@
       "dynamicURL": true
     },
     {
-      "id": "22769b7c89d328f4",
+      "id": "2e465262095cfaa2",
       "file": "frontend/features/settings/Firecrawl.tsx",
-      "line": 51,
+      "line": 1005,
       "call": "mutate",
       "method": "POST",
       "methodExpression": "'POST'",
-      "urlExpression": "'/api/firecrawl/runs/'+result.runId+'/save'",
+      "urlExpression": "'/api/firecrawl/runs/' + result.runId + '/save'",
       "literalFragments": [
         "/api/firecrawl/runs/"
       ],
@@ -1113,13 +1113,13 @@
       "dynamicURL": true
     },
     {
-      "id": "dd379cb2333a99e2",
+      "id": "3d19f0340c52b06b",
       "file": "frontend/features/settings/Firecrawl.tsx",
-      "line": 54,
+      "line": 1038,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
-      "urlExpression": "'/api/firecrawl/sources'+(agencyId?'?agencyId='+agencyId:companyId?'?companyId='+companyId:'')",
+      "urlExpression": "'/api/firecrawl/sources' +\n        (agencyId ? '?agencyId=' + agencyId : companyId ? '?companyId=' + companyId : '')",
       "literalFragments": [
         "/api/firecrawl/sources"
       ],
@@ -1131,7 +1131,7 @@
     {
       "id": "ef5a601382b193d6-3",
       "file": "frontend/features/settings/Firecrawl.tsx",
-      "line": 54,
+      "line": 1042,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -1147,7 +1147,7 @@
     {
       "id": "59850f804d40ceb9",
       "file": "frontend/features/settings/Firecrawl.tsx",
-      "line": 54,
+      "line": 1043,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -1163,7 +1163,7 @@
     {
       "id": "ef5a601382b193d6-4",
       "file": "frontend/features/settings/Firecrawl.tsx",
-      "line": 59,
+      "line": 1162,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -1179,7 +1179,7 @@
     {
       "id": "c86ff43ac1686e94",
       "file": "frontend/features/settings/HHRoleSettings.tsx",
-      "line": 20,
+      "line": 72,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
@@ -1195,7 +1195,7 @@
     {
       "id": "a8f34f8c05a10fe9",
       "file": "frontend/features/settings/HHRoleSettings.tsx",
-      "line": 26,
+      "line": 119,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -1211,7 +1211,7 @@
     {
       "id": "95075e33fb660242",
       "file": "frontend/features/settings/HHRoleSettings.tsx",
-      "line": 26,
+      "line": 120,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -1227,7 +1227,7 @@
     {
       "id": "f1897c83981ffdd2",
       "file": "frontend/features/settings/OpenAI.tsx",
-      "line": 9,
+      "line": 28,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -1241,13 +1241,13 @@
       "dynamicURL": false
     },
     {
-      "id": "a2ed9ae926a05df1",
+      "id": "f33bdf46044c87e7",
       "file": "frontend/features/settings/OpenAI.tsx",
-      "line": 13,
+      "line": 46,
       "call": "mutate",
       "method": "POST",
       "methodExpression": "'POST'",
-      "urlExpression": "'/api/openai/'+name",
+      "urlExpression": "'/api/openai/' + name",
       "literalFragments": [
         "/api/openai/"
       ],
@@ -1259,7 +1259,7 @@
     {
       "id": "e37f0f9be436b76a",
       "file": "frontend/features/settings/OpenAI.tsx",
-      "line": 17,
+      "line": 76,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
@@ -1275,7 +1275,7 @@
     {
       "id": "0717c6b5d29c106b",
       "file": "frontend/features/settings/OpenRouter.tsx",
-      "line": 33,
+      "line": 34,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -1291,7 +1291,7 @@
     {
       "id": "ba57098b819e04a5",
       "file": "frontend/features/settings/OpenRouter.tsx",
-      "line": 34,
+      "line": 48,
       "call": "mutate",
       "method": "POST",
       "methodExpression": "'POST'",
@@ -1307,7 +1307,7 @@
     {
       "id": "c65274930b64a151",
       "file": "frontend/features/settings/OpenRouter.tsx",
-      "line": 57,
+      "line": 101,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
@@ -1321,13 +1321,13 @@
       "dynamicURL": false
     },
     {
-      "id": "05f53f187333121e",
+      "id": "b3127a08b7babfce",
       "file": "frontend/features/settings/ParserExpenseRepeats.tsx",
-      "line": 74,
+      "line": 205,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
-      "urlExpression": "'/api/scheduler/expense-repeats?days='+days",
+      "urlExpression": "'/api/scheduler/expense-repeats?days=' + days",
       "literalFragments": [
         "/api/scheduler/expense-repeats?days="
       ],
@@ -1337,13 +1337,13 @@
       "dynamicURL": true
     },
     {
-      "id": "bfe3f5bcca644f68",
+      "id": "523d927aa0bad85e",
       "file": "frontend/features/settings/ParserFunnel.tsx",
-      "line": 40,
+      "line": 262,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
-      "urlExpression": "'/api/scheduler/funnel?sourceId='+encodeURIComponent(sourceId)+'&parser='+encodeURIComponent(parser)",
+      "urlExpression": "'/api/scheduler/funnel?sourceId=' +\n      encodeURIComponent(sourceId) +\n      '&parser=' +\n      encodeURIComponent(parser)",
       "literalFragments": [
         "/api/scheduler/funnel?sourceId="
       ],
@@ -1355,7 +1355,7 @@
     {
       "id": "d121acc08c4213cc",
       "file": "frontend/features/settings/ParserHHScanSchedule.tsx",
-      "line": 67,
+      "line": 157,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -1369,13 +1369,13 @@
       "dynamicURL": false
     },
     {
-      "id": "27b4f9a8e26ad7e0",
+      "id": "08fb9d2b9f4ce517",
       "file": "frontend/features/settings/ParserUnitCost.tsx",
-      "line": 127,
+      "line": 333,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
-      "urlExpression": "'/api/scheduler/unit-cost?days='+days+'&sourceId='+encodeURIComponent(sourceId)",
+      "urlExpression": "'/api/scheduler/unit-cost?days=' + days + '&sourceId=' + encodeURIComponent(sourceId)",
       "literalFragments": [
         "/api/scheduler/unit-cost?days="
       ],
@@ -1387,7 +1387,7 @@
     {
       "id": "75529e05bf679188",
       "file": "frontend/features/settings/Profile.tsx",
-      "line": 24,
+      "line": 49,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
@@ -1401,7 +1401,7 @@
     {
       "id": "c790d4fb5de69484",
       "file": "frontend/features/settings/Profile.tsx",
-      "line": 33,
+      "line": 102,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -1417,7 +1417,7 @@
     {
       "id": "34ee6deb8ebf2d2a",
       "file": "frontend/features/settings/Profile.tsx",
-      "line": 34,
+      "line": 120,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -1433,7 +1433,7 @@
     {
       "id": "40a12987fdc5ee54",
       "file": "frontend/features/settings/Profile.tsx",
-      "line": 34,
+      "line": 123,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -1447,13 +1447,13 @@
       "dynamicURL": false
     },
     {
-      "id": "da15e1196de6293a",
+      "id": "8730ca10dd61270c",
       "file": "frontend/features/settings/PromptModel.tsx",
-      "line": 12,
+      "line": 47,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
-      "urlExpression": "provider==='openai'?'/api/openai':null",
+      "urlExpression": "provider === 'openai' ? '/api/openai' : null",
       "literalFragments": [
         "/api/openai"
       ],
@@ -1463,13 +1463,13 @@
       "dynamicURL": true
     },
     {
-      "id": "738bee33722b236e",
+      "id": "dfa6456ba1a2eac3",
       "file": "frontend/features/settings/PromptModel.tsx",
-      "line": 13,
+      "line": 49,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
-      "urlExpression": "['relevance','vacancy_role'].includes(initial.kind)&&provider==='openrouter'&&routerModel==='jev'?'/api/openrouter/jev':null",
+      "urlExpression": "['relevance', 'vacancy_role'].includes(initial.kind) &&\n      provider === 'openrouter' &&\n      routerModel === 'jev'\n      ? '/api/openrouter/jev'\n      : null",
       "literalFragments": [
         "/api/openrouter/jev"
       ],
@@ -1479,13 +1479,13 @@
       "dynamicURL": true
     },
     {
-      "id": "eba91016d195dca8",
+      "id": "317007317a88128a",
       "file": "frontend/features/settings/PromptModel.tsx",
-      "line": 21,
+      "line": 95,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
-      "urlExpression": "'/api/profile/prompt-models/'+initial.kind",
+      "urlExpression": "'/api/profile/prompt-models/' + initial.kind",
       "literalFragments": [
         "/api/profile/prompt-models/"
       ],
@@ -1497,7 +1497,7 @@
     {
       "id": "e34b67541b8c2dc3",
       "file": "frontend/features/settings/Roles.tsx",
-      "line": 9,
+      "line": 19,
       "call": "mutate",
       "method": "POST",
       "methodExpression": "'POST'",
@@ -1511,13 +1511,13 @@
       "dynamicURL": false
     },
     {
-      "id": "230d1a97f528f806",
+      "id": "806e0e45ad0b78a4",
       "file": "frontend/features/settings/Roles.tsx",
-      "line": 10,
+      "line": 24,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
-      "urlExpression": "'/api/vacancy-roles/'+role.id",
+      "urlExpression": "'/api/vacancy-roles/' + role.id",
       "literalFragments": [
         "/api/vacancy-roles/"
       ],
@@ -1527,13 +1527,13 @@
       "dynamicURL": true
     },
     {
-      "id": "280bcbdaa20cba21",
+      "id": "2f50a81a40177a9e",
       "file": "frontend/features/settings/Roles.tsx",
-      "line": 11,
+      "line": 28,
       "call": "mutate",
       "method": "DELETE",
       "methodExpression": "'DELETE'",
-      "urlExpression": "'/api/vacancy-roles/'+role.id",
+      "urlExpression": "'/api/vacancy-roles/' + role.id",
       "literalFragments": [
         "/api/vacancy-roles/"
       ],
@@ -1543,13 +1543,13 @@
       "dynamicURL": true
     },
     {
-      "id": "230d1a97f528f806-2",
+      "id": "806e0e45ad0b78a4-2",
       "file": "frontend/features/settings/Roles.tsx",
-      "line": 14,
+      "line": 74,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
-      "urlExpression": "'/api/vacancy-roles/'+role.id",
+      "urlExpression": "'/api/vacancy-roles/' + role.id",
       "literalFragments": [
         "/api/vacancy-roles/"
       ],
@@ -1559,13 +1559,13 @@
       "dynamicURL": true
     },
     {
-      "id": "230d1a97f528f806-3",
+      "id": "806e0e45ad0b78a4-3",
       "file": "frontend/features/settings/Roles.tsx",
-      "line": 14,
+      "line": 88,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
-      "urlExpression": "'/api/vacancy-roles/'+role.id",
+      "urlExpression": "'/api/vacancy-roles/' + role.id",
       "literalFragments": [
         "/api/vacancy-roles/"
       ],
@@ -1575,13 +1575,13 @@
       "dynamicURL": true
     },
     {
-      "id": "230d1a97f528f806-4",
+      "id": "806e0e45ad0b78a4-4",
       "file": "frontend/features/settings/Roles.tsx",
-      "line": 15,
+      "line": 119,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
-      "urlExpression": "'/api/vacancy-roles/'+role.id",
+      "urlExpression": "'/api/vacancy-roles/' + role.id",
       "literalFragments": [
         "/api/vacancy-roles/"
       ],
@@ -1593,7 +1593,7 @@
     {
       "id": "d43623f8594be453",
       "file": "frontend/features/settings/Roles.tsx",
-      "line": 20,
+      "line": 147,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -1609,7 +1609,7 @@
     {
       "id": "e34b67541b8c2dc3-2",
       "file": "frontend/features/settings/Roles.tsx",
-      "line": 23,
+      "line": 165,
       "call": "mutate",
       "method": "POST",
       "methodExpression": "'POST'",
@@ -1625,7 +1625,7 @@
     {
       "id": "ab313e001aa9f9bc",
       "file": "frontend/features/settings/Scheduler.tsx",
-      "line": 31,
+      "line": 156,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
@@ -1641,7 +1641,7 @@
     {
       "id": "ab313e001aa9f9bc-2",
       "file": "frontend/features/settings/Scheduler.tsx",
-      "line": 39,
+      "line": 295,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
@@ -1655,13 +1655,13 @@
       "dynamicURL": false
     },
     {
-      "id": "f2ce3fed5be3c776",
+      "id": "26c1d01282d0eb28",
       "file": "frontend/features/settings/Scheduler.tsx",
-      "line": 53,
+      "line": 442,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
-      "urlExpression": "'/api/scheduler/queue?'+query",
+      "urlExpression": "'/api/scheduler/queue?' + query",
       "literalFragments": [
         "/api/scheduler/queue?"
       ],
@@ -1671,13 +1671,13 @@
       "dynamicURL": true
     },
     {
-      "id": "ac1ac72b61790922",
+      "id": "8fdb3aa4a5579e88",
       "file": "frontend/features/settings/Scheduler.tsx",
-      "line": 57,
+      "line": 448,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
-      "urlExpression": "'/api/scheduler/queue/debug?'+debugQuery",
+      "urlExpression": "'/api/scheduler/queue/debug?' + debugQuery",
       "literalFragments": [
         "/api/scheduler/queue/debug?"
       ],
@@ -1689,7 +1689,7 @@
     {
       "id": "75e59256bf1a7125",
       "file": "frontend/features/settings/Scheduler.tsx",
-      "line": 59,
+      "line": 587,
       "call": "mutate",
       "method": "POST",
       "methodExpression": "'POST'",
@@ -1703,13 +1703,13 @@
       "dynamicURL": false
     },
     {
-      "id": "68c3e8b7ba26363a",
+      "id": "e3d9c236dee6d850",
       "file": "frontend/features/settings/Scheduler.tsx",
-      "line": 59,
+      "line": 615,
       "call": "mutate",
       "method": "POST",
       "methodExpression": "'POST'",
-      "urlExpression": "'/api/scheduler/jobs/'+j.id+'/'+(j.status==='pending'?'cancel':'retry')",
+      "urlExpression": "'/api/scheduler/jobs/' +\n                                    j.id +\n                                    '/' +\n                                    (j.status === 'pending' ? 'cancel' : 'retry')",
       "literalFragments": [
         "/api/scheduler/jobs/"
       ],
@@ -1721,7 +1721,7 @@
     {
       "id": "e64433429e4391ad",
       "file": "frontend/features/settings/Scheduler.tsx",
-      "line": 64,
+      "line": 665,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -1737,7 +1737,7 @@
     {
       "id": "4b60146604c370b2",
       "file": "frontend/features/settings/Scheduler.tsx",
-      "line": 64,
+      "line": 666,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -1753,7 +1753,7 @@
     {
       "id": "c85278915ad72425",
       "file": "frontend/features/settings/Scheduler.tsx",
-      "line": 65,
+      "line": 667,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -1769,7 +1769,7 @@
     {
       "id": "ab313e001aa9f9bc-3",
       "file": "frontend/features/settings/Scheduler.tsx",
-      "line": 76,
+      "line": 757,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
@@ -1785,7 +1785,7 @@
     {
       "id": "0f8303a5216fa000",
       "file": "frontend/features/settings/Scheduler.tsx",
-      "line": 100,
+      "line": 1153,
       "call": "mutate",
       "method": "POST",
       "methodExpression": "'POST'",
@@ -1801,7 +1801,7 @@
     {
       "id": "952a1852bfcc4624",
       "file": "frontend/features/settings/Scheduler.tsx",
-      "line": 100,
+      "line": 1167,
       "call": "mutate",
       "method": "POST",
       "methodExpression": "'POST'",
@@ -1817,7 +1817,7 @@
     {
       "id": "f2ce749fe65c339f",
       "file": "frontend/features/settings/Settings.tsx",
-      "line": 16,
+      "line": 75,
       "call": "link",
       "method": "GET",
       "methodExpression": "GET",
@@ -1833,7 +1833,7 @@
     {
       "id": "cc1cf04449384779",
       "file": "frontend/features/settings/Settings.tsx",
-      "line": 17,
+      "line": 123,
       "call": "mutate",
       "method": "POST",
       "methodExpression": "'POST'",
@@ -1849,7 +1849,7 @@
     {
       "id": "fa58b060b977e031",
       "file": "frontend/features/settings/TargetHH.tsx",
-      "line": 15,
+      "line": 39,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -1865,7 +1865,7 @@
     {
       "id": "411abbe2e091921c",
       "file": "frontend/features/settings/TargetHH.tsx",
-      "line": 24,
+      "line": 84,
       "call": "mutate",
       "method": "POST",
       "methodExpression": "'POST'",
@@ -1879,7 +1879,7 @@
     {
       "id": "cde59909f1c953b6",
       "file": "frontend/features/settings/TargetHH.tsx",
-      "line": 36,
+      "line": 132,
       "call": "mutate",
       "method": "POST",
       "methodExpression": "'POST'",
@@ -1895,7 +1895,7 @@
     {
       "id": "ea7f2e6d0675591f",
       "file": "frontend/features/settings/Transfer.tsx",
-      "line": 5,
+      "line": 6,
       "call": "fetch",
       "method": "GET",
       "methodExpression": "GET",
@@ -1909,7 +1909,7 @@
     {
       "id": "ec94f5eac1c74a9a",
       "file": "frontend/features/settings/Transfer.tsx",
-      "line": 34,
+      "line": 126,
       "call": "mutate",
       "method": "POST",
       "methodExpression": "'POST'",
@@ -1925,7 +1925,7 @@
     {
       "id": "6738fabbae525f6b",
       "file": "frontend/features/settings/Transfer.tsx",
-      "line": 44,
+      "line": 246,
       "call": "mutate",
       "method": "POST",
       "methodExpression": "'POST'",
@@ -1941,7 +1941,7 @@
     {
       "id": "b65ee00cd5254776",
       "file": "frontend/features/settings/Transfer.tsx",
-      "line": 63,
+      "line": 283,
       "call": "mutate",
       "method": "POST",
       "methodExpression": "'POST'",
@@ -1955,13 +1955,13 @@
       "dynamicURL": false
     },
     {
-      "id": "48fffdd248a1a3cf",
+      "id": "349397932001d9a1",
       "file": "frontend/features/settings/VacancyDetails.tsx",
-      "line": 12,
+      "line": 95,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
-      "urlExpression": "'/api/vacancy-details/'+id",
+      "urlExpression": "'/api/vacancy-details/' + id",
       "literalFragments": [
         "/api/vacancy-details/"
       ],
@@ -1973,7 +1973,7 @@
     {
       "id": "b7163515279f061b",
       "file": "frontend/features/settings/VacancyDetails.tsx",
-      "line": 16,
+      "line": 120,
       "call": "mutate",
       "method": "POST",
       "methodExpression": "'POST'",
@@ -1989,7 +1989,7 @@
     {
       "id": "12e60b7b29331fe4",
       "file": "frontend/features/settings/VacancyDetails.tsx",
-      "line": 22,
+      "line": 283,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -2005,7 +2005,7 @@
     {
       "id": "b7163515279f061b-2",
       "file": "frontend/features/settings/VacancyDetails.tsx",
-      "line": 26,
+      "line": 341,
       "call": "mutate",
       "method": "POST",
       "methodExpression": "'POST'",
@@ -2019,13 +2019,13 @@
       "dynamicURL": false
     },
     {
-      "id": "321bb98c485c4293",
+      "id": "e5719d32d73f0c49",
       "file": "frontend/features/settings/VacancyDetails.tsx",
-      "line": 26,
+      "line": 445,
       "call": "mutate",
       "method": "POST",
       "methodExpression": "'POST'",
-      "urlExpression": "'/api/vacancy-details/jobs/'+j.id+'/run'",
+      "urlExpression": "'/api/vacancy-details/jobs/' + j.id + '/run'",
       "literalFragments": [
         "/api/vacancy-details/jobs/"
       ],
@@ -2037,7 +2037,7 @@
     {
       "id": "455827232212e117",
       "file": "frontend/features/settings/VacancyImport.tsx",
-      "line": 14,
+      "line": 79,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -2051,13 +2051,13 @@
       "dynamicURL": false
     },
     {
-      "id": "61efb4af877d7b58",
+      "id": "9acc15839a417166",
       "file": "frontend/features/settings/VacancyImport.tsx",
-      "line": 16,
+      "line": 86,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
-      "urlExpression": "historyId?'/api/vacancy-import/history/'+historyId:null",
+      "urlExpression": "historyId ? '/api/vacancy-import/history/' + historyId : null",
       "literalFragments": [
         "/api/vacancy-import/history/"
       ],
@@ -2069,7 +2069,7 @@
     {
       "id": "1c5af4cc9a941de5",
       "file": "frontend/features/settings/VacancyImport.tsx",
-      "line": 21,
+      "line": 143,
       "call": "mutate",
       "method": "POST",
       "methodExpression": "'POST'",
@@ -2083,13 +2083,13 @@
       "dynamicURL": false
     },
     {
-      "id": "ba57dfa63f1c7b00",
+      "id": "dafe357a3e04c474",
       "file": "frontend/features/settings/VacancyImport.tsx",
-      "line": 24,
+      "line": 230,
       "call": "mutate",
       "method": "POST",
       "methodExpression": "'POST'",
-      "urlExpression": "'/api/vacancy-import/roles/'+p.candidateId",
+      "urlExpression": "'/api/vacancy-import/roles/' + p.candidateId",
       "literalFragments": [
         "/api/vacancy-import/roles/"
       ],
@@ -2099,13 +2099,13 @@
       "dynamicURL": true
     },
     {
-      "id": "b3df92adc7de18fd",
+      "id": "3ad15c5f74f67121",
       "file": "frontend/features/settings/VacancyImport.tsx",
-      "line": 24,
+      "line": 361,
       "call": "mutate",
       "method": "POST",
       "methodExpression": "'POST'",
-      "urlExpression": "'/api/vacancy-import/batches/'+preview.batch.id+'/confirm'",
+      "urlExpression": "'/api/vacancy-import/batches/' + preview.batch.id + '/confirm'",
       "literalFragments": [
         "/api/vacancy-import/batches/"
       ],
@@ -2115,13 +2115,13 @@
       "dynamicURL": true
     },
     {
-      "id": "e712be223c879716",
+      "id": "0f4e86be1bafb93f",
       "file": "frontend/features/settings/VacancyImport.tsx",
-      "line": 25,
+      "line": 401,
       "call": "mutate",
       "method": "POST",
       "methodExpression": "'POST'",
-      "urlExpression": "'/api/vacancy-import/batches/'+b.id+'/run'",
+      "urlExpression": "'/api/vacancy-import/batches/' + b.id + '/run'",
       "literalFragments": [
         "/api/vacancy-import/batches/"
       ],
@@ -2133,7 +2133,7 @@
     {
       "id": "d7c58bb132d61c04",
       "file": "frontend/features/settings/scheduler-run.ts",
-      "line": 4,
+      "line": 12,
       "call": "fetch",
       "method": "POST",
       "methodExpression": "'POST'",
@@ -2147,13 +2147,13 @@
       "dynamicURL": false
     },
     {
-      "id": "762dcaccfedfcc53",
+      "id": "e99a994bb7b46ea6",
       "file": "frontend/features/settings/scheduler-run.ts",
-      "line": 23,
+      "line": 94,
       "call": "fetch",
       "method": "GET",
       "methodExpression": "GET",
-      "urlExpression": "'/api/scheduler/run?requestId='+encodeURIComponent(requestId)",
+      "urlExpression": "'/api/scheduler/run?requestId=' + encodeURIComponent(requestId)",
       "literalFragments": [
         "/api/scheduler/run?requestId="
       ],
@@ -2165,7 +2165,7 @@
     {
       "id": "dcc34ffe3083584b",
       "file": "frontend/features/tasks/Tasks.tsx",
-      "line": 17,
+      "line": 30,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -2181,7 +2181,7 @@
     {
       "id": "00aa3c23548ea9fa",
       "file": "frontend/features/tasks/Tasks.tsx",
-      "line": 19,
+      "line": 39,
       "call": "mutate",
       "method": "POST",
       "methodExpression": "'POST'",
@@ -2197,7 +2197,7 @@
     {
       "id": "aff37da3d6e96a34",
       "file": "frontend/features/tasks/Tasks.tsx",
-      "line": 34,
+      "line": 166,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
@@ -2213,7 +2213,7 @@
     {
       "id": "aff37da3d6e96a34-2",
       "file": "frontend/features/tasks/Tasks.tsx",
-      "line": 41,
+      "line": 192,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
@@ -2229,7 +2229,7 @@
     {
       "id": "187877f33d3628a7",
       "file": "frontend/features/tasks/Tasks.tsx",
-      "line": 45,
+      "line": 249,
       "call": "mutate",
       "method": "POST",
       "methodExpression": "'POST'",
@@ -2245,7 +2245,7 @@
     {
       "id": "6a60ae3105c61ce5",
       "file": "frontend/features/tasks/Tasks.tsx",
-      "line": 53,
+      "line": 323,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -2259,13 +2259,13 @@
       "dynamicURL": true
     },
     {
-      "id": "b8ac70e485504fd0",
+      "id": "9ae6c19a2d9c0cb6",
       "file": "frontend/features/vacancies/Relevance.tsx",
-      "line": 14,
+      "line": 31,
       "call": "mutate",
       "method": "POST",
       "methodExpression": "'POST'",
-      "urlExpression": "'/api/vacancies/'+id+'/relevance'",
+      "urlExpression": "'/api/vacancies/' + id + '/relevance'",
       "literalFragments": [
         "/api/vacancies/"
       ],
@@ -2277,7 +2277,7 @@
     {
       "id": "1743cf9de612aaa5",
       "file": "frontend/features/vacancies/RoleTree.tsx",
-      "line": 28,
+      "line": 72,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -2293,7 +2293,7 @@
     {
       "id": "1743cf9de612aaa5-2",
       "file": "frontend/features/vacancies/RoleTree.tsx",
-      "line": 36,
+      "line": 86,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -2309,7 +2309,7 @@
     {
       "id": "ed2ea2d8e7f03e6c",
       "file": "frontend/features/vacancies/Vacancies.tsx",
-      "line": 33,
+      "line": 73,
       "call": "request",
       "method": "GET",
       "methodExpression": "GET",
@@ -2325,7 +2325,7 @@
     {
       "id": "ad62ed67af333723",
       "file": "frontend/features/vacancies/Vacancies.tsx",
-      "line": 42,
+      "line": 91,
       "call": "mutate",
       "method": "DYNAMIC",
       "methodExpression": "method",
@@ -2339,7 +2339,7 @@
     {
       "id": "4d43454e8fdaf721",
       "file": "frontend/features/vacancies/Vacancies.tsx",
-      "line": 108,
+      "line": 377,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -2355,7 +2355,7 @@
     {
       "id": "7f670cfffe2968c2",
       "file": "frontend/features/vacancies/Vacancies.tsx",
-      "line": 124,
+      "line": 400,
       "call": "load",
       "method": "GET",
       "methodExpression": "GET",
@@ -2369,13 +2369,13 @@
       "dynamicURL": true
     },
     {
-      "id": "46710beb00567fea",
+      "id": "79a374e05b348366",
       "file": "frontend/features/vacancies/Vacancies.tsx",
-      "line": 160,
+      "line": 490,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
-      "urlExpression": "'/api/vacancies/list?period='+period",
+      "urlExpression": "'/api/vacancies/list?period=' + period",
       "literalFragments": [
         "/api/vacancies/list?period="
       ],
@@ -2387,7 +2387,7 @@
     {
       "id": "67fa201b1c830c84",
       "file": "frontend/features/vacancies/VacancyConflict.tsx",
-      "line": 19,
+      "line": 30,
       "call": "request",
       "method": "GET",
       "methodExpression": "GET",
@@ -2403,7 +2403,7 @@
     {
       "id": "9aeba4c3b3b1f639",
       "file": "frontend/features/vacancies/VacancyDrawer.tsx",
-      "line": 51,
+      "line": 106,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -2419,7 +2419,7 @@
     {
       "id": "61d62e92de10c50b",
       "file": "frontend/features/vacancies/VacancyEditor.tsx",
-      "line": 19,
+      "line": 32,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -2435,7 +2435,7 @@
     {
       "id": "3b14a8c440b4d00a",
       "file": "frontend/features/vacancies/VacancyEditor.tsx",
-      "line": 45,
+      "line": 137,
       "call": "mutate",
       "method": "DYNAMIC",
       "methodExpression": "record ? 'PUT' : 'POST'",
@@ -2451,7 +2451,7 @@
     {
       "id": "a1679a01d53c8d81",
       "file": "frontend/features/vacancies/cover-letter.ts",
-      "line": 45,
+      "line": 54,
       "call": "fetch",
       "method": "POST",
       "methodExpression": "'POST'",
@@ -2469,7 +2469,7 @@
     {
       "id": "d1292ace96d8234d",
       "file": "frontend/features/settings/Profile.tsx",
-      "line": 33,
+      "line": 107,
       "call": "prop:RevisionEditor",
       "method": "BOUND",
       "methodExpression": "component transport",
@@ -2485,7 +2485,7 @@
     {
       "id": "f3d91c7483ddece9",
       "file": "frontend/features/settings/Profile.tsx",
-      "line": 38,
+      "line": 139,
       "call": "prop:RevisionEditor",
       "method": "BOUND",
       "methodExpression": "component transport",
@@ -2501,7 +2501,7 @@
     {
       "id": "5df99a8a8f2e6814",
       "file": "frontend/features/settings/Settings.tsx",
-      "line": 17,
+      "line": 97,
       "call": "prop:ExportCard",
       "method": "BOUND",
       "methodExpression": "component transport",
@@ -2517,7 +2517,7 @@
     {
       "id": "7a5502c965f45d43",
       "file": "frontend/features/settings/Settings.tsx",
-      "line": 17,
+      "line": 103,
       "call": "prop:ExportCard",
       "method": "BOUND",
       "methodExpression": "component transport",
@@ -2533,7 +2533,7 @@
     {
       "id": "82c60d409664d71c",
       "file": "frontend/features/settings/Settings.tsx",
-      "line": 17,
+      "line": 109,
       "call": "prop:ExportCard",
       "method": "BOUND",
       "methodExpression": "component transport",
@@ -2549,7 +2549,7 @@
     {
       "id": "b696f4feba993e8b",
       "file": "frontend/features/settings/Settings.tsx",
-      "line": 17,
+      "line": 139,
       "call": "prop:ExportCard",
       "method": "BOUND",
       "methodExpression": "component transport",
@@ -2565,7 +2565,7 @@
     {
       "id": "6df3f4ee1d88fa58",
       "file": "frontend/features/settings/Settings.tsx",
-      "line": 17,
+      "line": 149,
       "call": "prop:ExportCard",
       "method": "BOUND",
       "methodExpression": "component transport",
@@ -2583,7 +2583,7 @@
     {
       "id": "a5da57182842cf7a",
       "file": "frontend/features/settings/Transfer.tsx",
-      "line": 17,
+      "line": 43,
       "call": "download argument",
       "method": "BOUND",
       "methodExpression": "download forwarding",

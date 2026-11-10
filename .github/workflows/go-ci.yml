@@ -168,6 +168,10 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci --no-audit --no-fund
+      - name: GO-114 — проверка форматирования всего React/TypeScript
+        run: |
+          node scripts/test-web-format-guard.mjs
+          npm run format:check
       - name: GO-113 — обязательная строгая проверка типов React/Vite
         run: |
           node scripts/test-web-typecheck-guard.mjs

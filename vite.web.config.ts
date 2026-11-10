@@ -9,9 +9,16 @@ export default defineConfig({
   root,
   publicDir: fileURLToPath(new URL('./public', import.meta.url)),
   plugins: [react()],
-  build: { outDir: fileURLToPath(new URL('./dist/web', import.meta.url)), emptyOutDir: true,
-           sourcemap: false, manifest: false },
-  server: { host: '127.0.0.1', port: 5173, fs: { allow: [appRoot] },
+  build: {
+    outDir: fileURLToPath(new URL('./dist/web', import.meta.url)),
+    emptyOutDir: true,
+    sourcemap: false,
+    manifest: false,
+  },
+  server: {
+    host: '127.0.0.1',
+    port: 5173,
+    fs: { allow: [appRoot] },
     proxy: {
       '/api': 'http://127.0.0.1:8080',
       '/auth': 'http://127.0.0.1:8080',

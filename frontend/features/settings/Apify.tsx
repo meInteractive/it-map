@@ -1,39 +1,402 @@
 import TargetHH from './TargetHH';
 import CopyDebugJSON from './CopyDebugJSON';
-import {apifyUsageSnapshot} from '../../../shared/provider-debug.mjs';
-import {useState} from 'react';
-import {useApi,mutate} from '../../api/client';
-import {ActionForm,ErrorText,Field,State,dateLabel} from '../../components/Common';
-import {useDirty} from '../../hooks/useDirty';
-interface Account {accountId:string;planName:string;planPriceUsd:number;planCreditsUsd:number;providerUsedUsd:number;periodStart:string;periodEnd:string;checkedAt:number;}
-export interface ApifyState {enabled:boolean;paidAllowed:boolean;revision:number;profiles:Record<'free'|'starter',{configured:boolean;keyMask:string;account:Account|null;lastError:string;limits:{priceUsd:number;creditsUsd:number}}>;}
-interface Budget extends Account {limitUsd:number;localUpperUsd:number;ownConfirmedUsd:number;unknownReserveUsd:number;unknownRuns:number;readReserveUsd:number;remainingUsd:number;minimumReserveUsd:number;}
-interface Usage {providerLimitMode?:boolean;profiles:Record<'free'|'starter',Budget|null>;active:{id:string;profile:string;state:string;run_id:string;created_at:number}[];}
-const money=(n:number)=>'$'+n.toLocaleString('ru-RU',{maximumFractionDigits:4});
-function Connection({state,profile}:{state:ApifyState;profile:'free'|'starter'}){
- const [key,setKey]=useState(''),[message,setMessage]=useState(''),[checked,setChecked]=useState<{revision:number;account:Account}|null>(null);useDirty(!!key);const p=state.profiles[profile],name=profile==='free'?'Free':'Starter',account=checked?.revision===state.revision?checked.account:p.account;
- return <article className="settings-card"><h3>Подключение Apify {name}</h3><p>{p.configured?'Токен сохранён '+p.keyMask:'Токен не настроен'}</p><ErrorText error={p.lastError}/><ActionForm lockWhileBusy onSubmit={async()=>{await mutate('/api/apify/key','PUT',{profile,apiKey:key,revision:state.revision});setKey('');setChecked(null);setMessage('Токен сохранён. Проверьте подключение.');}}>{busy=><><Field label={'API-токен Apify '+name}><input className="settings-input" type="password" autoComplete="new-password" value={key} onChange={e=>setKey(e.target.value)} placeholder="apify_api_…" required/></Field><button className="settings-button" disabled={busy||!key.trim()}>Сохранить токен {name}</button></>}</ActionForm><ActionForm lockWhileBusy onSubmit={async()=>{setChecked(null);setMessage('');const result=await mutate<{account:Account}>('/api/apify/check','POST',{profile});setChecked({revision:state.revision,account:result.account});setMessage('Подключение проверено. Actor не запускался.');}}>{busy=><button className="settings-button secondary" disabled={busy||!p.configured}>{busy?'Проверяем…':'Проверить подключение '+name}</button>}</ActionForm><p role="status">{message}</p>{account&&<p>Тариф аккаунта: {account.planName||name}, {money(account.planPriceUsd)}/мес.; использовано {money(account.providerUsedUsd)}. Проверено {dateLabel(new Date(account.checkedAt).toISOString())}.</p>}{profile==='free'&&account&&account.planPriceUsd>0&&<p className="error">Это платный аккаунт. Для него нужно отдельно разрешить Starter; как бесплатный он использоваться не будет.</p>}<p className="resume-hint">Создайте API-токен в <a href="https://console.apify.com/settings/integrations" target="_blank" rel="noopener noreferrer">настройках Apify</a>. Он должен иметь доступ к аккаунту, лимитам, запуску указанного Actor и его результатам. Токен виден только при вводе.</p></article>;
+import { apifyUsageSnapshot } from '../../../shared/provider-debug.mjs';
+import { useState } from 'react';
+import { useApi, mutate } from '../../api/client';
+import { ActionForm, ErrorText, Field, State, dateLabel } from '../../components/Common';
+import { useDirty } from '../../hooks/useDirty';
+interface Account {
+  accountId: string;
+  planName: string;
+  planPriceUsd: number;
+  planCreditsUsd: number;
+  providerUsedUsd: number;
+  periodStart: string;
+  periodEnd: string;
+  checkedAt: number;
 }
-function Permissions({state}:{state:ApifyState}){
- const [enabled,setEnabled]=useState(state.enabled),[paid,setPaid]=useState(state.paidAllowed);useDirty(enabled!==state.enabled||paid!==state.paidAllowed);
- return <article className="settings-card"><h3>Режим Apify для hh.ru</h3><ActionForm lockWhileBusy onSubmit={async()=>{
-  if(paid&&!state.paidAllowed&&!window.confirm('Разрешить использование заранее оформленного Apify Starter за $19/месяц, когда Free недоступен или исчерпан? Подписка оформляется отдельно в Apify. Установите в кабинете лимит расходов $19 и отключите дополнительные покупки.'))return;
-  await mutate('/api/apify/settings','PUT',{enabled,paidAllowed:paid,revision:state.revision,...(paid&&!state.paidAllowed?{confirmed:true}:{})});
- }}>{busy=><><label><input type="checkbox" checked={enabled} onChange={e=>setEnabled(e.target.checked)}/> Apify включён для HH</label><label><input type="checkbox" checked={paid} disabled={!state.profiles.starter.configured} onChange={e=>setPaid(e.target.checked)}/> Разрешить платный тариф Apify Starter</label><p>Сначала используется Free: $5 на расчётный месяц. Когда бесплатный бюджет исчерпан, Starter доступен только при включённом разрешении.</p><p>Starter: $19/месяц, включено $19 на использование. Приложение ограничивает расход включённым бюджетом. Подписка оформляется в Apify отдельно.</p><button className="settings-button" disabled={busy}>Сохранить настройки Apify</button></>}</ActionForm><p className="resume-hint">Сохранение любого нового токена выключает разрешение Starter. Выключение Apify останавливает новые запуски Actor; уже запущенный Actor может завершиться с расходом бюджета. Публичные описания HH читаются независимо. Чтобы остановить и их, выключите источник HH компании. Free и Starter используют отдельные подключения.</p></article>;
+export interface ApifyState {
+  enabled: boolean;
+  paidAllowed: boolean;
+  revision: number;
+  profiles: Record<
+    'free' | 'starter',
+    {
+      configured: boolean;
+      keyMask: string;
+      account: Account | null;
+      lastError: string;
+      limits: { priceUsd: number; creditsUsd: number };
+    }
+  >;
 }
-export function ApifyBudgets(){
- const q=useApi<Usage>('/api/apify/usage');
- const session=useApi<{isAdmin:boolean}>('/api/session');
- const isAuthorized=()=>Boolean(session.data?.isAdmin&&!session.error);
- return <article className="settings-card"><div className="scheduler-actions"><h3>Бюджет Apify</h3><CopyDebugJSON section="apify_usage" isAuthorized={isAuthorized} disabled={!q.data||!!q.error||!isAuthorized()} getSnapshot={()=>apifyUsageSnapshot(q.data!)}/></div><State loading={!q.data&&q.loading} error={q.error}>{q.data&&<>{(['free','starter'] as const).map(profile=>{const b=q.data!.profiles[profile];return <div className="parser-diagnostic" key={profile}><h4>{profile==='free'?'Free':'Starter'}</h4>{b?<><p>Оценка доступного бюджета: {money(b.remainingUsd)} / {money(b.limitUsd)}. По статистике аккаунта: {money(b.providerUsedUsd)}.</p><p>Подтверждённая стоимость наших запусков: {money(b.ownConfirmedUsd)}. Резерв запусков без известной стоимости: {money(b.unknownReserveUsd)} ({b.unknownRuns}). Резерв чтения: {money(b.readReserveUsd)}.</p><p>Период {dateLabel(b.periodStart)} → {dateLabel(b.periodEnd)}. Проверено {dateLabel(new Date(b.checkedAt).toISOString())}.</p><p className="resume-hint">Это сохранённая оценка. Перед каждым новым запуском сервер проверяет остаток заново. Для одного запуска резервируется до $0,25 и $0,01 на чтение.</p></>:<p>Остаток неизвестен. Сохраните токен и проверьте подключение.</p>}</div>})}{q.data.providerLimitMode&&<p className="resume-hint">Для бесплатного аккаунта включена проверка жёсткого лимита Apify. Консервативная оценка выше может быть меньше доступного остатка; перед запуском сервер проверяет фактический лимит и расход.</p>}{q.data.active.map(run=><p key={run.id} role="status">{run.state==='uncertain'||run.state==='starting'?'Старт не подтверждён; автоматический повтор заблокирован. Проверьте запуск в Apify.':'Apify собирает вакансии.'} {run.run_id&&<a href={'https://console.apify.com/actors/runs/'+run.run_id} target="_blank" rel="noopener noreferrer">Открыть запуск ↗</a>}</p>)}</>}</State><button type="button" className="settings-button secondary" onClick={q.reload}>Обновить журнал</button><p className="resume-hint">Цена Actor от $1 за 1000 результатов; расходы списываются из бюджета Apify. Общий расход аккаунта и подтверждённая стоимость наших запусков перекрываются: сервер берёт большую сумму, затем добавляет резервы неизвестной стоимости и чтения. Статистика провайдера обновляется с задержкой, поэтому это оценка, а не точный баланс. Лимиты тарифа и каждого запуска сохраняются.</p></article>;
+interface Budget extends Account {
+  limitUsd: number;
+  localUpperUsd: number;
+  ownConfirmedUsd: number;
+  unknownReserveUsd: number;
+  unknownRuns: number;
+  readReserveUsd: number;
+  remainingUsd: number;
+  minimumReserveUsd: number;
 }
-interface HHSource {companyId:number;companyName:string;sourceId:string;url:string;enabled:boolean;supported:boolean;revision:number;config:unknown;}
-function HHSourceForm({source}:{source:HHSource}){
- const [enabled,setEnabled]=useState(source.enabled);useDirty(enabled!==source.enabled);
- return <article className="settings-card"><h4>{source.companyName}</h4><p><a href={source.url} target="_blank" rel="noopener noreferrer">{source.url}</a></p><ActionForm lockWhileBusy onSubmit={async()=>{await mutate('/api/apify/hh-source?companyId='+source.companyId,'PUT',{sourceUrl:source.url,enabled,revision:source.revision,config:source.config});}}>{busy=><><label><input type="checkbox" checked={enabled} disabled={!source.supported} onChange={e=>setEnabled(e.target.checked)}/> Источник HH включён</label><button className="settings-button" disabled={busy||(!source.supported&&enabled)}>Сохранить источник HH</button></>}</ActionForm>{!source.supported&&<p className="error">Ссылка HH не поддерживается. Исправьте её в каталоге организации.</p>}</article>;
+interface Usage {
+  providerLimitMode?: boolean;
+  profiles: Record<'free' | 'starter', Budget | null>;
+  active: { id: string; profile: string; state: string; run_id: string; created_at: number }[];
 }
-function HHSources(){
- const q=useApi<{sources:HHSource[]}>('/api/apify/hh-sources');
- return <details><summary>Источники HH компаний</summary><State loading={!q.data&&q.loading} error={q.error}>{q.data&&<>{q.data.sources.length===0&&<p>Нет заполненных HH-источников компаний в текущей области парсинга.</p>}{q.data.sources.map(source=><HHSourceForm key={source.companyId+':'+source.revision+':'+source.url} source={source}/>)}</>}</State></details>;
+const money = (n: number) => '$' + n.toLocaleString('ru-RU', { maximumFractionDigits: 4 });
+function Connection({ state, profile }: { state: ApifyState; profile: 'free' | 'starter' }) {
+  const [key, setKey] = useState(''),
+    [message, setMessage] = useState(''),
+    [checked, setChecked] = useState<{ revision: number; account: Account } | null>(null);
+  useDirty(!!key);
+  const p = state.profiles[profile],
+    name = profile === 'free' ? 'Free' : 'Starter',
+    account = checked?.revision === state.revision ? checked.account : p.account;
+  return (
+    <article className="settings-card">
+      <h3>Подключение Apify {name}</h3>
+      <p>{p.configured ? 'Токен сохранён ' + p.keyMask : 'Токен не настроен'}</p>
+      <ErrorText error={p.lastError} />
+      <ActionForm
+        lockWhileBusy
+        onSubmit={async () => {
+          await mutate('/api/apify/key', 'PUT', { profile, apiKey: key, revision: state.revision });
+          setKey('');
+          setChecked(null);
+          setMessage('Токен сохранён. Проверьте подключение.');
+        }}
+      >
+        {(busy) => (
+          <>
+            <Field label={'API-токен Apify ' + name}>
+              <input
+                className="settings-input"
+                type="password"
+                autoComplete="new-password"
+                value={key}
+                onChange={(e) => setKey(e.target.value)}
+                placeholder="apify_api_…"
+                required
+              />
+            </Field>
+            <button className="settings-button" disabled={busy || !key.trim()}>
+              Сохранить токен {name}
+            </button>
+          </>
+        )}
+      </ActionForm>
+      <ActionForm
+        lockWhileBusy
+        onSubmit={async () => {
+          setChecked(null);
+          setMessage('');
+          const result = await mutate<{ account: Account }>('/api/apify/check', 'POST', {
+            profile,
+          });
+          setChecked({ revision: state.revision, account: result.account });
+          setMessage('Подключение проверено. Actor не запускался.');
+        }}
+      >
+        {(busy) => (
+          <button className="settings-button secondary" disabled={busy || !p.configured}>
+            {busy ? 'Проверяем…' : 'Проверить подключение ' + name}
+          </button>
+        )}
+      </ActionForm>
+      <p role="status">{message}</p>
+      {account && (
+        <p>
+          Тариф аккаунта: {account.planName || name}, {money(account.planPriceUsd)}/мес.;
+          использовано {money(account.providerUsedUsd)}. Проверено{' '}
+          {dateLabel(new Date(account.checkedAt).toISOString())}.
+        </p>
+      )}
+      {profile === 'free' && account && account.planPriceUsd > 0 && (
+        <p className="error">
+          Это платный аккаунт. Для него нужно отдельно разрешить Starter; как бесплатный он
+          использоваться не будет.
+        </p>
+      )}
+      <p className="resume-hint">
+        Создайте API-токен в{' '}
+        <a
+          href="https://console.apify.com/settings/integrations"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          настройках Apify
+        </a>
+        . Он должен иметь доступ к аккаунту, лимитам, запуску указанного Actor и его результатам.
+        Токен виден только при вводе.
+      </p>
+    </article>
+  );
 }
-export default function ApifySettings(){const q=useApi<ApifyState>('/api/apify/settings');return <section className="settings-card firecrawl-settings"><h2>Apify · HH</h2><p className="resume-hint">Сбор HH с общими правилами компаний, агентств, направлений и периода проверки.</p><State loading={!q.data&&q.loading} error={q.error}>{q.data&&<><p>{q.data.enabled?'Сбор включён':'Сбор выключен'} · Starter {q.data.paidAllowed?'разрешён':'не разрешён'}</p><ApifyBudgets/><TargetHH/><HHSources/><details><summary>Подключения и тариф Apify</summary><div className="settings-grid"><Permissions key={q.data.revision} state={q.data}/><Connection state={q.data} profile="free"/><Connection state={q.data} profile="starter"/></div></details></>}</State></section>;}
+function Permissions({ state }: { state: ApifyState }) {
+  const [enabled, setEnabled] = useState(state.enabled),
+    [paid, setPaid] = useState(state.paidAllowed);
+  useDirty(enabled !== state.enabled || paid !== state.paidAllowed);
+  return (
+    <article className="settings-card">
+      <h3>Режим Apify для hh.ru</h3>
+      <ActionForm
+        lockWhileBusy
+        onSubmit={async () => {
+          if (
+            paid &&
+            !state.paidAllowed &&
+            !window.confirm(
+              'Разрешить использование заранее оформленного Apify Starter за $19/месяц, когда Free недоступен или исчерпан? Подписка оформляется отдельно в Apify. Установите в кабинете лимит расходов $19 и отключите дополнительные покупки.',
+            )
+          )
+            return;
+          await mutate('/api/apify/settings', 'PUT', {
+            enabled,
+            paidAllowed: paid,
+            revision: state.revision,
+            ...(paid && !state.paidAllowed ? { confirmed: true } : {}),
+          });
+        }}
+      >
+        {(busy) => (
+          <>
+            <label>
+              <input
+                type="checkbox"
+                checked={enabled}
+                onChange={(e) => setEnabled(e.target.checked)}
+              />{' '}
+              Apify включён для HH
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={paid}
+                disabled={!state.profiles.starter.configured}
+                onChange={(e) => setPaid(e.target.checked)}
+              />{' '}
+              Разрешить платный тариф Apify Starter
+            </label>
+            <p>
+              Сначала используется Free: $5 на расчётный месяц. Когда бесплатный бюджет исчерпан,
+              Starter доступен только при включённом разрешении.
+            </p>
+            <p>
+              Starter: $19/месяц, включено $19 на использование. Приложение ограничивает расход
+              включённым бюджетом. Подписка оформляется в Apify отдельно.
+            </p>
+            <button className="settings-button" disabled={busy}>
+              Сохранить настройки Apify
+            </button>
+          </>
+        )}
+      </ActionForm>
+      <p className="resume-hint">
+        Сохранение любого нового токена выключает разрешение Starter. Выключение Apify останавливает
+        новые запуски Actor; уже запущенный Actor может завершиться с расходом бюджета. Публичные
+        описания HH читаются независимо. Чтобы остановить и их, выключите источник HH компании. Free
+        и Starter используют отдельные подключения.
+      </p>
+    </article>
+  );
+}
+export function ApifyBudgets() {
+  const q = useApi<Usage>('/api/apify/usage');
+  const session = useApi<{ isAdmin: boolean }>('/api/session');
+  const isAuthorized = () => Boolean(session.data?.isAdmin && !session.error);
+  return (
+    <article className="settings-card">
+      <div className="scheduler-actions">
+        <h3>Бюджет Apify</h3>
+        <CopyDebugJSON
+          section="apify_usage"
+          isAuthorized={isAuthorized}
+          disabled={!q.data || !!q.error || !isAuthorized()}
+          getSnapshot={() => apifyUsageSnapshot(q.data!)}
+        />
+      </div>
+      <State loading={!q.data && q.loading} error={q.error}>
+        {q.data && (
+          <>
+            {(['free', 'starter'] as const).map((profile) => {
+              const b = q.data!.profiles[profile];
+              return (
+                <div className="parser-diagnostic" key={profile}>
+                  <h4>{profile === 'free' ? 'Free' : 'Starter'}</h4>
+                  {b ? (
+                    <>
+                      <p>
+                        Оценка доступного бюджета: {money(b.remainingUsd)} / {money(b.limitUsd)}. По
+                        статистике аккаунта: {money(b.providerUsedUsd)}.
+                      </p>
+                      <p>
+                        Подтверждённая стоимость наших запусков: {money(b.ownConfirmedUsd)}. Резерв
+                        запусков без известной стоимости: {money(b.unknownReserveUsd)} (
+                        {b.unknownRuns}). Резерв чтения: {money(b.readReserveUsd)}.
+                      </p>
+                      <p>
+                        Период {dateLabel(b.periodStart)} → {dateLabel(b.periodEnd)}. Проверено{' '}
+                        {dateLabel(new Date(b.checkedAt).toISOString())}.
+                      </p>
+                      <p className="resume-hint">
+                        Это сохранённая оценка. Перед каждым новым запуском сервер проверяет остаток
+                        заново. Для одного запуска резервируется до $0,25 и $0,01 на чтение.
+                      </p>
+                    </>
+                  ) : (
+                    <p>Остаток неизвестен. Сохраните токен и проверьте подключение.</p>
+                  )}
+                </div>
+              );
+            })}
+            {q.data.providerLimitMode && (
+              <p className="resume-hint">
+                Для бесплатного аккаунта включена проверка жёсткого лимита Apify. Консервативная
+                оценка выше может быть меньше доступного остатка; перед запуском сервер проверяет
+                фактический лимит и расход.
+              </p>
+            )}
+            {q.data.active.map((run) => (
+              <p key={run.id} role="status">
+                {run.state === 'uncertain' || run.state === 'starting'
+                  ? 'Старт не подтверждён; автоматический повтор заблокирован. Проверьте запуск в Apify.'
+                  : 'Apify собирает вакансии.'}{' '}
+                {run.run_id && (
+                  <a
+                    href={'https://console.apify.com/actors/runs/' + run.run_id}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Открыть запуск ↗
+                  </a>
+                )}
+              </p>
+            ))}
+          </>
+        )}
+      </State>
+      <button type="button" className="settings-button secondary" onClick={q.reload}>
+        Обновить журнал
+      </button>
+      <p className="resume-hint">
+        Цена Actor от $1 за 1000 результатов; расходы списываются из бюджета Apify. Общий расход
+        аккаунта и подтверждённая стоимость наших запусков перекрываются: сервер берёт большую
+        сумму, затем добавляет резервы неизвестной стоимости и чтения. Статистика провайдера
+        обновляется с задержкой, поэтому это оценка, а не точный баланс. Лимиты тарифа и каждого
+        запуска сохраняются.
+      </p>
+    </article>
+  );
+}
+interface HHSource {
+  companyId: number;
+  companyName: string;
+  sourceId: string;
+  url: string;
+  enabled: boolean;
+  supported: boolean;
+  revision: number;
+  config: unknown;
+}
+function HHSourceForm({ source }: { source: HHSource }) {
+  const [enabled, setEnabled] = useState(source.enabled);
+  useDirty(enabled !== source.enabled);
+  return (
+    <article className="settings-card">
+      <h4>{source.companyName}</h4>
+      <p>
+        <a href={source.url} target="_blank" rel="noopener noreferrer">
+          {source.url}
+        </a>
+      </p>
+      <ActionForm
+        lockWhileBusy
+        onSubmit={async () => {
+          await mutate('/api/apify/hh-source?companyId=' + source.companyId, 'PUT', {
+            sourceUrl: source.url,
+            enabled,
+            revision: source.revision,
+            config: source.config,
+          });
+        }}
+      >
+        {(busy) => (
+          <>
+            <label>
+              <input
+                type="checkbox"
+                checked={enabled}
+                disabled={!source.supported}
+                onChange={(e) => setEnabled(e.target.checked)}
+              />{' '}
+              Источник HH включён
+            </label>
+            <button className="settings-button" disabled={busy || (!source.supported && enabled)}>
+              Сохранить источник HH
+            </button>
+          </>
+        )}
+      </ActionForm>
+      {!source.supported && (
+        <p className="error">Ссылка HH не поддерживается. Исправьте её в каталоге организации.</p>
+      )}
+    </article>
+  );
+}
+function HHSources() {
+  const q = useApi<{ sources: HHSource[] }>('/api/apify/hh-sources');
+  return (
+    <details>
+      <summary>Источники HH компаний</summary>
+      <State loading={!q.data && q.loading} error={q.error}>
+        {q.data && (
+          <>
+            {q.data.sources.length === 0 && (
+              <p>Нет заполненных HH-источников компаний в текущей области парсинга.</p>
+            )}
+            {q.data.sources.map((source) => (
+              <HHSourceForm
+                key={source.companyId + ':' + source.revision + ':' + source.url}
+                source={source}
+              />
+            ))}
+          </>
+        )}
+      </State>
+    </details>
+  );
+}
+export default function ApifySettings() {
+  const q = useApi<ApifyState>('/api/apify/settings');
+  return (
+    <section className="settings-card firecrawl-settings">
+      <h2>Apify · HH</h2>
+      <p className="resume-hint">
+        Сбор HH с общими правилами компаний, агентств, направлений и периода проверки.
+      </p>
+      <State loading={!q.data && q.loading} error={q.error}>
+        {q.data && (
+          <>
+            <p>
+              {q.data.enabled ? 'Сбор включён' : 'Сбор выключен'} · Starter{' '}
+              {q.data.paidAllowed ? 'разрешён' : 'не разрешён'}
+            </p>
+            <ApifyBudgets />
+            <TargetHH />
+            <HHSources />
+            <details>
+              <summary>Подключения и тариф Apify</summary>
+              <div className="settings-grid">
+                <Permissions key={q.data.revision} state={q.data} />
+                <Connection state={q.data} profile="free" />
+                <Connection state={q.data} profile="starter" />
+              </div>
+            </details>
+          </>
+        )}
+      </State>
+    </section>
+  );
+}
