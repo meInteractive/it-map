@@ -42,11 +42,18 @@ func TestHHPendingBreakdownSeparatesReadinessWithoutStartingActor(t *testing.T) 
 		*got.OldestPendingAt != now-7200000 {
 		t.Fatalf("неверная разбивка HH-очереди: %+v", got)
 	}
+	if got.UnverifiedLineage != 1 || got.MissingOperation != 1 ||
+		got.OldestUnverifiedAt == nil || *got.OldestUnverifiedAt != now-7200000 ||
+		got.OldestReconcileAt == nil || *got.OldestReconcileAt != now-7200000 ||
+		got.OldestCooldownAt != nil {
+		t.Fatalf("не разделены два вида неподтверждённого курсора: %+v", got)
+	}
 	// Новый Actor ограничен часовым интервалом, но дочитывание
 	// уже оплаченного Dataset остаётся допустимым.
 	view.lastListingStart = now - int64(time.Minute/time.Millisecond)
 	got = summarizeHHPending(jobs, now, settings, view)
-	if got.ReconcileCandidate != 1 || got.LaunchCandidate != 0 || got.LaunchCooldown != 1 {
+	if got.ReconcileCandidate != 1 || got.LaunchCandidate != 0 || got.LaunchCooldown != 1 ||
+		got.OldestCooldownAt == nil || *got.OldestCooldownAt != now-7200000 {
 		t.Fatalf("ограничение launch помешало безопасному reconcile: %+v", got)
 	}
 	view.lastListingStart = now - int64(hhActorLaunchCooldown/time.Millisecond)

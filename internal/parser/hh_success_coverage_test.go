@@ -90,3 +90,37 @@ func TestGO303HHCoverageTimezoneOffsetsPreserveInstant(t *testing.T) {
 		t.Fatalf("timestamp с timezone offset должен быть эквивалентен UTC моменту: %+v", got)
 	}
 }
+
+func TestGO440HHNoRecentSuccessIsClassifiedByScheduleState(t *testing.T) {
+	now := time.Date(2026, 11, 10, 16, 30, 0, 0, time.UTC).UnixMilli()
+	at := func(ms int64) sql.NullString {
+		return sql.NullString{Valid: true, String: time.UnixMilli(ms).UTC().Format(time.RFC3339Nano)}
+	}
+	partial := sql.NullString{Valid: true, String: "partial"}
+	success := sql.NullString{Valid: true, String: "success"}
+	old := at(now - int64(72*time.Hour/time.Millisecond))
+	recent := at(now - int64(time.Hour/time.Millisecond))
+	rows := []HHScanScheduleSource{
+		{Enabled: true, Favorite: true, HasActiveScan: true, LastSuccessAt: recent},
+		{Enabled: true, Favorite: true, NextRunAt: now + 1000, LastSuccessAt: old, LastResult: partial},
+		{Enabled: true, Favorite: true, NextRunAt: now + 2000, LastSuccessAt: old, LastResult: success},
+		{Enabled: true, Favorite: true, HasActiveScan: true, LastSuccessAt: sql.NullString{}},
+		{Enabled: true, Favorite: true, NextRunAt: now, LastSuccessAt: old, LastResult: partial},
+		{Enabled: true, Favorite: true, NextRunAt: now + 3000, LastSuccessAt: recent, LastResult: partial},
+		{Enabled: false, Favorite: true, LastSuccessAt: sql.NullString{}},
+		{Enabled: true, Favorite: false, LastSuccessAt: sql.NullString{}},
+	}
+	got := summarizeHHScanSchedule(rows, now, 1, true)
+	if got.Configured != 8 || got.Disabled != 1 || got.OutsideScope != 1 ||
+		got.ActiveScan != 2 || got.Waiting != 3 || got.PotentiallyDue != 1 ||
+		got.SuccessfulLast48h != 2 || got.SuccessDateUnknown != 1 ||
+		got.NoSuccess48hWaiting != 2 || got.NoSuccess48hActive != 1 ||
+		got.NoSuccess48hDue != 1 || got.NoSuccess48hWaitPartial != 1 {
+		t.Fatalf("неверная классификация источников без полного успеха за 48 часов: %+v", got)
+	}
+	// Сумма взаимоисключающих категорий = включённые источники минус подтверждённые 48h.
+	if got.NoSuccess48hWaiting+got.NoSuccess48hActive+got.NoSuccess48hDue !=
+		got.Configured-got.Disabled-got.OutsideScope-got.SuccessfulLast48h {
+		t.Fatal("пропущены источники без свежего полного обхода")
+	}
+}

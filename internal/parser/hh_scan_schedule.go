@@ -25,6 +25,7 @@ type HHScanScheduleSource struct {
 	NextRunAt      int64
 	IntervalDays   int
 	LastSuccessAt  sql.NullString
+	LastResult     sql.NullString
 }
 
 type HHScanScheduleSummary struct {
@@ -38,8 +39,12 @@ type HHScanScheduleSummary struct {
 	UnknownLastSuccess int64  `json:"unknownLastSuccess"`
 	SuccessfulLast24h  int64  `json:"successfulLast24h"`
 	SuccessfulLast48h  int64  `json:"successfulLast48h"`
-	SuccessDateUnknown int64  `json:"successDateUnknown"`
-	NextDueAt          *int64 `json:"nextDueAt"`
+	SuccessDateUnknown        int64  `json:"successDateUnknown"`
+	NoSuccess48hWaiting     int64  `json:"noSuccess48hWaiting"`
+	NoSuccess48hActive      int64  `json:"noSuccess48hActive"`
+	NoSuccess48hDue         int64  `json:"noSuccess48hDue"`
+	NoSuccess48hWaitPartial int64  `json:"noSuccess48hWaitPartial"`
+	NextDueAt               *int64 `json:"nextDueAt"`
 }
 
 type HHScanScheduleReport struct {
@@ -89,6 +94,7 @@ func summarizeHHScanSchedule(rows []HHScanScheduleSource, now int64, interval in
 		}
 		// Последний подтверждённый успех фиксируется только после полного
 		// завершения HH cursor. Частичные запуски не обновляют last_success_at.
+		recent48h := false
 		if !source.LastSuccessAt.Valid {
 			out.SuccessDateUnknown++
 		} else if last, err := time.Parse(time.RFC3339Nano, source.LastSuccessAt.String); err != nil || last.UnixMilli() <= 0 || last.UnixMilli() > now {
@@ -96,6 +102,7 @@ func summarizeHHScanSchedule(rows []HHScanScheduleSource, now int64, interval in
 		} else {
 			age := now - last.UnixMilli()
 			if age <= int64(48*time.Hour/time.Millisecond) {
+				recent48h = true
 				out.SuccessfulLast48h++
 				if age <= int64(24*time.Hour/time.Millisecond) {
 					out.SuccessfulLast24h++
@@ -104,6 +111,9 @@ func summarizeHHScanSchedule(rows []HHScanScheduleSource, now int64, interval in
 		}
 		if source.HasActiveScan {
 			out.ActiveScan++
+			if !recent48h {
+				out.NoSuccess48hActive++
+			}
 			continue
 		}
 		next, recalculated, missing := effectiveHHNextRun(source, interval)
@@ -115,8 +125,17 @@ func summarizeHHScanSchedule(rows []HHScanScheduleSource, now int64, interval in
 		}
 		if next <= now {
 			out.PotentiallyDue++
+			if !recent48h {
+				out.NoSuccess48hDue++
+			}
 		} else {
 			out.Waiting++
+			if !recent48h {
+				out.NoSuccess48hWaiting++
+				if source.LastResult.Valid && source.LastResult.String == "partial" {
+					out.NoSuccess48hWaitPartial++
+				}
+			}
 			if out.NextDueAt == nil || next < *out.NextDueAt {
 				value := next
 				out.NextDueAt = &value
@@ -177,7 +196,7 @@ func (r HHScanScheduleRepository) ReadHHScanSchedule(ctx context.Context) (json.
 	// All configured HH rows are counted, including excluded/disabled ones.
 	// EXISTS avoids multiplying source rows by a user's company-state records
 	// or by multiple current-generation jobs.
-	rows, err := tx.QueryContext(ctx, `SELECT s.enabled,COALESCE(s.next_run_at,0),s.interval_days,s.last_success_at,
+	rows, err := tx.QueryContext(ctx, `SELECT s.enabled,COALESCE(s.next_run_at,0),s.interval_days,s.last_success_at,s.last_result,
 		EXISTS(SELECT 1 FROM company_user_state u WHERE u.company_name=c.company_name AND u.user_name=? AND u.favorite=1),
 		EXISTS(SELECT 1 FROM scheduler_jobs j WHERE j.generation=? AND j.company_id=s.company_id
 			AND j.source_id='hh' AND j.type='scan_source' AND j.status IN ('pending','running'))
@@ -190,7 +209,7 @@ func (r HHScanScheduleRepository) ReadHHScanSchedule(ctx context.Context) (json.
 	for rows.Next() {
 		var v HHScanScheduleSource
 		var enabled, favorite, active int64
-		if err = rows.Scan(&enabled, &v.NextRunAt, &v.IntervalDays, &v.LastSuccessAt, &favorite, &active); err != nil {
+		if err = rows.Scan(&enabled, &v.NextRunAt, &v.IntervalDays, &v.LastSuccessAt, &v.LastResult, &favorite, &active); err != nil {
 			break
 		}
 		v.Enabled = enabled == 1

@@ -28,13 +28,17 @@ for(const bad of [
  {...base,summary:{...base.summary,nextDueAt:Infinity}},
 ])assert.equal(isHHScanScheduleReport(bad),false,'invalid schedule report accepted');
 const withBreakdown={...base,pendingHHScans:6,pendingBreakdown:{
- pending:6,notDue:1,unverifiedCursor:1,orphanPaid:1,reconcileCandidate:1,
- launchCooldown:1,launchCandidate:1,other:0,oldestPendingAt:now-day
+ pending:6,notDue:1,unverifiedCursor:1,unverifiedLineage:1,missingOperation:0,
+ orphanPaid:1,reconcileCandidate:1,
+ launchCooldown:1,launchCandidate:1,other:0,oldestPendingAt:now-day,
+ oldestUnverifiedAt:now-day,oldestReconcileAt:now-day,
+ oldestCooldownAt:now-day,
 }};
 assert.equal(isHHScanScheduleReport(withBreakdown),true);
 const breakdownHTML=render(HHScanScheduleView,{report:withBreakdown});
 for(const text of ['Предварительная классификация','неподтверждённый курсор',
- 'существующий запуск','ограничение частоты','Самое старое','не проверяет квоты Apify']){
+ 'существующий запуск','ограничение частоты','Самое старое','не проверяет квоты Apify',
+ 'происхождение или версия источника','Старейшее дочитывание Actor']){
  assert.match(breakdownHTML,new RegExp(text,'i'));
 }
 for(const bad of [
@@ -42,22 +46,32 @@ for(const bad of [
  {...withBreakdown,pendingBreakdown:{...withBreakdown.pendingBreakdown,orphanPaid:2}},
  {...withBreakdown,pendingBreakdown:{...withBreakdown.pendingBreakdown,oldestPendingAt:NaN}},
  {...withBreakdown,pendingHHScans:5},
+ {...withBreakdown,pendingBreakdown:{...withBreakdown.pendingBreakdown,missingOperation:1}},
+ {...withBreakdown,pendingBreakdown:{...withBreakdown.pendingBreakdown,oldestUnverifiedAt:-1}},
 ]){
  assert.equal(isHHScanScheduleReport(bad),false,'invalid HH pending breakdown accepted');
 }
 const withCoverage={...base,summary:{...base.summary,
- successfulLast24h:2,successfulLast48h:4,successDateUnknown:1}};
+ successfulLast24h:2,successfulLast48h:4,successDateUnknown:1,
+ noSuccess48hWaiting:1,noSuccess48hActive:0,noSuccess48hDue:0,
+ noSuccess48hWaitPartial:1}};
 assert.equal(isHHScanScheduleReport(withCoverage),true);
 const coverageHTML=render(HHScanScheduleView,{report:withCoverage});
 assert.match(coverageHTML,/Успешно проверено HH-источников за последние 24 часа/);
 assert.match(coverageHTML,/За 48 часов/);
 assert.match(coverageHTML,/полностью завершённый/);
+assert.match(coverageHTML,/Без подтверждённого полного обхода за 48 часов/);
+assert.match(coverageHTML,/после частичного результата/);
 for(const bad of [
  {...withCoverage,summary:{...withCoverage.summary,successfulLast24h:5}},
  {...withCoverage,summary:{...withCoverage.summary,successDateUnknown:4}},
  {...withCoverage,summary:{...withCoverage.summary,successfulLast24h:-1}},
  {...withCoverage,summary:{...withCoverage.summary,successfulLast48h:undefined}},
  {...withCoverage,summary:{...withCoverage.summary,successDateUnknown:NaN}},
+ {...withCoverage,summary:{...withCoverage.summary,noSuccess48hWaiting:0}},
+ {...withCoverage,summary:{...withCoverage.summary,noSuccess48hWaitPartial:2}},
+ {...withCoverage,summary:{...withCoverage.summary,noSuccess48hActive:1}},
+ {...withCoverage,summary:{...withCoverage.summary,noSuccess48hWaiting:undefined}},
 ]){
  assert.equal(isHHScanScheduleReport(bad),false,'invalid HH confirmed-coverage report accepted');
 }
