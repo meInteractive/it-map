@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"testing"
+	"time"
 )
 
 func TestHHQueuePhaseUsesReservedOperationIdentity(t *testing.T) {
@@ -44,9 +45,21 @@ func TestHHQueuePhaseUsesReservedOperationIdentity(t *testing.T) {
 	if ok, _, err := claimEligible(job, now, settings, launch, types, view); ok || err != nil {
 		t.Fatal("recent HH start must throttle the next scan", err)
 	}
-	view.lastListingStart = now - 3600001
+	view.lastListingStart = now - int64(hhActorLaunchCooldown/time.Millisecond) - 1
 	if ok, _, err := claimEligible(job, now, settings, launch, types, view); !ok || err != nil {
 		t.Fatal("launch not released after cooldown", err)
+	}
+	view.lastListingStart = now - int64(hhActorLaunchCooldown/time.Millisecond)
+	if ok, _, err := claimEligible(job, now, settings, launch, types, view); !ok || err != nil {
+		t.Fatal("ровно через 15 минут новый HH запуск должен допускаться", err)
+	}
+	view.lastListingStart++
+	if ok, _, err := claimEligible(job, now, settings, launch, types, view); ok || err != nil {
+		t.Fatal("за миллисекунду до конца 15 минут запуск недопустим", err)
+	}
+	view.lastListingStart = now - int64(time.Hour/time.Millisecond)
+	if ok, _, err := claimEligible(job, now, settings, launch, types, view); !ok || err != nil {
+		t.Fatal("не сохранять старый часовой cooldown после смены политики", err)
 	}
 	view.blockedHHScans[job.ID] = true
 	if ok, _, err := claimEligible(job, now, settings, launch, types, view); ok || err != nil {
