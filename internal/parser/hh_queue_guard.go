@@ -38,7 +38,7 @@ func hhCursorProof(raw []byte, generation string, company int64, source string, 
 // readVerifiedHHLineage оставляет контракт планировщика прежним.
 // Причины отказа доступны только диагностике; выбор задания их не использует.
 func readVerifiedHHLineage(ctx context.Context, tx *sql.Tx, generation string) (map[hhCandidateKey]bool, map[string]bool, error) {
-	verified, blocked, _, err := readVerifiedHHLineageReasons(ctx, tx, generation)
+	verified, blocked, _, _, err := readVerifiedHHLineageReasons(ctx, tx, generation)
 	return verified, blocked, err
 }
 
@@ -48,6 +48,19 @@ const (
 	hhBlockedMalformedCursor = "malformed_cursor"
 	hhBlockedOtherProof = "other_proof"
 )
+
+// hhLegacyFactors перечисляет пересекающиеся нарушения только для диагностики.
+// Не изменяет proof/claim и никогда не разрешает POST к Actor.
+type hhLegacyFactors struct {
+    Version, Lineage, Moscow, Date, Title, Roles bool
+}
+func legacyFactors(c hhListingCursor) hhLegacyFactors {
+    return hhLegacyFactors{c.Version != 1,c.LineageVersion != 1,!c.MoscowFilter,
+        !c.DateFilterApplied,c.TitleQuery != nil,len(c.ProfessionalRoles)==0}
+}
+func (f hhLegacyFactors) any() bool {
+    return f.Version || f.Lineage || f.Moscow || f.Date || f.Title || f.Roles
+}
 
 // Причины классифицируются строго на уже заблокированных курсорах.
 // Сначала проверяется текущая версия источника, затем формат курсора.
@@ -59,8 +72,7 @@ func hhBlockedLineageReason(raw []byte, current bool) string {
 	if json.Unmarshal(raw, &cursor) != nil {
 		return hhBlockedMalformedCursor
 	}
-	if cursor.Version != 1 || cursor.LineageVersion != 1 || !cursor.MoscowFilter ||
-		!cursor.DateFilterApplied || cursor.TitleQuery != nil || len(cursor.ProfessionalRoles) == 0 {
+	if legacyFactors(cursor).any() {
 		return hhBlockedLegacyFilters
 	}
 	return hhBlockedOtherProof
@@ -68,13 +80,14 @@ func hhBlockedLineageReason(raw []byte, current bool) string {
 
 // readVerifiedHHLineageReasons читает те же записи и использует тот же
 // proof, что планировщик, но отдельно помечает причины отказа для GET-only.
-func readVerifiedHHLineageReasons(ctx context.Context, tx *sql.Tx, generation string) (map[hhCandidateKey]bool, map[string]bool, map[string]string, error) {
+func readVerifiedHHLineageReasons(ctx context.Context, tx *sql.Tx, generation string) (map[hhCandidateKey]bool, map[string]bool, map[string]string, map[string]hhLegacyFactors, error) {
 	out := map[hhCandidateKey]bool{}
 	blockedScans := map[string]bool{}
 	blockedReasons := map[string]string{}
+	legacy := map[string]hhLegacyFactors{}
 	rows, err := tx.QueryContext(ctx, `SELECT d.id,d.company_id,d.source_url,d.source_revision,d.result_json,COALESCE(s.enabled=1 AND s.revision=d.source_revision AND s.source_url=d.source_url,0) FROM vacancy_discovery_runs d LEFT JOIN vacancy_source_parsing s ON s.company_id=d.company_id AND s.source_id='hh' WHERE d.generation=? AND d.source_id='hh' AND d.company_id IS NOT NULL AND d.agency_id IS NULL`, generation)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 	defer rows.Close()
 	for rows.Next() {
@@ -83,7 +96,7 @@ func readVerifiedHHLineageReasons(ctx context.Context, tx *sql.Tx, generation st
 		var raw []byte
 		var current bool
 		if err = rows.Scan(&id, &company, &source, &revision, &raw, &current); err != nil {
-			return nil, nil, nil, err
+			return nil, nil, nil, nil, err
 		}
 		candidates, valid := hhCursorProof(raw, generation, company, source, revision)
 		if !current || !valid {
@@ -91,6 +104,10 @@ func readVerifiedHHLineageReasons(ctx context.Context, tx *sql.Tx, generation st
 				scanID := strings.TrimPrefix(id, "go399:")
 				blockedScans[scanID] = true
 				blockedReasons[scanID] = hhBlockedLineageReason(raw, current)
+                if blockedReasons[scanID] == hhBlockedLegacyFilters {
+                    var cursor hhListingCursor
+                    if json.Unmarshal(raw,&cursor)==nil {legacy[scanID]=legacyFactors(cursor)}
+                }
 			}
 			continue
 		}
@@ -99,7 +116,7 @@ func readVerifiedHHLineageReasons(ctx context.Context, tx *sql.Tx, generation st
 		}
 	}
 	if err = rows.Err(); err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
-	return out, blockedScans, blockedReasons, nil
+	return out, blockedScans, blockedReasons, legacy, nil
 }
