@@ -6,6 +6,26 @@ const {default:ParserFunnel,FunnelView}=await moduleFor('frontend/features/setti
 const counts={received:4,accepted:3,fulltext:4,structured:2,roles:2,published:2};
 const report={checkedAt:Date.now(),timezone:'Europe/Moscow',from:'2026-09-23',to:'2026-10-22',days:30,filters:{sourceId:'all',parser:'all'},sourceOptions:[{id:'hh',name:'HH'},{id:'habr',name:'Хабр'}],parserOptions:[{id:'firecrawl',name:'Firecrawl'},{id:'apify',name:'Apify'},{id:'unknown',name:'Не определён'}],daily:Array.from({length:30},(_,i)=>({day:new Date(Date.UTC(2026,8,23+i)).toISOString().slice(0,10),...Object.fromEntries(Object.keys(counts).map(k=>[k,i===29?counts[k]:0])),newVacancies:i===29?1:0})),totals:{...counts,newVacancies:1},averages:{...Object.fromEntries(Object.entries(counts).map(([k,v])=>[k,v/30])),newVacancies:1/30},undatedNewVacancies:0,cohort:{...counts,rejected:1,error:1,waiting:0,created:1,linked:1,undatedPublished:0}};
 let html=render(FunnelView,{report});assert.match(html,/Динамика по датам этапов/);assert.match(html,/Новые уникальные вакансии за 30 дней/);assert.match(html,/Импортировано кандидатов за 30 дней/);assert.match(html,/первый успешный create/);assert.match(html,/Воронка поступивших за 30 дней/);assert.match(html,/stroke-dasharray="6 4"/);assert.match(html,/Повторные попытки/);assert.match(html,/рол/);assert.equal((html.match(/<tbody>.*?<\/tbody>/s)[0].match(/<tr>/g)||[]).length,30);assert.ok(!html.includes('NaN'));
+const publicationWindow={asOf:report.to,weekFrom:'2026-10-16',days:report.daily.slice(-7).map((day)=>({
+ day:day.day,total:day.newVacancies,inWeek:0,older:day.newVacancies,
+ future:0,undated:0,
+}))};
+const withWindow={...report,publicationWindow};
+const windowHtml=render(FunnelView,{report:withWindow});
+assert.match(windowHtml,/Почему количество новых карточек отличается от каталога/);
+assert.match(windowHtml,/Дата в неделе/);
+assert.match(windowHtml,/старше недели/);
+assert.match(windowHtml,/разбивка по датам первого импорта за семь дней/i);
+assert.match(windowHtml,/Это не число/);
+assert.match(windowHtml,/<strong>22.10:<\/strong>/);
+const {parserFunnelSnapshot}=await moduleFor('shared/parser-statistics-debug.mjs');
+const copied=parserFunnelSnapshot(withWindow);
+assert.equal(copied.summary.publicationWindow.days.at(-1).older,1);
+assert.equal(copied.summary.publicationWindow.days.at(-1).total,1);
+const brokenWindow={...withWindow,publicationWindow:{...publicationWindow,
+ days:publicationWindow.days.map((day,i)=>i===6?{...day,older:2}:day)}};
+assert.doesNotMatch(render(FunnelView,{report:brokenWindow}),/Почему количество новых карточек отличается/);
+assert.doesNotMatch(render(FunnelView,{report}),/Почему количество новых карточек отличается/);
 const empty={...report,totals:Object.fromEntries([...Object.keys(counts),'newVacancies'].map(k=>[k,0])),averages:Object.fromEntries([...Object.keys(counts),'newVacancies'].map(k=>[k,0])),cohort:Object.fromEntries(Object.keys(report.cohort).map(k=>[k,0])),daily:report.daily.map(p=>({...p,...Object.fromEntries([...Object.keys(counts),'newVacancies'].map(k=>[k,0]))}))};assert.ok(!render(FunnelView,{report:empty}).includes('NaN'));
 let root;const requests=[];
 globalThis.window={addEventListener(){},removeEventListener(){}};globalThis.IS_REACT_ACT_ENVIRONMENT=true;
