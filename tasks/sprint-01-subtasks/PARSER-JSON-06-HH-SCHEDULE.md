@@ -8,4 +8,4 @@
 
 **Тесты:** `node scripts/test-parser-statistics-debug-json.mjs`, `node scripts/test-parser-hh-schedule-ui.mjs`, `node scripts/check-api-coverage.mjs`, `npm run format:check`, `npm run typecheck:web`, `npm run build:web`, обязательный PR CI. Проверить отсутствие дополнительных запросов и неизменность GET-контракта. Ручной merge только после зелёных проверок на точном SHA.
 
-**Отчёт:** PR —; SHA —; CI —; ручная эксплуатационная приёмка — не проводилась.
+**Отчёт, 10.11.2026:** [PR #312](https://github.com/meInteractive/it-map/pull/312), кодовая ревизия до фиксации отчёта `d37f9d2f31e70a2d1722ea0aacb3e140fccfacb1`. Синтетические тесты копирования HH, общего UI, приватности, format/typecheck и API-инвентарь проверяются обязательным CI на последней вершине PR. Итоговые статусы смотреть на последнем SHA GitHub; независимая production-приёмка не проводилась. Слияние — только владельцем.
