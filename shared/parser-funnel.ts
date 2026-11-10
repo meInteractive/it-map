@@ -16,6 +16,19 @@ export const funnelChartSeries = [
 export type FunnelStage = (typeof funnelStages)[number]['id'];
 export type FunnelChartSeries = (typeof funnelChartSeries)[number]['id'];
 export type FunnelCounts = Record<FunnelStage, number>;
+// Сверка дат с фильтром каталога «Неделя», без учёта скрытия и других UI-фильтров.
+export interface FunnelPublicationWindow {
+  asOf: string;
+  weekFrom: string;
+  days: {
+    day: string;
+    total: number;
+    inWeek: number;
+    older: number;
+    future: number;
+    undated: number;
+  }[];
+}
 export interface ParserFunnelReport {
   checkedAt: number;
   timezone: 'Europe/Moscow';
@@ -29,6 +42,7 @@ export interface ParserFunnelReport {
   totals: FunnelCounts & { newVacancies: number };
   averages: FunnelCounts & { newVacancies: number };
   undatedNewVacancies: number;
+  publicationWindow?: FunnelPublicationWindow;
   cohort: FunnelCounts & {
     rejected: number;
     error: number;
