@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"time"
+
+	"itmap/internal/vacancies"
 )
 
 // FunnelRepository читает факты кандидатов, а не число попыток/строк Dataset.
@@ -173,7 +175,7 @@ const funnelCandidateSQL = `SELECT c.id,
 // publication date and source. Source/parser filters MUST run AFTER the first
 // CREATE has been selected globally. Otherwise a later source or duplicate
 // receipt could claim an already-created vacancy for itself.
-const funnelFirstCreateSQL = `SELECT o.vacancy_id,o.processed_at,
+const funnelFirstCreateSQL = `SELECT o.vacancy_id,o.processed_at,v.published_at,v.loaded_at,v.created_at,
   c.id IS NOT NULL AS candidate_exists,
   CASE WHEN i.candidate_token IS NOT NULL THEN COALESCE(i.source_id,'unknown')
        ELSE COALESCE(c.source_id,'unknown') END AS intake_source,
@@ -256,11 +258,13 @@ func (r FunnelRepository) ReadFunnel(ctx context.Context, sourceID, parserID str
 	if err!=nil {return nil,ErrFunnelStorage}
 	firstVacancy:=int64(-1)
 	newVacancies,undatedNewVacancies:=int64(0),int64(0)
+	publicationWindow:=newFunnelPublicationWindow(now,days)
 	for createdRows.Next() {
 		var vacancyID,exists int64
-		var timestamp sql.NullString
+		var timestamp,publishedAt,loadedAt,createdAt sql.NullString
 		var origin,method,acquisition string
-		if err=createdRows.Scan(&vacancyID,&timestamp,&exists,&origin,&method,&acquisition);err!=nil{break}
+		if err=createdRows.Scan(&vacancyID,&timestamp,&publishedAt,&loadedAt,&createdAt,
+			&exists,&origin,&method,&acquisition);err!=nil{break}
 		if vacancyID==firstVacancy{continue}
 		firstVacancy=vacancyID
 		if exists==0 || (method!="apify"&&method!="firecrawl"&&method!="http"&&method!="unknown") ||
@@ -271,6 +275,11 @@ func (r FunnelRepository) ReadFunnel(ctx context.Context, sourceID, parserID str
 		if i,ok:=index[date];ok {
 			days[i].NewVacancies++
 			newVacancies++
+			if j:=i-(len(days)-len(publicationWindow.Days));j>=0&&j<len(publicationWindow.Days){
+				publicationWindow.Days[j].add(vacancies.Dates{
+					PublishedAt:publishedAt.String,LoadedAt:loadedAt.String,CreatedAt:createdAt.String,
+				},publicationWindow.WeekFrom,publicationWindow.AsOf)
+			}
 		}
 	}
 	if err==nil{err=createdRows.Err()}
@@ -320,10 +329,11 @@ func (r FunnelRepository) ReadFunnel(ctx context.Context, sourceID, parserID str
 		Averages map[string]float64 `json:"averages"`
 		Cohort funnelCohort `json:"cohort"`
 		UndatedNewVacancies int64 `json:"undatedNewVacancies"`
+		PublicationWindow funnelPublicationWindow `json:"publicationWindow"`
 	}{now.UnixMilli(),"Europe/Moscow",from,to,30,map[string]string{"sourceId":sourceID,"parser":parserID},sources,funnelParsers,days,
 		funnelTotals{NewVacancies:newVacancies,funnelCounts:totals},
 		func()map[string]float64{avg:=totals.average(30);avg["newVacancies"]=float64(newVacancies)/30;return avg}(),
-		cohort,undatedNewVacancies}
+		cohort,undatedNewVacancies,publicationWindow}
 	encoded,e:=json.Marshal(body)
 	if e!=nil {return nil,ErrFunnelStorage}
 	return encoded,nil
