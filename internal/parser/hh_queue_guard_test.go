@@ -72,3 +72,45 @@ func TestHHOldScanDoesNotRunInGlobalCycle(t *testing.T) {
 		t.Fatalf("explicit resume changed: %v %v", ok, err)
 	}
 }
+
+func TestHHBlockedLineageReasonReadOnlyClassification(t *testing.T) {
+	const generation = "00000000-0000-4000-8000-000000000001"
+	const source = "https://hh.ru/employer/456"
+	from, to := "2026-11-01T00:00:00+03:00", "2026-11-03T23:59:59+03:00"
+	base := hhListingCursor{Version: 1, LineageVersion: 1, MoscowFilter: true, DateFilterApplied: true,
+		VacancyAgeDays: 3, DateFrom: &from, DateTo: &to, ProfessionalRoles: []string{"36"},
+		Operation: apifysettings.OperationVersion{Generation: generation, CompanyID: 7, SourceURL: source, SourceRevision: 2}}
+	for _, tc := range []struct {
+		name string
+		current bool
+		alter func(*hhListingCursor)
+		raw []byte
+		want string
+	}{
+		{name: "источник изменился", current: false, want: hhBlockedSourceChanged},
+		{name: "старые фильтры ролей", current: true, alter: func(c *hhListingCursor) {c.ProfessionalRoles = nil}, want: hhBlockedLegacyFilters},
+		{name: "старый формат lineage", current: true, alter: func(c *hhListingCursor) {c.LineageVersion = 0}, want: hhBlockedLegacyFilters},
+		{name: "повреждённый JSON", current: true, raw: []byte("{"), want: hhBlockedMalformedCursor},
+		{name: "другая версия источника в операции", current: true, alter: func(c *hhListingCursor) {c.Operation.SourceRevision = 3}, want: hhBlockedOtherProof},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			c := base
+			if tc.alter != nil {
+				tc.alter(&c)
+			}
+			raw := tc.raw
+			if raw == nil {
+				raw, _ = json.Marshal(c)
+			}
+			got := hhBlockedLineageReason(raw, tc.current)
+			if got != tc.want {
+				t.Fatalf("причина блокировки %q, ожидалось %q", got, tc.want)
+			}
+			if tc.current && tc.want != hhBlockedMalformedCursor {
+				if _, verified := hhCursorProof(raw, generation, 7, source, 2); verified {
+					t.Fatal("классифицированный заблокированный cursor не должен проходить proof")
+				}
+			}
+		})
+	}
+}

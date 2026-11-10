@@ -35,14 +35,46 @@ func hhCursorProof(raw []byte, generation string, company int64, source string, 
 	return c.CandidateIDs, true
 }
 
-// readVerifiedHHLineage связывает cursor с текущим включённым источником.
-// Просроченный cursor пригоден как происхождение, пока источник не изменился.
+// readVerifiedHHLineage оставляет контракт планировщика прежним.
+// Причины отказа доступны только диагностике; выбор задания их не использует.
 func readVerifiedHHLineage(ctx context.Context, tx *sql.Tx, generation string) (map[hhCandidateKey]bool, map[string]bool, error) {
+	verified, blocked, _, err := readVerifiedHHLineageReasons(ctx, tx, generation)
+	return verified, blocked, err
+}
+
+const (
+	hhBlockedSourceChanged = "source_changed"
+	hhBlockedLegacyFilters = "legacy_filters"
+	hhBlockedMalformedCursor = "malformed_cursor"
+	hhBlockedOtherProof = "other_proof"
+)
+
+// Причины классифицируются строго на уже заблокированных курсорах.
+// Сначала проверяется текущая версия источника, затем формат курсора.
+func hhBlockedLineageReason(raw []byte, current bool) string {
+	if !current {
+		return hhBlockedSourceChanged
+	}
+	var cursor hhListingCursor
+	if json.Unmarshal(raw, &cursor) != nil {
+		return hhBlockedMalformedCursor
+	}
+	if cursor.Version != 1 || cursor.LineageVersion != 1 || !cursor.MoscowFilter ||
+		!cursor.DateFilterApplied || cursor.TitleQuery != nil || len(cursor.ProfessionalRoles) == 0 {
+		return hhBlockedLegacyFilters
+	}
+	return hhBlockedOtherProof
+}
+
+// readVerifiedHHLineageReasons читает те же записи и использует тот же
+// proof, что планировщик, но отдельно помечает причины отказа для GET-only.
+func readVerifiedHHLineageReasons(ctx context.Context, tx *sql.Tx, generation string) (map[hhCandidateKey]bool, map[string]bool, map[string]string, error) {
 	out := map[hhCandidateKey]bool{}
 	blockedScans := map[string]bool{}
+	blockedReasons := map[string]string{}
 	rows, err := tx.QueryContext(ctx, `SELECT d.id,d.company_id,d.source_url,d.source_revision,d.result_json,COALESCE(s.enabled=1 AND s.revision=d.source_revision AND s.source_url=d.source_url,0) FROM vacancy_discovery_runs d LEFT JOIN vacancy_source_parsing s ON s.company_id=d.company_id AND s.source_id='hh' WHERE d.generation=? AND d.source_id='hh' AND d.company_id IS NOT NULL AND d.agency_id IS NULL`, generation)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	defer rows.Close()
 	for rows.Next() {
@@ -51,12 +83,14 @@ func readVerifiedHHLineage(ctx context.Context, tx *sql.Tx, generation string) (
 		var raw []byte
 		var current bool
 		if err = rows.Scan(&id, &company, &source, &revision, &raw, &current); err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 		candidates, valid := hhCursorProof(raw, generation, company, source, revision)
 		if !current || !valid {
 			if strings.HasPrefix(id, "go399:") {
-				blockedScans[strings.TrimPrefix(id, "go399:")] = true
+				scanID := strings.TrimPrefix(id, "go399:")
+				blockedScans[scanID] = true
+				blockedReasons[scanID] = hhBlockedLineageReason(raw, current)
 			}
 			continue
 		}
@@ -65,7 +99,7 @@ func readVerifiedHHLineage(ctx context.Context, tx *sql.Tx, generation string) (
 		}
 	}
 	if err = rows.Err(); err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	return out, blockedScans, nil
+	return out, blockedScans, blockedReasons, nil
 }

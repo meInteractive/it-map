@@ -138,7 +138,12 @@ export function hhScanScheduleSnapshot(report) {
       pendingBreakdownAvailable:Boolean(p),
       pendingBreakdown:p?{
         pending:p.pending,notDue:p.notDue,unverifiedCursor:p.unverifiedCursor,
-        unverifiedLineage:p.unverifiedLineage??null,missingOperation:p.missingOperation??null,
+        unverifiedLineage:p.unverifiedLineage??null,
+        unverifiedSourceChanged:p.unverifiedSourceChanged??null,
+        unverifiedLegacyFilters:p.unverifiedLegacyFilters??null,
+        unverifiedMalformedCursor:p.unverifiedMalformedCursor??null,
+        unverifiedOtherProof:p.unverifiedOtherProof??null,
+        missingOperation:p.missingOperation??null,
         orphanPaid:p.orphanPaid,reconcileCandidate:p.reconcileCandidate,
         launchCooldown:p.launchCooldown,launchCandidate:p.launchCandidate,
         other:p.other,unconfirmedRunId:p.unconfirmedRunId??null,
