@@ -75,7 +75,7 @@ export function FunnelView({
           </div>
         ))}
       </div>
-      {weekDays && (
+      {week && weekDays && (
         <section>
           <h3>Почему количество новых карточек отличается от каталога</h3>
           <p className="resume-hint">
