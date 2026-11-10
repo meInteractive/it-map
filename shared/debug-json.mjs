@@ -82,6 +82,7 @@ const SCHEMA = Object.freeze({
         pending:number,notDue:number,unverifiedCursor:number,
         unverifiedLineage:number,missingOperation:number,orphanPaid:number,
         reconcileCandidate:number,launchCooldown:number,launchCandidate:number,other:number,
+        unconfirmedRunId:number,oldestUnconfirmedAt:time,
         oldestPendingAt:time,oldestUnverifiedAt:time,oldestReconcileAt:time,
         oldestCooldownAt:time,
       },

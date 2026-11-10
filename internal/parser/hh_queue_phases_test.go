@@ -67,6 +67,40 @@ func TestHHQueuePhaseUsesReservedOperationIdentity(t *testing.T) {
 	}
 }
 
+
+func TestHHQueuePhaseRejectsPaidLedgerWithoutProviderRunID(t *testing.T) {
+	source := "hh"
+	job := Job{ID: "CI_UNCERTAIN", Type: "scan_source", Status: "pending", SourceID: &source, Payload: json.RawMessage("{}")}
+	now := time.Date(2026, 11, 10, 12, 0, 0, 0, time.UTC).UnixMilli()
+	settings := DefaultSettings()
+	settings.Enabled = true
+	key := "go398:CI_PAID_UNKNOWN"
+	view := claimView{
+		busy: map[int64]bool{}, pages: map[string]string{},
+		operations: map[string]bool{key: true},
+		goOperationKeys: map[string]string{job.ID: key},
+		unconfirmedRunIDs: map[string]bool{key: true},
+		verifiedHH: map[hhCandidateKey]bool{}, blockedHHScans: map[string]bool{},
+		lastListingStart: now - int64(time.Hour/time.Millisecond),
+	}
+	types := map[string]bool{"scan_source": true}
+	for _, phase := range []string{"reconcile", "launch"} {
+		options := ClaimOptions{VerifiedHHOnly: true, HHScanPhase: phase}
+		if ok, paid, err := claimEligible(job, now, settings, options, types, view); ok || paid || err != nil {
+			t.Fatalf("HH %s must not claim a paid operation without Run ID: ok=%v paid=%v err=%v", phase, ok, paid, err)
+		}
+	}
+	// После сохранения Run ID допускается только GET/reconcile;
+	// пятнадцатиминутное ограничение нового Actor не мешает дочитыванию.
+	delete(view.unconfirmedRunIDs, key)
+	if ok, paid, err := claimEligible(job, now, settings, ClaimOptions{VerifiedHHOnly: true, HHScanPhase: "reconcile"}, types, view); !ok || !paid || err != nil {
+		t.Fatalf("confirmed provider Run ID must allow reconcile: ok=%v paid=%v err=%v", ok, paid, err)
+	}
+	if ok, _, err := claimEligible(job, now, settings, ClaimOptions{VerifiedHHOnly: true, HHScanPhase: "launch"}, types, view); ok || err != nil {
+		t.Fatalf("confirmed paid operation must still block a second launch: %v", err)
+	}
+}
+
 func TestQueuePhaseInputValidation(t *testing.T) {
 	r := RunRepository{}
 	for _, phase := range []string{"start", "Launch", "all"} {

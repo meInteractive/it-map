@@ -74,3 +74,31 @@ func TestHHPendingBreakdownMalformedPayloadIsNotCountedAsReady(t *testing.T) {
 		t.Fatalf("повреждённый payload нельзя считать готовым: %+v", got)
 	}
 }
+
+func TestHHPendingBreakdownUnconfirmedPaidRunIsNotReconcile(t *testing.T) {
+	now := time.Date(2026, 11, 10, 16, 30, 0, 0, time.UTC).UnixMilli()
+	source := "hh"
+	job := Job{ID: "uncertain", Type: "scan_source", Status: "pending", SourceID: &source, Payload: json.RawMessage("{}"), RunAfter: now - 1000, CreatedAt: now - int64(6*24*time.Hour/time.Millisecond)}
+	key := "go398:CI_UNCONFIRMED"
+	view := claimView{
+		busy: map[int64]bool{}, pages: map[string]string{},
+		operations: map[string]bool{key: true}, goOperationKeys: map[string]string{job.ID: key},
+		unconfirmedRunIDs: map[string]bool{key: true},
+		verifiedHH: map[hhCandidateKey]bool{}, blockedHHScans: map[string]bool{},
+		lastListingStart: now - int64(time.Hour/time.Millisecond),
+	}
+	settings := DefaultSettings()
+	settings.Enabled = true
+	got := summarizeHHPending([]Job{job}, now, settings, view)
+	if got.Pending != 1 || got.Other != 1 || got.UnconfirmedRunID != 1 ||
+		got.LaunchCandidate != 0 || got.ReconcileCandidate != 0 || got.LaunchCooldown != 0 ||
+		got.OldestUnconfirmedAt == nil || *got.OldestUnconfirmedAt != job.CreatedAt {
+		t.Fatalf("неподтверждённый Run ID должен оставаться в безопасной other-категории: %+v", got)
+	}
+	delete(view.unconfirmedRunIDs, key)
+	got = summarizeHHPending([]Job{job}, now, settings, view)
+	if got.Pending != 1 || got.Other != 0 || got.UnconfirmedRunID != 0 ||
+		got.ReconcileCandidate != 1 || got.OldestUnconfirmedAt != nil {
+		t.Fatalf("после подтверждения Run ID должен разрешаться только GET/reconcile: %+v", got)
+	}
+}

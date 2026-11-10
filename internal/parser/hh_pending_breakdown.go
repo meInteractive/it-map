@@ -19,6 +19,8 @@ type HHPendingBreakdown struct {
 	LaunchCooldown      int64  `json:"launchCooldown"`
 	LaunchCandidate     int64  `json:"launchCandidate"`
 	Other               int64  `json:"other"`
+	UnconfirmedRunID    int64  `json:"unconfirmedRunId"`
+	OldestUnconfirmedAt *int64 `json:"oldestUnconfirmedAt"`
 	OldestPendingAt     *int64 `json:"oldestPendingAt"`
 	OldestUnverifiedAt  *int64 `json:"oldestUnverifiedAt"`
 	OldestReconcileAt   *int64 `json:"oldestReconcileAt"`
@@ -65,6 +67,14 @@ func summarizeHHPending(jobs []Job, now int64, settings Settings, view claimView
 			out.UnverifiedCursor++
 			out.MissingOperation++
 			olderHHStamp(&out.OldestUnverifiedAt, job.CreatedAt)
+			continue
+		}
+		// Запись оплаченной операции без Run ID не подходит для GET
+		// и не даёт разрешения на следующий платный запуск.
+		if key, known := view.goOperationKeys[job.ID]; known && view.operations[key] && view.unconfirmedRunIDs[key] {
+			out.Other++
+			out.UnconfirmedRunID++
+			olderHHStamp(&out.OldestUnconfirmedAt, job.CreatedAt)
 			continue
 		}
 		options.HHScanPhase = "reconcile"
