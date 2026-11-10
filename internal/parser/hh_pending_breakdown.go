@@ -12,12 +12,25 @@ type HHPendingBreakdown struct {
 	Pending             int64  `json:"pending"`
 	NotDue              int64  `json:"notDue"`
 	UnverifiedCursor    int64  `json:"unverifiedCursor"`
+	UnverifiedLineage   int64  `json:"unverifiedLineage"`
+	MissingOperation    int64  `json:"missingOperation"`
 	OrphanPaid          int64  `json:"orphanPaid"`
 	ReconcileCandidate  int64  `json:"reconcileCandidate"`
 	LaunchCooldown      int64  `json:"launchCooldown"`
 	LaunchCandidate     int64  `json:"launchCandidate"`
 	Other               int64  `json:"other"`
 	OldestPendingAt     *int64 `json:"oldestPendingAt"`
+	OldestUnverifiedAt  *int64 `json:"oldestUnverifiedAt"`
+	OldestReconcileAt   *int64 `json:"oldestReconcileAt"`
+	OldestCooldownAt    *int64 `json:"oldestCooldownAt"`
+}
+
+// olderHHStamp сохраняет самое раннее время внутри агрегата без ID заданий.
+func olderHHStamp(dest **int64, at int64) {
+	if *dest == nil || at < **dest {
+		value := at
+		*dest = &value
+	}
 }
 
 // Это предварительная оценка доступности на момент снимка, а не пробный claim:
@@ -32,16 +45,15 @@ func summarizeHHPending(jobs []Job, now int64, settings Settings, view claimView
 			continue
 		}
 		out.Pending++
-		if out.OldestPendingAt == nil || job.CreatedAt < *out.OldestPendingAt {
-			value := job.CreatedAt
-			out.OldestPendingAt = &value
-		}
+		olderHHStamp(&out.OldestPendingAt, job.CreatedAt)
 		switch {
 		case job.RunAfter > now:
 			out.NotDue++
 			continue
 		case view.blockedHHScans[job.ID]:
 			out.UnverifiedCursor++
+			out.UnverifiedLineage++
+			olderHHStamp(&out.OldestUnverifiedAt, job.CreatedAt)
 			continue
 		case view.orphanPaidScans[job.ID]:
 			out.OrphanPaid++
@@ -51,6 +63,8 @@ func summarizeHHPending(jobs []Job, now int64, settings Settings, view claimView
 		// принимать за разрешение на новый платный запуск.
 		if _, known := view.goOperationKeys[job.ID]; !known && view.pages["go399:"+job.ID] != "" {
 			out.UnverifiedCursor++
+			out.MissingOperation++
+			olderHHStamp(&out.OldestUnverifiedAt, job.CreatedAt)
 			continue
 		}
 		options.HHScanPhase = "reconcile"
@@ -62,10 +76,12 @@ func summarizeHHPending(jobs []Job, now int64, settings Settings, view claimView
 			out.Other++
 		case reconcile:
 			out.ReconcileCandidate++
+			olderHHStamp(&out.OldestReconcileAt, job.CreatedAt)
 		case launch:
 			out.LaunchCandidate++
 		case view.lastListingStart > now-int64(hhActorLaunchCooldown/time.Millisecond):
 			out.LaunchCooldown++
+			olderHHStamp(&out.OldestCooldownAt, job.CreatedAt)
 		default:
 			out.Other++
 		}
