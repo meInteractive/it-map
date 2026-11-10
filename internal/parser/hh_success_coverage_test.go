@@ -49,3 +49,27 @@ func TestGO303NoSourcesHaveZeroRecentSuccesses(t *testing.T) {
 		t.Fatalf("пустая область должна давать нулевой охват: %+v", out)
 	}
 }
+
+func TestGO303HHCoverageIndependentOfSourceReadOrder(t *testing.T) {
+	now := time.Date(2026, 11, 10, 12, 0, 0, 0, time.UTC).UnixMilli()
+	at := func(ms int64) sql.NullString {
+		return sql.NullString{Valid: true, String: time.UnixMilli(ms).UTC().Format(time.RFC3339Nano)}
+	}
+	rows := []HHScanScheduleSource{
+		{Enabled: true, Favorite: true, LastSuccessAt: at(now - 1000)},
+		{Enabled: true, Favorite: false, LastSuccessAt: at(now - 1000)},
+		{Enabled: true, Favorite: true, LastSuccessAt: at(now - int64(30*time.Hour/time.Millisecond))},
+		{Enabled: true, Favorite: true, LastSuccessAt: sql.NullString{}},
+		{Enabled: false, Favorite: true, LastSuccessAt: at(now - 1000)},
+	}
+	a := summarizeHHScanSchedule(rows, now, 1, true)
+	for i, j := 0, len(rows)-1; i < j; i, j = i+1, j-1 {
+		rows[i], rows[j] = rows[j], rows[i]
+	}
+	z := summarizeHHScanSchedule(rows, now, 1, true)
+	if a.SuccessfulLast24h != z.SuccessfulLast24h ||
+		a.SuccessfulLast48h != z.SuccessfulLast48h ||
+		a.SuccessDateUnknown != z.SuccessDateUnknown {
+		t.Fatalf("охват HH не должен зависеть от порядка чтения строк: до=%+v после=%+v", a, z)
+	}
+}
