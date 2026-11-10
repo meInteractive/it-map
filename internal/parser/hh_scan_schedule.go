@@ -36,6 +36,9 @@ type HHScanScheduleSummary struct {
 	PotentiallyDue     int64  `json:"potentiallyDue"`
 	Recalculated       int64  `json:"recalculated"`
 	UnknownLastSuccess int64  `json:"unknownLastSuccess"`
+	SuccessfulLast24h  int64  `json:"successfulLast24h"`
+	SuccessfulLast48h  int64  `json:"successfulLast48h"`
+	SuccessDateUnknown int64  `json:"successDateUnknown"`
 	NextDueAt          *int64 `json:"nextDueAt"`
 }
 
@@ -83,6 +86,21 @@ func summarizeHHScanSchedule(rows []HHScanScheduleSource, now int64, interval in
 		if favoritesOnly && !source.Favorite {
 			out.OutsideScope++
 			continue
+		}
+		// Последний подтверждённый успех фиксируется только после полного
+		// завершения HH cursor. Частичные запуски не обновляют last_success_at.
+		if !source.LastSuccessAt.Valid {
+			out.SuccessDateUnknown++
+		} else if last, err := time.Parse(time.RFC3339Nano, source.LastSuccessAt.String); err != nil || last.UnixMilli() <= 0 || last.UnixMilli() > now {
+			out.SuccessDateUnknown++
+		} else {
+			age := now - last.UnixMilli()
+			if age <= int64(48*time.Hour/time.Millisecond) {
+				out.SuccessfulLast48h++
+				if age <= int64(24*time.Hour/time.Millisecond) {
+					out.SuccessfulLast24h++
+				}
+			}
 		}
 		if source.HasActiveScan {
 			out.ActiveScan++

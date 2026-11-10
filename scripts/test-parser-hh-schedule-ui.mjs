@@ -45,6 +45,22 @@ for(const bad of [
 ]){
  assert.equal(isHHScanScheduleReport(bad),false,'invalid HH pending breakdown accepted');
 }
+const withCoverage={...base,summary:{...base.summary,
+ successfulLast24h:2,successfulLast48h:4,successDateUnknown:1}};
+assert.equal(isHHScanScheduleReport(withCoverage),true);
+const coverageHTML=render(HHScanScheduleView,{report:withCoverage});
+assert.match(coverageHTML,/Успешно проверено HH-источников за последние 24 часа/);
+assert.match(coverageHTML,/За 48 часов/);
+assert.match(coverageHTML,/полностью завершённый/);
+for(const bad of [
+ {...withCoverage,summary:{...withCoverage.summary,successfulLast24h:5}},
+ {...withCoverage,summary:{...withCoverage.summary,successDateUnknown:4}},
+ {...withCoverage,summary:{...withCoverage.summary,successfulLast24h:-1}},
+ {...withCoverage,summary:{...withCoverage.summary,successfulLast48h:undefined}},
+ {...withCoverage,summary:{...withCoverage.summary,successDateUnknown:NaN}},
+]){
+ assert.equal(isHHScanScheduleReport(bad),false,'invalid HH confirmed-coverage report accepted');
+}
 const warning={...base,intervalDays:7,vacancyAgeDays:3};
 assert.match(render(HHScanScheduleView,{report:warning}),/часть вакансий может быть пропущена/);
 assert.doesNotMatch(render(HHScanScheduleView,{report:base}),/часть вакансий может быть пропущена/);
