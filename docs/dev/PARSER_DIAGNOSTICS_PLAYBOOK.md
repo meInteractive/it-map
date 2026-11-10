@@ -183,6 +183,18 @@ ORDER BY action, status;
 
 Если `unverifiedLegacyFilters>0` сохраняется, сначала дождаться публикации GO-443 и получить все шесть новых полей JSON. До изменения очереди провести **только read-only** сверку сохранённого курсора, `apify_runs`, сохранённого Dataset и `scheduler_attempts`; см. [полный протокол HH legacy recovery](HH_LEGACY_CURSOR_RECOVERY.md). Общая кнопка `retry/cancel` не проверяет денежный ledger; не применять её как «безопасный reset». Один не найденный operation key не доказывает отсутствие платного запуска, в том числе для предыдущих страниц cursor. Запуск Actor, ручное изменение production MariaDB и бюджетов не разрешены этим документом.
 
+## GO-444: безопасные свидетельства сохранённого HH Actor
+
+После GO-443 видны конкретные устаревшие фильтры; GO-444 добавляет **только числа** для pending, где `unverifiedLegacyFilters>0`, и использует данные **уже читаемой** транзакции с HH cursor и ledger. Публичный JSON содержит:
+- `legacySavedRunId`, `legacySavedDatasetId`, `legacySavedMetadata` — наличие полей в сохранённом HH-курсоре;
+- `legacyCurrentPageLedger` — запись с точным вычисленным ключом операции **текущей** страницы присутствует в `apify_runs`;
+- `legacyCurrentPageLedgerRunId` / `legacyCurrentPageLedgerMissingRunId` — взаимно исключающие части присутствующего ledger в зависимости от наличия провайдерского Run ID;
+- `legacySavedRunNoCurrentLedger` — cursor хранит Run ID, но не найдена запись для текущей страницы, **не означает** что ранее не было платных запусков.
+
+**Инварианты:** `legacyCurrentPageLedgerRunId + legacyCurrentPageLedgerMissingRunId = legacyCurrentPageLedger`; каждый признак не превышает `unverifiedLegacyFilters`; сумма признаков не является общим числом jobs или платных операций. Поля могут содержать нуль; у старого backend отсутствующее поле обозначается `null`. Не раскрываются сами Run ID, Dataset ID, account ID, source URL или metadata.
+
+Отсутствие ledger для текущей страницы **не доказывает**, что предыдущие страницы не оплачивались или что старт не имел неизвестного исхода. Ни один флаг не допускает повторный POST или автоматический `cancel/retry`. После вывода агрегатов смотреть [операторский preflight](HH_LEGACY_CURSOR_RECOVERY.md) и отдельно согласовывать любую production-операцию.
+
 ## GO-443: почему устарел HH-курсор — признаки legacy
 
 После GO-442 при `pendingBreakdown.unverifiedLegacyFilters>0` возможно нарушение сразу нескольких требований. Дополнительные **не взаимоисключающие** числовые счётчики GO-443:

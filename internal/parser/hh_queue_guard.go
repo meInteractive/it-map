@@ -38,7 +38,7 @@ func hhCursorProof(raw []byte, generation string, company int64, source string, 
 // readVerifiedHHLineage оставляет контракт планировщика прежним.
 // Причины отказа доступны только диагностике; выбор задания их не использует.
 func readVerifiedHHLineage(ctx context.Context, tx *sql.Tx, generation string) (map[hhCandidateKey]bool, map[string]bool, error) {
-	verified, blocked, _, _, err := readVerifiedHHLineageReasons(ctx, tx, generation)
+	verified, blocked, _, _, _, err := readVerifiedHHLineageReasons(ctx, tx, generation)
 	return verified, blocked, err
 }
 
@@ -62,6 +62,20 @@ func (f hhLegacyFactors) any() bool {
     return f.Version || f.Lineage || f.Moscow || f.Date || f.Title || f.Roles
 }
 
+// hhLegacyPaidEvidence фиксирует только наличие данных, без самих ID/metadata.
+// Совпадение с денежным журналом проверяется отдельно по текущей странице.
+type hhLegacyPaidEvidence struct {
+	SavedRunID, SavedDatasetID, SavedMetadata bool
+}
+
+func savedHHLegacyPaidEvidence(c hhListingCursor) hhLegacyPaidEvidence {
+	return hhLegacyPaidEvidence{
+		SavedRunID: c.RunID != "",
+		SavedDatasetID: c.DatasetID != "",
+		SavedMetadata: c.Metadata != nil,
+	}
+}
+
 // Причины классифицируются строго на уже заблокированных курсорах.
 // Сначала проверяется текущая версия источника, затем формат курсора.
 func hhBlockedLineageReason(raw []byte, current bool) string {
@@ -80,14 +94,15 @@ func hhBlockedLineageReason(raw []byte, current bool) string {
 
 // readVerifiedHHLineageReasons читает те же записи и использует тот же
 // proof, что планировщик, но отдельно помечает причины отказа для GET-only.
-func readVerifiedHHLineageReasons(ctx context.Context, tx *sql.Tx, generation string) (map[hhCandidateKey]bool, map[string]bool, map[string]string, map[string]hhLegacyFactors, error) {
+func readVerifiedHHLineageReasons(ctx context.Context, tx *sql.Tx, generation string) (map[hhCandidateKey]bool, map[string]bool, map[string]string, map[string]hhLegacyFactors, map[string]hhLegacyPaidEvidence, error) {
 	out := map[hhCandidateKey]bool{}
 	blockedScans := map[string]bool{}
 	blockedReasons := map[string]string{}
 	legacy := map[string]hhLegacyFactors{}
+	paidEvidence := map[string]hhLegacyPaidEvidence{}
 	rows, err := tx.QueryContext(ctx, `SELECT d.id,d.company_id,d.source_url,d.source_revision,d.result_json,COALESCE(s.enabled=1 AND s.revision=d.source_revision AND s.source_url=d.source_url,0) FROM vacancy_discovery_runs d LEFT JOIN vacancy_source_parsing s ON s.company_id=d.company_id AND s.source_id='hh' WHERE d.generation=? AND d.source_id='hh' AND d.company_id IS NOT NULL AND d.agency_id IS NULL`, generation)
 	if err != nil {
-		return nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, err
 	}
 	defer rows.Close()
 	for rows.Next() {
@@ -96,7 +111,7 @@ func readVerifiedHHLineageReasons(ctx context.Context, tx *sql.Tx, generation st
 		var raw []byte
 		var current bool
 		if err = rows.Scan(&id, &company, &source, &revision, &raw, &current); err != nil {
-			return nil, nil, nil, nil, err
+			return nil, nil, nil, nil, nil, err
 		}
 		candidates, valid := hhCursorProof(raw, generation, company, source, revision)
 		if !current || !valid {
@@ -106,7 +121,10 @@ func readVerifiedHHLineageReasons(ctx context.Context, tx *sql.Tx, generation st
 				blockedReasons[scanID] = hhBlockedLineageReason(raw, current)
                 if blockedReasons[scanID] == hhBlockedLegacyFilters {
                     var cursor hhListingCursor
-                    if json.Unmarshal(raw,&cursor)==nil {legacy[scanID]=legacyFactors(cursor)}
+                    if json.Unmarshal(raw, &cursor) == nil {
+                        legacy[scanID] = legacyFactors(cursor)
+                        paidEvidence[scanID] = savedHHLegacyPaidEvidence(cursor)
+                    }
                 }
 			}
 			continue
@@ -116,7 +134,7 @@ func readVerifiedHHLineageReasons(ctx context.Context, tx *sql.Tx, generation st
 		}
 	}
 	if err = rows.Err(); err != nil {
-		return nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, err
 	}
-	return out, blockedScans, blockedReasons, legacy, nil
+	return out, blockedScans, blockedReasons, legacy, paidEvidence, nil
 }

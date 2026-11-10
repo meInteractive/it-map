@@ -157,7 +157,11 @@ const hhSchedule={
     unverifiedLineage:1,unverifiedSourceChanged:0,
     unverifiedLegacyFilters:1,unverifiedLegacyVersion:1,unverifiedLegacyLineage:1,
     unverifiedLegacyMoscow:0,unverifiedLegacyDate:0,unverifiedLegacyTitle:0,
-    unverifiedLegacyRoles:1,unverifiedMalformedCursor:0,unverifiedOtherProof:0,
+    unverifiedLegacyRoles:1,
+    legacySavedRunId:1,legacySavedDatasetId:1,legacySavedMetadata:1,
+    legacyCurrentPageLedger:1,legacyCurrentPageLedgerRunId:1,
+    legacyCurrentPageLedgerMissingRunId:0,legacySavedRunNoCurrentLedger:0,
+    unverifiedMalformedCursor:0,unverifiedOtherProof:0,
     missingOperation:0,orphanPaid:0,
     reconcileCandidate:1,launchCooldown:4,launchCandidate:0,other:0,
     unconfirmedRunId:0,oldestUnconfirmedAt:null,
@@ -189,6 +193,13 @@ assert.equal(hhJSON.summary.pendingBreakdown.unverifiedLegacyMoscow,0);
 assert.equal(hhJSON.summary.pendingBreakdown.unverifiedLegacyDate,0);
 assert.equal(hhJSON.summary.pendingBreakdown.unverifiedLegacyTitle,0);
 assert.equal(hhJSON.summary.pendingBreakdown.unverifiedLegacyRoles,1);
+assert.equal(hhJSON.summary.pendingBreakdown.legacySavedRunId,1);
+assert.equal(hhJSON.summary.pendingBreakdown.legacySavedDatasetId,1);
+assert.equal(hhJSON.summary.pendingBreakdown.legacySavedMetadata,1);
+assert.equal(hhJSON.summary.pendingBreakdown.legacyCurrentPageLedger,1);
+assert.equal(hhJSON.summary.pendingBreakdown.legacyCurrentPageLedgerRunId,1);
+assert.equal(hhJSON.summary.pendingBreakdown.legacyCurrentPageLedgerMissingRunId,0);
+assert.equal(hhJSON.summary.pendingBreakdown.legacySavedRunNoCurrentLedger,0);
 assert.equal(hhJSON.summary.pendingBreakdown.unverifiedSourceChanged,0);
 assert.equal(hhJSON.summary.pendingBreakdown.unverifiedMalformedCursor,0);
 assert.equal(hhJSON.summary.pendingBreakdown.unverifiedOtherProof,0);
@@ -245,6 +256,9 @@ const reasonReport={...hhSchedule,pendingBreakdown:{...hhSchedule.pendingBreakdo
   unverifiedSourceChanged:1,unverifiedLegacyFilters:1,
   unverifiedLegacyVersion:1,unverifiedLegacyLineage:1,unverifiedLegacyMoscow:1,
   unverifiedLegacyDate:1,unverifiedLegacyTitle:1,unverifiedLegacyRoles:1,
+  legacySavedRunId:1,legacySavedDatasetId:1,legacySavedMetadata:1,
+  legacyCurrentPageLedger:1,legacyCurrentPageLedgerRunId:1,
+  legacyCurrentPageLedgerMissingRunId:0,legacySavedRunNoCurrentLedger:0,
   unverifiedMalformedCursor:1,unverifiedOtherProof:1,
   payload:secret,companyName:secret,sourceUrl:'https://private.example/'+secret,
 }};
@@ -256,6 +270,8 @@ assert.equal(reasonBreakdown.unverifiedSourceChanged+reasonBreakdown.unverifiedL
   reasonBreakdown.unverifiedMalformedCursor+reasonBreakdown.unverifiedOtherProof,4);
 assert.equal(reasonBreakdown.unverifiedLegacyRoles,1);
 assert.equal(reasonBreakdown.unverifiedLegacyMoscow,1);
+assert.equal(reasonBreakdown.legacySavedRunId,1);
+assert.equal(reasonBreakdown.legacyCurrentPageLedgerRunId,1);
 assert.ok(!JSON.stringify(reasonJSON).includes(secret));
 assert.ok(!JSON.stringify(reasonJSON).includes('sourceUrl'));
 
@@ -266,7 +282,10 @@ for(const field of ['noSuccess48hWaiting','noSuccess48hActive','noSuccess48hDue'
 for(const field of ['unverifiedLineage','unverifiedSourceChanged',
   'unverifiedLegacyFilters','unverifiedLegacyVersion','unverifiedLegacyLineage',
   'unverifiedLegacyMoscow','unverifiedLegacyDate','unverifiedLegacyTitle',
-  'unverifiedLegacyRoles','unverifiedMalformedCursor','unverifiedOtherProof',
+  'unverifiedLegacyRoles','legacySavedRunId','legacySavedDatasetId',
+  'legacySavedMetadata','legacyCurrentPageLedger','legacyCurrentPageLedgerRunId',
+  'legacyCurrentPageLedgerMissingRunId','legacySavedRunNoCurrentLedger',
+  'unverifiedMalformedCursor','unverifiedOtherProof',
   'missingOperation','oldestUnverifiedAt',
   'oldestReconcileAt','oldestCooldownAt','unconfirmedRunId','oldestUnconfirmedAt'])delete oldFields.pendingBreakdown[field];
 const legacy=JSON.parse(serializeDebugJSON({
@@ -279,6 +298,10 @@ assert.equal(legacy.summary.pendingBreakdown.unverifiedLegacyFilters,null);
 for (const k of ['unverifiedLegacyVersion','unverifiedLegacyLineage',
  'unverifiedLegacyMoscow','unverifiedLegacyDate','unverifiedLegacyTitle',
  'unverifiedLegacyRoles']) assert.equal(legacy.summary.pendingBreakdown[k],null);
+for (const k of ['legacySavedRunId','legacySavedDatasetId','legacySavedMetadata',
+  'legacyCurrentPageLedger','legacyCurrentPageLedgerRunId',
+  'legacyCurrentPageLedgerMissingRunId','legacySavedRunNoCurrentLedger'])
+    assert.equal(legacy.summary.pendingBreakdown[k],null);
 assert.equal(legacy.summary.pendingBreakdown.unverifiedMalformedCursor,null);
 assert.equal(legacy.summary.pendingBreakdown.unverifiedOtherProof,null);
 assert.equal(legacy.summary.pendingBreakdown.oldestUnverifiedAt,null);

@@ -21,6 +21,14 @@ type HHPendingBreakdown struct {
     UnverifiedLegacyDate int64 `json:"unverifiedLegacyDate"`
     UnverifiedLegacyTitle int64 `json:"unverifiedLegacyTitle"`
     UnverifiedLegacyRoles int64 `json:"unverifiedLegacyRoles"`
+    // Признаки оплаченного прошлого: агрегаты только старых HH pending, не идентификаторы.
+    LegacySavedRunID int64 `json:"legacySavedRunId"`
+    LegacySavedDatasetID int64 `json:"legacySavedDatasetId"`
+    LegacySavedMetadata int64 `json:"legacySavedMetadata"`
+    LegacyCurrentPageLedger int64 `json:"legacyCurrentPageLedger"`
+    LegacyCurrentPageLedgerRunID int64 `json:"legacyCurrentPageLedgerRunId"`
+    LegacyCurrentPageLedgerMissingRunID int64 `json:"legacyCurrentPageLedgerMissingRunId"`
+    LegacySavedRunNoCurrentLedger int64 `json:"legacySavedRunNoCurrentLedger"`
 	UnverifiedMalformedCursor int64 `json:"unverifiedMalformedCursor"`
 	UnverifiedOtherProof int64 `json:"unverifiedOtherProof"`
 	MissingOperation    int64  `json:"missingOperation"`
@@ -55,6 +63,12 @@ func summarizeHHPendingWithReasons(jobs []Job, now int64, settings Settings, vie
     return summarizeHHPendingWithDetails(jobs,now,settings,view,reasons,nil)
 }
 func summarizeHHPendingWithDetails(jobs []Job, now int64, settings Settings, view claimView, reasons map[string]string, legacy map[string]hhLegacyFactors) HHPendingBreakdown {
+    return summarizeHHPendingWithPaidEvidence(jobs, now, settings, view, reasons, legacy, nil)
+}
+
+// Дополнительные числовые признаки не влияют на claim/launch/reconcile.
+// Ledger относится только к ключу текущей страницы, не к истории всех страниц.
+func summarizeHHPendingWithPaidEvidence(jobs []Job, now int64, settings Settings, view claimView, reasons map[string]string, legacy map[string]hhLegacyFactors, saved map[string]hhLegacyPaidEvidence) HHPendingBreakdown {
 	var out HHPendingBreakdown
 	source := "hh"
 	types := map[string]bool{"scan_source": true}
@@ -84,6 +98,24 @@ func summarizeHHPendingWithDetails(jobs []Job, now int64, settings Settings, vie
                 if factors.Date {out.UnverifiedLegacyDate++}
                 if factors.Title {out.UnverifiedLegacyTitle++}
                 if factors.Roles {out.UnverifiedLegacyRoles++}
+                proof := saved[job.ID]
+                if proof.SavedRunID {out.LegacySavedRunID++}
+                if proof.SavedDatasetID {out.LegacySavedDatasetID++}
+                if proof.SavedMetadata {out.LegacySavedMetadata++}
+                key, known := view.goOperationKeys[job.ID]
+                hasLedger := known && view.operations[key]
+                if hasLedger {
+                    out.LegacyCurrentPageLedger++
+                    if view.unconfirmedRunIDs[key] {
+                        out.LegacyCurrentPageLedgerMissingRunID++
+                    } else {
+                        out.LegacyCurrentPageLedgerRunID++
+                    }
+                } else if proof.SavedRunID {
+                    // Не считать отсутствие ledger текущей страницы доказательством
+                    // неоплаченного Actor: ранее могла оплачиваться иная страница.
+                    out.LegacySavedRunNoCurrentLedger++
+                }
 			case hhBlockedMalformedCursor:
 				out.UnverifiedMalformedCursor++
 			default:
@@ -141,7 +173,7 @@ func readHHPendingBreakdown(ctx context.Context, tx *sql.Tx, generation string, 
 	if err != nil {
 		return empty, err
 	}
-	_, blocked, reasons, legacy, err := readVerifiedHHLineageReasons(ctx, tx, generation)
+	_, blocked, reasons, legacy, paidEvidence, err := readVerifiedHHLineageReasons(ctx, tx, generation)
 	if err != nil {
 		return empty, err
 	}
@@ -164,5 +196,5 @@ func readHHPendingBreakdown(ctx context.Context, tx *sql.Tx, generation string, 
 	if err != nil {
 		return empty, err
 	}
-	return summarizeHHPendingWithDetails(jobs, now, settings, view, reasons, legacy), nil
+	return summarizeHHPendingWithPaidEvidence(jobs, now, settings, view, reasons, legacy, paidEvidence), nil
 }
