@@ -171,8 +171,8 @@ export function HHScanScheduleView({ report: r }: { report: HHScanScheduleReport
             Предварительная классификация {n(r.pendingBreakdown.pending)} ожидающих HH-заданий:
             срок выполнения ещё не наступил — {n(r.pendingBreakdown.notDue)};
             неподтверждённый курсор — {n(r.pendingBreakdown.unverifiedCursor)};
-            уже оплаченный запуск для дочитывания — {n(r.pendingBreakdown.reconcileCandidate)};
-            оплаченный запуск без подтверждённого receipt — {n(r.pendingBreakdown.orphanPaid)};
+            существующий запуск для дочитывания — {n(r.pendingBreakdown.reconcileCandidate)};
+            курсор с неподтверждённой записью запуска — {n(r.pendingBreakdown.orphanPaid)};
             ограничение частоты нового запуска — {n(r.pendingBreakdown.launchCooldown)};
             потенциально готовы к новому запуску — {n(r.pendingBreakdown.launchCandidate)};
             прочие причины — {n(r.pendingBreakdown.other)}.
