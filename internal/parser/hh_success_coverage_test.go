@@ -73,3 +73,20 @@ func TestGO303HHCoverageIndependentOfSourceReadOrder(t *testing.T) {
 		t.Fatalf("охват HH не должен зависеть от порядка чтения строк: до=%+v после=%+v", a, z)
 	}
 }
+
+func TestGO303HHCoverageTimezoneOffsetsPreserveInstant(t *testing.T) {
+	now := time.Date(2026, 11, 10, 12, 0, 0, 0, time.UTC).UnixMilli()
+	offset := time.FixedZone("CI_Moscow", 3*60*60)
+	encode := func(ms int64) sql.NullString {
+		return sql.NullString{Valid: true, String: time.UnixMilli(ms).In(offset).Format(time.RFC3339Nano)}
+	}
+	rows := []HHScanScheduleSource{
+		{Enabled: true, Favorite: true, LastSuccessAt: encode(now - int64(24*time.Hour/time.Millisecond))},
+		{Enabled: true, Favorite: true, LastSuccessAt: encode(now - int64(24*time.Hour/time.Millisecond) - 1)},
+		{Enabled: true, Favorite: true, LastSuccessAt: encode(now + 1)},
+	}
+	got := summarizeHHScanSchedule(rows, now, 1, true)
+	if got.SuccessfulLast24h != 1 || got.SuccessfulLast48h != 2 || got.SuccessDateUnknown != 1 {
+		t.Fatalf("timestamp с timezone offset должен быть эквивалентен UTC моменту: %+v", got)
+	}
+}
