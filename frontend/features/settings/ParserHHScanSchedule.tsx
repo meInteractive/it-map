@@ -10,6 +10,9 @@ interface HHScheduleSummary {
   potentiallyDue: number;
   recalculated: number;
   unknownLastSuccess: number;
+  successfulLast24h?: number;
+  successfulLast48h?: number;
+  successDateUnknown?: number;
   nextDueAt: number | null;
 }
 interface HHPendingBreakdown {
@@ -55,7 +58,12 @@ const isHHScheduleSummary = (v: unknown): v is HHScheduleSummary => {
     'recalculated',
     'unknownLastSuccess',
   ];
-  return keys.every((k) => nonnegative(v[k])) && (v.nextDueAt === null || nonnegative(v.nextDueAt));
+  const optional = ['successfulLast24h', 'successfulLast48h', 'successDateUnknown'];
+  return (
+    keys.every((k) => nonnegative(v[k])) &&
+    optional.every((k) => v[k] === undefined || nonnegative(v[k])) &&
+    (v.nextDueAt === null || nonnegative(v.nextDueAt))
+  );
 };
 const isHHPendingBreakdown = (v: unknown): v is HHPendingBreakdown => {
   if (!object(v)) return false;
@@ -95,7 +103,20 @@ export function isHHScanScheduleReport(v: unknown): v is HHScanScheduleReport {
   )
     return false;
   const s = v.summary;
+  const eligible = s.configured - s.disabled - s.outsideScope;
+  const coveragePresent =
+    s.successfulLast24h !== undefined ||
+    s.successfulLast48h !== undefined ||
+    s.successDateUnknown !== undefined;
+  const coverageValid =
+    !coveragePresent ||
+    (s.successfulLast24h !== undefined &&
+      s.successfulLast48h !== undefined &&
+      s.successDateUnknown !== undefined &&
+      s.successfulLast24h <= s.successfulLast48h &&
+      s.successfulLast48h + s.successDateUnknown <= eligible);
   return (
+    coverageValid &&
     s.disabled + s.outsideScope + s.activeScan + s.waiting + s.potentiallyDue === s.configured &&
     s.waiting > 0 === (s.nextDueAt !== null) &&
     (s.nextDueAt === null || s.nextDueAt > v.checkedAt)
@@ -160,6 +181,15 @@ export function HHScanScheduleView({ report: r }: { report: HHScanScheduleReport
         Сохранённых HH-источников: {n(s.configured)}; выключено: {n(s.disabled)}; исключено
         настройкой избранного: {n(s.outsideScope)}.
       </p>
+      {s.successfulLast24h !== undefined && (
+        <p className="resume-hint">
+          Успешно проверено HH-источников за последние 24 часа: <strong>{n(s.successfulLast24h)}</strong>{' '}
+          из {n(s.configured - s.disabled - s.outsideScope)} включённых в выбранной области.
+          За 48 часов — {n(s.successfulLast48h ?? 0)}; без достоверной даты последней успешной
+          проверки — {n(s.successDateUnknown ?? 0)}. Учитывается последний полностью завершённый
+          обход каждого источника, не количество запусков Apify и не число новых вакансий.
+        </p>
+      )}
       <p className="resume-hint">
         В очереди текущего поколения: HH ожидают — {n(r.pendingHHScans)}, выполняются —{' '}
         {n(r.runningHHScans)}. Это все локальные HH-задания, включая те, которые автоматический
