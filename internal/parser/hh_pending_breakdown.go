@@ -19,6 +19,8 @@ type HHPendingBreakdown struct {
 	LaunchCooldown      int64  `json:"launchCooldown"`
 	LaunchCandidate     int64  `json:"launchCandidate"`
 	Other               int64  `json:"other"`
+	UnconfirmedRunID    int64  `json:"unconfirmedRunId"`
+	OldestUnconfirmedAt *int64 `json:"oldestUnconfirmedAt"`
 	OldestPendingAt     *int64 `json:"oldestPendingAt"`
 	OldestUnverifiedAt  *int64 `json:"oldestUnverifiedAt"`
 	OldestReconcileAt   *int64 `json:"oldestReconcileAt"`
@@ -65,6 +67,14 @@ func summarizeHHPending(jobs []Job, now int64, settings Settings, view claimView
 			out.UnverifiedCursor++
 			out.MissingOperation++
 			olderHHStamp(&out.OldestUnverifiedAt, job.CreatedAt)
+			continue
+		}
+		// A paid ledger entry without a provider Run ID is neither a
+		// valid GET/reconcile target nor permission for a new paid start.
+		if key, known := view.goOperationKeys[job.ID]; known && view.operations[key] && view.unconfirmedRunIDs[key] {
+			out.Other++
+			out.UnconfirmedRunID++
+			olderHHStamp(&out.OldestUnconfirmedAt, job.CreatedAt)
 			continue
 		}
 		options.HHScanPhase = "reconcile"

@@ -156,6 +156,7 @@ const hhSchedule={
   pendingBreakdown:{pending:6,notDue:0,unverifiedCursor:1,
     unverifiedLineage:1,missingOperation:0,orphanPaid:0,
     reconcileCandidate:1,launchCooldown:4,launchCandidate:0,other:0,
+    unconfirmedRunId:0,oldestUnconfirmedAt:null,
     oldestPendingAt:now-6*86400000,oldestUnverifiedAt:now-6*86400000,
     oldestReconcileAt:now-3*86400000,oldestCooldownAt:now-86400000,
     jobId:secret,runId:secret},
@@ -178,6 +179,8 @@ assert.equal(hhJSON.summary.pendingBreakdown.pending,6);
 assert.equal(hhJSON.summary.pendingBreakdown.launchCooldown,4);
 assert.equal(hhJSON.summary.pendingBreakdown.unverifiedLineage,1);
 assert.equal(hhJSON.summary.pendingBreakdown.missingOperation,0);
+assert.equal(hhJSON.summary.pendingBreakdown.unconfirmedRunId,0);
+assert.equal(hhJSON.summary.pendingBreakdown.oldestUnconfirmedAt,null);
 assert.equal(hhJSON.summary.pendingBreakdown.oldestReconcileAt,
   new Date(now-3*86400000).toISOString());
 assert.equal(hhJSON.summary.pendingBreakdown.reconcileCandidate,1);
@@ -206,17 +209,35 @@ assert.equal(hhUnknown.summary.pendingBreakdown,null);
 assert.equal(hhUnknown.summary.noSuccess48hWaiting,6);
 assert.equal(hhUnknown.summary.noSuccess48hActive,3);
 // Legacy data remains unknown (null), not a fabricated zero.
+// The reason count is a subset of "other", not a new top-level bucket.
+const uncertainReport={...hhSchedule,pendingBreakdown:{...hhSchedule.pendingBreakdown,
+  other:1,launchCooldown:3,unconfirmedRunId:1,
+  oldestUnconfirmedAt:now-5*86400000,
+  providerRunId:secret,
+}};
+const uncertainJSON=JSON.parse(serializeDebugJSON({
+  section:'parser_hh_schedule',capturedAt:now,...hhScanScheduleSnapshot(uncertainReport),
+}));
+assert.equal(uncertainJSON.summary.pendingBreakdown.unconfirmedRunId,1);
+assert.equal(uncertainJSON.summary.pendingBreakdown.other,1);
+assert.equal(uncertainJSON.summary.pendingBreakdown.oldestUnconfirmedAt,
+  new Date(now-5*86400000).toISOString());
+assert.equal(uncertainJSON.summary.pendingBreakdown.launchCooldown,3);
+assert.ok(!JSON.stringify(uncertainJSON).includes(secret));
+assert.ok(!JSON.stringify(uncertainJSON).includes('providerRunId'));
 const oldFields={...hhSchedule,summary:{...hhSchedule.summary},
   pendingBreakdown:{...hhSchedule.pendingBreakdown}};
 for(const field of ['noSuccess48hWaiting','noSuccess48hActive','noSuccess48hDue',
   'noSuccess48hWaitPartial'])delete oldFields.summary[field];
 for(const field of ['unverifiedLineage','missingOperation','oldestUnverifiedAt',
-  'oldestReconcileAt','oldestCooldownAt'])delete oldFields.pendingBreakdown[field];
+  'oldestReconcileAt','oldestCooldownAt','unconfirmedRunId','oldestUnconfirmedAt'])delete oldFields.pendingBreakdown[field];
 const legacy=JSON.parse(serializeDebugJSON({
   section:'parser_hh_schedule',capturedAt:now,...hhScanScheduleSnapshot(oldFields),
 }));
 assert.equal(legacy.summary.noSuccess48hWaiting,null);
 assert.equal(legacy.summary.pendingBreakdown.unverifiedLineage,null);
 assert.equal(legacy.summary.pendingBreakdown.oldestUnverifiedAt,null);
+assert.equal(legacy.summary.pendingBreakdown.unconfirmedRunId,null);
+assert.equal(legacy.summary.pendingBreakdown.oldestUnconfirmedAt,null);
 console.log('GO-440: stale 48h by wait/active/due and proof variants, oldest category timestamps, unavailable fields remain null, no identifiers.');
 console.log('GO-439: HH schedule JSON has timestamps, configured/due/coverage/pending groups; missing is not zero; PII rejected.');

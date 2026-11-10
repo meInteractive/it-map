@@ -40,6 +40,9 @@ type claimView struct {
 	blockedHHScans  map[string]bool
 	goOperationKeys map[string]string
 	orphanPaidScans map[string]bool
+	// A reserved operation without provider Run ID cannot be safely reconciled.
+	// Keep it fenced in both HH phases; do not issue a second paid POST.
+	unconfirmedRunIDs map[string]bool
 	lastListingStart int64
 }
 
@@ -61,7 +64,7 @@ func claimTypes(requested []string) (map[string]bool, error) {
 	return out, nil
 }
 func readClaimView(ctx context.Context, tx *sql.Tx, generation string) (claimView, error) {
-	view := claimView{busy: map[int64]bool{}, pages: map[string]string{}, operations: map[string]bool{}, goOperationKeys: map[string]string{}, orphanPaidScans: map[string]bool{}}
+	view := claimView{busy: map[int64]bool{}, pages: map[string]string{}, operations: map[string]bool{}, goOperationKeys: map[string]string{}, orphanPaidScans: map[string]bool{}, unconfirmedRunIDs: map[string]bool{}}
 	operationCreated := map[string]int64{}
 	rows, e := tx.QueryContext(ctx, "SELECT candidate_id FROM scheduler_jobs WHERE generation=? AND status='running' AND candidate_id IS NOT NULL", generation)
 	if e != nil {
@@ -80,19 +83,23 @@ func readClaimView(ctx context.Context, tx *sql.Tx, generation string) (claimVie
 	if e != nil {
 		return view, e
 	}
-	rows, e = tx.QueryContext(ctx, "SELECT operation_key,created_at FROM apify_runs WHERE generation=?", generation)
+	rows, e = tx.QueryContext(ctx, "SELECT operation_key,created_at,run_id FROM apify_runs WHERE generation=?", generation)
 	if e != nil {
 		return view, e
 	}
 	for rows.Next() {
 		var key string
 		var created int64
-		if e = rows.Scan(&key, &created); e != nil {
+		var runID sql.NullString
+		if e = rows.Scan(&key, &created, &runID); e != nil {
 			rows.Close()
 			return view, e
 		}
 		view.operations[key] = true
 		operationCreated[key] = created
+		if !runID.Valid || strings.TrimSpace(runID.String) == "" {
+			view.unconfirmedRunIDs[key] = true
+		}
 	}
 	e = rows.Err()
 	rows.Close()
@@ -205,6 +212,12 @@ func claimEligible(job Job, now int64, settings Settings, options ClaimOptions, 
 				if view.pages["go399:"+job.ID] != "" {
 					return false, false, nil
 				}
+			}
+			// The ledger can contain starting/uncertain with no provider
+			// Run ID. GET cannot reconcile it, while a fresh paid POST is
+			// unsafe. Never claim that job in either automated HH phase.
+			if known && view.operations[key] && view.unconfirmedRunIDs[key] {
+				return false, false, nil
 			}
 			page = known && view.operations[key]
 			switch options.HHScanPhase {
