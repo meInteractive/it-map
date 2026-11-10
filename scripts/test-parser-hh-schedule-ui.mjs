@@ -34,7 +34,7 @@ const withBreakdown={...base,pendingHHScans:6,pendingBreakdown:{
 assert.equal(isHHScanScheduleReport(withBreakdown),true);
 const breakdownHTML=render(HHScanScheduleView,{report:withBreakdown});
 for(const text of ['Предварительная классификация','неподтверждённый курсор',
- 'уже оплаченный запуск','ограничение частоты','Самое старое','не проверяет квоты Apify']){
+ 'существующий запуск','ограничение частоты','Самое старое','не проверяет квоты Apify']){
  assert.match(breakdownHTML,new RegExp(text,'i'));
 }
 for(const bad of [
