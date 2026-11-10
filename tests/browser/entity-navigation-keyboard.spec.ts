@@ -31,13 +31,21 @@ test.beforeEach(async ({mountComponent}) => {
   await mountComponent(source);
 });
 
-test('1, 3: ArrowDown открывает первый пункт и зацикливает навигацию', async ({page}) => {
+test('1: ArrowDown открывает меню и переводит фокус на первый пункт', async ({page}) => {
   const trigger = page.getByRole('button', {name: 'Список'});
   const options = page.locator('#list-navigation .settings-nav-item');
   await expect(trigger).toHaveAttribute('aria-expanded', 'false');
   await trigger.focus();
   await page.keyboard.press('ArrowDown');
   await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+  await expect(options.first()).toBeFocused();
+});
+
+test('3: стрелки зацикливают перемещение по пунктам меню', async ({page}) => {
+  const trigger = page.getByRole('button', {name: 'Список'});
+  const options = page.locator('#list-navigation .settings-nav-item');
+  await trigger.focus();
+  await page.keyboard.press('ArrowDown');
   await expect(options.first()).toBeFocused();
   await page.keyboard.press('ArrowDown');
   await expect(options.nth(1)).toBeFocused();
@@ -49,10 +57,9 @@ test('1, 3: ArrowDown открывает первый пункт и зацикл
   await expect(options.last()).toBeFocused();
 });
 
-test('2, 4: Home/End, Escape и ArrowUp сохраняют клавиатурный фокус', async ({page}) => {
+test('2: Home и End переводят фокус между крайними пунктами', async ({page}) => {
   const trigger = page.getByRole('button', {name: 'Список'});
-  const menu = page.locator('#list-navigation');
-  const options = menu.locator('.settings-nav-item');
+  const options = page.locator('#list-navigation .settings-nav-item');
   await trigger.focus();
   await page.keyboard.press('ArrowDown');
   await expect(options.first()).toBeFocused();
@@ -60,11 +67,26 @@ test('2, 4: Home/End, Escape и ArrowUp сохраняют клавиатурн�
   await expect(options.last()).toBeFocused();
   await page.keyboard.press('Home');
   await expect(options.first()).toBeFocused();
+});
+
+test('4a: Escape закрывает меню и возвращает фокус на кнопку', async ({page}) => {
+  const trigger = page.getByRole('button', {name: 'Список'});
+  const menu = page.locator('#list-navigation');
+  await trigger.focus();
+  await page.keyboard.press('ArrowDown');
+  await expect(menu).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(menu).toHaveCount(0);
   await expect(trigger).toHaveAttribute('aria-expanded', 'false');
   await expect(trigger).toBeFocused();
+});
+
+test('4b: ArrowUp открывает меню с фокусом на последнем пункте', async ({page}) => {
+  const trigger = page.getByRole('button', {name: 'Список'});
+  const options = page.locator('#list-navigation .settings-nav-item');
+  await trigger.focus();
   await page.keyboard.press('ArrowUp');
+  await expect(trigger).toHaveAttribute('aria-expanded', 'true');
   await expect(options.last()).toBeFocused();
 });
 

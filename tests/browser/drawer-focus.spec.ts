@@ -51,32 +51,40 @@ test.beforeEach(async ({page, mountComponent}) => {
   });
 });
 
-test('26: Drawer имеет доступное имя, начальный фокус и ровно один обработчик', async ({page}) => {
+test('26a: Drawer имеет доступное имя и устанавливает начальный фокус', async ({page}) => {
   const opener = page.getByRole('button', {name: 'Показать карточку'});
   const dialog = page.getByRole('dialog', {name: 'Тестовая карточка'});
-  const close = dialog.getByRole('button', {name: 'Закрыть'});
   await opener.click();
   await expect(dialog).toBeVisible();
   await expect(dialog).toHaveAttribute('aria-label', 'Тестовая карточка');
-  await expect(close).toBeFocused();
+  await expect(dialog.getByRole('button', {name: 'Закрыть'})).toBeFocused();
+});
+
+test('26b: открытие Drawer добавляет ровно один обработчик клавиатуры', async ({page}) => {
+  await page.getByRole('button', {name: 'Показать карточку'}).click();
+  await expect(page.getByRole('dialog', {name: 'Тестовая карточка'})).toBeVisible();
   expect(await page.evaluate(() => (window as any).__drawerListeners())).toBe(1);
 });
 
-test('28–29: Tab зациклен по доступным элементам в обе стороны', async ({page}) => {
+test('28: Tab с последней ссылки переводит фокус на закрытие', async ({page}) => {
   await page.getByRole('button', {name: 'Показать карточку'}).click();
   const dialog = page.getByRole('dialog', {name: 'Тестовая карточка'});
   const close = dialog.getByRole('button', {name: 'Закрыть'});
-  const last = dialog.getByRole('link', {name: 'Последняя ссылка'});
-  await expect(close).toBeFocused();
   await expect(dialog.getByRole('button', {name: 'Недоступное действие'})).toBeDisabled();
-  await last.focus();
+  await dialog.getByRole('link', {name: 'Последняя ссылка'}).focus();
   await page.keyboard.press('Tab');
   await expect(close).toBeFocused();
-  await page.keyboard.press('Shift+Tab');
-  await expect(last).toBeFocused();
 });
 
-test('27, 30: Escape закрывает один раз и восстанавливает фокус без утечки', async ({page}) => {
+test('29: Shift+Tab с закрытия возвращает фокус на последнюю ссылку', async ({page}) => {
+  await page.getByRole('button', {name: 'Показать карточку'}).click();
+  const dialog = page.getByRole('dialog', {name: 'Тестовая карточка'});
+  await expect(dialog.getByRole('button', {name: 'Закрыть'})).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(dialog.getByRole('link', {name: 'Последняя ссылка'})).toBeFocused();
+});
+
+test('27: Escape закрывает Drawer один раз и возвращает фокус', async ({page}) => {
   const opener = page.getByRole('button', {name: 'Показать карточку'});
   const dialog = page.getByRole('dialog', {name: 'Тестовая карточка'});
   await opener.click();
@@ -85,9 +93,18 @@ test('27, 30: Escape закрывает один раз и восстанавл�
   await expect(dialog).toHaveCount(0);
   await expect(opener).toBeFocused();
   expect(await page.evaluate(() => (window as any).__closeCount)).toBe(1);
-  expect(await page.evaluate(() => (window as any).__drawerListeners())).toBe(0);
   await page.keyboard.press('Escape');
   expect(await page.evaluate(() => (window as any).__closeCount)).toBe(1);
+});
+
+test('30a: Escape удаляет обработчик клавиатуры после закрытия', async ({page}) => {
+  const dialog = page.getByRole('dialog', {name: 'Тестовая карточка'});
+  await page.getByRole('button', {name: 'Показать карточку'}).click();
+  await expect(dialog).toBeVisible();
+  expect(await page.evaluate(() => (window as any).__drawerListeners())).toBe(1);
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+  expect(await page.evaluate(() => (window as any).__drawerListeners())).toBe(0);
 });
 
 test('30: повторное открытие и закрытие кнопкой очищают каждый обработчик', async ({page}) => {
