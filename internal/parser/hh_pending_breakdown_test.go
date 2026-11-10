@@ -102,3 +102,28 @@ func TestHHPendingBreakdownUnconfirmedPaidRunIsNotReconcile(t *testing.T) {
 		t.Fatalf("после подтверждения Run ID должен разрешаться только GET/reconcile: %+v", got)
 	}
 }
+
+func TestHHPendingBreakdownUnverifiedLineageReasonsPartition(t *testing.T) {
+	now := time.Date(2026,11,10,17,0,0,0,time.UTC).UnixMilli()
+	source := "hh"
+	jobs := []Job{}
+	blocked := map[string]bool{}
+	reasons := map[string]string{}
+	for i, reason := range []string{hhBlockedSourceChanged, hhBlockedLegacyFilters, hhBlockedMalformedCursor, hhBlockedOtherProof} {
+		id := string(rune('a'+i))
+		jobs = append(jobs, Job{ID:id, Type:"scan_source", Status:"pending", SourceID:&source, Payload:json.RawMessage("{}"), CreatedAt:now-1000, RunAfter:now})
+		blocked[id]=true
+		reasons[id]=reason
+	}
+	view := claimView{blockedHHScans:blocked}
+	got := summarizeHHPendingWithReasons(jobs,now,DefaultSettings(),view,reasons)
+	if got.Pending!=4 || got.UnverifiedCursor!=4 || got.UnverifiedLineage!=4 ||
+		got.UnverifiedSourceChanged!=1 || got.UnverifiedLegacyFilters!=1 ||
+		got.UnverifiedMalformedCursor!=1 || got.UnverifiedOtherProof!=1 ||
+		got.MissingOperation!=0 || got.Other!=0 || got.ReconcileCandidate!=0 || got.LaunchCandidate!=0 {
+		t.Fatalf("причины HH блокировки должны делить только unverifiedLineage: %+v",got)
+	}
+	// Без доступной классификации старые тестовые входы остаются безопасно заблокированы.
+	got = summarizeHHPending(jobs,now,DefaultSettings(),view)
+	if got.UnverifiedOtherProof!=4 || got.UnverifiedLineage!=4 {t.Fatalf("неизвестная причина блокировки: %+v",got)}
+}

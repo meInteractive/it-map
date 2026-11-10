@@ -80,7 +80,9 @@ const SCHEMA = Object.freeze({
       pendingHHScans:number,runningHHScans:number,pendingBreakdownAvailable:bool,
       pendingBreakdown:{
         pending:number,notDue:number,unverifiedCursor:number,
-        unverifiedLineage:number,missingOperation:number,orphanPaid:number,
+        unverifiedLineage:number,unverifiedSourceChanged:number,
+        unverifiedLegacyFilters:number,unverifiedMalformedCursor:number,
+        unverifiedOtherProof:number,missingOperation:number,orphanPaid:number,
         reconcileCandidate:number,launchCooldown:number,launchCandidate:number,other:number,
         unconfirmedRunId:number,oldestUnconfirmedAt:time,
         oldestPendingAt:time,oldestUnverifiedAt:time,oldestReconcileAt:time,

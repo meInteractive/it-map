@@ -13,6 +13,10 @@ type HHPendingBreakdown struct {
 	NotDue              int64  `json:"notDue"`
 	UnverifiedCursor    int64  `json:"unverifiedCursor"`
 	UnverifiedLineage   int64  `json:"unverifiedLineage"`
+	UnverifiedSourceChanged int64 `json:"unverifiedSourceChanged"`
+	UnverifiedLegacyFilters  int64 `json:"unverifiedLegacyFilters"`
+	UnverifiedMalformedCursor int64 `json:"unverifiedMalformedCursor"`
+	UnverifiedOtherProof int64 `json:"unverifiedOtherProof"`
 	MissingOperation    int64  `json:"missingOperation"`
 	OrphanPaid          int64  `json:"orphanPaid"`
 	ReconcileCandidate  int64  `json:"reconcileCandidate"`
@@ -38,6 +42,10 @@ func olderHHStamp(dest **int64, at int64) {
 // Это предварительная оценка доступности на момент снимка, а не пробный claim:
 // бюджеты, lease, лимиты цикла и разрешение нового Actor здесь не проверяются.
 func summarizeHHPending(jobs []Job, now int64, settings Settings, view claimView) HHPendingBreakdown {
+	return summarizeHHPendingWithReasons(jobs, now, settings, view, nil)
+}
+
+func summarizeHHPendingWithReasons(jobs []Job, now int64, settings Settings, view claimView, reasons map[string]string) HHPendingBreakdown {
 	var out HHPendingBreakdown
 	source := "hh"
 	types := map[string]bool{"scan_source": true}
@@ -55,6 +63,16 @@ func summarizeHHPending(jobs []Job, now int64, settings Settings, view claimView
 		case view.blockedHHScans[job.ID]:
 			out.UnverifiedCursor++
 			out.UnverifiedLineage++
+			switch reasons[job.ID] {
+			case hhBlockedSourceChanged:
+				out.UnverifiedSourceChanged++
+			case hhBlockedLegacyFilters:
+				out.UnverifiedLegacyFilters++
+			case hhBlockedMalformedCursor:
+				out.UnverifiedMalformedCursor++
+			default:
+				out.UnverifiedOtherProof++
+			}
 			olderHHStamp(&out.OldestUnverifiedAt, job.CreatedAt)
 			continue
 		case view.orphanPaidScans[job.ID]:
@@ -107,7 +125,7 @@ func readHHPendingBreakdown(ctx context.Context, tx *sql.Tx, generation string, 
 	if err != nil {
 		return empty, err
 	}
-	_, blocked, err := readVerifiedHHLineage(ctx, tx, generation)
+	_, blocked, reasons, err := readVerifiedHHLineageReasons(ctx, tx, generation)
 	if err != nil {
 		return empty, err
 	}
@@ -130,5 +148,5 @@ func readHHPendingBreakdown(ctx context.Context, tx *sql.Tx, generation string, 
 	if err != nil {
 		return empty, err
 	}
-	return summarizeHHPending(jobs, now, settings, view), nil
+	return summarizeHHPendingWithReasons(jobs, now, settings, view, reasons), nil
 }
