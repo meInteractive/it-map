@@ -101,14 +101,14 @@ func TestGO440HHNoRecentSuccessIsClassifiedByScheduleState(t *testing.T) {
 	old := at(now - int64(72*time.Hour/time.Millisecond))
 	recent := at(now - int64(time.Hour/time.Millisecond))
 	rows := []HHScanScheduleSource{
-		{Enabled: true, Favorite: true, HasActiveScan: true, LastSuccessAt: recent},
-		{Enabled: true, Favorite: true, NextRunAt: now + 1000, LastSuccessAt: old, LastResult: partial},
-		{Enabled: true, Favorite: true, NextRunAt: now + 2000, LastSuccessAt: old, LastResult: success},
-		{Enabled: true, Favorite: true, HasActiveScan: true, LastSuccessAt: sql.NullString{}},
-		{Enabled: true, Favorite: true, NextRunAt: now, LastSuccessAt: old, LastResult: partial},
-		{Enabled: true, Favorite: true, NextRunAt: now + 3000, LastSuccessAt: recent, LastResult: partial},
-		{Enabled: false, Favorite: true, LastSuccessAt: sql.NullString{}},
-		{Enabled: true, Favorite: false, LastSuccessAt: sql.NullString{}},
+		{Enabled: true, Favorite: true, IntervalDays: 1, HasActiveScan: true, LastSuccessAt: recent},
+		{Enabled: true, Favorite: true, IntervalDays: 1, NextRunAt: now + 1000, LastSuccessAt: old, LastResult: partial},
+		{Enabled: true, Favorite: true, IntervalDays: 1, NextRunAt: now + 2000, LastSuccessAt: old, LastResult: success},
+		{Enabled: true, Favorite: true, IntervalDays: 1, HasActiveScan: true, LastSuccessAt: sql.NullString{}},
+		{Enabled: true, Favorite: true, IntervalDays: 1, NextRunAt: now, LastSuccessAt: old, LastResult: partial},
+		{Enabled: true, Favorite: true, IntervalDays: 1, NextRunAt: now + 3000, LastSuccessAt: recent, LastResult: partial},
+		{Enabled: false, Favorite: true, IntervalDays: 1, LastSuccessAt: sql.NullString{}},
+		{Enabled: true, Favorite: false, IntervalDays: 1, LastSuccessAt: sql.NullString{}},
 	}
 	got := summarizeHHScanSchedule(rows, now, 1, true)
 	if got.Configured != 8 || got.Disabled != 1 || got.OutsideScope != 1 ||
