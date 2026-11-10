@@ -1,5 +1,5 @@
 [Unit]
-Description=IT-MAP hourly parser pilot
+Description=IT-MAP 15-minute parser pilot
 After=network-online.target itmap@main.service
 Requires=itmap@main.service
 

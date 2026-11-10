@@ -64,7 +64,7 @@ func summarizeHHPending(jobs []Job, now int64, settings Settings, view claimView
 			out.ReconcileCandidate++
 		case launch:
 			out.LaunchCandidate++
-		case view.lastListingStart > now-int64(time.Hour/time.Millisecond):
+		case view.lastListingStart > now-int64(hhActorLaunchCooldown/time.Millisecond):
 			out.LaunchCooldown++
 		default:
 			out.Other++

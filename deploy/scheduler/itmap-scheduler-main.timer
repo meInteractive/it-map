@@ -1,8 +1,8 @@
 [Unit]
-Description=IT-MAP hourly parser pilot timer
+Description=IT-MAP 15-minute parser pilot timer
 
 [Timer]
-OnCalendar=hourly
+OnCalendar=*:0/15
 Persistent=false
 Unit=itmap-scheduler-main.service
 

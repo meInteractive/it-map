@@ -22,7 +22,7 @@ class Response:
 
 
 class TickTests(unittest.TestCase):
-    def test_hourly_request_and_redacted_output(self):
+    def test_balanced_request_and_redacted_output(self):
         calls = []
         def open_request(request, timeout):
             calls.append((request, timeout))
@@ -33,6 +33,11 @@ class TickTests(unittest.TestCase):
         self.assertEqual(calls[0][0].get_header('Authorization'), 'Bearer CI_TOKEN')
         self.assertEqual(json.loads(calls[0][0].data), {})
         self.assertNotIn('CI_SECRET', json.dumps(result))
+
+    def test_pilot_timer_checks_every_quarter_hour(self):
+        timer = Path(__file__).with_name('itmap-scheduler-main.timer').read_text()
+        self.assertIn('OnCalendar=*:0/15', timer)
+        self.assertNotIn('OnCalendar=hourly', timer)
 
     def test_independent_profiles_are_idempotent_per_minute(self):
         calls = []

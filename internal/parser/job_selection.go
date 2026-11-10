@@ -9,6 +9,7 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"time"
 
 	"itmap/internal/apifyruns"
 )
@@ -27,6 +28,9 @@ func claimAgenciesEnabled(raw []byte) (bool, error) {
 	text, _, err := sqliteJSONText(raw, "agenciesEnabled")
 	return text == "1" || text == "1.0", err
 }
+
+// Один новый HH Actor в 15 минут; GET ранее сохранённого Actor не ограничен этим интервалом.
+const hhActorLaunchCooldown = 15 * time.Minute
 
 type claimView struct {
 	busy           map[int64]bool
@@ -205,7 +209,7 @@ func claimEligible(job Job, now int64, settings Settings, options ClaimOptions, 
 			page = known && view.operations[key]
 			switch options.HHScanPhase {
 			case "launch":
-				if page || view.orphanPaidScans[job.ID] || view.lastListingStart > now-3600000 {
+				if page || view.orphanPaidScans[job.ID] || view.lastListingStart > now-int64(hhActorLaunchCooldown/time.Millisecond) {
 					return false, page, nil
 				}
 			case "reconcile":

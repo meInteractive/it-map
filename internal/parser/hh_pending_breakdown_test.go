@@ -49,6 +49,11 @@ func TestHHPendingBreakdownSeparatesReadinessWithoutStartingActor(t *testing.T) 
 	if got.ReconcileCandidate != 1 || got.LaunchCandidate != 0 || got.LaunchCooldown != 1 {
 		t.Fatalf("ограничение launch помешало безопасному reconcile: %+v", got)
 	}
+	view.lastListingStart = now - int64(hhActorLaunchCooldown/time.Millisecond)
+	got = summarizeHHPending(jobs, now, settings, view)
+	if got.ReconcileCandidate != 1 || got.LaunchCandidate != 1 || got.LaunchCooldown != 0 {
+		t.Fatalf("ровно через 15 минут cooldown должен закончиться: %+v", got)
+	}
 }
 
 func TestHHPendingBreakdownMalformedPayloadIsNotCountedAsReady(t *testing.T) {
