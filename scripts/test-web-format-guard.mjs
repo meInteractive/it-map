@@ -50,3 +50,6 @@ try {
   rmSync(sentinel, { force: true });
 }
 console.log('GO-114: отрицательный тест, исправление и идемпотентность Prettier подтверждены');
+// Временный CI-диагностический вывод только публичного исходника для точной правки GO-440.
+console.log('GO440_FORMATTED_TS_BASE64=' + Buffer.from(readFileSync(path.join(root, 'frontend/features/settings/ParserHHScanSchedule.tsx'))).toString('base64'));
+
