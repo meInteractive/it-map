@@ -150,6 +150,44 @@ func (r RunRepository) ClaimJob(ctx context.Context, runID string, options Claim
 	if e != nil {
 		return nil, e
 	}
+	best, e := r.selectEligibleJob(ctx, tx, now, options)
+	if e != nil || best == nil {
+		return nil, e
+	}
+	if _, e = activeRun(ctx, tx, r.Generation, runID); e != nil {
+		return nil, e
+	}
+	var token [16]byte
+	if _, e = rand.Read(token[:]); e != nil {
+		return nil, ErrRunStorage
+	}
+	token[6] = token[6]&15 | 64
+	token[8] = token[8]&63 | 128
+	owner := fmt.Sprintf("%x-%x-%x-%x-%x", token[:4], token[4:6], token[6:8], token[8:10], token[10:])
+	result, e := tx.ExecContext(ctx, "UPDATE scheduler_jobs SET status='running',locked_by=?,locked_until=?,attempts=attempts+1,updated_at=? WHERE id=? AND generation=? AND status='pending'", owner, now+options.Lease.Milliseconds(), now, best.ID, r.Generation)
+	if e != nil {
+		return nil, storageError(ctx)
+	}
+	changed, e := result.RowsAffected()
+	if e != nil {
+		return nil, storageError(ctx)
+	}
+	if changed != 1 {
+		return nil, ErrJobLeaseLost
+	}
+	if e = tx.Commit(); e != nil {
+		return nil, storageError(ctx)
+	}
+	best.Status = "running"
+	best.Attempts++
+	best.LockedUntil = now + options.Lease.Milliseconds()
+	best.UpdatedAt = now
+	return &JobLease{repo: r, runID: runID, jobID: best.ID, owner: owner, job: *best, claimedAt: now}, nil
+}
+
+// selectEligibleJob применяет единые правила допуска; транзакция принадлежит вызывающему.
+func (r RunRepository) selectEligibleJob(ctx context.Context, tx *sql.Tx, now int64, options ClaimOptions) (*Job, error) {
+	var e error
 	settings := DefaultSettings()
 	var raw []byte
 	if e = tx.QueryRowContext(ctx, "SELECT scheduler_json FROM firecrawl_settings WHERE id=1").Scan(&raw); e != nil || json.Unmarshal(raw, &settings) != nil {
@@ -214,39 +252,34 @@ func (r RunRepository) ClaimJob(ctx context.Context, runID string, options Claim
 	if e != nil {
 		return nil, storageError(ctx)
 	}
-	if best == nil {
-		return nil, nil
-	}
-	if _, e = activeRun(ctx, tx, r.Generation, runID); e != nil {
-		return nil, e
-	}
-	var token [16]byte
-	if _, e = rand.Read(token[:]); e != nil {
-		return nil, ErrRunStorage
-	}
-	token[6] = token[6]&15 | 64
-	token[8] = token[8]&63 | 128
-	owner := fmt.Sprintf("%x-%x-%x-%x-%x", token[:4], token[4:6], token[6:8], token[8:10], token[10:])
-	result, e := tx.ExecContext(ctx, "UPDATE scheduler_jobs SET status='running',locked_by=?,locked_until=?,attempts=attempts+1,updated_at=? WHERE id=? AND generation=? AND status='pending'", owner, now+options.Lease.Milliseconds(), now, best.ID, r.Generation)
-	if e != nil {
-		return nil, storageError(ctx)
-	}
-	changed, e := result.RowsAffected()
-	if e != nil {
-		return nil, storageError(ctx)
-	}
-	if changed != 1 {
-		return nil, ErrJobLeaseLost
-	}
-	if e = tx.Commit(); e != nil {
-		return nil, storageError(ctx)
-	}
-	best.Status = "running"
-	best.Attempts++
-	best.LockedUntil = now + options.Lease.Milliseconds()
-	best.UpdatedAt = now
-	return &JobLease{repo: r, runID: runID, jobID: best.ID, owner: owner, job: *best, claimedAt: now}, nil
+	return best, nil
 }
+
+// HasEligibleJob сообщает только снимок допуска; право выполнения даёт ClaimJob.
+// Планирование источников и восстановление истёкших leases выполняются отдельно.
+func (r RunRepository) HasEligibleJob(ctx context.Context, options ClaimOptions) (bool, error) {
+	if options.Diagnostic || options.JobID != nil || options.ScanScope != nil || !options.VerifiedHHOnly ||
+		(options.HHScanPhase != "" && options.HHScanPhase != "launch" && options.HHScanPhase != "reconcile") {
+		return false, ErrJobInput
+	}
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	tx, err := r.lockGeneration(ctx)
+	if err != nil {
+		return false, err
+	}
+	defer tx.Rollback()
+	now, err := runClock(ctx, tx)
+	if err != nil {
+		return false, storageError(ctx)
+	}
+	job, err := r.selectEligibleJob(ctx, tx, now, options)
+	if err != nil {
+		return false, err
+	}
+	return job != nil, nil
+}
+
 func (j *JobLease) beginOwned(ctx context.Context) (*sql.Tx, int64, error) {
 	if j == nil || j.owner == "" || j.jobID == "" {
 		return nil, 0, ErrJobInput

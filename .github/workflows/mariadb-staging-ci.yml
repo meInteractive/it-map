@@ -9,7 +9,7 @@ permissions:
 jobs:
   mariadb-schema:
     needs: [channel-contact-acceptance, application-link-acceptance, historical-restore, schema-bootstrap, scheduler-job-acceptance, catalog-read-acceptance, backup-browser-acceptance]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # This container database is disposable and has ZERO production credentials.
     services:
       mariadb:
@@ -375,9 +375,12 @@ jobs:
           PYCODE
       - name: Build SPA and install pinned Chromium for browser smoke
         run: |
+          set -euo pipefail
           npm ci --no-audit --no-fund
           npm run build:web
-          npx playwright install --with-deps --only-shell chromium
+          npx playwright install --only-shell chromium
+          test "$(fc-list ':lang=ru' | wc -l)" -gt 0
+          node -e "(async () => { const b = await require('playwright').chromium.launch(); await b.close(); })().catch(e => { console.error(e); process.exit(1); })"
       - name: Проверить ручное восстановление списка в браузере
         run: npx playwright test --config=playwright.resume.config.ts
       - name: Verify writable task UI ONLY in disposable CI
@@ -1691,7 +1694,7 @@ jobs:
           PYTEST
 
   backup-browser-acceptance:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # This container database is disposable and has ZERO production credentials.
     services:
       mariadb:
@@ -1767,9 +1770,12 @@ jobs:
           docker exec -i '${{ job.services.mariadb.id }}' mariadb -u root -pci_only_disposable_root itmap_ci < db/testdata/read-models.sql
       - name: Build actual SPA and install pinned Chromium
         run: |
+          set -euo pipefail
           npm ci --no-audit --no-fund
           npm run build:web
-          npx playwright install --with-deps --only-shell chromium
+          npx playwright install --only-shell chromium
+          test "$(fc-list ':lang=ru' | wc -l)" -gt 0
+          node -e "(async () => { const b = await require('playwright').chromium.launch(); await b.close(); })().catch(e => { console.error(e); process.exit(1); })"
       - name: Verify actual backup browser round-trip ONLY in disposable CI
         env:
           ITMAP_REQUIRE_MARIADB_INTEGRATION: '1'
