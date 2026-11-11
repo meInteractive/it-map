@@ -49,3 +49,32 @@ func TestPipelineSupervisorRejectsInvalidConfiguration(t *testing.T) {
 		t.Fatalf("invalid runtime: %v", err)
 	}
 }
+
+type busySupervisorFake struct {
+	recoveries, sessions int
+	cancel               context.CancelFunc
+}
+
+func (f *busySupervisorFake) RecoverPipeline(context.Context) error {
+	f.recoveries++
+	return nil
+}
+
+func (f *busySupervisorFake) TryPipelineSession(context.Context) (bool, error) {
+	f.sessions++
+	if f.sessions == 3 {
+		f.cancel()
+	}
+	return true, nil
+}
+
+func TestPipelineSupervisorRecoversDuringContinuousWork(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	f := &busySupervisorFake{cancel: cancel}
+	cfg := workerloop.Config{IdleDelay: time.Second, ErrorMin: time.Second, ErrorMax: time.Second}
+	err := RunPipelineSupervisor(ctx, f, time.Nanosecond, cfg)
+	if !errors.Is(err, context.Canceled) || f.recoveries != 3 || f.sessions != 3 {
+		t.Fatalf("err=%v recovery=%d sessions=%d", err, f.recoveries, f.sessions)
+	}
+}
