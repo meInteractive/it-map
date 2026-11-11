@@ -34,6 +34,9 @@ func (c CycleControl) TryPipelineSession(ctx context.Context) (bool, error) {
 	}
 	w.VerifiedHHOnly = true
 	w.ContinueOnStageFailure = true
+	// Ускоренный pipeline не должен менять частоту новых платных Actor.
+	// Существующие операции по подтверждённому Run ID по-прежнему допускают GET.
+	w.DenyActorStarts = true
 	result, err := w.Cycle(ctx, WorkerOptions{Run: RunOptions{RequestID: "worker:" + hex.EncodeToString(token[:]), Trigger: "automatic"}, MaxJobs: 50, QueueProfile: "pipeline"})
 	if err != nil {
 		return false, err
