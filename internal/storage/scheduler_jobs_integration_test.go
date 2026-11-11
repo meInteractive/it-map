@@ -274,6 +274,29 @@ func TestMariaDBSchedulerJobOwnershipDisposable(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	t.Cleanup(cancel)
 	f.ctx = ctx
+	t.Run("eligible snapshot does not claim and claim rechecks", func(t *testing.T) {
+		f := f.sub(t)
+		f.exec("DELETE FROM scheduler_jobs")
+		options := parser.ClaimOptions{Types: []string{"diagnostic"}, VerifiedHHOnly: true}
+		ready, err := f.repo.HasEligibleJob(f.ctx, options)
+		if err != nil || ready {
+			t.Fatal("empty queue reported eligible", err)
+		}
+		schedulerSeedJob(f, "CI_snapshot", nil)
+		before := schedulerRows(t, f, "")
+		ready, err = f.repo.HasEligibleJob(f.ctx, options)
+		if err != nil || !ready || !reflect.DeepEqual(before, schedulerRows(t, f, "")) {
+			t.Fatal("eligible snapshot changed queue or missed work", err)
+		}
+		// Между снимком и claim другое действие может убрать задание.
+		f.exec("UPDATE scheduler_jobs SET status='cancelled' WHERE id='CI_snapshot'")
+		run := f.begin("CI snapshot race")
+		lease, err := f.repo.ClaimJob(f.ctx, run.Run.ID, options)
+		if err != nil || lease != nil {
+			t.Fatal("claim trusted stale snapshot", err)
+		}
+		f.finish(run)
+	})
 	t.Run("opaque snapshot rollback and finish", func(t *testing.T) {
 		f := f.sub(t)
 		f.exec("DELETE FROM scheduler_jobs")
