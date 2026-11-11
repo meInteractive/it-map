@@ -106,6 +106,27 @@ func runtimeService(f apifyRuntimeFixture, p *runtimeProvider) apifyruns.Service
 }
 
 func TestMariaDBApifyRuntimeDisposable(t *testing.T) {
+	t.Run("new operation guard precedes account and permits existing reconcile", func(t *testing.T) {
+		f := openApifyRuntimeFixture(t)
+		var accounts atomic.Int64
+		p := &runtimeProvider{account: func(ctx context.Context) (apify.BillingAccount, error) {
+			accounts.Add(1)
+			return (&runtimeProvider{}).Account(ctx)
+		}}
+		blocked := errors.New("CI new operation blocked")
+		s := runtimeService(f, p)
+		s.BeforeNewOperation = func() error { return blocked }
+		if _, err := s.Execute(f.ctx, f.v, "CI blocked", apify.HHOptions{}); !errors.Is(err, blocked) || accounts.Load() != 0 || p.starts.Load() != 0 {
+			t.Fatal("blocked operation contacted provider", err)
+		}
+		if _, err := runtimeService(f, p).Execute(f.ctx, f.v, "CI existing", apify.HHOptions{}); err != nil || p.starts.Load() != 1 {
+			t.Fatal("could not seed existing run", err)
+		}
+		got, err := s.Execute(f.ctx, f.v, "CI existing", apify.HHOptions{})
+		if err != nil || got.State != "succeeded" || p.starts.Load() != 1 || p.runs.Load() != 1 || accounts.Load() != 1 {
+			t.Fatal("existing run did not reconcile under guard", err)
+		}
+	})
 	t.Run("concurrent replay grants one POST and monotonic settlement", func(t *testing.T) {
 		f := openApifyRuntimeFixture(t)
 		p := &runtimeProvider{}
