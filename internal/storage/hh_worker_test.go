@@ -46,7 +46,7 @@ func (g workerGenerator) Automatic(ctx context.Context, req aiproviders.Generati
 }
 
 func TestMariaDBHHWorkerDisposable(t *testing.T) {
-	for _, mode := range []string{"cycle", "pipeline_session"} {
+	for _, mode := range []string{"cycle", "pipeline_session", "pipeline_paid_fallback"} {
 		t.Run(mode, func(t *testing.T) {
 			provider := &hhScanProvider{rows: [][]json.RawMessage{{hhScanItem(123, "CI_TITLE")}}}
 			_, s, scan, listing := hhScanFixture(t, provider)
@@ -88,16 +88,21 @@ func TestMariaDBHHWorkerDisposable(t *testing.T) {
 			relevance := &relevanceRunner{}
 			w := parser.Worker{Runs: s.repo, Settings: apifysettings.NewRepository(s.db, "CI_SECRET"), ListingRuntime: listing.Runtime, Public: &hhPublicFixture{job: &hhpublic.Job{ID: "123", URL: "https://hh.ru/vacancy/123", Title: "CI_TITLE", Description: hhDetailBody()}}, Generator: workerGenerator{extraction, roles, relevance}, Classifier: &storedTitleRunner{answers: map[string]struct{ Type, Choice string }{"role_991303": {"choice", "match"}}}}
 			maxJobs := 20
-			if mode == "pipeline_session" {
+			if mode != "cycle" {
 				maxJobs = 1
 			}
 			result, err := w.Cycle(s.ctx, parser.WorkerOptions{Run: parser.RunOptions{RequestID: "CI_WORKER"}, MaxJobs: maxJobs})
 			if err != nil {
 				t.Fatal("cycle", result, err)
 			}
-			if mode == "pipeline_session" {
+			if mode != "cycle" {
 				if result.Processed != 1 || provider.starts != 1 {
 					t.Fatal("initial scan", result, provider.starts)
+				}
+				detailProvider := &hhDetailProvider{item: hhDetailItem(hhDetailBody())}
+				if mode == "pipeline_paid_fallback" {
+					w.Public = &hhPublicFixture{}
+					w.DetailRuntime = hhDetailRuntime(s, detailProvider)
 				}
 				control := parser.NewCycleControlWithFactory(s.db, func(r parser.RunRepository) (parser.Worker, error) {
 					w.Runs = r
@@ -106,6 +111,12 @@ func TestMariaDBHHWorkerDisposable(t *testing.T) {
 				worked, sessionErr := control.TryPipelineSession(s.ctx)
 				if sessionErr != nil || !worked {
 					t.Fatal("pipeline session", worked, sessionErr)
+				}
+				if mode == "pipeline_paid_fallback" {
+					if provider.starts != 1 || detailProvider.starts != 0 || extraction.calls != 0 || s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='fetch_full_text' AND status='pending' AND reason_code='deferred'") != 1 {
+						t.Fatal("pipeline admitted new paid fallback or did not defer it")
+					}
+					return
 				}
 			} else if result.Processed != 7 {
 				t.Fatal("cycle processed count", result.Processed)
