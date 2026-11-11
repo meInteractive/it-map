@@ -113,8 +113,14 @@ func TestMariaDBHHWorkerDisposable(t *testing.T) {
 					t.Fatal("pipeline session", worked, sessionErr)
 				}
 				if mode == "pipeline_paid_fallback" {
-					if provider.starts != 1 || detailProvider.starts != 0 || extraction.calls != 0 || s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='fetch_full_text' AND status='pending' AND reason_code='deferred'") != 1 {
+					if provider.starts != 1 || detailProvider.starts != 0 || detailProvider.accounts != 0 || extraction.calls != 0 || s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='fetch_full_text' AND status='pending' AND attempts=0 AND reason_code='paid_start_disabled' AND run_after > CAST(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000 AS SIGNED) + 840000") != 1 {
 						t.Fatal("pipeline admitted new paid fallback or did not defer it")
+					}
+					// Проверяем прежний consumer после наступления срока только на mock.
+					s.exec("UPDATE scheduler_jobs SET run_after=0 WHERE type='fetch_full_text' AND reason_code='paid_start_disabled'")
+					manual, manualErr := w.Cycle(s.ctx, parser.WorkerOptions{Run: parser.RunOptions{RequestID: "CI_PAID_LEGACY"}, MaxJobs: 20})
+					if manualErr != nil || detailProvider.starts != 1 || extraction.calls != 1 || manual.Processed == 0 {
+						t.Fatal("legacy consumer could not continue due fallback", manual, manualErr, detailProvider.starts)
 					}
 					return
 				}

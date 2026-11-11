@@ -19,11 +19,12 @@ type Provider interface {
 }
 
 type Service struct {
-	Repository    Repository
-	NewClient     func(string) (Provider, error)
-	CheckActive   func(context.Context) error
-	BeforeReserve func() error
-	AfterReserve  func()
+	Repository         Repository
+	NewClient          func(string) (Provider, error)
+	CheckActive        func(context.Context) error
+	BeforeNewOperation func() error
+	BeforeReserve      func() error
+	AfterReserve       func()
 }
 
 // WithCheck возвращает отдельную копию для текущей стадии. Callback выполняется
@@ -124,6 +125,13 @@ func (s Service) Execute(ctx context.Context, v apifysettings.OperationVersion, 
 	}
 	if !errors.Is(e, errNoOperation) {
 		return Record{}, e
+	}
+	// Проверяем запрет нового запуска до сетевого запроса к аккаунту.
+	// Существующая операция с подтверждённым Run ID обрабатывается выше.
+	if s.BeforeNewOperation != nil {
+		if err := s.BeforeNewOperation(); err != nil {
+			return Record{}, err
+		}
 	}
 	token, e := s.Repository.Settings.ResolveOperation(ctx, v)
 	if e != nil {
