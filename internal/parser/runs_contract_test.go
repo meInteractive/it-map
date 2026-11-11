@@ -35,3 +35,9 @@ func TestSchedulerRunRejectsInvalidInputBeforeStorage(t *testing.T) {
 		}
 	}
 }
+
+func TestRecoverExpiredRequiresValidRepository(t *testing.T) {
+	if err := (RunRepository{}).RecoverExpired(context.Background()); !errors.Is(err, ErrRunInput) {
+		t.Fatalf("invalid repository: %v", err)
+	}
+}
