@@ -145,3 +145,61 @@ func TestHHPendingLegacyFactorsCanOverlap(t *testing.T) {
         t.Fatalf("вложенные признаки не должны изменять статус задания: %+v",b)
     }
 }
+
+// Никаких идентификаторов платных запусков в summary: только их наличие.
+func TestHHPendingLegacyPaidEvidenceCurrentPageOnly(t *testing.T) {
+    now := time.Date(2026, 11, 10, 20, 0, 0, 0, time.UTC).UnixMilli()
+    hh := "hh"
+    jobs := []Job{
+        {ID:"confirmed", Type:"scan_source", SourceID:&hh, Status:"pending", RunAfter:now},
+        {ID:"unknown", Type:"scan_source", SourceID:&hh, Status:"pending", RunAfter:now},
+        {ID:"different-page", Type:"scan_source", SourceID:&hh, Status:"pending", RunAfter:now},
+        {ID:"empty", Type:"scan_source", SourceID:&hh, Status:"pending", RunAfter:now},
+    }
+    blocked := map[string]bool{}
+    reasons := map[string]string{}
+    for _, j := range jobs {
+        blocked[j.ID]=true
+        reasons[j.ID]=hhBlockedLegacyFilters
+    }
+    view := claimView{
+        blockedHHScans:blocked,
+        goOperationKeys:map[string]string{
+            "confirmed":"go398:has-run",
+            "unknown":"go398:no-run",
+            "different-page":"go398:old-page",
+        },
+        operations:map[string]bool{"go398:has-run":true,"go398:no-run":true},
+        unconfirmedRunIDs:map[string]bool{"go398:no-run":true},
+    }
+    saved := map[string]hhLegacyPaidEvidence{
+        "confirmed":{SavedRunID:true,SavedDatasetID:true,SavedMetadata:true},
+        "unknown":{SavedRunID:false,SavedDatasetID:false,SavedMetadata:false},
+        "different-page":{SavedRunID:true,SavedDatasetID:true,SavedMetadata:true},
+    }
+    result := summarizeHHPendingWithPaidEvidence(jobs,now,DefaultSettings(),view,reasons,nil,saved)
+    if result.Pending!=4 || result.UnverifiedLegacyFilters!=4 || result.UnverifiedLineage!=4 ||
+        result.LegacySavedRunID!=2 || result.LegacySavedDatasetID!=2 || result.LegacySavedMetadata!=2 ||
+        result.LegacyCurrentPageLedger!=2 || result.LegacyCurrentPageLedgerRunID!=1 ||
+        result.LegacyCurrentPageLedgerMissingRunID!=1 || result.LegacySavedRunNoCurrentLedger!=1 ||
+        result.ReconcileCandidate!=0 || result.LaunchCandidate!=0 || result.Other!=0 {
+        t.Fatalf("неправильный безопасный preflight по legacy HH: %+v",result)
+    }
+    // Старый контракт тестов не имеет данных cursor и не выдаёт их за доказательство.
+    old := summarizeHHPendingWithDetails(jobs,now,DefaultSettings(),view,reasons,nil)
+    if old.LegacySavedRunID!=0 || old.LegacyCurrentPageLedger!=2 {
+        t.Fatalf("нельзя придумывать существование Run ID из одного ledger: %+v",old)
+    }
+}
+
+func TestSavedHHLegacyPaidEvidenceUsesPresenceOnly(t *testing.T) {
+    c := hhListingCursor{RunID:"secret-run",DatasetID:"secret-dataset"}
+    got := savedHHLegacyPaidEvidence(c)
+    if !got.SavedRunID || !got.SavedDatasetID || got.SavedMetadata {
+        t.Fatalf("неверно учтено наличие полей курсора: %+v",got)
+    }
+    empty := savedHHLegacyPaidEvidence(hhListingCursor{})
+    if empty.SavedRunID || empty.SavedDatasetID || empty.SavedMetadata {
+        t.Fatalf("пустой курсор не должен подтверждать paid state: %+v",empty)
+    }
+}
