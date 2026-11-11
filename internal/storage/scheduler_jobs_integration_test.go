@@ -274,6 +274,21 @@ func TestMariaDBSchedulerJobOwnershipDisposable(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	t.Cleanup(cancel)
 	f.ctx = ctx
+	t.Run("idle pipeline session does not create run", func(t *testing.T) {
+		f := f.sub(t)
+		f.exec("DELETE FROM scheduler_jobs")
+		before := f.count("SELECT COUNT(*) FROM scheduler_runs")
+		control := parser.NewCycleControl(f.db, "CI_SECRET", "")
+		for i := 0; i < 3; i++ {
+			worked, err := control.TryPipelineSession(f.ctx)
+			if err != nil || worked {
+				t.Fatal("idle pipeline session failed", err)
+			}
+		}
+		if f.count("SELECT COUNT(*) FROM scheduler_runs") != before {
+			t.Fatal("idle polling created runs")
+		}
+	})
 	t.Run("eligible snapshot does not claim and claim rechecks", func(t *testing.T) {
 		f := f.sub(t)
 		f.exec("DELETE FROM scheduler_jobs")
