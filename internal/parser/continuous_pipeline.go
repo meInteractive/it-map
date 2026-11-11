@@ -4,7 +4,20 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 )
+
+var ErrPipelinePartial = errors.New("pipeline session completed with stage errors")
+
+func pipelineSessionResult(result WorkerResult, err error) (bool, error) {
+	if err != nil {
+		return false, err
+	}
+	if result.Run.Status == "partial" {
+		return result.Processed > 0, ErrPipelinePartial
+	}
+	return result.Processed > 0, nil
+}
 
 // TryPipelineSession выполняет ограниченную сессию только при наличии работы.
 // Снимок не является claim: Cycle повторно проверяет владение и допуск.
@@ -38,8 +51,5 @@ func (c CycleControl) TryPipelineSession(ctx context.Context) (bool, error) {
 	// Существующие операции по подтверждённому Run ID по-прежнему допускают GET.
 	w.DenyActorStarts = true
 	result, err := w.Cycle(ctx, WorkerOptions{Run: RunOptions{RequestID: "worker:" + hex.EncodeToString(token[:]), Trigger: "automatic"}, MaxJobs: 50, QueueProfile: "pipeline"})
-	if err != nil {
-		return false, err
-	}
-	return result.Processed > 0, nil
+	return pipelineSessionResult(result, err)
 }
