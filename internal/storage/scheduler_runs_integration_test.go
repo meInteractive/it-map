@@ -121,6 +121,9 @@ func TestMariaDBSchedulerRunsDisposable(t *testing.T) {
 		return
 	}
 	f := openSchedulerFixture(t)
+	t.Run("consumer guard locks and fails closed", func(t *testing.T) {
+		testConsumerGuard(t, f.sub(t))
+	})
 	t.Run("standalone recovery preserves active owner and paid evidence", func(t *testing.T) {
 		f := f.sub(t)
 		run := f.begin("CI standalone recovery")
