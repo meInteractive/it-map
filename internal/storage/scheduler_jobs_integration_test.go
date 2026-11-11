@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"itmap/internal/parser"
+	"itmap/internal/workerloop"
 )
 
 func schedulerClock(t *testing.T, db *sql.DB) int64 {
@@ -274,6 +275,19 @@ func TestMariaDBSchedulerJobOwnershipDisposable(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	t.Cleanup(cancel)
 	f.ctx = ctx
+	t.Run("idle pipeline supervisor cancels without empty runs", func(t *testing.T) {
+		f := f.sub(t)
+		f.exec("DELETE FROM scheduler_jobs")
+		before := f.count("SELECT COUNT(*) FROM scheduler_runs")
+		supervisorCtx, stop := context.WithTimeout(f.ctx, 300*time.Millisecond)
+		defer stop()
+		failures := 0
+		cfg := workerloop.Config{IdleDelay: 20 * time.Millisecond, ErrorMin: 20 * time.Millisecond, ErrorMax: 40 * time.Millisecond, OnError: func(error) { failures++ }}
+		err := parser.RunPipelineSupervisor(supervisorCtx, parser.NewCycleControl(f.db, "CI_SECRET", ""), 30*time.Millisecond, cfg)
+		if !errors.Is(err, context.DeadlineExceeded) || failures != 0 || f.count("SELECT COUNT(*) FROM scheduler_runs") != before {
+			t.Fatalf("idle supervisor: err=%v failures=%d", err, failures)
+		}
+	})
 	t.Run("idle pipeline session does not create run", func(t *testing.T) {
 		f := f.sub(t)
 		f.exec("DELETE FROM scheduler_jobs")
