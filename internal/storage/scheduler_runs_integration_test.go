@@ -121,6 +121,35 @@ func TestMariaDBSchedulerRunsDisposable(t *testing.T) {
 		return
 	}
 	f := openSchedulerFixture(t)
+	t.Run("standalone recovery preserves active owner and paid evidence", func(t *testing.T) {
+		f := f.sub(t)
+		run := f.begin("CI standalone recovery")
+		f.attempt(run, "CI_recovery_attempt")
+		f.exec(`INSERT INTO scheduler_jobs(id,generation,dedupe_key,type,status,priority,run_after,attempts,max_attempts,locked_by,locked_until,created_at,updated_at) VALUES('CI_recovery_job',?,'CI_recovery_job','diagnostic','running',0,0,1,4,'CI_owner',0,0,0)`, f.repo.Generation)
+		if !errors.Is(f.repo.RecoverExpired(f.ctx), parser.ErrRunBusy) || f.count("SELECT COUNT(*) FROM scheduler_jobs WHERE id='CI_recovery_job' AND status='running'") != 1 {
+			t.Fatal("recovery changed a live run")
+		}
+		f.exec("UPDATE scheduler_runs SET lease_until=0 WHERE id=?", run.Run.ID)
+		before := f.count("SELECT COUNT(*) FROM scheduler_runs")
+		if err := f.repo.RecoverExpired(f.ctx); err != nil {
+			t.Fatal("standalone recovery failed", err)
+		}
+		if f.count("SELECT COUNT(*) FROM scheduler_runs") != before || f.count("SELECT COUNT(*) FROM scheduler_jobs WHERE id='CI_recovery_job' AND status='pending' AND locked_by='' AND locked_until=0") != 1 {
+			t.Fatal("recovery did not release expired work or created a run")
+		}
+		f.assertAttempt("CI_recovery_attempt", "interrupted")
+		if !errors.Is(f.repo.AssertActive(f.ctx, run.Run.ID), parser.ErrRunLeaseLost) {
+			t.Fatal("expired run was not fenced")
+		}
+		f.exec(`UPDATE firecrawl_settings SET scheduler_json='{"enabled":false}' WHERE id=1`)
+		f.exec("UPDATE scheduler_jobs SET status='running',locked_by='CI_owner',locked_until=0 WHERE id='CI_recovery_job'")
+		if err := f.repo.RecoverExpired(f.ctx); err != nil || f.count("SELECT COUNT(*) FROM scheduler_jobs WHERE id='CI_recovery_job' AND status='running'") != 1 {
+			t.Fatal("disabled scheduler recovered work", err)
+		}
+		f.exec(`UPDATE firecrawl_settings SET scheduler_json='{"enabled":true}' WHERE id=1`)
+		f.exec("DELETE FROM scheduler_attempts WHERE id='CI_recovery_attempt'")
+		f.exec("DELETE FROM scheduler_jobs WHERE id='CI_recovery_job'")
+	})
 	t.Run("replay expiry recovery and job fences", func(t *testing.T) {
 		f := f.sub(t)
 		run := f.begin("CI recovery")
