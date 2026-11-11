@@ -146,8 +146,14 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 	admit := func() error {
 		return admitHHActorStart(w.ResumePreviousDataset || w.DenyActorStarts, actorStarts.Load())
 	}
+	denyNew := func() error {
+		if w.DenyActorStarts {
+			return ErrHHCycleLimit
+		}
+		return nil
+	}
 	count := func() { actorStarts.Add(1) }
-	service := apifyruns.Service{Repository: apifyruns.Repository{DB: w.Settings.DB, Settings: w.Settings, TrustFreeProviderLimit: w.TrustFreeProviderLimit}, BeforeReserve: admit, AfterReserve: count}
+	service := apifyruns.Service{Repository: apifyruns.Repository{DB: w.Settings.DB, Settings: w.Settings, TrustFreeProviderLimit: w.TrustFreeProviderLimit}, BeforeNewOperation: denyNew, BeforeReserve: admit, AfterReserve: count}
 	listingRuntime := w.ListingRuntime
 	if existing, ok := listingRuntime.(*apifyruns.Service); ok {
 		if existing == nil {
@@ -159,6 +165,15 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 	if listingRuntime == nil {
 		listingRuntime = service
 	} else if existing, ok := listingRuntime.(apifyruns.Service); ok {
+		previousNew := existing.BeforeNewOperation
+		existing.BeforeNewOperation = func() error {
+			if previousNew != nil {
+				if err := previousNew(); err != nil {
+					return err
+				}
+			}
+			return denyNew()
+		}
 		previous := existing.BeforeReserve
 		previousAfter := existing.AfterReserve
 		existing.AfterReserve = func() {
@@ -188,6 +203,15 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 	if detailRuntime == nil {
 		detailRuntime = service
 	} else if existing, ok := detailRuntime.(apifyruns.Service); ok {
+		previousNew := existing.BeforeNewOperation
+		existing.BeforeNewOperation = func() error {
+			if previousNew != nil {
+				if err := previousNew(); err != nil {
+					return err
+				}
+			}
+			return denyNew()
+		}
 		previous := existing.BeforeReserve
 		previousAfter := existing.AfterReserve
 		existing.AfterReserve = func() {
@@ -300,7 +324,7 @@ func (w Worker) cycleStep(ctx, bounded context.Context, runID, phase string, d w
 	if kind := lease.Job().Type; kind == "scan_source" || kind == "fetch_full_text" {
 		(*hhStages)++
 	}
-	executeErr := workerExecute(bounded, d, lease, owner)
+	executeErr := workerExecute(bounded, d, lease, owner, w.DenyActorStarts)
 	reportCtx, reportCancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
 	reportErr := w.Runs.reportCycle(reportCtx, runID, result.Processed, false)
 	reportCancel()
@@ -322,7 +346,7 @@ func (w Worker) cycleStep(ctx, bounded context.Context, runID, phase string, d w
 	return true, nil
 }
 
-func workerExecute(ctx context.Context, d workerDispatch, lease *JobLease, owner string) error {
+func workerExecute(ctx context.Context, d workerDispatch, lease *JobLease, owner string, denyActorStarts bool) error {
 	kind := lease.Job().Type
 	ai := kind == "classify_title" || kind == "extract_vacancy" || kind == "assign_roles" || kind == "score_relevance"
 	var attempt *Attempt
@@ -347,6 +371,10 @@ func workerExecute(ctx context.Context, d workerDispatch, lease *JobLease, owner
 		}
 		if errors.Is(executeErr, ErrHHDetailPending) || errors.Is(executeErr, ErrDetailBusy) || errors.Is(executeErr, ErrHHCycleLimit) || errors.Is(executeErr, context.Canceled) || errors.Is(executeErr, context.DeadlineExceeded) {
 			finish = FinishOptions{Status: "pending", Code: "deferred", Delay: 10 * time.Second, Deferred: true}
+		}
+		if denyActorStarts && errors.Is(executeErr, ErrHHCycleLimit) {
+			// Частые pipeline-сессии не должны непрерывно повторять платный fallback.
+			finish = FinishOptions{Status: "pending", Code: "paid_start_disabled", Delay: 15 * time.Minute, Deferred: true}
 		}
 	} else if out.pending {
 		finish = FinishOptions{Status: "pending", Code: "deferred", Delay: 10 * time.Second, Deferred: true}

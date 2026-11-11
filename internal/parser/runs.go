@@ -105,6 +105,44 @@ func (r RunRepository) recover(ctx context.Context, tx *sql.Tx, now int64, exclu
 	return nil
 }
 
+// RecoverExpired восстанавливает истёкшие leases без создания пустого run.
+// Вызов не выполняет задания и не обращается к провайдерам.
+func (r RunRepository) RecoverExpired(ctx context.Context) error {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	tx, err := r.lockGeneration(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	now, err := runClock(ctx, tx)
+	if err != nil {
+		return storageError(ctx)
+	}
+	var raw []byte
+	var settings struct{ Enabled bool }
+	if err = tx.QueryRowContext(ctx, "SELECT scheduler_json FROM firecrawl_settings WHERE id=1").Scan(&raw); err != nil || json.Unmarshal(raw, &settings) != nil {
+		return storageError(ctx)
+	}
+	if !settings.Enabled {
+		return nil
+	}
+	var active int
+	if err = tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM scheduler_runs WHERE status='running' AND lease_until>?", now).Scan(&active); err != nil {
+		return storageError(ctx)
+	}
+	if active != 0 {
+		return ErrRunBusy
+	}
+	if err = r.recover(ctx, tx, now, ""); err != nil {
+		return storageError(ctx)
+	}
+	if err = tx.Commit(); err != nil {
+		return storageError(ctx)
+	}
+	return nil
+}
+
 // Begin serializes all Go cycle owners on the existing generation singleton.
 // No background goroutine, settings write or provider call is started here.
 func (r RunRepository) Begin(ctx context.Context, options RunOptions) (RunStart, error) {
