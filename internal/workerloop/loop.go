@@ -17,6 +17,7 @@ type Config struct {
 	ErrorMin  time.Duration
 	ErrorMax  time.Duration
 	OnError   func(error)
+	Wakeup    <-chan struct{}
 }
 
 var ErrConfig = errors.New("invalid worker loop configuration")
@@ -37,6 +38,7 @@ func Run(ctx context.Context, cfg Config, step Step) error {
 		return ErrConfig
 	}
 	delay := cfg.ErrorMin
+	wakeup := cfg.Wakeup
 	for {
 		if err := ctx.Err(); err != nil {
 			return err
@@ -64,16 +66,27 @@ func Run(ctx context.Context, cfg Config, step Step) error {
 		}
 		if wait > 0 {
 			timer := time.NewTimer(jitter(wait))
-			select {
-			case <-ctx.Done():
-				if !timer.Stop() {
-					select {
-					case <-timer.C:
-					default:
+			// Сигнал ускоряет только idle polling, не обходя backoff ошибок.
+			signal := wakeup
+			if err != nil {
+				signal = nil
+			}
+		waiting:
+			for {
+				select {
+				case <-ctx.Done():
+					timer.Stop()
+					return ctx.Err()
+				case _, open := <-signal:
+					if !open {
+						wakeup, signal = nil, nil
+						continue
 					}
+					timer.Stop()
+					break waiting
+				case <-timer.C:
+					break waiting
 				}
-				return ctx.Err()
-			case <-timer.C:
 			}
 		}
 	}
