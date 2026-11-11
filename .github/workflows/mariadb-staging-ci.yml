@@ -9,7 +9,7 @@ permissions:
 jobs:
   mariadb-schema:
     needs: [channel-contact-acceptance, application-link-acceptance, historical-restore, schema-bootstrap, scheduler-job-acceptance, catalog-read-acceptance, backup-browser-acceptance]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # This container database is disposable and has ZERO production credentials.
     services:
       mariadb:
@@ -1691,7 +1691,7 @@ jobs:
           PYTEST
 
   backup-browser-acceptance:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # This container database is disposable and has ZERO production credentials.
     services:
       mariadb:
