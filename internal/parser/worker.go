@@ -23,7 +23,7 @@ type Worker struct {
 	Generator              AIStageGenerator
 	Classifier             AIStageClassifier
 	ScheduleSources        bool
-	VerifiedHHOnly        bool
+	VerifiedHHOnly         bool
 	ContinueOnStageFailure bool
 	ResumePreviousDataset  bool
 	ResumeJobID            string
@@ -234,80 +234,92 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 		phaseProcessed := 0
 		hhStages := 0
 		for result.Processed < options.MaxJobs && phaseProcessed < phaseLimit {
-			if err = bounded.Err(); err != nil {
-				status = "interrupted"
-				return result, err
+			processed, stepErr := w.cycleStep(ctx, bounded, start.Run.ID, phase, d, owner, &result, &phaseProcessed, &hhStages, &status, &releaseRun)
+			if stepErr != nil {
+				return result, stepErr
 			}
-			source := "hh"
-			deadline, _ := bounded.Deadline()
-			jobDuration := time.Until(deadline)
-			if jobDuration < time.Millisecond {
-				status = "interrupted"
-				return result, context.DeadlineExceeded
-			}
-			allowHH := hhStages < 5
-			claim := ClaimOptions{Types: workerTypes, SourceID: &source, Lease: jobDuration, AllowApify: &allowHH, VerifiedHHOnly: w.ScheduleSources || w.VerifiedHHOnly}
-			switch phase {
-			case "launch":
-				claim.Types = []string{"scan_source"}
-				claim.HHScanPhase = "launch"
-			case "reconcile":
-				claim.Types = []string{"scan_source"}
-				claim.HHScanPhase = "reconcile"
-			case "pipeline":
-				claim.Types = []string{"classify_title", "fetch_full_text", "extract_vacancy", "assign_roles", "import_vacancy", "score_relevance"}
-			}
-			if w.ResumeJobID != "" {
-				if !w.ResumePreviousDataset {
-					status = "partial"
-					return result, ErrRunInput
-				}
-				claim.Types = []string{"scan_source"}
-				claim.JobID = &w.ResumeJobID
-			}
-			if w.TargetJobID != "" {
-				claim.Types = []string{"scan_source"}
-				claim.JobID = &w.TargetJobID
-			}
-			if w.CandidateScope != nil {
-				claim.Types = []string{"classify_title", "fetch_full_text", "extract_vacancy", "assign_roles", "import_vacancy", "score_relevance"}
-				claim.ScanScope = w.CandidateScope
-			}
-			lease, err := w.Runs.ClaimJob(bounded, start.Run.ID, claim)
-			if err != nil {
-				status = "partial"
-				return result, err
-			}
-			if lease == nil {
+			if !processed {
 				break
-			}
-			result.Processed++
-			phaseProcessed++
-			if kind := lease.Job().Type; kind == "scan_source" || kind == "fetch_full_text" {
-				hhStages++
-			}
-			executeErr := workerExecute(bounded, d, lease, owner)
-			reportCtx, reportCancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
-			reportErr := w.Runs.reportCycle(reportCtx, start.Run.ID, result.Processed, false)
-			reportCancel()
-			if executeErr != nil || reportErr != nil {
-				if executeErr != nil && reportErr == nil && w.ContinueOnStageFailure {
-					checkCtx, checkCancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
-					finished, checkErr := w.Runs.finishedWorkerStep(checkCtx, lease)
-					checkCancel()
-					if checkErr == nil && finished {
-						status = "partial"
-						continue
-					}
-					reportErr = errors.Join(reportErr, checkErr)
-				}
-				releaseRun = false
-				status = "partial"
-				return result, errors.Join(executeErr, reportErr)
 			}
 		}
 	}
 	return result, nil
+}
+
+// cycleStep выполняет один claim и обработку с прежними ограничениями run.
+func (w Worker) cycleStep(ctx, bounded context.Context, runID, phase string, d workerDispatch, owner string, result *WorkerResult, phaseProcessed, hhStages *int, status *string, releaseRun *bool) (bool, error) {
+	if err := bounded.Err(); err != nil {
+		*status = "interrupted"
+		return false, err
+	}
+	source := "hh"
+	deadline, _ := bounded.Deadline()
+	jobDuration := time.Until(deadline)
+	if jobDuration < time.Millisecond {
+		*status = "interrupted"
+		return false, context.DeadlineExceeded
+	}
+	allowHH := *hhStages < 5
+	claim := ClaimOptions{Types: workerTypes, SourceID: &source, Lease: jobDuration, AllowApify: &allowHH, VerifiedHHOnly: w.ScheduleSources || w.VerifiedHHOnly}
+	switch phase {
+	case "launch":
+		claim.Types = []string{"scan_source"}
+		claim.HHScanPhase = "launch"
+	case "reconcile":
+		claim.Types = []string{"scan_source"}
+		claim.HHScanPhase = "reconcile"
+	case "pipeline":
+		claim.Types = []string{"classify_title", "fetch_full_text", "extract_vacancy", "assign_roles", "import_vacancy", "score_relevance"}
+	}
+	if w.ResumeJobID != "" {
+		if !w.ResumePreviousDataset {
+			*status = "partial"
+			return false, ErrRunInput
+		}
+		claim.Types = []string{"scan_source"}
+		claim.JobID = &w.ResumeJobID
+	}
+	if w.TargetJobID != "" {
+		claim.Types = []string{"scan_source"}
+		claim.JobID = &w.TargetJobID
+	}
+	if w.CandidateScope != nil {
+		claim.Types = []string{"classify_title", "fetch_full_text", "extract_vacancy", "assign_roles", "import_vacancy", "score_relevance"}
+		claim.ScanScope = w.CandidateScope
+	}
+	lease, err := w.Runs.ClaimJob(bounded, runID, claim)
+	if err != nil {
+		*status = "partial"
+		return false, err
+	}
+	if lease == nil {
+		return false, nil
+	}
+	result.Processed++
+	(*phaseProcessed)++
+	if kind := lease.Job().Type; kind == "scan_source" || kind == "fetch_full_text" {
+		(*hhStages)++
+	}
+	executeErr := workerExecute(bounded, d, lease, owner)
+	reportCtx, reportCancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+	reportErr := w.Runs.reportCycle(reportCtx, runID, result.Processed, false)
+	reportCancel()
+	if executeErr != nil || reportErr != nil {
+		if executeErr != nil && reportErr == nil && w.ContinueOnStageFailure {
+			checkCtx, checkCancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+			finished, checkErr := w.Runs.finishedWorkerStep(checkCtx, lease)
+			checkCancel()
+			if checkErr == nil && finished {
+				*status = "partial"
+				return true, nil
+			}
+			reportErr = errors.Join(reportErr, checkErr)
+		}
+		*releaseRun = false
+		*status = "partial"
+		return false, errors.Join(executeErr, reportErr)
+	}
+	return true, nil
 }
 
 func workerExecute(ctx context.Context, d workerDispatch, lease *JobLease, owner string) error {
