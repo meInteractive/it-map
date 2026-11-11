@@ -4,6 +4,7 @@ package workerloop
 import (
 	"context"
 	"errors"
+	"math/rand"
 	"time"
 )
 
@@ -19,6 +20,15 @@ type Config struct {
 }
 
 var ErrConfig = errors.New("invalid worker loop configuration")
+
+// jitter сохраняет не менее 75% задержки и никогда не превышает её.
+func jitter(delay time.Duration) time.Duration {
+	spread := delay / 4
+	if spread == 0 {
+		return delay
+	}
+	return delay - time.Duration(rand.Int63n(int64(spread)+1))
+}
 
 // Run вызывает step последовательно до отмены контекста. Ошибки повторяются
 // с ограниченной задержкой; отмена прерывает как step, так и ожидание.
@@ -53,7 +63,7 @@ func Run(ctx context.Context, cfg Config, step Step) error {
 			}
 		}
 		if wait > 0 {
-			timer := time.NewTimer(wait)
+			timer := time.NewTimer(jitter(wait))
 			select {
 			case <-ctx.Done():
 				if !timer.Stop() {

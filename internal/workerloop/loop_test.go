@@ -54,3 +54,14 @@ func TestRunRejectsInvalidConfiguration(t *testing.T) {
 		t.Fatal("expected invalid config")
 	}
 }
+
+func TestJitterStaysWithinBounds(t *testing.T) {
+	for _, delay := range []time.Duration{time.Nanosecond, time.Second, time.Hour} {
+		for i := 0; i < 1000; i++ {
+			got := jitter(delay)
+			if got < delay-delay/4 || got > delay {
+				t.Fatalf("jitter(%v) = %v", delay, got)
+			}
+		}
+	}
+}
