@@ -166,6 +166,19 @@ func (r RunRepository) Begin(ctx context.Context, options RunOptions) (RunStart,
 		return RunStart{}, err
 	}
 	defer tx.Rollback()
+	result, err := r.beginLocked(ctx, tx, options)
+	if err != nil {
+		return RunStart{}, err
+	}
+	if err = tx.Commit(); err != nil {
+		return RunStart{}, storageError(ctx)
+	}
+	return result, nil
+}
+
+// beginLocked использует транзакцию с уже заблокированным generation.
+// Вызывающий управляет commit и rollback; функция не проверяет consumer fence.
+func (r RunRepository) beginLocked(ctx context.Context, tx *sql.Tx, options RunOptions) (RunStart, error) {
 	now, err := runClock(ctx, tx)
 	if err != nil {
 		return RunStart{}, storageError(ctx)
@@ -189,9 +202,6 @@ func (r RunRepository) Begin(ctx context.Context, options RunOptions) (RunStart,
 			if err != nil {
 				return RunStart{}, storageError(ctx)
 			}
-		}
-		if err = tx.Commit(); err != nil {
-			return RunStart{}, storageError(ctx)
 		}
 		return RunStart{Run: old, Reused: true}, nil
 	}
@@ -218,9 +228,6 @@ func (r RunRepository) Begin(ctx context.Context, options RunOptions) (RunStart,
 		if err = r.recover(ctx, tx, now, id); err != nil {
 			return RunStart{}, storageError(ctx)
 		}
-	}
-	if err = tx.Commit(); err != nil {
-		return RunStart{}, storageError(ctx)
 	}
 	return RunStart{Run: run, Acquired: acquired}, nil
 }
