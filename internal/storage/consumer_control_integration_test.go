@@ -108,6 +108,9 @@ func testConsumerGuard(t *testing.T, f *schedulerFixture) {
 	if err := guard(worker); err != nil {
 		t.Fatal("worker guard", err)
 	}
+	t.Run("owner_renewal", func(t *testing.T) {
+		testConsumerRenewal(t, f.sub(t), worker, now+60000)
+	})
 	workerDrainTx, err := f.db.BeginTx(f.ctx, nil)
 	if err != nil {
 		t.Fatal(err)
