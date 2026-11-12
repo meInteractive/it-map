@@ -147,6 +147,18 @@ func CanStartRun(s State, req Request, runUntilMS, nowMS int64) error {
 	return nil
 }
 
+// CanClaimJob проверяет сроки consumer/run/job, но не доказывает, что run
+// принадлежит consumer: это отдельная обязанность транзакционного адаптера.
+func CanClaimJob(s State, req Request, runUntilMS, jobUntilMS, nowMS int64) error {
+	if err := CanStartRun(s, req, runUntilMS, nowMS); err != nil {
+		return err
+	}
+	if jobUntilMS <= nowMS || jobUntilMS > runUntilMS {
+		return ErrDenied
+	}
+	return nil
+}
+
 // CanFinish проверяет только consumer-владельца уже начатой работы.
 // Caller обязан отдельно доказать в той же транзакции, что run/job были
 // захвачены этим владельцем до draining, их lease и generation действительны,

@@ -36,6 +36,19 @@ func GuardRunLease(ctx context.Context, tx *sql.Tx, req Request, runUntilMS int6
 	return CanStartRun(state, req, runUntilMS, now)
 }
 
+// GuardClaimLease проверяет только consumer и сроки. Caller обязан отдельно
+// доказать под теми же locks принадлежность активного run этому consumer,
+// проверить доверенную схему, атомарно захватить job и повторить проверки
+// перед commit. Аргументы не являются доказательством фактов о run/job.
+// Метод не подключён к runtime; при отказе транзакцию необходимо откатить.
+func GuardClaimLease(ctx context.Context, tx *sql.Tx, req Request, runUntilMS, jobUntilMS int64) error {
+	state, now, err := lockControl(ctx, tx, req.Generation)
+	if err != nil {
+		return err
+	}
+	return CanClaimJob(state, req, runUntilMS, jobUntilMS, now)
+}
+
 // GuardCompletion проверяет consumer fence для завершения уже начатой работы
 // под блокировками generation и control row. Сам по себе не подтверждает run,
 // job или их владельца и не разрешает запуск новой работы. Вызывающий обязан
