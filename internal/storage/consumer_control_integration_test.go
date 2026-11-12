@@ -114,6 +114,9 @@ func testConsumerGuard(t *testing.T, f *schedulerFixture) {
 	t.Run("bound_attempt_lifecycle", func(t *testing.T) {
 		testBoundAttemptLifecycle(t, f.sub(t), worker)
 	})
+	t.Run("bound_reservation_interrupt_race", func(t *testing.T) {
+		testBoundReservationInterruptRace(t, f.sub(t), worker)
+	})
 	leaseTx, err := f.db.BeginTx(f.ctx, nil)
 	if err != nil {
 		t.Fatal(err)
