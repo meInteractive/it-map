@@ -38,7 +38,9 @@ func testBoundReservationLostCommit(t *testing.T, f *schedulerFixture, failInter
 	f.exec("INSERT INTO go_consumer_control(id,generation,revision,mode,owner_digest,lease_until) VALUES(1,?,1,'worker',?,?)", f.repo.Generation, digest[:], schedulerClock(t, f.db)+60000)
 	prefix := "UPDATE scheduler_attempts SET reserved_usd=reserved_usd+"
 	if failInterrupt {
-		prefix = "UPDATE scheduler_attempts SET finished_at=?"
+		// Recovery при BeginBoundRun тоже обновляет finished_at. Перехватывать
+		// только завершение конкретной bound attempt, а не ранний recovery.
+		prefix = "UPDATE scheduler_attempts SET finished_at=?,status='interrupted',reason_code='interrupted',message='Обработчик прерван; денежный резерв сохранён.' WHERE id=?"
 	}
 	repo, fired := billingCommitRepository(t, f.repo.Generation, prefix)
 	req := consumercontrol.Request{Generation: f.repo.Generation, Revision: 1, Origin: consumercontrol.WorkerRun, Token: token}
