@@ -57,11 +57,19 @@ class TickTests(unittest.TestCase):
         with self.assertRaises(tick.TickError):
             tick.run(env, now=200, opener=opener, diagnostic=True, profile='launch')
 
-    def test_expired_or_missing_configuration_never_calls_server(self):
+    def test_legacy_deadline_does_not_stop_requests(self):
+        for deadline in ('', '100', 'bad'):
+            calls = []
+            def opener(request, timeout):
+                calls.append(request)
+                return Response({'status': 'completed', 'processed': 0, 'errors': 0})
+            self.assertEqual(tick.run({'SCHEDULER_TOKEN': 'CI_TOKEN', 'ITMAP_SCHEDULER_UNTIL': deadline}, now=100, opener=opener)['status'], 'completed')
+            self.assertEqual(len(calls), 1)
+
+    def test_invalid_token_never_calls_server(self):
         def forbidden(*args, **kwargs):
             raise AssertionError('unexpected request')
-        self.assertEqual(tick.run({'SCHEDULER_TOKEN': 'CI_TOKEN', 'ITMAP_SCHEDULER_UNTIL': '100'}, now=100, opener=forbidden), {'status': 'pilot_expired'})
-        for env in ({}, {'SCHEDULER_TOKEN': 'CI_TOKEN', 'ITMAP_SCHEDULER_UNTIL': 'bad'}, {'SCHEDULER_TOKEN': 'x\ny', 'ITMAP_SCHEDULER_UNTIL': '200'}):
+        for env in ({}, {'SCHEDULER_TOKEN': 'x\ny'}):
             with self.assertRaises(tick.TickError):
                 tick.run(env, now=100, opener=forbidden)
 
