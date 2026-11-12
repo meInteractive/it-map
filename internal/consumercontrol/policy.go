@@ -135,6 +135,35 @@ func CanStart(s State, req Request, nowMS int64) error {
 	return ErrDenied
 }
 
+// CanFinish проверяет только consumer-владельца уже начатой работы.
+// Caller обязан отдельно доказать в той же транзакции, что run/job были
+// захвачены этим владельцем до draining, их lease и generation действительны,
+// и повторить проверки непосредственно перед commit. Этот метод не даёт
+// права на новый claim, запуск провайдера или запись произвольного результата.
+// Он не подключён к runtime и сам по себе не является SQL-fence.
+func CanFinish(s State, req Request, nowMS int64) error {
+	if err := validate(s); err != nil || nowMS <= 0 {
+		return ErrState
+	}
+	if req.Generation != s.Generation {
+		return ErrStale
+	}
+	if req.Origin != WorkerRun || req.Revision == 0 ||
+		(s.Mode != Worker && s.Mode != Draining) ||
+		s.LeaseUntilMS <= nowMS || s.LeaseUntilMS-nowMS > MaxOwnerLeaseMS {
+		return ErrDenied
+	}
+	if (s.Mode == Worker && req.Revision != s.Revision) ||
+		(s.Mode == Draining && (s.Revision <= 1 || req.Revision != s.Revision-1)) {
+		return ErrStale
+	}
+	digest, err := req.Token.digest()
+	if err != nil || subtle.ConstantTimeCompare(digest[:], s.OwnerDigest[:]) != 1 {
+		return ErrDenied
+	}
+	return nil
+}
+
 // Change описывает решение доверенного операционного слоя. Quiescent и
 // EvidenceVerified должны проверяться в той же SQL-транзакции; bool не является доказательством сам по себе.
 // Для каждого нового назначения worker вызывающий обязан создать новый случайный Token,
