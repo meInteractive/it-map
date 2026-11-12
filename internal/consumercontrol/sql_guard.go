@@ -52,6 +52,42 @@ func BeginDrain(ctx context.Context, tx *sql.Tx, generation string, revision uin
 	return next, nil
 }
 
+// RenewOwner продлевает живого владельца без смены revision. Транзакцией и
+// проверкой доверенной схемы управляет вызывающий слой, как у GuardNewRun.
+// Не возрождает истёкший lease и не продлевает draining; commit здесь нет.
+// При неизвестном исходе commit требуется перечитать состояние под lock.
+// В runtime метод не подключён и сроки существующих run/job не изменяет.
+func RenewOwner(ctx context.Context, tx *sql.Tx, req Request, untilMS int64) (State, error) {
+	state, now, err := lockControl(ctx, tx, req.Generation)
+	if err != nil {
+		return State{}, err
+	}
+	next, err := Renew(state, req, untilMS, now)
+	if err != nil {
+		return State{}, err
+	}
+	// Проверка времени повторяется непосредственно в UPDATE: SQL-lock не
+	// останавливает часы, а истёкшее владение нельзя восстановить heartbeat.
+	result, err := tx.ExecContext(ctx, `UPDATE go_consumer_control SET lease_until=?
+WHERE id=1 AND generation=? AND revision=? AND mode='worker' AND owner_digest=? AND lease_until=?
+AND lease_until>CAST(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000 AS SIGNED)
+AND ?>CAST(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000 AS SIGNED)
+AND ?-CAST(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000 AS SIGNED)<=?`,
+		next.LeaseUntilMS, req.Generation, int64(req.Revision), state.OwnerDigest[:], state.LeaseUntilMS,
+		untilMS, untilMS, MaxOwnerLeaseMS)
+	if err != nil {
+		return State{}, guardStorageError(ctx)
+	}
+	changed, err := result.RowsAffected()
+	if err != nil {
+		return State{}, guardStorageError(ctx)
+	}
+	if changed != 1 {
+		return State{}, ErrDenied
+	}
+	return next, nil
+}
+
 func lockControl(ctx context.Context, tx *sql.Tx, expectedGeneration string) (State, int64, error) {
 	if ctx == nil || tx == nil {
 		return State{}, 0, ErrState

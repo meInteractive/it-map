@@ -149,6 +149,20 @@ type Change struct {
 	EvidenceVerified bool
 }
 
+// Renew рассчитывает продление только живого worker-владельца. Revision не
+// меняется: продление не должно лишать допуска уже захваченные им задания.
+// Переход в draining меняет revision и запрещает последующее продление.
+func Renew(s State, req Request, untilMS, nowMS int64) (State, error) {
+	if err := CanStart(s, req, nowMS); err != nil {
+		return State{}, err
+	}
+	if s.Mode != Worker || untilMS <= s.LeaseUntilMS || untilMS <= nowMS || untilMS-nowMS > MaxOwnerLeaseMS {
+		return State{}, ErrDenied
+	}
+	s.LeaseUntilMS = untilMS
+	return s, nil
+}
+
 // Transition рассчитывает новый снимок без записи; caller обязан применить CAS.
 func Transition(s State, change Change, nowMS int64) (State, error) {
 	if err := validate(s); err != nil || nowMS <= 0 || s.Revision == math.MaxInt64 {
