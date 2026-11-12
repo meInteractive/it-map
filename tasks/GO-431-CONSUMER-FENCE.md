@@ -15,6 +15,8 @@
 
 ## Совместимость схемы и backup
 
+Детальный проект таблицы, миграции и восстановления: [GO-431-CONTROL-SCHEMA-DESIGN.md](GO-431-CONTROL-SCHEMA-DESIGN.md).
+
 - `internal/backup/export.go:validateInventory` принимает только известные таблицы/колонки из trusted v39 и исторические имена миграций. Новая таблица или столбец без версионированной политики приводит к отказу экспорта; restore использует тот же inventory. Не скрывать новую таблицу под историческим именем миграции.
 - `internal/dbschema.Preflight` отклоняет неизвестные объекты. `schema-init` предназначен для пустой baseline и не является мигратором заполненной БД. Более мягкий runtime `ValidateBaseline` допускает дополнительные объекты: успешный старт сервера не доказывает совместимость backup, restore и preflight.
 - `firecrawl_settings.scheduler_json` сохраняет неизвестные поля, но публичный DTO удаляет только `cloudOwnerId`, а restore распространяет неизвестные поля, сбрасывая лишь отдельные настройки. Хранить там owner token нельзя; marker режима может пережить restore. Два представления revision и правила duplicate JSON keys требуют отдельной проверки CAS и source contract. Новое состояние должно быть привязано к текущей generation и сбрасываться безопасно после restore.
