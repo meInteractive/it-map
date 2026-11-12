@@ -9,7 +9,7 @@ import (
 )
 
 func testProfile(name ProfileName) Profile {
-	return Profile{Name: name, Step: func(context.Context) (bool, error) { return true, nil }, WorkDelay: time.Second, IdleDelay: 10 * time.Second, ErrorMin: 2 * time.Second, ErrorMax: 8 * time.Second}
+	return Profile{Name: name, Step: func(context.Context) (bool, error) { return true, nil }, WorkDelay: time.Second, IdleDelay: 10 * time.Second, ErrorMin: 2 * time.Second, ErrorMax: 8 * time.Second, StepTimeout: time.Minute}
 }
 
 func TestProfilePlanFairnessAndIndependentBackoff(t *testing.T) {
@@ -80,12 +80,79 @@ func TestProfilesRejectInvalidConfiguration(t *testing.T) {
 		func(p *Profile) { p.IdleDelay = time.Nanosecond },
 		func(p *Profile) { p.ErrorMin = time.Nanosecond },
 		func(p *Profile) { p.ErrorMax = 25 * time.Hour },
+		func(p *Profile) { p.StepTimeout = 0 },
+		func(p *Profile) { p.StepTimeout = 6 * time.Minute },
 	} {
 		p := valid
 		change(&p)
 		if _, err := newProfilePlan([]Profile{p}); !errors.Is(err, ErrConfig) {
 			t.Fatal("unbounded polling accepted", err)
 		}
+	}
+}
+
+func TestProfileJitterNeverShortensDelayOrExceedsLimit(t *testing.T) {
+	for _, tc := range []struct{ delay, limit time.Duration }{
+		{time.Second, 8 * time.Second}, {8 * time.Second, 8 * time.Second},
+		{maxProfileDelay, maxProfileDelay}, {10 * time.Millisecond, 11 * time.Millisecond},
+	} {
+		for i := 0; i < 500; i++ {
+			got := profileJitter(tc.delay, tc.limit)
+			if got < tc.delay || got > tc.limit || got-tc.delay > tc.delay/4 {
+				t.Fatal("invalid jitter", got, tc)
+			}
+		}
+	}
+}
+
+func TestProfileTimeoutIsFailureEvenIfStepReturnsSuccess(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	p := testProfile(Launch)
+	p.StepTimeout = 20 * time.Millisecond
+	p.Step = func(ctx context.Context) (bool, error) { <-ctx.Done(); return true, nil }
+	var result ProfileOutcome
+	var failed ProfileName
+	p.OnResult = func(name ProfileName, outcome ProfileOutcome) { result = outcome }
+	err := RunProfiles(ctx, []Profile{p}, func(name ProfileName) { failed = name; cancel() })
+	if !errors.Is(err, context.Canceled) || result != ProfileTimeout || failed != Launch {
+		t.Fatal("deadline was not reported as failure", err, result, failed)
+	}
+}
+
+func TestIgnoringStepDeadlineNeverStartsConcurrentProfile(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	started := make(chan struct{})
+	release := make(chan struct{})
+	second := make(chan struct{}, 1)
+	done := make(chan error, 1)
+	first := testProfile(Launch)
+	first.StepTimeout = 20 * time.Millisecond
+	first.Step = func(context.Context) (bool, error) { close(started); <-release; return false, nil }
+	other := testProfile(Reconcile)
+	other.Step = func(context.Context) (bool, error) { second <- struct{}{}; return false, nil }
+	go func() { done <- RunProfiles(ctx, []Profile{first, other}, nil) }()
+	<-started
+	select {
+	case <-second:
+		t.Fatal("started concurrently")
+	case <-time.After(80 * time.Millisecond):
+	}
+	cancel()
+	close(release)
+	select {
+	case err := <-done:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatal(err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("did not stop")
+	}
+	select {
+	case <-second:
+		t.Fatal("started after cancellation")
+	default:
 	}
 }
 

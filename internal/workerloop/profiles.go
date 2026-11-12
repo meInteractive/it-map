@@ -2,6 +2,7 @@ package workerloop
 
 import (
 	"context"
+	"math/rand"
 	"time"
 )
 
@@ -17,6 +18,17 @@ const (
 // Границы локального polling не являются provider rate limit или SLA.
 const minProfileDelay = 10 * time.Millisecond
 const maxProfileDelay = 24 * time.Hour
+const maxProfileStep = 5 * time.Minute
+
+// ProfileOutcome не содержит ошибок, payload или учётных данных.
+type ProfileOutcome string
+
+const (
+	ProfileWorked  ProfileOutcome = "worked"
+	ProfileIdle    ProfileOutcome = "idle"
+	ProfileFailed  ProfileOutcome = "failed"
+	ProfileTimeout ProfileOutcome = "timeout"
+)
 
 // Profile задаёт ограниченную последовательную итерацию и интервалы ожидания.
 // Step обязан соблюдать контекст и собственные бюджетные/paid guards.
@@ -24,6 +36,9 @@ type Profile struct {
 	Name                                     ProfileName
 	Step                                     Step
 	WorkDelay, IdleDelay, ErrorMin, ErrorMax time.Duration
+	StepTimeout                              time.Duration
+	// OnResult должен быть быстрым и не выполнять сетевых запросов.
+	OnResult func(ProfileName, ProfileOutcome)
 }
 
 type profileSlot struct {
@@ -45,13 +60,25 @@ func newProfilePlan(profiles []Profile) (*profilePlan, error) {
 	seen := make(map[ProfileName]bool, len(profiles))
 	p := &profilePlan{}
 	for _, v := range profiles {
-		if (v.Name != Launch && v.Name != Reconcile && v.Name != Pipeline) || seen[v.Name] || v.Step == nil || v.WorkDelay < minProfileDelay || v.WorkDelay > maxProfileDelay || v.IdleDelay < minProfileDelay || v.IdleDelay > maxProfileDelay || v.ErrorMin < minProfileDelay || v.ErrorMax < v.ErrorMin || v.ErrorMax > maxProfileDelay {
+		if (v.Name != Launch && v.Name != Reconcile && v.Name != Pipeline) || seen[v.Name] || v.Step == nil || v.WorkDelay < minProfileDelay || v.WorkDelay > maxProfileDelay || v.IdleDelay < minProfileDelay || v.IdleDelay > maxProfileDelay || v.ErrorMin < minProfileDelay || v.ErrorMax < v.ErrorMin || v.ErrorMax > maxProfileDelay || v.StepTimeout < minProfileDelay || v.StepTimeout > maxProfileStep {
 			return nil, ErrConfig
 		}
 		seen[v.Name] = true
 		p.slots = append(p.slots, profileSlot{profile: v, backoff: v.ErrorMin})
 	}
 	return p, nil
+}
+
+// profileJitter не сокращает ожидание и не превышает заданный предел.
+func profileJitter(delay, limit time.Duration) time.Duration {
+	spread := delay / 4
+	if available := limit - delay; spread > available {
+		spread = available
+	}
+	if spread <= 0 {
+		return delay
+	}
+	return delay + time.Duration(rand.Int63n(int64(spread)+1))
 }
 
 // nextReady возвращает профиль по кругу либо время до ближайшей попытки.
@@ -97,7 +124,8 @@ func (p *profilePlan) complete(i int, now time.Time, worked bool, failed bool) {
 // обходятся по кругу; сбой одной имеет собственный bounded backoff. Ожидание и
 // шаг отменяются родителем. Ошибка не выводится в лог и не передаётся callback,
 // чтобы случайно не раскрыть DSN или данные провайдера. Не подключён к runtime.
-// Честный обход зависит от ограниченного по времени Step; конфигурация не
+// Step должен соблюдать дедлайн: принудительно остановить игнорирующую его
+// функцию без риска параллельной работы нельзя. Конфигурация не
 // заменяет durable rate limits, budget, fencing и единственность consumer.
 func RunProfiles(ctx context.Context, profiles []Profile, onFailure func(ProfileName)) error {
 	if ctx == nil {
@@ -122,13 +150,36 @@ func RunProfiles(ctx context.Context, profiles []Profile, onFailure func(Profile
 			}
 			continue
 		}
-		worked, stepErr := p.slots[i].profile.Step(ctx)
+		profile := p.slots[i].profile
+		stepCtx, cancel := context.WithTimeout(ctx, profile.StepTimeout)
+		worked, stepErr := profile.Step(stepCtx)
+		stepContextErr := stepCtx.Err()
+		cancel()
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		p.complete(i, time.Now(), worked, stepErr != nil)
-		if stepErr != nil && onFailure != nil {
-			onFailure(p.slots[i].profile.Name)
+		outcome := ProfileIdle
+		failed := stepErr != nil || stepContextErr != nil
+		switch {
+		case stepContextErr == context.DeadlineExceeded:
+			outcome = ProfileTimeout
+		case failed:
+			outcome = ProfileFailed
+		case worked:
+			outcome = ProfileWorked
+		}
+		now := time.Now()
+		p.complete(i, now, worked, failed)
+		limit := maxProfileDelay
+		if failed {
+			limit = profile.ErrorMax
+		}
+		p.slots[i].next = now.Add(profileJitter(p.slots[i].next.Sub(now), limit))
+		if profile.OnResult != nil {
+			profile.OnResult(profile.Name, outcome)
+		}
+		if failed && onFailure != nil {
+			onFailure(profile.Name)
 		}
 	}
 }
