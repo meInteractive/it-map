@@ -49,7 +49,7 @@ func testGuardedRun(t *testing.T, f *schedulerFixture, req consumercontrol.Reque
 		t.Fatal("rejected claim did not roll back")
 	}
 	f.exec("UPDATE go_consumer_control SET mode='draining', revision=4 WHERE id=1")
-	claim.Lease = time.Second
+	claim.Lease = 10 * time.Second
 	if _, err := bound.ClaimJob(f.ctx, claim); !errors.Is(err, consumercontrol.ErrStale) {
 		t.Fatal("draining accepted claim", err)
 	}
@@ -71,6 +71,29 @@ func testGuardedRun(t *testing.T, f *schedulerFixture, req consumercontrol.Reque
 	if err := lease.Finish(f.ctx, parser.FinishOptions{}); !errors.Is(err, parser.ErrBoundJobUnavailable) {
 		t.Fatal("bound job finished without consumer fence", err)
 	}
+	if err := bound.ReleaseUnstarted(f.ctx, nil); !errors.Is(err, parser.ErrJobInput) {
+		t.Fatal("missing lease accepted", err)
+	}
+	f.exec(`INSERT INTO scheduler_attempts(id,job_id,run_id,type,started_at,status,reserved_usd,result_json) VALUES('CI_bound_reserved',?,?,'diagnostic',?,'running',0.26,'{"synthetic":"retained"}')`, jobID, run.Run.ID, run.Run.StartedAt)
+	if err := bound.ReleaseUnstarted(f.ctx, lease); !errors.Is(err, parser.ErrBoundJobUnavailable) {
+		t.Fatal("release accepted a run with an attempt", err)
+	}
+	f.assertAttempt("CI_bound_reserved", "running")
+	if f.count("SELECT COUNT(*) FROM scheduler_jobs WHERE id='CI_bound_claim' AND status='running'") != 1 {
+		t.Fatal("failed release changed job")
+	}
+	f.exec("DELETE FROM scheduler_attempts WHERE id='CI_bound_reserved'")
+	f.exec("UPDATE go_consumer_control SET mode='draining', revision=4 WHERE id=1")
+	if err := bound.ReleaseUnstarted(f.ctx, lease); err != nil {
+		t.Fatal("draining could not release unstarted job", err)
+	}
+	if f.count("SELECT COUNT(*) FROM scheduler_jobs WHERE id='CI_bound_claim' AND status='pending' AND attempts=0 AND locked_by='' AND locked_until=0") != 1 {
+		t.Fatal("unstarted job was not returned safely")
+	}
+	if err := bound.ReleaseUnstarted(f.ctx, lease); !errors.Is(err, parser.ErrJobLeaseLost) {
+		t.Fatal("released lease accepted twice", err)
+	}
+	f.exec("UPDATE go_consumer_control SET mode='worker', revision=3 WHERE id=1")
 	if err := f.repo.Finish(f.ctx, run.Run.ID, "completed"); err != nil {
 		t.Fatal("finish guarded run", err)
 	}
