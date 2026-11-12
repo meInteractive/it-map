@@ -24,6 +24,19 @@ func GuardNewRun(ctx context.Context, tx *sql.Tx, req Request) error {
 	return CanStart(state, req, now)
 }
 
+// GuardCompletion проверяет consumer fence для завершения уже начатой работы
+// под блокировками generation и control row. Сам по себе не подтверждает run,
+// job или их владельца и не разрешает запуск новой работы. Вызывающий обязан
+// проверить эти факты и leases в этой же транзакции, повторить все проверки
+// перед commit и откатить изменения при отказе. В runtime не подключён.
+func GuardCompletion(ctx context.Context, tx *sql.Tx, req Request) error {
+	state, now, err := lockControl(ctx, tx, req.Generation)
+	if err != nil {
+		return err
+	}
+	return CanFinish(state, req, now)
+}
+
 // BeginDrain переводит legacy или worker в draining с CAS под теми же locks.
 // Авторизация оператора, схема, commit/rollback и отключение старых бинарников —
 // ответственность вызывающего слоя. При ошибке commit исход неизвестен: caller
