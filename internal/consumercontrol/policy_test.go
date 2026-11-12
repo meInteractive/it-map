@@ -21,6 +21,9 @@ func testToken(seed byte) Token {
 }
 
 func TestGuardAndDigestRejectInvalidInput(t *testing.T) {
+	if err := GuardCompletion(context.Background(), nil, Request{}); !errors.Is(err, ErrState) {
+		t.Fatalf("nil completion transaction accepted: %v", err)
+	}
 	if err := GuardNewRun(context.Background(), nil, Request{}); !errors.Is(err, ErrState) {
 		t.Fatalf("nil transaction accepted: %v", err)
 	}

@@ -120,6 +120,28 @@ func testConsumerGuard(t *testing.T, f *schedulerFixture) {
 		workerDrainTx.Rollback()
 		t.Fatal("worker drain lost owner fence", err)
 	}
+	if err := consumercontrol.GuardCompletion(f.ctx, workerDrainTx, worker); err != nil {
+		workerDrainTx.Rollback()
+		t.Fatal("draining rejected existing consumer", err)
+	}
+	wrongOwner := worker
+	wrongOwner.Token, err = consumercontrol.NewToken()
+	if err != nil {
+		workerDrainTx.Rollback()
+		t.Fatal(err)
+	}
+	if err := consumercontrol.GuardCompletion(f.ctx, workerDrainTx, wrongOwner); !errors.Is(err, consumercontrol.ErrDenied) {
+		workerDrainTx.Rollback()
+		t.Fatal("draining accepted wrong consumer", err)
+	}
+	if _, err := workerDrainTx.ExecContext(f.ctx, "UPDATE go_consumer_control SET lease_until=1 WHERE id=1"); err != nil {
+		workerDrainTx.Rollback()
+		t.Fatal(err)
+	}
+	if err := consumercontrol.GuardCompletion(f.ctx, workerDrainTx, worker); !errors.Is(err, consumercontrol.ErrDenied) {
+		workerDrainTx.Rollback()
+		t.Fatal("completion guard accepted expired lease", err)
+	}
 	if err := workerDrainTx.Rollback(); err != nil {
 		t.Fatal(err)
 	}
