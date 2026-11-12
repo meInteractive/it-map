@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Один защищённый локальный сигнал диспетчеру в течение пилота."""
+"""Один защищённый локальный сигнал диспетчеру ."""
 import json
 import os
 import sys
@@ -21,15 +21,9 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 
 def run(env, now=None, opener=None, diagnostic=False, profile=None):
     token = env.get('SCHEDULER_TOKEN', '')
-    raw_until = env.get('ITMAP_SCHEDULER_UNTIL', '')
     if not token or len(token) > 1024 or '\n' in token or '\r' in token:
         raise TickError('scheduler_token_invalid')
-    if not raw_until.isascii() or not raw_until.isdigit() or len(raw_until) > 12:
-        raise TickError('pilot_deadline_invalid')
-    deadline = int(raw_until)
     moment = time.time() if now is None else now
-    if moment >= deadline:
-        return {'status': 'pilot_expired'}
     if profile is not None and (profile not in ('launch', 'reconcile', 'pipeline') or diagnostic):
         raise TickError('profile_invalid')
     body = {'diagnostic': True} if diagnostic else (
