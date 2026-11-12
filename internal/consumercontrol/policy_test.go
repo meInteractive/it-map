@@ -39,18 +39,17 @@ func TestConsumerTransitionsRequireQuiescenceAndEvidence(t *testing.T) {
 		t.Fatalf("drain: %+v %v", draining, err)
 	}
 	for _, tc := range []Change{
-		{Generation: testGeneration, Revision: 2, To: Worker, Owner: testToken(1), LeaseUntilMS: 2000, PilotUntilMS: 3000},
-		{Generation: testGeneration, Revision: 2, To: Worker, Owner: testToken(1), LeaseUntilMS: 2000, PilotUntilMS: 3000, Quiescent: true},
-		{Generation: testGeneration, Revision: 2, To: Worker, Owner: testToken(1), LeaseUntilMS: 1000, PilotUntilMS: 3000, Quiescent: true, EvidenceVerified: true},
-		{Generation: testGeneration, Revision: 2, To: Worker, LeaseUntilMS: 2000, PilotUntilMS: 3000, Quiescent: true, EvidenceVerified: true},
-		{Generation: testGeneration, Revision: 2, To: Worker, Owner: testToken(1), LeaseUntilMS: 3001, PilotUntilMS: 3000, Quiescent: true, EvidenceVerified: true},
-		{Generation: testGeneration, Revision: 2, To: Worker, Owner: testToken(1), LeaseUntilMS: 1001 + MaxOwnerLeaseMS, PilotUntilMS: 999999, Quiescent: true, EvidenceVerified: true},
+		{Generation: testGeneration, Revision: 2, To: Worker, Owner: testToken(1), LeaseUntilMS: 2000},
+		{Generation: testGeneration, Revision: 2, To: Worker, Owner: testToken(1), LeaseUntilMS: 2000, Quiescent: true},
+		{Generation: testGeneration, Revision: 2, To: Worker, Owner: testToken(1), LeaseUntilMS: 1000, Quiescent: true, EvidenceVerified: true},
+		{Generation: testGeneration, Revision: 2, To: Worker, LeaseUntilMS: 2000, Quiescent: true, EvidenceVerified: true},
+		{Generation: testGeneration, Revision: 2, To: Worker, Owner: testToken(1), LeaseUntilMS: 1001 + MaxOwnerLeaseMS, Quiescent: true, EvidenceVerified: true},
 	} {
 		if _, err := Transition(draining, tc, 1000); !errors.Is(err, ErrTransition) {
 			t.Fatalf("unsafe worker transition: %v", err)
 		}
 	}
-	worker, err := Transition(draining, Change{Generation: testGeneration, Revision: 2, To: Worker, Owner: testToken(1), LeaseUntilMS: 2000, PilotUntilMS: 3000, Quiescent: true, EvidenceVerified: true}, 1000)
+	worker, err := Transition(draining, Change{Generation: testGeneration, Revision: 2, To: Worker, Owner: testToken(1), LeaseUntilMS: 2000, Quiescent: true, EvidenceVerified: true}, 1000)
 	if err != nil || worker.Mode != Worker || worker.Revision != 3 {
 		t.Fatalf("worker: %+v %v", worker, err)
 	}
@@ -61,7 +60,7 @@ func TestConsumerTransitionsRequireQuiescenceAndEvidence(t *testing.T) {
 	if err != nil || drained.OwnerDigest != worker.OwnerDigest {
 		t.Fatal("drain lost worker fence", err)
 	}
-	if _, err := Transition(drained, Change{Generation: testGeneration, Revision: 4, To: Worker, Owner: testToken(1), LeaseUntilMS: 2000, PilotUntilMS: 3000, Quiescent: true, EvidenceVerified: true}, 1000); !errors.Is(err, ErrTransition) {
+	if _, err := Transition(drained, Change{Generation: testGeneration, Revision: 4, To: Worker, Owner: testToken(1), LeaseUntilMS: 2000, Quiescent: true, EvidenceVerified: true}, 1000); !errors.Is(err, ErrTransition) {
 		t.Fatal("previous worker credential reused")
 	}
 	if _, err := Transition(drained, Change{Generation: testGeneration, Revision: 4, To: Legacy, EvidenceVerified: true}, 1000); !errors.Is(err, ErrTransition) {
@@ -80,23 +79,16 @@ func TestConsumerStartFailsClosedOnStaleOrWrongOwner(t *testing.T) {
 		t.Fatal(err)
 	}
 	worker := State{Generation: testGeneration, Revision: 9, Mode: Worker, OwnerDigest: digest, LeaseUntilMS: 2000}
-	valid := Request{Generation: testGeneration, Revision: 9, Origin: WorkerRun, Token: token, PilotUntilMS: 3000}
+	valid := Request{Generation: testGeneration, Revision: 9, Origin: WorkerRun, Token: token}
 	if err := CanStart(worker, valid, 1999); err != nil {
 		t.Fatal(err)
 	}
 	if err := CanStart(worker, valid, 2000); !errors.Is(err, ErrDenied) {
 		t.Fatal("expired lease accepted")
 	}
-	shortened := valid
-	shortened.PilotUntilMS = 1998
-	if err := CanStart(worker, shortened, 1000); !errors.Is(err, ErrDenied) {
-		t.Fatal("lease outlived current pilot")
-	}
 	corrupt := worker
 	corrupt.LeaseUntilMS = 1001 + MaxOwnerLeaseMS
-	longPilot := valid
-	longPilot.PilotUntilMS = 999999
-	if err := CanStart(corrupt, longPilot, 1000); !errors.Is(err, ErrDenied) {
+	if err := CanStart(corrupt, valid, 1000); !errors.Is(err, ErrDenied) {
 		t.Fatal("unbounded stored lease accepted")
 	}
 	wrong := valid
