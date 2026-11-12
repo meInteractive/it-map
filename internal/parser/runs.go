@@ -11,6 +11,8 @@ import (
 	"time"
 	"unicode/utf16"
 	"unicode/utf8"
+
+	"itmap/internal/consumercontrol"
 )
 
 var (
@@ -146,6 +148,20 @@ func (r RunRepository) RecoverExpired(ctx context.Context) error {
 // Begin serializes all Go cycle owners on the existing generation singleton.
 // No background goroutine, settings write or provider call is started here.
 func (r RunRepository) Begin(ctx context.Context, options RunOptions) (RunStart, error) {
+	return r.begin(ctx, options, nil)
+}
+
+// BeginGuarded — экспериментальный допуск run под consumer fence. Caller
+// обязан заранее проверить доверенную схему и передать внутреннюю идентичность,
+// не полученную из HTTP. Метод не подключён к runtime и не защищает claims.
+func (r RunRepository) BeginGuarded(ctx context.Context, options RunOptions, req consumercontrol.Request) (RunStart, error) {
+	if req.Generation != r.Generation {
+		return RunStart{}, consumercontrol.ErrStale
+	}
+	return r.begin(ctx, options, &req)
+}
+
+func (r RunRepository) begin(ctx context.Context, options RunOptions, req *consumercontrol.Request) (RunStart, error) {
 	if options.RequestID == "" || !utf8.ValidString(options.RequestID) || len(utf16.Encode([]rune(options.RequestID))) > 500 {
 		return RunStart{}, ErrRunInput
 	}
@@ -166,9 +182,24 @@ func (r RunRepository) Begin(ctx context.Context, options RunOptions) (RunStart,
 		return RunStart{}, err
 	}
 	defer tx.Rollback()
+	if req != nil {
+		if err := consumercontrol.GuardNewRun(ctx, tx, *req); err != nil {
+			return RunStart{}, err
+		}
+	}
 	result, err := r.beginLocked(ctx, tx, options)
 	if err != nil {
 		return RunStart{}, err
+	}
+	if req != nil {
+		if result.Acquired {
+			err = consumercontrol.GuardRunLease(ctx, tx, *req, result.Run.LeaseUntil)
+		} else {
+			err = consumercontrol.GuardNewRun(ctx, tx, *req)
+		}
+		if err != nil {
+			return RunStart{}, err
+		}
 	}
 	if err = tx.Commit(); err != nil {
 		return RunStart{}, storageError(ctx)
