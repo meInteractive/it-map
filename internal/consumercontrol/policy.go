@@ -65,6 +65,9 @@ func (t Token) digest() ([32]byte, error) {
 	return sha256.Sum256(t.value[:]), nil
 }
 
+// Digest предназначен для хранения вместо credential; digest не является Token.
+func (t Token) Digest() ([32]byte, error) { return t.digest() }
+
 // State — проверенный снимок из БД. OwnerDigest не является credential для запуска.
 type State struct {
 	Generation   string

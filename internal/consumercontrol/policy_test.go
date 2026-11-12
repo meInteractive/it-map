@@ -1,6 +1,7 @@
 package consumercontrol
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -17,6 +18,15 @@ func testToken(seed byte) Token {
 		token.value[i] = seed
 	}
 	return token
+}
+
+func TestGuardAndDigestRejectInvalidInput(t *testing.T) {
+	if err := GuardNewRun(context.Background(), nil, Request{}); !errors.Is(err, ErrState) {
+		t.Fatalf("nil transaction accepted: %v", err)
+	}
+	if _, err := (Token{}).Digest(); !errors.Is(err, ErrState) {
+		t.Fatalf("zero token accepted: %v", err)
+	}
 }
 
 func TestConsumerTransitionsRequireQuiescenceAndEvidence(t *testing.T) {
