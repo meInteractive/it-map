@@ -17,6 +17,10 @@ import (
 
 var ErrJobLeaseLost = errors.New("scheduler job ownership lost")
 
+// ErrBoundJobUnavailable запрещает использование экспериментального claim
+// до подключения consumer fence ко всем операциям job и внешним вызовам.
+var ErrBoundJobUnavailable = errors.New("consumer-bound job execution is not available")
+
 type Job struct {
 	ID, Generation, DedupeKey, Type, Status                                      string
 	CompanyID, AgencyID, CandidateID                                             *int64
@@ -56,6 +60,7 @@ type JobLease struct {
 	runID, jobID, owner string
 	job                 Job
 	claimedAt           int64
+	consumerBound       bool
 }
 
 func cloneInt(p *int64) *int64 {
@@ -215,7 +220,7 @@ func (r RunRepository) claimJob(ctx context.Context, runID string, options Claim
 	best.Attempts++
 	best.LockedUntil = now + options.Lease.Milliseconds()
 	best.UpdatedAt = now
-	return &JobLease{repo: r, runID: runID, jobID: best.ID, owner: owner, job: *best, claimedAt: now}, nil
+	return &JobLease{repo: r, runID: runID, jobID: best.ID, owner: owner, job: *best, claimedAt: now, consumerBound: consumer != nil}, nil
 }
 
 // selectEligibleJob применяет единые правила допуска; транзакция принадлежит вызывающему.
@@ -316,6 +321,9 @@ func (r RunRepository) HasEligibleJob(ctx context.Context, options ClaimOptions)
 func (j *JobLease) beginOwned(ctx context.Context) (*sql.Tx, int64, error) {
 	if j == nil || j.owner == "" || j.jobID == "" {
 		return nil, 0, ErrJobInput
+	}
+	if j.consumerBound {
+		return nil, 0, ErrBoundJobUnavailable
 	}
 	tx, e := j.repo.lockGeneration(ctx)
 	if e != nil {
@@ -449,6 +457,9 @@ func (j *JobLease) remaining(ctx context.Context) (time.Duration, error) {
 	defer cancel()
 	if j == nil || j.owner == "" {
 		return 0, ErrJobInput
+	}
+	if j.consumerBound {
+		return 0, ErrBoundJobUnavailable
 	}
 	var remaining int64
 	clock := "CAST(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000 AS SIGNED)"

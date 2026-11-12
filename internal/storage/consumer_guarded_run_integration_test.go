@@ -3,6 +3,7 @@
 package storage
 
 import (
+	"database/sql"
 	"errors"
 	"testing"
 	"time"
@@ -56,6 +57,19 @@ func testGuardedRun(t *testing.T, f *schedulerFixture, req consumercontrol.Reque
 	lease, err := bound.ClaimJob(f.ctx, claim)
 	if err != nil || lease == nil || lease.Job().ID != jobID {
 		t.Fatal("bounded claim failed", err)
+	}
+	if _, err := lease.StartAttempt(f.ctx); !errors.Is(err, parser.ErrBoundJobUnavailable) {
+		t.Fatal("bound job started attempt without consumer fence", err)
+	}
+	called := false
+	if err := lease.WithinOwned(f.ctx, func(*sql.Tx) error { called = true; return nil }); !errors.Is(err, parser.ErrBoundJobUnavailable) || called {
+		t.Fatal("bound job executed unfenced transaction", err)
+	}
+	if err := lease.AssertActive(f.ctx); !errors.Is(err, parser.ErrBoundJobUnavailable) {
+		t.Fatal("bound job allowed external work", err)
+	}
+	if err := lease.Finish(f.ctx, parser.FinishOptions{}); !errors.Is(err, parser.ErrBoundJobUnavailable) {
+		t.Fatal("bound job finished without consumer fence", err)
 	}
 	if err := f.repo.Finish(f.ctx, run.Run.ID, "completed"); err != nil {
 		t.Fatal("finish guarded run", err)
