@@ -123,6 +123,14 @@ func testConsumerGuard(t *testing.T, f *schedulerFixture) {
 		leaseTx.Rollback()
 		t.Fatal("run outlived owner", err)
 	}
+	if err := consumercontrol.GuardClaimLease(f.ctx, leaseTx, worker, now+50000, now+50000); err != nil {
+		leaseTx.Rollback()
+		t.Fatal("bounded claim rejected", err)
+	}
+	if err := consumercontrol.GuardClaimLease(f.ctx, leaseTx, worker, now+50000, now+50001); !errors.Is(err, consumercontrol.ErrDenied) {
+		leaseTx.Rollback()
+		t.Fatal("job outlived run", err)
+	}
 	if _, err := leaseTx.ExecContext(f.ctx, "UPDATE go_consumer_control SET lease_until=1 WHERE id=1"); err != nil {
 		leaseTx.Rollback()
 		t.Fatal(err)
@@ -130,6 +138,10 @@ func testConsumerGuard(t *testing.T, f *schedulerFixture) {
 	if err := consumercontrol.GuardRunLease(f.ctx, leaseTx, worker, now+60000); !errors.Is(err, consumercontrol.ErrDenied) {
 		leaseTx.Rollback()
 		t.Fatal("recheck accepted expired owner", err)
+	}
+	if err := consumercontrol.GuardClaimLease(f.ctx, leaseTx, worker, now+50000, now+40000); !errors.Is(err, consumercontrol.ErrDenied) {
+		leaseTx.Rollback()
+		t.Fatal("claim recheck accepted expired owner", err)
 	}
 	if err := leaseTx.Rollback(); err != nil {
 		t.Fatal(err)
