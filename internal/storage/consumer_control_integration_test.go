@@ -104,7 +104,7 @@ func testConsumerGuard(t *testing.T, f *schedulerFixture) {
 	}
 	now := schedulerClock(t, f.db)
 	f.exec("UPDATE go_consumer_control SET mode='worker',revision=3,owner_digest=?,lease_until=? WHERE id=1", digest[:], now+60000)
-	worker := consumercontrol.Request{Generation: f.repo.Generation, Revision: 3, Origin: consumercontrol.WorkerRun, Token: token, PilotUntilMS: now + 120000}
+	worker := consumercontrol.Request{Generation: f.repo.Generation, Revision: 3, Origin: consumercontrol.WorkerRun, Token: token}
 	if err := guard(worker); err != nil {
 		t.Fatal("worker guard", err)
 	}

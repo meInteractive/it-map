@@ -103,11 +103,10 @@ func validate(s State) error {
 
 // Request хранит секрет только в непрозрачном Token и не должен логироваться.
 type Request struct {
-	Generation   string
-	Revision     uint64
-	Origin       Origin
-	Token        Token
-	PilotUntilMS int64
+	Generation string
+	Revision   uint64
+	Origin     Origin
+	Token      Token
 }
 
 // CanStart проверяет только новый запуск. Снимок и часы должны быть получены
@@ -125,7 +124,7 @@ func CanStart(s State, req Request, nowMS int64) error {
 			return nil
 		}
 	case Worker:
-		if req.Origin != WorkerRun || s.LeaseUntilMS <= nowMS || req.PilotUntilMS <= nowMS || s.LeaseUntilMS > req.PilotUntilMS || s.LeaseUntilMS-nowMS > MaxOwnerLeaseMS {
+		if req.Origin != WorkerRun || s.LeaseUntilMS <= nowMS || s.LeaseUntilMS-nowMS > MaxOwnerLeaseMS {
 			return ErrDenied
 		}
 		digest, err := req.Token.digest()
@@ -146,7 +145,6 @@ type Change struct {
 	To               Mode
 	Owner            Token
 	LeaseUntilMS     int64
-	PilotUntilMS     int64
 	Quiescent        bool
 	EvidenceVerified bool
 }
@@ -162,12 +160,12 @@ func Transition(s State, change Change, nowMS int64) (State, error) {
 	next := s
 	switch {
 	case s.Mode == Legacy && change.To == Draining, s.Mode == Worker && change.To == Draining:
-		if change.Owner.value != ([32]byte{}) || change.LeaseUntilMS != 0 || change.PilotUntilMS != 0 {
+		if change.Owner.value != ([32]byte{}) || change.LeaseUntilMS != 0 {
 			return State{}, ErrTransition
 		}
 		next.Mode = Draining
 	case s.Mode == Draining && change.To == Worker:
-		if !change.Quiescent || !change.EvidenceVerified || change.PilotUntilMS <= nowMS || change.LeaseUntilMS <= nowMS || change.LeaseUntilMS > change.PilotUntilMS || change.LeaseUntilMS-nowMS > MaxOwnerLeaseMS {
+		if !change.Quiescent || !change.EvidenceVerified || change.LeaseUntilMS <= nowMS || change.LeaseUntilMS-nowMS > MaxOwnerLeaseMS {
 			return State{}, ErrTransition
 		}
 		digest, err := change.Owner.digest()
@@ -180,7 +178,7 @@ func Transition(s State, change Change, nowMS int64) (State, error) {
 		}
 		next.Mode, next.OwnerDigest, next.LeaseUntilMS = Worker, digest, change.LeaseUntilMS
 	case s.Mode == Draining && change.To == Legacy:
-		if !change.Quiescent || !change.EvidenceVerified || change.Owner.value != ([32]byte{}) || change.LeaseUntilMS != 0 || change.PilotUntilMS != 0 {
+		if !change.Quiescent || !change.EvidenceVerified || change.Owner.value != ([32]byte{}) || change.LeaseUntilMS != 0 {
 			return State{}, ErrTransition
 		}
 		next.Mode, next.OwnerDigest, next.LeaseUntilMS = Legacy, [32]byte{}, 0
