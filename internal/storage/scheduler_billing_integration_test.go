@@ -180,6 +180,12 @@ func TestMariaDBSchedulerBillingOwnershipDisposable(t *testing.T) {
 		return
 	}
 	f := billingFixture(t)
+	t.Run("bound reservation unknown commit preserves reserve and rejects replay", func(t *testing.T) {
+		testBoundReservationLostCommit(t, f.sub(t), false)
+	})
+	t.Run("bound interruption unknown commit preserves reserve and rejects replay", func(t *testing.T) {
+		testBoundReservationLostCommit(t, f.sub(t), true)
+	})
 	t.Run("one opaque attempt and known/unknown lifecycle", func(t *testing.T) {
 		f := f.sub(t)
 		billingReset(f)
