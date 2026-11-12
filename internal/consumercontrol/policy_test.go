@@ -27,6 +27,9 @@ func TestGuardAndDigestRejectInvalidInput(t *testing.T) {
 	if _, err := (Token{}).Digest(); !errors.Is(err, ErrState) {
 		t.Fatalf("zero token accepted: %v", err)
 	}
+	if _, err := BeginDrain(context.Background(), nil, testGeneration, 1); !errors.Is(err, ErrState) {
+		t.Fatalf("nil drain transaction accepted: %v", err)
+	}
 }
 
 func TestConsumerTransitionsRequireQuiescenceAndEvidence(t *testing.T) {

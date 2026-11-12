@@ -41,6 +41,36 @@ func testConsumerGuard(t *testing.T, f *schedulerFixture) {
 	if err := guard(request); err != nil {
 		t.Fatal("legacy guard", err)
 	}
+	drainTx, err := f.db.BeginTx(f.ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	drained, err := consumercontrol.BeginDrain(f.ctx, drainTx, f.repo.Generation, 1)
+	if err != nil || drained.Mode != consumercontrol.Draining || drained.Revision != 2 {
+		drainTx.Rollback()
+		t.Fatal("legacy drain", err)
+	}
+	drainingRequest := request
+	drainingRequest.Revision = 2
+	if err := consumercontrol.GuardNewRun(f.ctx, drainTx, drainingRequest); !errors.Is(err, consumercontrol.ErrDenied) {
+		drainTx.Rollback()
+		t.Fatal("draining transaction allowed new run", err)
+	}
+	if err := drainTx.Rollback(); err != nil {
+		t.Fatal(err)
+	}
+	if err := guard(request); err != nil {
+		t.Fatal("rollback did not restore legacy", err)
+	}
+	staleTx, err := f.db.BeginTx(f.ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = consumercontrol.BeginDrain(f.ctx, staleTx, f.repo.Generation, 2)
+	staleTx.Rollback()
+	if !errors.Is(err, consumercontrol.ErrStale) {
+		t.Fatal("stale drain accepted", err)
+	}
 	wrongGeneration := request
 	wrongGeneration.Generation = "11111111-2222-4333-8444-555555555555"
 	if wrongGeneration.Generation == f.repo.Generation {
@@ -77,6 +107,18 @@ func testConsumerGuard(t *testing.T, f *schedulerFixture) {
 	worker := consumercontrol.Request{Generation: f.repo.Generation, Revision: 3, Origin: consumercontrol.WorkerRun, Token: token, PilotUntilMS: now + 120000}
 	if err := guard(worker); err != nil {
 		t.Fatal("worker guard", err)
+	}
+	workerDrainTx, err := f.db.BeginTx(f.ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	workerDraining, err := consumercontrol.BeginDrain(f.ctx, workerDrainTx, f.repo.Generation, 3)
+	if err != nil || workerDraining.OwnerDigest != digest || workerDraining.LeaseUntilMS != now+60000 {
+		workerDrainTx.Rollback()
+		t.Fatal("worker drain lost owner fence", err)
+	}
+	if err := workerDrainTx.Rollback(); err != nil {
+		t.Fatal(err)
 	}
 	// Повторный guard в той же транзакции видит истёкший fence; rollback
 	// сохраняет исходный срок, как должен поступать вызывающий при отказе.
@@ -152,5 +194,44 @@ func testConsumerGuard(t *testing.T, f *schedulerFixture) {
 	}
 	if _, err := f.db.ExecContext(f.ctx, "UPDATE go_consumer_control SET revision=5 WHERE id=1"); err != nil {
 		t.Fatal("lock not released", err)
+	}
+	commitTx, err := f.db.BeginTx(f.ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	committed, err := consumercontrol.BeginDrain(f.ctx, commitTx, f.repo.Generation, 5)
+	if err != nil || committed.Revision != 6 {
+		commitTx.Rollback()
+		t.Fatal("drain before commit", err)
+	}
+	competitorStarted := make(chan struct{})
+	competitorResult := make(chan error, 1)
+	go func() {
+		otherTx, beginErr := f.db.BeginTx(f.ctx, nil)
+		if beginErr != nil {
+			close(competitorStarted)
+			competitorResult <- beginErr
+			return
+		}
+		defer otherTx.Rollback()
+		close(competitorStarted)
+		_, transitionErr := consumercontrol.BeginDrain(f.ctx, otherTx, f.repo.Generation, 5)
+		competitorResult <- transitionErr
+	}()
+	<-competitorStarted
+	if err := commitTx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case err := <-competitorResult:
+		if !errors.Is(err, consumercontrol.ErrStale) {
+			t.Fatal("competing drain did not fail stale", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("competing drain did not complete")
+	}
+	request.Revision = 6
+	if err := guard(request); !errors.Is(err, consumercontrol.ErrDenied) {
+		t.Fatal("committed drain did not block new run", err)
 	}
 }
