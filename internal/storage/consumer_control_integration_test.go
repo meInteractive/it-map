@@ -108,6 +108,29 @@ func testConsumerGuard(t *testing.T, f *schedulerFixture) {
 	if err := guard(worker); err != nil {
 		t.Fatal("worker guard", err)
 	}
+	leaseTx, err := f.db.BeginTx(f.ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := consumercontrol.GuardRunLease(f.ctx, leaseTx, worker, now+60000); err != nil {
+		leaseTx.Rollback()
+		t.Fatal("owner deadline should be accepted", err)
+	}
+	if err := consumercontrol.GuardRunLease(f.ctx, leaseTx, worker, now+60001); !errors.Is(err, consumercontrol.ErrDenied) {
+		leaseTx.Rollback()
+		t.Fatal("run outlived owner", err)
+	}
+	if _, err := leaseTx.ExecContext(f.ctx, "UPDATE go_consumer_control SET lease_until=1 WHERE id=1"); err != nil {
+		leaseTx.Rollback()
+		t.Fatal(err)
+	}
+	if err := consumercontrol.GuardRunLease(f.ctx, leaseTx, worker, now+60000); !errors.Is(err, consumercontrol.ErrDenied) {
+		leaseTx.Rollback()
+		t.Fatal("recheck accepted expired owner", err)
+	}
+	if err := leaseTx.Rollback(); err != nil {
+		t.Fatal(err)
+	}
 	t.Run("owner_renewal", func(t *testing.T) {
 		testConsumerRenewal(t, f.sub(t), worker, now+60000)
 	})
