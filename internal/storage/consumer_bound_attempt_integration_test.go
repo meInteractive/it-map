@@ -14,6 +14,7 @@ import (
 // Этот тест вызывается только в одноразовой MariaDB CI.
 func testBoundAttemptLifecycle(t *testing.T, f *schedulerFixture, req consumercontrol.Request) {
 	t.Helper()
+	syntheticRequest := []byte(`{"provider":"apify","model":"CI_actor","capUsd":0.26}`)
 	run, bound, err := f.repo.BeginBoundRun(f.ctx, parser.RunOptions{RequestID: "CI_bound_attempt_run", Diagnostic: true, Duration: time.Second}, req)
 	if err != nil || bound == nil || !run.Acquired {
 		t.Fatal("bound run", err)
@@ -34,7 +35,32 @@ func testBoundAttemptLifecycle(t *testing.T, f *schedulerFixture, req consumerco
 	if _, err := bound.StartBoundAttempt(f.ctx, lease); !errors.Is(err, parser.ErrAttemptReplay) {
 		t.Fatal("duplicate attempt", err)
 	}
-	f.exec(`UPDATE scheduler_attempts SET reserved_usd=0.26,result_json='{"synthetic":"retained"}' WHERE job_id=? AND run_id=?`, jobID, run.Run.ID)
+	f.exec(`UPDATE firecrawl_settings SET scheduler_json='{"enabled":true,"dayBudgetUsd":0.1,"monthBudgetUsd":0.1}' WHERE id=1`)
+	defer f.exec(`UPDATE firecrawl_settings SET scheduler_json='{"enabled":true}' WHERE id=1`)
+	f.exec(`INSERT INTO scheduler_attempts(id,job_id,run_id,type,started_at,status,reserved_usd,result_json) VALUES('CI_prior_unknown',?,?,'diagnostic',?,'interrupted',0.26,'{"synthetic":"retained"}')`, jobID, run.Run.ID, run.Run.StartedAt)
+	if err := attempt.Reserve(f.ctx, syntheticRequest); !errors.Is(err, parser.ErrMoneyUncertain) {
+		t.Fatal("unresolved paid attempt did not block reserve", err)
+	}
+	f.assertAttempt("CI_prior_unknown", "interrupted")
+	f.exec("DELETE FROM scheduler_attempts WHERE id='CI_prior_unknown'")
+	if err := attempt.Reserve(f.ctx, syntheticRequest); !errors.Is(err, parser.ErrBudgetLimit) {
+		t.Fatal("budget limit not enforced", err)
+	}
+	if f.count("SELECT COUNT(*) FROM scheduler_attempts WHERE job_id=? AND reserved_usd=0 AND cost_usd IS NULL", jobID) != 1 {
+		t.Fatal("rejected budget changed reservation")
+	}
+	f.exec(`UPDATE firecrawl_settings SET scheduler_json='{"enabled":true,"dayBudgetUsd":0.3,"monthBudgetUsd":0.3}' WHERE id=1`)
+	results := make(chan error, 2)
+	go func() { results <- attempt.Reserve(f.ctx, syntheticRequest) }()
+	go func() { results <- attempt.Reserve(f.ctx, syntheticRequest) }()
+	one, two := <-results, <-results
+	if !((one == nil && errors.Is(two, parser.ErrMoneyUncertain)) || (two == nil && errors.Is(one, parser.ErrMoneyUncertain))) {
+		t.Fatal("concurrent reserve was not single-use", one, two)
+	}
+	if f.count("SELECT COUNT(*) FROM scheduler_attempts WHERE job_id=? AND reserved_usd=0.26 AND cost_usd IS NULL", jobID) != 1 {
+		t.Fatal("reservation missing or duplicated")
+	}
+	f.exec(`UPDATE scheduler_attempts SET result_json='{"synthetic":"retained"}' WHERE job_id=? AND run_id=?`, jobID, run.Run.ID)
 	var ownerUntil int64
 	if err := f.db.QueryRowContext(f.ctx, "SELECT lease_until FROM go_consumer_control WHERE id=1").Scan(&ownerUntil); err != nil {
 		t.Fatal(err)
@@ -48,6 +74,9 @@ func testBoundAttemptLifecycle(t *testing.T, f *schedulerFixture, req consumerco
 	}
 	f.exec("UPDATE go_consumer_control SET lease_until=? WHERE id=1", ownerUntil)
 	f.exec("UPDATE go_consumer_control SET mode='draining', revision=4 WHERE id=1")
+	if err := attempt.Reserve(f.ctx, syntheticRequest); !errors.Is(err, consumercontrol.ErrStale) {
+		t.Fatal("draining accepted reservation", err)
+	}
 	if _, err := bound.StartBoundAttempt(f.ctx, lease); !errors.Is(err, consumercontrol.ErrStale) {
 		t.Fatal("draining accepted attempt", err)
 	}

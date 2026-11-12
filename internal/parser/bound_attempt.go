@@ -3,8 +3,10 @@ package parser
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"time"
+	"unicode/utf8"
 
 	"itmap/internal/consumercontrol"
 )
@@ -19,6 +21,67 @@ type BoundAttempt struct {
 
 func (*BoundAttempt) String() string   { return "<redacted>" }
 func (*BoundAttempt) GoString() string { return "<redacted>" }
+
+// Reserve записывает один положительный резерв без вызова провайдера.
+// Повторная попытка с уже записанным резервом отклоняется, включая случай
+// неизвестного исхода commit. Денежные правила совпадают с обычным scheduler.
+// Для сетевого запроса и settlement этот экспериментальный API не пригоден.
+func (a *BoundAttempt) Reserve(ctx context.Context, request json.RawMessage) error {
+	if a == nil || a.bound == nil || a.lease == nil || a.id == "" {
+		return ErrJobInput
+	}
+	upper, err := UpperCostJSON(request)
+	if err != nil {
+		return err
+	}
+	if !finiteMoney(upper) || upper <= 0 {
+		return ErrBudgetUnknown
+	}
+	var fields map[string]json.RawMessage
+	var meta struct{ Provider, Model string }
+	if json.Unmarshal(request, &fields) != nil || json.Unmarshal(fields["provider"], &meta.Provider) != nil || json.Unmarshal(fields["model"], &meta.Model) != nil || meta.Provider == "" || meta.Model == "" || !utf8.ValidString(meta.Provider) || !utf8.ValidString(meta.Model) {
+		return ErrBudgetUnknown
+	}
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	tx, fence, err := a.bound.beginBoundCompletion(ctx, a.lease)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if err = consumercontrol.GuardNewRun(ctx, tx, a.bound.consumer); err != nil {
+		return err
+	}
+	var jobID, runID, status string
+	var reserved float64
+	var cost sql.NullFloat64
+	err = tx.QueryRowContext(ctx, "SELECT job_id,run_id,status,reserved_usd,cost_usd FROM scheduler_attempts WHERE id=? FOR UPDATE", a.id).Scan(&jobID, &runID, &status, &reserved, &cost)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrAttemptClosed
+	}
+	if err != nil {
+		return storageError(ctx)
+	}
+	if jobID != a.lease.jobID || runID != a.bound.runID || status != "running" {
+		return ErrAttemptClosed
+	}
+	if !finiteMoney(reserved) || reserved != 0 || cost.Valid {
+		return ErrMoneyUncertain
+	}
+	if err = reserveAttemptLocked(ctx, tx, a.lease, a.id, fence.now, upper, meta.Provider, meta.Model); err != nil {
+		return err
+	}
+	if err = a.bound.recheckBoundCompletion(ctx, tx, fence); err != nil {
+		return err
+	}
+	if err = consumercontrol.GuardNewRun(ctx, tx, a.bound.consumer); err != nil {
+		return err
+	}
+	if err = tx.Commit(); err != nil {
+		return storageError(ctx)
+	}
+	return nil
+}
 
 // StartBoundAttempt создаёт только receipt; внешние вызовы остаются запрещены.
 // Draining не разрешает начинать новые attempts. Commit при ошибке не повторяется.
