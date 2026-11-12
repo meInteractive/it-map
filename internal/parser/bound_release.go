@@ -36,6 +36,10 @@ func (b *BoundRun) ReleaseUnstarted(ctx context.Context, j *JobLease) error {
 	if _, err = activeRun(ctx, tx, b.repo.Generation, b.runID); err != nil {
 		return err
 	}
+	run, err := readRun(ctx, tx, b.runID)
+	if err != nil {
+		return storageError(ctx)
+	}
 	var owner, status string
 	var until int64
 	err = tx.QueryRowContext(ctx, "SELECT locked_by,locked_until,status FROM scheduler_jobs WHERE id=? AND generation=? FOR UPDATE", j.jobID, b.repo.Generation).Scan(&owner, &until, &status)
@@ -52,6 +56,9 @@ func (b *BoundRun) ReleaseUnstarted(ctx context.Context, j *JobLease) error {
 	if status != "running" || owner != j.owner || until <= now {
 		return ErrJobLeaseLost
 	}
+	if err = consumercontrol.GuardCompletionLeases(ctx, tx, b.consumer, run.LeaseUntil, until); err != nil {
+		return err
+	}
 	var attempts int
 	if err = tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM scheduler_attempts WHERE job_id=? AND run_id=?", j.jobID, b.runID).Scan(&attempts); err != nil {
 		return storageError(ctx)
@@ -64,7 +71,7 @@ func (b *BoundRun) ReleaseUnstarted(ctx context.Context, j *JobLease) error {
 	}
 	// Блокировки не останавливают часы. Проверить оба оставшихся lease после
 	// записи и непосредственно перед commit; при отказе вся запись откатится.
-	if err = consumercontrol.GuardCompletion(ctx, tx, b.consumer); err != nil {
+	if err = consumercontrol.GuardCompletionLeases(ctx, tx, b.consumer, run.LeaseUntil, until); err != nil {
 		return err
 	}
 	if _, err = activeRun(ctx, tx, b.repo.Generation, b.runID); err != nil {
