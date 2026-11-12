@@ -139,10 +139,23 @@ func (s *attemptState) reserve(ctx context.Context, upper float64, provider, mod
 		return e
 	}
 	defer tx.Rollback()
+	if e = reserveAttemptLocked(ctx, tx, &s.lease, s.id, now, upper, provider, model); e != nil {
+		return e
+	}
+	if e = tx.Commit(); e != nil {
+		return storageError(ctx)
+	}
+	return nil
+}
+
+// reserveAttemptLocked применяет существующие бюджетные и paid-state правила.
+// Вызывающий владеет транзакцией, проверкой владельца и commit/rollback.
+func reserveAttemptLocked(ctx context.Context, tx *sql.Tx, lease *JobLease, id string, now int64, upper float64, provider, model string) error {
+	var e error
 	var relevanceScope string
 	if upper > 0 {
 		var unresolved int
-		if e = tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM scheduler_attempts WHERE job_id=? AND id<>? AND cost_usd IS NULL AND reserved_usd>0", s.lease.jobID, s.id).Scan(&unresolved); e != nil {
+		if e = tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM scheduler_attempts WHERE job_id=? AND id<>? AND cost_usd IS NULL AND reserved_usd>0", lease.jobID, id).Scan(&unresolved); e != nil {
 			return storageError(ctx)
 		}
 		if unresolved != 0 {
@@ -150,18 +163,18 @@ func (s *attemptState) reserve(ctx context.Context, upper float64, provider, mod
 		}
 		// Разные ключи оценки одной вакансии не обходят неизвестный исход
 		// предыдущего платного запроса после изменения входных данных.
-		if s.lease.job.Type == "score_relevance" {
-			if s.lease.job.CandidateID == nil {
+		if lease.job.Type == "score_relevance" {
+			if lease.job.CandidateID == nil {
 				return ErrJobInput
 			}
 			var vacancyID sql.NullInt64
 			var created sql.NullString
-			err := tx.QueryRowContext(ctx, `SELECT c.main_vacancy_id,v.created_at FROM vacancy_candidates c LEFT JOIN company_vacancies v ON v.id=c.main_vacancy_id WHERE c.id=? FOR UPDATE`, s.lease.job.CandidateID).Scan(&vacancyID, &created)
+			err := tx.QueryRowContext(ctx, `SELECT c.main_vacancy_id,v.created_at FROM vacancy_candidates c LEFT JOIN company_vacancies v ON v.id=c.main_vacancy_id WHERE c.id=? FOR UPDATE`, lease.job.CandidateID).Scan(&vacancyID, &created)
 			if err != nil {
 				return storageError(ctx)
 			}
 			if vacancyID.Valid && created.Valid {
-				err = tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM scheduler_attempts a LEFT JOIN scheduler_jobs prior_job ON prior_job.id=a.job_id LEFT JOIN vacancy_candidates prior_candidate ON prior_candidate.id=prior_job.candidate_id WHERE a.type='score_relevance' AND a.id<>? AND a.cost_usd IS NULL AND a.reserved_usd>0 AND ((JSON_UNQUOTE(JSON_EXTRACT(a.result_json,'$.relevanceVacancyId'))=CAST(? AS CHAR) AND JSON_UNQUOTE(JSON_EXTRACT(a.result_json,'$.relevanceVacancyCreatedAt'))=?) OR (prior_job.type='score_relevance' AND prior_candidate.main_vacancy_id=?))`, s.id, vacancyID.Int64, created.String, vacancyID.Int64).Scan(&unresolved)
+				err = tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM scheduler_attempts a LEFT JOIN scheduler_jobs prior_job ON prior_job.id=a.job_id LEFT JOIN vacancy_candidates prior_candidate ON prior_candidate.id=prior_job.candidate_id WHERE a.type='score_relevance' AND a.id<>? AND a.cost_usd IS NULL AND a.reserved_usd>0 AND ((JSON_UNQUOTE(JSON_EXTRACT(a.result_json,'$.relevanceVacancyId'))=CAST(? AS CHAR) AND JSON_UNQUOTE(JSON_EXTRACT(a.result_json,'$.relevanceVacancyCreatedAt'))=?) OR (prior_job.type='score_relevance' AND prior_candidate.main_vacancy_id=?))`, id, vacancyID.Int64, created.String, vacancyID.Int64).Scan(&unresolved)
 				if err != nil {
 					return storageError(ctx)
 				}
@@ -198,14 +211,12 @@ func (s *attemptState) reserve(ctx context.Context, upper float64, provider, mod
 			return ErrBudgetLimit
 		}
 	}
-	if _, e = tx.ExecContext(ctx, "UPDATE scheduler_attempts SET reserved_usd=reserved_usd+?,provider=?,model=?,result_json=CASE WHEN ?='' THEN result_json ELSE ? END WHERE id=?", upper, provider, model, relevanceScope, relevanceScope, s.id); e != nil {
-		return storageError(ctx)
-	}
-	if e = tx.Commit(); e != nil {
+	if _, e = tx.ExecContext(ctx, "UPDATE scheduler_attempts SET reserved_usd=reserved_usd+?,provider=?,model=?,result_json=CASE WHEN ?='' THEN result_json ELSE ? END WHERE id=?", upper, provider, model, relevanceScope, relevanceScope, id); e != nil {
 		return storageError(ctx)
 	}
 	return nil
 }
+
 func finiteMoney(n float64) bool { return !math.IsNaN(n) && !math.IsInf(n, 0) && n >= 0 }
 func (s *attemptState) settle(ctx context.Context, upper, cost float64) error {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
