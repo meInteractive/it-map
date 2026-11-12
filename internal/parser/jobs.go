@@ -12,6 +12,7 @@ import (
 	"unicode/utf8"
 
 	"itmap/internal/backup"
+	"itmap/internal/consumercontrol"
 )
 
 var ErrJobLeaseLost = errors.New("scheduler job ownership lost")
@@ -130,6 +131,21 @@ func activeRun(ctx context.Context, tx *sql.Tx, generation, id string) (int64, e
 // scanning is streamed; only provider cursor keys and the current winner stay
 // in memory. SQL ownership changes only after complete selection succeeds.
 func (r RunRepository) ClaimJob(ctx context.Context, runID string, options ClaimOptions) (*JobLease, error) {
+	return r.claimJob(ctx, runID, options, nil)
+}
+
+// ClaimJob допускает новый job только для run, созданного этим consumer в
+// текущем процессе. Экспериментальный путь не проверяет завершение job и не
+// подключён к runtime. Схема и доверенное происхождение consumer проверяются
+// вызывающим слоем до BeginBoundRun.
+func (b *BoundRun) ClaimJob(ctx context.Context, options ClaimOptions) (*JobLease, error) {
+	if b == nil || b.runID == "" || b.repo.DB == nil || b.consumer.Generation != b.repo.Generation {
+		return nil, ErrJobInput
+	}
+	return b.repo.claimJob(ctx, b.runID, options, &b.consumer)
+}
+
+func (r RunRepository) claimJob(ctx context.Context, runID string, options ClaimOptions, consumer *consumercontrol.Request) (*JobLease, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	if options.Lease == 0 {
@@ -146,6 +162,11 @@ func (r RunRepository) ClaimJob(ctx context.Context, runID string, options Claim
 		return nil, e
 	}
 	defer tx.Rollback()
+	if consumer != nil {
+		if e = consumercontrol.GuardNewRun(ctx, tx, *consumer); e != nil {
+			return nil, e
+		}
+	}
 	now, e := activeRun(ctx, tx, r.Generation, runID)
 	if e != nil {
 		return nil, e
@@ -174,6 +195,18 @@ func (r RunRepository) ClaimJob(ctx context.Context, runID string, options Claim
 	}
 	if changed != 1 {
 		return nil, ErrJobLeaseLost
+	}
+	if consumer != nil {
+		run, err := readRun(ctx, tx, runID)
+		if err != nil {
+			return nil, storageError(ctx)
+		}
+		if _, err = activeRun(ctx, tx, r.Generation, runID); err != nil {
+			return nil, err
+		}
+		if err = consumercontrol.GuardClaimLease(ctx, tx, *consumer, run.LeaseUntil, now+options.Lease.Milliseconds()); err != nil {
+			return nil, err
+		}
 	}
 	if e = tx.Commit(); e != nil {
 		return nil, storageError(ctx)
