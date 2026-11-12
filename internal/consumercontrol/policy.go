@@ -135,6 +135,18 @@ func CanStart(s State, req Request, nowMS int64) error {
 	return ErrDenied
 }
 
+// CanStartRun дополнительно ограничивает срок нового активного run.
+// Для worker срок не может пережить owner lease. Это не проверка job lease.
+func CanStartRun(s State, req Request, runUntilMS, nowMS int64) error {
+	if err := CanStart(s, req, nowMS); err != nil {
+		return err
+	}
+	if runUntilMS <= nowMS || (s.Mode == Worker && runUntilMS > s.LeaseUntilMS) {
+		return ErrDenied
+	}
+	return nil
+}
+
 // CanFinish проверяет только consumer-владельца уже начатой работы.
 // Caller обязан отдельно доказать в той же транзакции, что run/job были
 // захвачены этим владельцем до draining, их lease и generation действительны,

@@ -24,6 +24,18 @@ func GuardNewRun(ctx context.Context, tx *sql.Tx, req Request) error {
 	return CanStart(state, req, now)
 }
 
+// GuardRunLease проверяет допуск и фактический deadline активного run под
+// блокировками generation/control. Caller проверяет доверенную схему, создаёт
+// run в той же транзакции и повторяет guard перед commit. Ошибка требует
+// rollback. Не проверяет job и не подключён к runtime.
+func GuardRunLease(ctx context.Context, tx *sql.Tx, req Request, runUntilMS int64) error {
+	state, now, err := lockControl(ctx, tx, req.Generation)
+	if err != nil {
+		return err
+	}
+	return CanStartRun(state, req, runUntilMS, now)
+}
+
 // GuardCompletion проверяет consumer fence для завершения уже начатой работы
 // под блокировками generation и control row. Сам по себе не подтверждает run,
 // job или их владельца и не разрешает запуск новой работы. Вызывающий обязан
