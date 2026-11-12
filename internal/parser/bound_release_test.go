@@ -15,4 +15,7 @@ func TestReleaseUnstartedRejectsUnboundLeases(t *testing.T) {
 	if err := b.ReleaseUnstarted(context.Background(), &JobLease{}); !errors.Is(err, ErrJobInput) {
 		t.Fatal("unbound job accepted", err)
 	}
+	if _, _, err := b.beginBoundCompletion(context.Background(), &JobLease{}); !errors.Is(err, ErrJobInput) {
+		t.Fatal("unbound completion transaction accepted", err)
+	}
 }
