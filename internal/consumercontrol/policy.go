@@ -188,6 +188,18 @@ func CanFinish(s State, req Request, nowMS int64) error {
 	return nil
 }
 
+// CanFinishLeases дополнительно проверяет вложенность и срок run/job.
+// Снимки не доказывают владение конкретными строками и берутся под lock.
+func CanFinishLeases(s State, req Request, runUntilMS, jobUntilMS, nowMS int64) error {
+	if err := CanFinish(s, req, nowMS); err != nil {
+		return err
+	}
+	if jobUntilMS <= nowMS || runUntilMS <= nowMS || jobUntilMS > runUntilMS || runUntilMS > s.LeaseUntilMS {
+		return ErrDenied
+	}
+	return nil
+}
+
 // Change описывает решение доверенного операционного слоя. Quiescent и
 // EvidenceVerified должны проверяться в той же SQL-транзакции; bool не является доказательством сам по себе.
 // Для каждого нового назначения worker вызывающий обязан создать новый случайный Token,

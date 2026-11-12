@@ -62,6 +62,17 @@ func GuardCompletion(ctx context.Context, tx *sql.Tx, req Request) error {
 	return CanFinish(state, req, now)
 }
 
+// GuardCompletionLeases не доказывает принадлежность run/job. Caller обязан
+// прочитать и заблокировать реальные строки в той же транзакции, сравнить их
+// идентичность и повторить проверку непосредственно перед commit.
+func GuardCompletionLeases(ctx context.Context, tx *sql.Tx, req Request, runUntilMS, jobUntilMS int64) error {
+	state, now, err := lockControl(ctx, tx, req.Generation)
+	if err != nil {
+		return err
+	}
+	return CanFinishLeases(state, req, runUntilMS, jobUntilMS, now)
+}
+
 // BeginDrain переводит legacy или worker в draining с CAS под теми же locks.
 // Авторизация оператора, схема, commit/rollback и отключение старых бинарников —
 // ответственность вызывающего слоя. При ошибке commit исход неизвестен: caller

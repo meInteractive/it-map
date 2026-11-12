@@ -74,6 +74,16 @@ func testGuardedRun(t *testing.T, f *schedulerFixture, req consumercontrol.Reque
 	if err := bound.ReleaseUnstarted(f.ctx, nil); !errors.Is(err, parser.ErrJobInput) {
 		t.Fatal("missing lease accepted", err)
 	}
+	f.exec("UPDATE scheduler_jobs SET locked_until=? WHERE id=?", run.Run.LeaseUntil+1, jobID)
+	if err := bound.ReleaseUnstarted(f.ctx, lease); !errors.Is(err, consumercontrol.ErrDenied) {
+		t.Fatal("job outliving run was released", err)
+	}
+	f.exec("UPDATE scheduler_jobs SET locked_until=? WHERE id=?", lease.Job().LockedUntil, jobID)
+	f.exec("UPDATE scheduler_runs SET lease_until=? WHERE id=?", run.Run.LeaseUntil+300000, run.Run.ID)
+	if err := bound.ReleaseUnstarted(f.ctx, lease); !errors.Is(err, consumercontrol.ErrDenied) {
+		t.Fatal("run outliving consumer was released", err)
+	}
+	f.exec("UPDATE scheduler_runs SET lease_until=? WHERE id=?", run.Run.LeaseUntil, run.Run.ID)
 	f.exec(`INSERT INTO scheduler_attempts(id,job_id,run_id,type,started_at,status,reserved_usd,result_json) VALUES('CI_bound_reserved',?,?,'diagnostic',?,'running',0.26,'{"synthetic":"retained"}')`, jobID, run.Run.ID, run.Run.StartedAt)
 	if err := bound.ReleaseUnstarted(f.ctx, lease); !errors.Is(err, parser.ErrBoundJobUnavailable) {
 		t.Fatal("release accepted a run with an attempt", err)
