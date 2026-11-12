@@ -28,14 +28,34 @@ func testGuardedRun(t *testing.T, f *schedulerFixture, req consumercontrol.Reque
 	if f.count("SELECT COUNT(*) FROM scheduler_runs") != before {
 		t.Fatal("failed guard committed a run")
 	}
-	run, err := f.repo.BeginGuarded(f.ctx, options, req)
-	if err != nil || !run.Acquired || run.Reused {
+	run, bound, err := f.repo.BeginBoundRun(f.ctx, options, req)
+	if err != nil || !run.Acquired || run.Reused || bound == nil {
 		t.Fatal("guarded run not acquired", err)
 	}
 	defer f.exec("DELETE FROM scheduler_runs WHERE id=?", run.Run.ID)
-	replay, err := f.repo.BeginGuarded(f.ctx, options, req)
-	if err != nil || !replay.Reused || replay.Acquired {
+	replay, replayHandle, err := f.repo.BeginBoundRun(f.ctx, options, req)
+	if err != nil || !replay.Reused || replay.Acquired || replayHandle != nil {
 		t.Fatal("replay acquired run", err)
+	}
+	jobID := "CI_bound_claim"
+	schedulerSeedJob(f, jobID, nil)
+	defer f.exec("DELETE FROM scheduler_jobs WHERE id=?", jobID)
+	claim := parser.ClaimOptions{JobID: &jobID, Diagnostic: true, Lease: time.Minute}
+	if _, err := bound.ClaimJob(f.ctx, claim); !errors.Is(err, consumercontrol.ErrDenied) {
+		t.Fatal("claim exceeded run lease", err)
+	}
+	if f.count("SELECT COUNT(*) FROM scheduler_jobs WHERE id='CI_bound_claim' AND status='pending' AND attempts=0") != 1 {
+		t.Fatal("rejected claim did not roll back")
+	}
+	f.exec("UPDATE go_consumer_control SET mode='draining', revision=4 WHERE id=1")
+	claim.Lease = time.Second
+	if _, err := bound.ClaimJob(f.ctx, claim); !errors.Is(err, consumercontrol.ErrStale) {
+		t.Fatal("draining accepted claim", err)
+	}
+	f.exec("UPDATE go_consumer_control SET mode='worker', revision=3 WHERE id=1")
+	lease, err := bound.ClaimJob(f.ctx, claim)
+	if err != nil || lease == nil || lease.Job().ID != jobID {
+		t.Fatal("bounded claim failed", err)
 	}
 	if err := f.repo.Finish(f.ctx, run.Run.ID, "completed"); err != nil {
 		t.Fatal("finish guarded run", err)

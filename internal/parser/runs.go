@@ -45,6 +45,29 @@ type RunStart struct {
 	Reused, Acquired bool
 }
 
+// BoundRun хранит связь run с consumer только в памяти процесса. Она не
+// переживает рестарт и не подтверждает право завершения или provider call.
+// Создать её можно только после нового успешного BeginGuarded.
+type BoundRun struct {
+	repo     RunRepository
+	runID    string
+	consumer consumercontrol.Request
+}
+
+func (*BoundRun) String() string   { return "<redacted>" }
+func (*BoundRun) GoString() string { return "<redacted>" }
+
+// BeginBoundRun не выдаёт handle для повторного запроса или paused run.
+// Доверенная схема и происхождение req проверяются вызывающим слоем.
+// В runtime не подключён; crash/recovery пока не восстанавливают handle.
+func (r RunRepository) BeginBoundRun(ctx context.Context, options RunOptions, req consumercontrol.Request) (RunStart, *BoundRun, error) {
+	start, err := r.BeginGuarded(ctx, options, req)
+	if err != nil || !start.Acquired || start.Reused {
+		return start, nil, err
+	}
+	return start, &BoundRun{repo: r, runID: start.Run.ID, consumer: req}, nil
+}
+
 func runID(generation, requestID string) string {
 	hash := sha256.Sum256([]byte(generation + ":" + requestID))
 	return hex.EncodeToString(hash[:])
