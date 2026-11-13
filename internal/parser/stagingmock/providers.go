@@ -29,7 +29,11 @@ var description = "Задачи: развивать продукт и управ
 var errUnexpected = errors.New("неожиданный запрос синтетическому провайдеру")
 
 // Providers не содержит сетевого клиента и принимает только известные фикстуры.
-type Providers struct{ starts atomic.Int64 }
+type Providers struct {
+	starts atomic.Int64
+	// LoseStartAck имитирует исполненный запрос без полученного ответа.
+	LoseStartAck bool
+}
 
 func (p *Providers) Starts() int64 { return p.starts.Load() }
 
@@ -48,6 +52,9 @@ func (p *Providers) Start(ctx context.Context, source string, opts apify.HHOptio
 		return apify.ActorRun{}, errUnexpected
 	}
 	p.starts.Add(1)
+	if p.LoseStartAck {
+		return apify.ActorRun{}, errors.New("синтетическая потеря подтверждения")
+	}
 	return apify.ActorRun{ID: "MockRun0", DefaultDatasetID: "MockData0", Status: "SUCCEEDED", Raw: json.RawMessage(`{"id":"MockRun0","defaultDatasetId":"MockData0","status":"SUCCEEDED","userId":"StagingMock","usageTotalUsd":0.02}`)}, nil
 }
 func (*Providers) Run(context.Context, string) (apify.ActorRun, error) {

@@ -38,6 +38,13 @@ func TestFixturesRejectUnknownSourcesAndReturnStableData(t *testing.T) {
 	}
 }
 
+func TestLostAcknowledgementOccursAfterSyntheticStart(t *testing.T) {
+	p := &Providers{LoseStartAck: true}
+	if _, err := p.Start(context.Background(), SourceURL, apify.HHOptions{}); err == nil || p.Starts() != 1 {
+		t.Fatal("потеря подтверждения не последовала за синтетическим запуском", err)
+	}
+}
+
 func TestSyntheticAIRejectsUnknownRequests(t *testing.T) {
 	p := &Providers{}
 	ctx := context.Background()

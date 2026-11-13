@@ -17,7 +17,7 @@ import (
 	"itmap/internal/workerloop"
 )
 
-func TestMariaDBContinuousWorkerDisposable(t *testing.T) {
+func continuousWorkerFixture(t *testing.T, loseAck bool) (*schedulerFixture, *stagingmock.Providers, parser.Worker) {
 	_, s, lease, _ := hhScanFixture(t, &hhScanProvider{})
 	var previousRun string
 	if err := s.db.QueryRowContext(s.ctx, "SELECT id FROM scheduler_runs WHERE status='running'").Scan(&previousRun); err != nil {
@@ -51,11 +51,16 @@ func TestMariaDBContinuousWorkerDisposable(t *testing.T) {
 	if err := keys.SaveKey(s.ctx, aihttp.OpenRouter, s.repo.Generation, "sk-or-"+strings.Repeat("r", 16)); err != nil {
 		t.Fatal("synthetic key setup", err)
 	}
-	p := &stagingmock.Providers{}
+	p := &stagingmock.Providers{LoseStartAck: loseAck}
 	w, err := stagingmock.Worker(s.repo, "CI_SECRET", p)
 	if err != nil {
 		t.Fatal(err)
 	}
+	return s, p, w
+}
+
+func TestMariaDBContinuousWorkerDisposable(t *testing.T) {
+	s, p, w := continuousWorkerFixture(t, false)
 	workerCtx, stop := context.WithCancel(s.ctx)
 	finished := make(chan error, 1)
 	failures := make(chan struct{}, 1)
@@ -101,5 +106,51 @@ wait:
 	}
 	if s.count("SELECT COUNT(*) FROM company_vacancy_user_state WHERE user_name='CI_OWNER' AND relevance=67") != 1 {
 		t.Fatal("mock relevance missing")
+	}
+}
+
+// Перезапуск не даёт второй POST, если подтверждение первого потеряно.
+func TestMariaDBContinuousWorkerLostACKDisposable(t *testing.T) {
+	s, p, worker := continuousWorkerFixture(t, true)
+	run := func() {
+		ctx, cancel := context.WithCancel(s.ctx)
+		defer cancel()
+		done := make(chan error, 1)
+		launch := make(chan struct{}, 1)
+		go func() {
+			done <- (workerengine.Engine{Worker: worker, OnResult: func(profile workerloop.ProfileName, _ workerloop.ProfileOutcome) {
+				if profile == workerloop.Launch {
+					select {
+					case launch <- struct{}{}:
+					default:
+					}
+				}
+			}}).Run(ctx)
+		}()
+		select {
+		case <-launch:
+		case <-time.After(12 * time.Second):
+			cancel()
+			<-done
+			t.Fatal("worker launch did not finish")
+		}
+		cancel()
+		if err := <-done; !errors.Is(err, context.Canceled) {
+			t.Fatal("worker did not stop", err)
+		}
+	}
+	run()
+	if p.Starts() != 1 || s.count("SELECT COUNT(*) FROM apify_runs WHERE state='uncertain' AND run_id='' AND charged_usd IS NULL AND reserved_usd>0") != 1 {
+		t.Fatal("unknown paid outcome was not retained", p.Starts())
+	}
+	// В disposable БД принудительно возвращаем тот же job в очередь, чтобы
+	// проверить guard даже при повторно доступной работе после перезапуска.
+	s.exec("UPDATE scheduler_jobs SET status='pending',run_after=0 WHERE type='scan_source' AND status='failed'")
+	if s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='scan_source' AND status='pending'") != 1 {
+		t.Fatal("synthetic retry fixture missing")
+	}
+	run()
+	if p.Starts() != 1 || s.count("SELECT COUNT(*) FROM apify_runs WHERE state='uncertain' AND run_id='' AND charged_usd IS NULL AND reserved_usd>0") != 1 {
+		t.Fatal("restart repeated POST or lost reserve", p.Starts())
 	}
 }
