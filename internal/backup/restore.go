@@ -12,6 +12,8 @@ import (
 	"time"
 	"unicode/utf16"
 
+	"itmap/internal/consumercontrol"
+	"itmap/internal/dbschema"
 	"itmap/internal/v39"
 )
 
@@ -122,6 +124,30 @@ func completeRestoreInventory(ctx context.Context, reader metadataReader) (map[s
 	}
 	for _, t := range append(trusted.Tables, trusted.OperationalTables...) {
 		if _, ok := actual[t.Name]; !ok {
+			return nil, invalid("Сначала подготовьте полную доверенную схему базы.")
+		}
+	}
+	return actual, nil
+}
+
+// Этот путь используется только экспериментальным сборочным профилем; точная
+// metadata сама по себе не доказывает migration marker или готовность restore.
+func completeConsumerRestoreInventory(ctx context.Context, reader metadataReader) (map[string]sqlTable, error) {
+	snapshot, err := dbschema.Inspect(ctx, reader)
+	if err != nil || dbschema.CheckConsumerOverlay(snapshot, dbschema.ConsumerOverlayVersion) != nil {
+		return nil, errors.New("consumer restore schema incompatible")
+	}
+	actual, err := inventory(ctx, reader)
+	if err != nil {
+		return nil, err
+	}
+	delete(actual, "go_consumer_control")
+	trusted := v39.Trusted()
+	if err = validateInventory(actual, trusted); err != nil {
+		return nil, err
+	}
+	for _, table := range append(trusted.Tables, trusted.OperationalTables...) {
+		if _, ok := actual[table.Name]; !ok {
 			return nil, invalid("Сначала подготовьте полную доверенную схему базы.")
 		}
 	}
@@ -276,7 +302,15 @@ func applyRestore(ctx context.Context, session *RestoreSession, replan restoreRe
 		}
 		rows.Close()
 	}
-	actual, e := completeRestoreInventory(ctx, tx)
+	var actual map[string]sqlTable
+	if session.candidate {
+		actual, e = completeConsumerRestoreInventory(ctx, tx)
+		if e == nil {
+			e = consumercontrol.GuardSingleton(ctx, tx, oldGeneration)
+		}
+	} else {
+		actual, e = completeRestoreInventory(ctx, tx)
+	}
 	if e != nil {
 		return RestoreResult{}, e
 	}
@@ -319,6 +353,19 @@ func applyRestore(ctx context.Context, session *RestoreSession, replan restoreRe
 	}
 	if e = verifyRestoreForeignKeys(ctx, tx); e != nil {
 		return RestoreResult{}, e
+	}
+	if session.candidate {
+		generation, err := consumercontrol.ResetForRestore(ctx, tx, oldGeneration)
+		if err != nil {
+			return RestoreResult{}, err
+		}
+		if _, err = completeConsumerRestoreInventory(ctx, tx); err != nil {
+			return RestoreResult{}, err
+		}
+		if err = tx.Commit(); err != nil {
+			return RestoreResult{}, err
+		}
+		return RestoreResult{SourceVersion: plan.SourceVersion, Generation: generation, Rows: plan.Rows, Warnings: plan.Warnings, Catalog: plan.Catalog}, nil
 	}
 	var uuid [16]byte
 	if _, e = rand.Read(uuid[:]); e != nil {

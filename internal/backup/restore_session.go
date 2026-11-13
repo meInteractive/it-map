@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"itmap/internal/consumercontrol"
 	"itmap/internal/v39"
 )
 
@@ -26,6 +27,7 @@ var ErrRestoreBusy = errors.New("another restore owns this database")
 type RestoreSession struct {
 	conn        *sql.Conn
 	plan        *RestorePlan
+	candidate   bool
 	lock        string
 	owned       bool
 	sqlMode     string
@@ -177,6 +179,10 @@ func (r Repository) OpenV39RestoreSession(ctx context.Context, data []byte) (_ *
 }
 
 func (r Repository) openRestorePlan(ctx context.Context, plan *RestorePlan) (_ *RestoreSession, err error) {
+	return r.openRestorePlanMode(ctx, plan, false)
+}
+
+func (r Repository) openRestorePlanMode(ctx context.Context, plan *RestorePlan, candidate bool) (_ *RestoreSession, err error) {
 	if err = validateRestoreScalars(plan); err != nil {
 		return nil, err
 	}
@@ -191,7 +197,7 @@ func (r Repository) openRestorePlan(ctx context.Context, plan *RestorePlan) (_ *
 	if err != nil {
 		return nil, err
 	}
-	s := &RestoreSession{conn: conn, plan: plan, done: make(chan struct{})}
+	s := &RestoreSession{conn: conn, plan: plan, candidate: candidate, done: make(chan struct{})}
 	defer func() {
 		if err != nil {
 			_ = s.Close()
@@ -232,8 +238,34 @@ func (r Repository) openRestorePlan(ctx context.Context, plan *RestorePlan) (_ *
 		return nil, errors.New("invalid restore ownership response")
 	}
 	s.owned = true
-	if _, err = completeRestoreInventory(ctx, conn); err != nil {
+	if candidate {
+		_, err = completeConsumerRestoreInventory(ctx, conn)
+	} else {
+		_, err = completeRestoreInventory(ctx, conn)
+	}
+	if err != nil {
 		return nil, err
+	}
+	if candidate {
+		// До counter DDL проверить состояние; непосредственно перед записью
+		// данных оно будет повторно проверено уже в транзакции restore.
+		tx, e := conn.BeginTx(ctx, nil)
+		if e != nil {
+			discardRestoreConnection(conn)
+			return nil, errors.New("consumer restore preflight unavailable")
+		}
+		var generation string
+		e = tx.QueryRowContext(ctx, "SELECT generation FROM app_runtime_generation WHERE id=1 FOR UPDATE").Scan(&generation)
+		if e == nil {
+			e = consumercontrol.GuardSingleton(ctx, tx, generation)
+		}
+		if rollback := tx.Rollback(); rollback != nil {
+			discardRestoreConnection(conn)
+			return nil, errors.New("consumer restore preflight cleanup failed")
+		}
+		if e != nil {
+			return nil, errors.New("consumer restore singleton incompatible")
+		}
 	}
 	for _, target := range targets {
 		if target.next > 1 {
