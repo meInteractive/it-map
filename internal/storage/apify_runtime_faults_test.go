@@ -20,6 +20,7 @@ import (
 )
 
 func TestMariaDBApifyRuntimeFaultsDisposable(t *testing.T) {
+	t.Run("job_identity_recovery", testApifyJobIdentityRecovery)
 	for _, prefix := range []string{"INSERT INTO apify_runs(", "UPDATE apify_runs SET state='uncertain'", "UPDATE apify_runs SET state=?"} {
 		t.Run("unknown commit "+prefix, func(t *testing.T) {
 			f := openApifyRuntimeFixture(t)
