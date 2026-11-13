@@ -347,6 +347,8 @@ jobs:
           events=[json.loads(line) for line in open(sys.argv[1],encoding='utf8')]
           target='TestMariaDBSchedulerRunsDisposable'
           assert any(e.get('Test')==target and e.get('Action')=='pass' for e in events), 'required scheduler ownership test did not pass/run'
+          target='TestMariaDBSchedulerRunsDisposable/consumer_guard_locks_and_fails_closed/bound_hh_binding'
+          assert any(e.get('Test')==target and e.get('Action')=='pass' for e in events), 'bound HH binding test did not pass/run'
           target='TestMariaDBSchedulerRunsDisposable/consumer_guard_locks_and_fails_closed/bound_hh_evidence'
           assert any(e.get('Test')==target and e.get('Action')=='pass' for e in events), 'bound HH evidence test did not pass/run'
           target='TestMariaDBSchedulerRunsDisposable/consumer_guard_locks_and_fails_closed/bound_reservation_interrupt_race'
@@ -359,6 +361,8 @@ jobs:
           assert any(e.get('Test')==target and e.get('Action')=='pass' for e in events), 'consumer baseline preflight test did not pass/run'
           target='TestMariaDBSchedulerRunsDisposable/consumer_guard_locks_and_fails_closed/consumer_preflight_session_cleanup'
           assert any(e.get('Test')==target and e.get('Action')=='pass' for e in events), 'consumer session cleanup test did not pass/run'
+          target='TestMariaDBSchedulerRunsDisposable/consumer_guard_locks_and_fails_closed/consumer_version_evidence/hh_binding_metadata'
+          assert any(e.get('Test')==target and e.get('Action')=='pass' for e in events), 'HH binding metadata test did not pass/run'
           target='TestMariaDBSchedulerRunsDisposable/consumer_guard_locks_and_fails_closed/consumer_version_evidence'
           assert any(e.get('Test')==target and e.get('Action')=='pass' for e in events), 'consumer version evidence test did not pass/run'
           target='TestMariaDBSchedulerRunsDisposable/consumer_guard_locks_and_fails_closed/consumer_restore_reset'
@@ -1483,7 +1487,7 @@ jobs:
           events=[json.loads(line) for line in open(sys.argv[1],encoding='utf8')]
           for target in ['TestMariaDBSchedulerBillingSourceDisposable','TestMariaDBSchedulerBillingOwnershipDisposable','TestMariaDBHistoricalSchedulerEvidenceDisposable','TestMariaDBParserAIExecutionDisposable','TestMariaDBStoredTitleStageDisposable','TestMariaDBRawSnapshotSourceDisposable','TestMariaDBExtractionStageSourceDisposable','TestMariaDBLeafStageSourceDisposable','TestMariaDBCandidateHandoffDisposable']:
               assert any(e.get('Test')==target and e.get('Action')=='pass' for e in events), f'required scheduler billing parent did not pass/run: {target}'
-          for target in ['TestMariaDBSchedulerBillingOwnershipDisposable/bound_reservation_unknown_commit_preserves_reserve_and_rejects_replay','TestMariaDBSchedulerBillingOwnershipDisposable/bound_interruption_unknown_commit_preserves_reserve_and_rejects_replay']:
+          for target in ['TestMariaDBSchedulerBillingOwnershipDisposable/bound_HH_binding_unknown_commit_is_idempotent','TestMariaDBSchedulerBillingOwnershipDisposable/bound_reservation_unknown_commit_preserves_reserve_and_rejects_replay','TestMariaDBSchedulerBillingOwnershipDisposable/bound_interruption_unknown_commit_preserves_reserve_and_rejects_replay']:
               assert any(e.get('Test')==target and e.get('Action')=='pass' for e in events), f'bound unknown-commit test did not pass/run: {target}'
           assert not any(e.get('Action')=='skip' for e in events), 'required scheduler billing gate skipped'
           print('PASS: source billing/global ceiling/concurrent reservation/unknown COMMIT/joint rollback/SIGKILL recovery ran with zero skips')
