@@ -9,6 +9,7 @@ import (
 	"database/sql/driver"
 	"encoding/hex"
 	"errors"
+	"regexp"
 	"time"
 
 	"itmap/internal/consumercontrol"
@@ -27,6 +28,14 @@ var (
 
 func discard(conn *sql.Conn) { _ = conn.Raw(func(any) error { return driver.ErrBadConn }) }
 
+var generationPattern = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
+
+// CheckBaseline диагностирует исходную схему и generation под блокировками.
+// Это не доказательство migration marker или разрешение миграции и запуска.
+func CheckBaseline(ctx context.Context, db *sql.DB, expectedGeneration string) error {
+	return check(ctx, db, expectedGeneration, false)
+}
+
 // CheckCandidate читает метаданные и singleton до и после row lock на одной
 // транзакции. Advisory lock совпадает с offline schema-init и restore; он
 // сериализует только участвующие процедуры и не запрещает произвольный DDL.
@@ -35,7 +44,11 @@ func discard(conn *sql.Conn) { _ = conn.Raw(func(any) error { return driver.ErrB
 // Нет DDL, DML, создания строки или автоматического восстановления. В runtime
 // и production-командах метод не подключён.
 func CheckCandidate(ctx context.Context, db *sql.DB, expectedGeneration string) (result error) {
-	if ctx == nil || db == nil || expectedGeneration == "" {
+	return check(ctx, db, expectedGeneration, true)
+}
+
+func check(ctx context.Context, db *sql.DB, expectedGeneration string, candidate bool) (result error) {
+	if ctx == nil || db == nil || !generationPattern.MatchString(expectedGeneration) {
 		return ErrInput
 	}
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
@@ -52,9 +65,11 @@ func CheckCandidate(ctx context.Context, db *sql.DB, expectedGeneration string) 
 	var database string
 	var transaction, autocommit int
 	if err = conn.QueryRowContext(ctx, "SELECT DATABASE(),@@in_transaction,@@autocommit").Scan(&database, &transaction, &autocommit); err != nil {
+		discard(conn)
 		return ErrStorage
 	}
 	if database == "" || transaction != 0 || autocommit != 1 {
+		discard(conn)
 		return ErrSession
 	}
 	hash := sha256.Sum256([]byte(database))
@@ -66,7 +81,7 @@ func CheckCandidate(ctx context.Context, db *sql.DB, expectedGeneration string) 
 		return ErrStorage
 	}
 	if owner.Valid && owner.Int64 == connectionID {
-		// GET_LOCK is reentrant: discard a pooled session with a leaked lock.
+		// Повторный GET_LOCK увеличивает счётчик; такую сессию нельзя вернуть в pool.
 		discard(conn)
 		return ErrSession
 	}
@@ -111,7 +126,12 @@ func CheckCandidate(ctx context.Context, db *sql.DB, expectedGeneration string) 
 		if err != nil {
 			return ErrStorage
 		}
-		if err = dbschema.CheckConsumerOverlay(snapshot, dbschema.ConsumerOverlayVersion); err != nil {
+		if candidate {
+			err = dbschema.CheckConsumerOverlay(snapshot, dbschema.ConsumerOverlayVersion)
+		} else {
+			err = dbschema.CheckFull(snapshot)
+		}
+		if err != nil {
 			return ErrMetadata
 		}
 		return nil
@@ -119,13 +139,23 @@ func CheckCandidate(ctx context.Context, db *sql.DB, expectedGeneration string) 
 	if err = checkMetadata(); err != nil {
 		return err
 	}
-	if err = consumercontrol.GuardSingleton(ctx, tx, expectedGeneration); err != nil {
+	guard := func() error {
+		if candidate {
+			return consumercontrol.GuardSingleton(ctx, tx, expectedGeneration)
+		}
+		var actual string
+		if err := tx.QueryRowContext(ctx, "SELECT generation FROM app_runtime_generation WHERE id=1 FOR UPDATE").Scan(&actual); err != nil || actual != expectedGeneration {
+			return ErrSingleton
+		}
+		return nil
+	}
+	if err = guard(); err != nil {
 		return ErrSingleton
 	}
 	if err = checkMetadata(); err != nil {
 		return err
 	}
-	if err = consumercontrol.GuardSingleton(ctx, tx, expectedGeneration); err != nil {
+	if err = guard(); err != nil {
 		return ErrSingleton
 	}
 	return nil

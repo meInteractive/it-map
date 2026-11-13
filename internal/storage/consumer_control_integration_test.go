@@ -30,6 +30,9 @@ func testConsumerGuard(t *testing.T, f *schedulerFixture) {
 	if err := guard(request); !errors.Is(err, consumercontrol.ErrStorage) {
 		t.Fatalf("missing control table must fail closed: %v", err)
 	}
+	t.Run("consumer_baseline_preflight", func(t *testing.T) {
+		testConsumerBaselinePreflight(t, f.sub(t))
+	})
 	f.exec(`CREATE TABLE go_consumer_control (id BIGINT NOT NULL PRIMARY KEY, generation VARCHAR(36) NOT NULL, revision BIGINT NOT NULL, mode VARCHAR(16) NOT NULL, owner_digest VARBINARY(32) NULL, lease_until BIGINT NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin`)
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -60,6 +63,9 @@ func testConsumerGuard(t *testing.T, f *schedulerFixture) {
 	f.exec("INSERT INTO go_consumer_control(id,generation,revision,mode,owner_digest,lease_until) VALUES(1,?,1,'legacy',NULL,0)", f.repo.Generation)
 	t.Run("consumer_candidate_preflight", func(t *testing.T) {
 		testConsumerCandidatePreflight(t, f.sub(t))
+	})
+	t.Run("consumer_preflight_session_cleanup", func(t *testing.T) {
+		testConsumerPreflightSessionCleanup(t, f.sub(t))
 	})
 	t.Run("consumer_singleton_state", func(t *testing.T) {
 		f := f.sub(t)
