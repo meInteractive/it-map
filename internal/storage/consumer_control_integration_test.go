@@ -67,6 +67,9 @@ func testConsumerGuard(t *testing.T, f *schedulerFixture) {
 	t.Run("consumer_preflight_session_cleanup", func(t *testing.T) {
 		testConsumerPreflightSessionCleanup(t, f.sub(t))
 	})
+	t.Run("consumer_restore_reset", func(t *testing.T) {
+		testConsumerRestoreReset(t, f.sub(t))
+	})
 	t.Run("consumer_singleton_state", func(t *testing.T) {
 		f := f.sub(t)
 		check := func(generation string) error {
