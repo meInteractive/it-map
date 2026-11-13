@@ -83,4 +83,7 @@ func testConsumerVersionEvidence(t *testing.T, f *schedulerFixture) {
 	t.Run("hh_binding_metadata", func(t *testing.T) {
 		testHHBindingMetadata(t, f.sub(t))
 	})
+	t.Run("hh_binding_audit", func(t *testing.T) {
+		testHHBindingAudit(t, f.sub(t))
+	})
 }
