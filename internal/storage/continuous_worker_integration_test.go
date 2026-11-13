@@ -349,3 +349,63 @@ wait:
 		t.Fatal("reconcile did not finish without another POST", completed, p.Starts(), p.Polls())
 	}
 }
+
+func TestMariaDBContinuousWorkerApifyBudgetDisposable(t *testing.T) {
+	s, p, worker := continuousWorkerFixture(t, false)
+	p.ExhaustedAccount = true
+	ctx, cancel := context.WithCancel(s.ctx)
+	done := make(chan error, 1)
+	go func() {
+		done <- (workerengine.Engine{Worker: worker, OnResult: func(profile workerloop.ProfileName, _ workerloop.ProfileOutcome) {
+			if profile == workerloop.Pipeline {
+				cancel()
+			}
+		}}).Run(ctx)
+	}()
+	select {
+	case err := <-done:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatal("worker did not stop", err)
+		}
+	case <-time.After(12 * time.Second):
+		cancel()
+		<-done
+		t.Fatal("budget test timed out")
+	}
+	if p.Starts() != 0 || s.count("SELECT COUNT(*) FROM apify_runs") != 0 {
+		t.Fatal("exhausted Apify budget admitted actor", p.Starts())
+	}
+	if s.count("SELECT COUNT(*) FROM scheduler_runs WHERE `trigger`='automatic'") == 0 {
+		t.Fatal("worker did not attempt scheduling")
+	}
+}
+
+func TestMariaDBContinuousWorkerAIBudgetDisposable(t *testing.T) {
+	s, p, worker := continuousWorkerFixture(t, false)
+	s.exec(`UPDATE firecrawl_settings SET scheduler_json=JSON_SET(scheduler_json,'$.dayBudgetUsd',0,'$.monthBudgetUsd',0) WHERE id=1`)
+	ctx, cancel := context.WithCancel(s.ctx)
+	done := make(chan error, 1)
+	go func() {
+		done <- (workerengine.Engine{Worker: worker, OnResult: func(profile workerloop.ProfileName, _ workerloop.ProfileOutcome) {
+			if profile == workerloop.Pipeline {
+				cancel()
+			}
+		}}).Run(ctx)
+	}()
+	select {
+	case err := <-done:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatal("worker did not stop", err)
+		}
+	case <-time.After(12 * time.Second):
+		cancel()
+		<-done
+		t.Fatal("budget test timed out")
+	}
+	if p.Starts() != 1 || p.AICalls() != 0 {
+		t.Fatal("AI budget did not prevent calls independently of Apify", p.Starts(), p.AICalls())
+	}
+	if s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='classify_title' AND status='failed' AND reason_code='budget'") == 0 || s.count("SELECT COUNT(*) FROM company_vacancies WHERE company_name='CI Apify Runtime'") != 0 {
+		t.Fatal("AI budget test did not reach classification")
+	}
+}

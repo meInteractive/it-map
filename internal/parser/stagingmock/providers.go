@@ -30,25 +30,33 @@ var errUnexpected = errors.New("неожиданный запрос синтет
 
 // Providers не содержит сетевого клиента и принимает только известные фикстуры.
 type Providers struct {
-	starts atomic.Int64
-	polls  atomic.Int64
+	starts  atomic.Int64
+	polls   atomic.Int64
+	aiCalls atomic.Int64
 	// LoseStartAck имитирует исполненный запрос без полученного ответа.
 	LoseStartAck bool
 	// AfterStart позволяет синтетическому тесту остановить процесс после POST.
 	AfterStart func(context.Context)
 	// Async возвращает работающий synthetic Actor до первого reconcile.
 	Async bool
+	// ExhaustedAccount возвращает исчерпанный synthetic лимит Apify.
+	ExhaustedAccount bool
 }
 
-func (p *Providers) Starts() int64 { return p.starts.Load() }
-func (p *Providers) Polls() int64  { return p.polls.Load() }
+func (p *Providers) Starts() int64  { return p.starts.Load() }
+func (p *Providers) Polls() int64   { return p.polls.Load() }
+func (p *Providers) AICalls() int64 { return p.aiCalls.Load() }
 
 func (p *Providers) Account(ctx context.Context) (apify.BillingAccount, error) {
 	if err := ctx.Err(); err != nil {
 		return apify.BillingAccount{}, err
 	}
 	now := time.Now().UTC()
-	return apify.BillingAccount{AccountID: "StagingMock", PlanCreditsUSD: 5, ProviderLimitUSD: 5, PeriodStart: now.Truncate(time.Hour).Add(-time.Hour).Format(time.RFC3339), PeriodEnd: now.Truncate(time.Hour).Add(2 * time.Hour).Format(time.RFC3339), CheckedAt: now.UnixMilli()}, nil
+	used := float64(0)
+	if p.ExhaustedAccount {
+		used = 5
+	}
+	return apify.BillingAccount{AccountID: "StagingMock", PlanCreditsUSD: 5, ProviderLimitUSD: 5, ProviderUsedUSD: used, PeriodStart: now.Truncate(time.Hour).Add(-time.Hour).Format(time.RFC3339), PeriodEnd: now.Truncate(time.Hour).Add(2 * time.Hour).Format(time.RFC3339), CheckedAt: now.UnixMilli()}, nil
 }
 func (p *Providers) Start(ctx context.Context, source string, opts apify.HHOptions) (apify.ActorRun, error) {
 	if err := ctx.Err(); err != nil {
@@ -117,10 +125,11 @@ func (*Providers) Models(context.Context) (json.RawMessage, error) {
 func (*Providers) DecisionModels(context.Context) (json.RawMessage, error) {
 	return json.Marshal(map[string]any{"data": []any{map[string]any{"id": aiproviders.JEVModelID, "context_length": 262144, "pricing": map[string]string{"prompt": "0.000001", "completion": "0"}}}})
 }
-func (*Providers) Decisions(ctx context.Context, raw json.RawMessage) (json.RawMessage, error) {
+func (p *Providers) Decisions(ctx context.Context, raw json.RawMessage) (json.RawMessage, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
+	p.aiCalls.Add(1)
 	var request struct {
 		State     json.RawMessage            `json:"state"`
 		Questions map[string]json.RawMessage `json:"questions"`
@@ -145,10 +154,11 @@ func (*Providers) Decisions(ctx context.Context, raw json.RawMessage) (json.RawM
 	}
 	return json.Marshal(map[string]any{"model": aiproviders.JEVModelID, "answers": answers, "usage": map[string]any{"cost": 0.001}})
 }
-func (*Providers) Responses(ctx context.Context, raw json.RawMessage) (json.RawMessage, error) {
+func (p *Providers) Responses(ctx context.Context, raw json.RawMessage) (json.RawMessage, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
+	p.aiCalls.Add(1)
 	var content string
 	switch {
 	case bytes.Contains(raw, []byte("STAGING extraction prompt")):
