@@ -43,6 +43,23 @@ func (r RunRepository) InspectHistoricalPaidAttempts(ctx context.Context) (summa
 			outcome = storageError(ctx)
 		}
 	}()
+	return InspectHistoricalPaidAttemptsTx(ctx, tx, r.Generation)
+}
+
+// InspectHistoricalPaidAttemptsTx удерживает generation lock в транзакции
+// вызывающего; caller ограничивает время и откатывает её при ошибке. Это только
+// чтение evidence, не допуск к provider или восстановлению owner.
+func InspectHistoricalPaidAttemptsTx(ctx context.Context, tx *sql.Tx, generation string) (summary HistoricalPaidAttempts, outcome error) {
+	if ctx == nil || tx == nil || !generationPattern.MatchString(generation) {
+		return HistoricalPaidAttempts{}, ErrRunInput
+	}
+	var current string
+	if err := tx.QueryRowContext(ctx, "SELECT generation FROM app_runtime_generation WHERE id=1 FOR UPDATE").Scan(&current); err != nil {
+		return HistoricalPaidAttempts{}, storageError(ctx)
+	}
+	if current != generation {
+		return HistoricalPaidAttempts{}, ErrRunGeneration
+	}
 	rows, err := tx.QueryContext(ctx, `SELECT a.status,a.reserved_usd,a.cost_usd,r.generation FROM scheduler_attempts a LEFT JOIN scheduler_runs r ON r.id=a.run_id WHERE a.reserved_usd>0 OR a.cost_usd IS NOT NULL ORDER BY a.id LIMIT 1025 FOR UPDATE`)
 	if err != nil {
 		return HistoricalPaidAttempts{}, storageError(ctx)
@@ -72,7 +89,7 @@ func (r RunRepository) InspectHistoricalPaidAttempts(ctx context.Context) (summa
 		if generation.Valid && !generationPattern.MatchString(generation.String) {
 			return HistoricalPaidAttempts{}, ErrHistoricalAttemptsIncompatible
 		}
-		if generation.Valid && generation.String == r.Generation {
+		if generation.Valid && generation.String == current {
 			continue
 		}
 		if !generation.Valid {
