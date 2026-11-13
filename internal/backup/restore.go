@@ -132,9 +132,16 @@ func completeRestoreInventory(ctx context.Context, reader metadataReader) (map[s
 
 // Этот путь используется только экспериментальным сборочным профилем; точная
 // metadata сама по себе не доказывает migration marker или готовность restore.
-func completeConsumerRestoreInventory(ctx context.Context, reader metadataReader) (map[string]sqlTable, error) {
+func completeConsumerRestoreInventory(ctx context.Context, reader metadataReader, versioned bool) (map[string]sqlTable, error) {
 	snapshot, err := dbschema.Inspect(ctx, reader)
-	if err != nil || dbschema.CheckConsumerOverlay(snapshot, dbschema.ConsumerOverlayVersion) != nil {
+	if err == nil {
+		if versioned {
+			err = dbschema.CheckVersionedConsumerOverlay(snapshot, dbschema.ConsumerSchemaVersion)
+		} else {
+			err = dbschema.CheckConsumerOverlay(snapshot, dbschema.ConsumerOverlayVersion)
+		}
+	}
+	if err != nil {
 		return nil, errors.New("consumer restore schema incompatible")
 	}
 	actual, err := inventory(ctx, reader)
@@ -142,6 +149,9 @@ func completeConsumerRestoreInventory(ctx context.Context, reader metadataReader
 		return nil, err
 	}
 	delete(actual, "go_consumer_control")
+	if versioned {
+		delete(actual, "go_consumer_schema_version")
+	}
 	trusted := v39.Trusted()
 	if err = validateInventory(actual, trusted); err != nil {
 		return nil, err
@@ -303,10 +313,14 @@ func applyRestore(ctx context.Context, session *RestoreSession, replan restoreRe
 		rows.Close()
 	}
 	var actual map[string]sqlTable
-	if session.candidate {
-		actual, e = completeConsumerRestoreInventory(ctx, tx)
+	if session.consumerMode != ordinaryRestore {
+		actual, e = completeConsumerRestoreInventory(ctx, tx, session.consumerMode == versionedRestore)
 		if e == nil {
-			e = consumercontrol.GuardSingleton(ctx, tx, oldGeneration)
+			if session.consumerMode == versionedRestore {
+				e = consumercontrol.GuardVersionedSingleton(ctx, tx, oldGeneration)
+			} else {
+				e = consumercontrol.GuardSingleton(ctx, tx, oldGeneration)
+			}
 		}
 	} else {
 		actual, e = completeRestoreInventory(ctx, tx)
@@ -354,13 +368,18 @@ func applyRestore(ctx context.Context, session *RestoreSession, replan restoreRe
 	if e = verifyRestoreForeignKeys(ctx, tx); e != nil {
 		return RestoreResult{}, e
 	}
-	if session.candidate {
+	if session.consumerMode != ordinaryRestore {
 		generation, err := consumercontrol.ResetForRestore(ctx, tx, oldGeneration)
 		if err != nil {
 			return RestoreResult{}, err
 		}
-		if _, err = completeConsumerRestoreInventory(ctx, tx); err != nil {
+		if _, err = completeConsumerRestoreInventory(ctx, tx, session.consumerMode == versionedRestore); err != nil {
 			return RestoreResult{}, err
+		}
+		if session.consumerMode == versionedRestore {
+			if err = consumercontrol.GuardVersionedSingleton(ctx, tx, generation); err != nil {
+				return RestoreResult{}, err
+			}
 		}
 		if err = tx.Commit(); err != nil {
 			return RestoreResult{}, err

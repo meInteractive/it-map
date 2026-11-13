@@ -25,17 +25,25 @@ var ErrRestoreBusy = errors.New("another restore owns this database")
 // A later restore must finish its data TX before closing the session; Close
 // never issues UNLOCK TABLES, which could implicitly commit that future TX.
 type RestoreSession struct {
-	conn        *sql.Conn
-	plan        *RestorePlan
-	candidate   bool
-	lock        string
-	owned       bool
-	sqlMode     string
-	modeChanged bool
-	done        chan struct{}
-	once        sync.Once
-	closeErr    error
+	conn         *sql.Conn
+	plan         *RestorePlan
+	consumerMode consumerRestoreMode
+	lock         string
+	owned        bool
+	sqlMode      string
+	modeChanged  bool
+	done         chan struct{}
+	once         sync.Once
+	closeErr     error
 }
+
+type consumerRestoreMode uint8
+
+const (
+	ordinaryRestore consumerRestoreMode = iota
+	candidateRestore
+	versionedRestore
+)
 
 func (s *RestoreSession) Close() error {
 	s.once.Do(func() {
@@ -179,10 +187,13 @@ func (r Repository) OpenV39RestoreSession(ctx context.Context, data []byte) (_ *
 }
 
 func (r Repository) openRestorePlan(ctx context.Context, plan *RestorePlan) (_ *RestoreSession, err error) {
-	return r.openRestorePlanMode(ctx, plan, false)
+	return r.openRestorePlanMode(ctx, plan, ordinaryRestore)
 }
 
-func (r Repository) openRestorePlanMode(ctx context.Context, plan *RestorePlan, candidate bool) (_ *RestoreSession, err error) {
+func (r Repository) openRestorePlanMode(ctx context.Context, plan *RestorePlan, mode consumerRestoreMode) (_ *RestoreSession, err error) {
+	if mode != ordinaryRestore && mode != candidateRestore && mode != versionedRestore {
+		return nil, errors.New("unsupported consumer restore mode")
+	}
 	if err = validateRestoreScalars(plan); err != nil {
 		return nil, err
 	}
@@ -197,7 +208,7 @@ func (r Repository) openRestorePlanMode(ctx context.Context, plan *RestorePlan, 
 	if err != nil {
 		return nil, err
 	}
-	s := &RestoreSession{conn: conn, plan: plan, candidate: candidate, done: make(chan struct{})}
+	s := &RestoreSession{conn: conn, plan: plan, consumerMode: mode, done: make(chan struct{})}
 	defer func() {
 		if err != nil {
 			_ = s.Close()
@@ -238,15 +249,15 @@ func (r Repository) openRestorePlanMode(ctx context.Context, plan *RestorePlan, 
 		return nil, errors.New("invalid restore ownership response")
 	}
 	s.owned = true
-	if candidate {
-		_, err = completeConsumerRestoreInventory(ctx, conn)
+	if mode != ordinaryRestore {
+		_, err = completeConsumerRestoreInventory(ctx, conn, mode == versionedRestore)
 	} else {
 		_, err = completeRestoreInventory(ctx, conn)
 	}
 	if err != nil {
 		return nil, err
 	}
-	if candidate {
+	if mode != ordinaryRestore {
 		// До counter DDL проверить состояние; непосредственно перед записью
 		// данных оно будет повторно проверено уже в транзакции restore.
 		tx, e := conn.BeginTx(ctx, nil)
@@ -257,7 +268,11 @@ func (r Repository) openRestorePlanMode(ctx context.Context, plan *RestorePlan, 
 		var generation string
 		e = tx.QueryRowContext(ctx, "SELECT generation FROM app_runtime_generation WHERE id=1 FOR UPDATE").Scan(&generation)
 		if e == nil {
-			e = consumercontrol.GuardSingleton(ctx, tx, generation)
+			if mode == versionedRestore {
+				e = consumercontrol.GuardVersionedSingleton(ctx, tx, generation)
+			} else {
+				e = consumercontrol.GuardSingleton(ctx, tx, generation)
+			}
 		}
 		if rollback := tx.Rollback(); rollback != nil {
 			discardRestoreConnection(conn)
