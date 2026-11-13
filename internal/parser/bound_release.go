@@ -56,6 +56,10 @@ type boundCompletionFence struct{ now, runUntil, jobUntil int64 }
 // beginBoundCompletion блокирует generation, consumer, run и job в этом порядке.
 // Не проверяет attempts или paid evidence и не выполняет commit.
 func (b *BoundRun) beginBoundCompletion(ctx context.Context, j *JobLease) (*sql.Tx, boundCompletionFence, error) {
+	return b.beginBoundCompletionMode(ctx, j, false)
+}
+
+func (b *BoundRun) beginBoundCompletionMode(ctx context.Context, j *JobLease, versioned bool) (*sql.Tx, boundCompletionFence, error) {
 	if b == nil || j == nil || !j.consumerBound || b.runID == "" ||
 		b.repo.DB == nil || b.repo.DB != j.repo.DB || b.repo.Generation != j.repo.Generation ||
 		b.runID != j.runID || j.jobID == "" || j.owner == "" {
@@ -72,6 +76,11 @@ func (b *BoundRun) beginBoundCompletion(ctx context.Context, j *JobLease) (*sql.
 			tx.Rollback()
 		}
 	}()
+	if versioned {
+		if err = consumercontrol.GuardVersionedSingleton(ctx, tx, b.repo.Generation); err != nil {
+			return nil, boundCompletionFence{}, err
+		}
+	}
 	if err = consumercontrol.GuardCompletion(ctx, tx, b.consumer); err != nil {
 		return nil, boundCompletionFence{}, err
 	}

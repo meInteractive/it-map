@@ -228,6 +228,9 @@ func testConsumerGuard(t *testing.T, f *schedulerFixture) {
 	t.Run("guarded_run", func(t *testing.T) {
 		testGuardedRun(t, f.sub(t), worker)
 	})
+	t.Run("bound_hh_binding", func(t *testing.T) {
+		testBoundHHBinding(t, f.sub(t), worker)
+	})
 	t.Run("bound_hh_evidence", func(t *testing.T) {
 		testBoundHHEvidence(t, f.sub(t), worker)
 	})
