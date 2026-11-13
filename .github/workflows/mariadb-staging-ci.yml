@@ -1469,11 +1469,11 @@ jobs:
           go build -tags mariadb -o /tmp/itmap-parser-staging-ci ./cmd/itmap-parser-staging
           result_file="$(mktemp)"
           trap 'rm -f "$result_file"' EXIT
-          go test -race -tags mariadb,schedulerwrites,schedulerbilling ./internal/storage -run '^TestMariaDB(Parser(E2E|StagingMock|StagingSeed)|ContinuousWorker(LostACK|Crash|Reconcile|ApifyBudget|AIBudget)?)Disposable$' -count=1 -json | tee "$result_file"
+          go test -race -tags mariadb,schedulerwrites,schedulerbilling ./internal/storage -run '^TestMariaDB(Parser(E2E|StagingMock|StagingSeed)|ContinuousWorker(LostACK|Crash|Reconcile|ApifyBudget|AIBudget|BudgetPrior)?)Disposable$' -count=1 -json | tee "$result_file"
           python3 - "$result_file" <<'PYCODE'
           import json,sys
           events=[json.loads(line) for line in open(sys.argv[1],encoding='utf8')]
-          assert all(any(e.get('Test')==name and e.get('Action')=='pass' for e in events) for name in ('TestMariaDBParserE2EDisposable','TestMariaDBParserE2EDisposable/manual','TestMariaDBParserE2EDisposable/tick','TestMariaDBParserStagingMockDisposable','TestMariaDBParserStagingSeedDisposable','TestMariaDBContinuousWorkerDisposable','TestMariaDBContinuousWorkerLostACKDisposable','TestMariaDBContinuousWorkerCrashDisposable','TestMariaDBContinuousWorkerReconcileDisposable','TestMariaDBContinuousWorkerApifyBudgetDisposable','TestMariaDBContinuousWorkerAIBudgetDisposable')), 'HH pipeline gate did not pass'
+          assert all(any(e.get('Test')==name and e.get('Action')=='pass' for e in events) for name in ('TestMariaDBParserE2EDisposable','TestMariaDBParserE2EDisposable/manual','TestMariaDBParserE2EDisposable/tick','TestMariaDBParserStagingMockDisposable','TestMariaDBParserStagingSeedDisposable','TestMariaDBContinuousWorkerDisposable','TestMariaDBContinuousWorkerLostACKDisposable','TestMariaDBContinuousWorkerCrashDisposable','TestMariaDBContinuousWorkerReconcileDisposable','TestMariaDBContinuousWorkerApifyBudgetDisposable','TestMariaDBContinuousWorkerAIBudgetDisposable','TestMariaDBContinuousWorkerBudgetPriorDisposable','TestMariaDBContinuousWorkerBudgetPriorDisposable/unknown','TestMariaDBContinuousWorkerBudgetPriorDisposable/settled')), 'HH pipeline gate did not pass'
           assert not any(e.get('Action')=='skip' for e in events), 'HH pipeline gate skipped'
           PYCODE
       - name: Verify scheduler billing reservation and recovery ONLY in disposable CI

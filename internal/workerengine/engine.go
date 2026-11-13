@@ -76,6 +76,7 @@ func (e Engine) cycle(ctx context.Context, profile workerloop.ProfileName) (bool
 	worker.ScheduleSources = profile == workerloop.Launch
 	worker.VerifiedHHOnly = true
 	worker.ContinueOnStageFailure = true
+	worker.DeferUnspentBudget = true
 	result, err := worker.Cycle(ctx, parser.WorkerOptions{
 		Run:     parser.RunOptions{RequestID: id, Trigger: "automatic", Duration: 100 * time.Second},
 		MaxJobs: 50, QueueProfile: string(profile),

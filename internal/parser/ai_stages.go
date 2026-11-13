@@ -9,6 +9,7 @@ import (
 	"itmap/internal/integrations/aihttp"
 	"itmap/internal/profiles"
 	"regexp"
+	"time"
 )
 
 var ErrAIStageUnavailable = errors.New("scheduler AI stage is not configured")
@@ -47,11 +48,14 @@ type AIStageClassifier interface {
 	ClassifyTitles(context.Context, string, []aiproviders.TitleRole, aiproviders.Billing, func(context.Context) error) (aiproviders.TitleResult, error)
 }
 type AIStageExecutor struct {
-	Store      AIStageStore
-	Generator  AIStageGenerator
-	Classifier AIStageClassifier
-	Handoff    *CandidateHandoff
+	Store              AIStageStore
+	Generator          AIStageGenerator
+	Classifier         AIStageClassifier
+	Handoff            *CandidateHandoff
+	DeferUnspentBudget bool
 }
+
+var errBudgetPriorEvidence = errors.New("budget deferral requires untouched job")
 
 func aiStageTask(kind string) string {
 	switch kind {
@@ -130,6 +134,29 @@ func (e *AIStageExecutor) Execute(ctx context.Context, lease *JobLease) (AIStage
 		}
 	}
 	if err != nil {
+		if e.DeferUnspentBudget && errors.Is(err, ErrBudgetLimit) && attempt.Requests() == 0 && !attempt.Unknown() {
+			if store, ok := e.Store.(AIStageAbortStore); ok {
+				deferErr := attempt.FinishWithin(ctx, AttemptFinish{Job: FinishOptions{Status: "pending", Code: "budget", Message: "Ожидание доступного AI-бюджета.", Deferred: true, Delay: 30 * time.Minute}}, func(tx *sql.Tx) error {
+					if err := e.Store.Revalidate(ctx, tx, job, plan); err != nil {
+						return err
+					}
+					var unsafe int
+					if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM scheduler_attempts WHERE job_id=? AND id<>? AND NOT (status='pending' AND reason_code='budget' AND reserved_usd=0 AND COALESCE(cost_usd,-1)=0)`, job.ID, attempt.ID()).Scan(&unsafe); err != nil {
+						return storageError(ctx)
+					}
+					if unsafe != 0 {
+						return errBudgetPriorEvidence
+					}
+					return store.Abort(ctx, tx, job, plan)
+				})
+				if deferErr == nil {
+					return AIStageOutput{}, nil
+				}
+				if !errors.Is(deferErr, errBudgetPriorEvidence) {
+					return AIStageOutput{}, deferErr
+				}
+			}
+		}
 		// Неизвестный платный исход остаётся зарезервированным; автоматического POST retry нет.
 		code := aiStageErrorCode(err)
 		finish := attempt.FinishWithin(ctx, AttemptFinish{Job: FinishOptions{Status: "failed", Code: code, Message: "Не удалось выполнить AI-этап. Проверьте причину перед повторным запуском."}, Result: json.RawMessage(`{}`)}, func(tx *sql.Tx) error {
