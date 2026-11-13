@@ -80,6 +80,9 @@ func testBoundHHBinding(t *testing.T, f *schedulerFixture, req consumercontrol.R
 	}
 	now := schedulerClock(t, f.db)
 	f.exec(`INSERT INTO apify_runs(id,generation,operation_key,profile,account_id,key_hash,period_start,period_end,reserved_usd,state,created_at,updated_at) VALUES('00000000000000000000000000000001',?,?,'free','CIAccount','CIhash','CIstart','CIend',0.25,'starting',?,?)`, f.repo.Generation, opKey, now, now)
+	if _, err = attempt.InspectBoundHHRecovery(f.ctx, v, step, options); !errors.Is(err, parser.ErrHHEvidenceAbsent) {
+		t.Fatal("unbound operation accepted as durable evidence", err)
+	}
 	f.exec("UPDATE apify_runs SET reserved_usd=0.24 WHERE id='00000000000000000000000000000001'")
 	if err = attempt.BindHHReservation(f.ctx, v, step, options); !errors.Is(err, parser.ErrHHBindingConflict) {
 		t.Fatal("unexpected provider reservation bound", err)
@@ -106,22 +109,45 @@ func testBoundHHBinding(t *testing.T, f *schedulerFixture, req consumercontrol.R
 	if f.count("SELECT COUNT(*) FROM go_hh_attempt_bindings WHERE operation_id='00000000000000000000000000000001' AND job_id=?", jobID) != 1 {
 		t.Fatal("binding missing or duplicated")
 	}
+	if state, err := attempt.InspectBoundHHRecovery(f.ctx, v, step, options); err != nil || state != apifyruns.RecoveryUnknown {
+		t.Fatal("bound unknown evidence rejected", state, err)
+	}
 	f.exec("UPDATE go_hh_attempt_bindings SET attempt_id='CI_wrong' WHERE operation_id='00000000000000000000000000000001'")
+	if _, err = attempt.InspectBoundHHRecovery(f.ctx, v, step, options); !errors.Is(err, parser.ErrHHBindingConflict) {
+		t.Fatal("wrong attempt accepted as durable evidence", err)
+	}
 	if err = attempt.BindHHReservation(f.ctx, v, step, options); !errors.Is(err, parser.ErrHHBindingConflict) {
 		t.Fatal("wrong attempt rebound", err)
 	}
 	f.exec("UPDATE go_hh_attempt_bindings SET attempt_id=(SELECT id FROM scheduler_attempts WHERE job_id=? LIMIT 1) WHERE operation_id='00000000000000000000000000000001'", jobID)
 	f.exec("UPDATE apify_runs SET state='uncertain' WHERE id='00000000000000000000000000000001'")
+	if state, err := attempt.InspectBoundHHRecovery(f.ctx, v, step, options); err != nil || state != apifyruns.RecoveryUnknown {
+		t.Fatal("uncertain bound evidence rejected", state, err)
+	}
 	if err = attempt.BindHHReservation(f.ctx, v, step, options); !errors.Is(err, parser.ErrHHBindingConflict) {
 		t.Fatal("uncertain operation accepted as unstarted", err)
 	}
-	f.exec("UPDATE apify_runs SET state='starting' WHERE id='00000000000000000000000000000001'")
+	f.exec("UPDATE apify_runs SET state='running',run_id='CIRun',dataset_id='CIData' WHERE id='00000000000000000000000000000001'")
+	if state, err := attempt.InspectBoundHHRecovery(f.ctx, v, step, options); err != nil || state != apifyruns.RecoveryReconcile {
+		t.Fatal("known bound run not available for reconciliation", state, err)
+	}
+	f.exec("UPDATE apify_runs SET state='succeeded',charged_usd=0.08 WHERE id='00000000000000000000000000000001'")
+	if state, err := attempt.InspectBoundHHRecovery(f.ctx, v, step, options); err != nil || state != apifyruns.RecoveryTerminalCostRecorded {
+		t.Fatal("terminal bound evidence rejected", state, err)
+	}
+	f.exec("UPDATE apify_runs SET state='starting',run_id='',dataset_id='',charged_usd=NULL WHERE id='00000000000000000000000000000001'")
 	f.exec("UPDATE go_consumer_schema_version SET status='incomplete' WHERE id=1")
+	if _, err = attempt.InspectBoundHHRecovery(f.ctx, v, step, options); !errors.Is(err, consumercontrol.ErrState) {
+		t.Fatal("incomplete marker accepted for evidence", err)
+	}
 	if err = attempt.BindHHReservation(f.ctx, v, step, options); !errors.Is(err, consumercontrol.ErrState) {
 		t.Fatal("incomplete marker accepted", err)
 	}
 	f.exec("UPDATE go_consumer_schema_version SET status='complete' WHERE id=1")
 	f.exec("UPDATE go_consumer_control SET mode='draining',revision=4 WHERE id=1")
+	if state, err := attempt.InspectBoundHHRecovery(f.ctx, v, step, options); err != nil || state != apifyruns.RecoveryUnknown {
+		t.Fatal("original owner could not inspect in draining", state, err)
+	}
 	if err = attempt.BindHHReservation(f.ctx, v, step, options); !errors.Is(err, consumercontrol.ErrStale) {
 		t.Fatal("draining allowed binding", err)
 	}
