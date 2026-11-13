@@ -203,9 +203,31 @@ wait:
 	}
 	ticker.Stop()
 	deadline.Stop()
+	idleCheckFailed := false
+	if completed {
+		// Первый успешный launch повторно проверяет источники через секунду.
+		// После этого пустой pipeline должен пройти хотя бы один polling без run.
+		select {
+		case <-time.After(3 * time.Second):
+		case <-s.ctx.Done():
+			idleCheckFailed = true
+		}
+		before := s.count("SELECT COUNT(*) FROM scheduler_runs")
+		select {
+		case <-time.After(7 * time.Second):
+		case <-s.ctx.Done():
+			idleCheckFailed = true
+		}
+		if after := s.count("SELECT COUNT(*) FROM scheduler_runs"); after != before {
+			idleCheckFailed = true
+		}
+	}
 	stop()
 	if err := <-finished; !errors.Is(err, context.Canceled) {
 		t.Fatal("continuous worker did not stop", err)
+	}
+	if idleCheckFailed {
+		t.Fatal("idle profile check failed or created scheduler runs")
 	}
 	if !completed || p.Starts() != 1 || s.count("SELECT COUNT(*) FROM scheduler_runs WHERE `trigger`='automatic'") < 2 {
 		t.Fatal("continuous worker did not finish pipeline in separate cycles", completed, p.Starts())
