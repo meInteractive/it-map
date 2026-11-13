@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"itmap/internal/consumercontrol"
+	"itmap/internal/dbschema"
 )
 
 // Только одноразовая CI MariaDB, проверенная openSchedulerFixture; это не миграция.
@@ -29,7 +30,7 @@ func testConsumerGuard(t *testing.T, f *schedulerFixture) {
 	if err := guard(request); !errors.Is(err, consumercontrol.ErrStorage) {
 		t.Fatalf("missing control table must fail closed: %v", err)
 	}
-	f.exec(`CREATE TABLE go_consumer_control (id BIGINT NOT NULL PRIMARY KEY, generation VARCHAR(36) NOT NULL, revision BIGINT NOT NULL, mode VARCHAR(16) NOT NULL, owner_digest VARBINARY(32) NULL, lease_until BIGINT NOT NULL) ENGINE=InnoDB`)
+	f.exec(`CREATE TABLE go_consumer_control (id BIGINT NOT NULL PRIMARY KEY, generation VARCHAR(36) NOT NULL, revision BIGINT NOT NULL, mode VARCHAR(16) NOT NULL, owner_digest VARBINARY(32) NULL, lease_until BIGINT NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin`)
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
@@ -37,7 +38,108 @@ func testConsumerGuard(t *testing.T, f *schedulerFixture) {
 			t.Error("test control table cleanup failed")
 		}
 	})
+	t.Run("consumer_schema_metadata", func(t *testing.T) {
+		f := f.sub(t)
+		snapshot, err := dbschema.Inspect(f.ctx, f.db)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := dbschema.CheckConsumerOverlay(snapshot, dbschema.ConsumerOverlayVersion); err != nil {
+			t.Fatal("valid overlay rejected", err)
+		}
+		f.exec("ALTER TABLE go_consumer_control ADD COLUMN ci_unexpected BIGINT NULL")
+		snapshot, err = dbschema.Inspect(f.ctx, f.db)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := dbschema.CheckConsumerOverlay(snapshot, dbschema.ConsumerOverlayVersion); err == nil {
+			t.Fatal("unexpected column accepted")
+		}
+		f.exec("ALTER TABLE go_consumer_control DROP COLUMN ci_unexpected")
+	})
 	f.exec("INSERT INTO go_consumer_control(id,generation,revision,mode,owner_digest,lease_until) VALUES(1,?,1,'legacy',NULL,0)", f.repo.Generation)
+	t.Run("consumer_singleton_state", func(t *testing.T) {
+		f := f.sub(t)
+		check := func(generation string) error {
+			t.Helper()
+			tx, err := f.db.BeginTx(f.ctx, nil)
+			if err != nil {
+				return err
+			}
+			defer tx.Rollback()
+			return consumercontrol.GuardSingleton(f.ctx, tx, generation)
+		}
+		if err := check(f.repo.Generation); err != nil {
+			t.Fatal("valid singleton rejected", err)
+		}
+		held, err := f.db.BeginTx(f.ctx, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := consumercontrol.GuardSingleton(f.ctx, held, f.repo.Generation); err != nil {
+			held.Rollback()
+			t.Fatal(err)
+		}
+		_, contender := schedulerDB(t)
+		contender.SetMaxOpenConns(1)
+		var heldID, contenderID int64
+		if held.QueryRowContext(f.ctx, "SELECT CONNECTION_ID()").Scan(&heldID) != nil || contender.QueryRowContext(f.ctx, "SELECT CONNECTION_ID()").Scan(&contenderID) != nil || heldID == contenderID {
+			held.Rollback()
+			t.Fatal("two separate connections required")
+		}
+		blocked, cancel := context.WithTimeout(f.ctx, 150*time.Millisecond)
+		_, err = contender.ExecContext(blocked, "UPDATE app_runtime_generation SET generation=generation WHERE id=1")
+		cancel()
+		if !errors.Is(err, context.DeadlineExceeded) {
+			held.Rollback()
+			t.Fatal("generation lock not held", err)
+		}
+		if err := held.Rollback(); err != nil {
+			t.Fatal(err)
+		}
+		f.exec("INSERT INTO go_consumer_control(id,generation,revision,mode,owner_digest,lease_until) VALUES(2,?,1,'legacy',NULL,0)", f.repo.Generation)
+		if err := check(f.repo.Generation); !errors.Is(err, consumercontrol.ErrState) {
+			t.Fatal("extra row accepted", err)
+		}
+		f.exec("DELETE FROM go_consumer_control WHERE id=2")
+		f.exec("UPDATE go_consumer_control SET owner_digest=X'' WHERE id=1")
+		if err := check(f.repo.Generation); !errors.Is(err, consumercontrol.ErrState) {
+			t.Fatal("invalid digest accepted", err)
+		}
+		f.exec("UPDATE go_consumer_control SET owner_digest=NULL WHERE id=1")
+		f.exec("UPDATE go_consumer_control SET mode='worker' WHERE id=1")
+		if err := check(f.repo.Generation); !errors.Is(err, consumercontrol.ErrState) {
+			t.Fatal("worker without owner accepted", err)
+		}
+		f.exec("UPDATE go_consumer_control SET mode='legacy' WHERE id=1")
+		token, err := consumercontrol.NewToken()
+		if err != nil {
+			t.Fatal(err)
+		}
+		digest, err := token.Digest()
+		if err != nil {
+			t.Fatal(err)
+		}
+		f.exec("UPDATE go_consumer_control SET mode='worker',owner_digest=?,lease_until=? WHERE id=1", digest[:], schedulerClock(t, f.db)+60000)
+		if err := check(f.repo.Generation); err != nil {
+			t.Fatal("valid worker rejected", err)
+		}
+		f.exec("UPDATE go_consumer_control SET mode='draining',revision=2 WHERE id=1")
+		if err := check(f.repo.Generation); err != nil {
+			t.Fatal("valid draining rejected", err)
+		}
+		f.exec("UPDATE go_consumer_control SET mode='legacy',revision=1,owner_digest=NULL,lease_until=0 WHERE id=1")
+		other := "11111111-2222-4333-8444-555555555555"
+		if other == f.repo.Generation {
+			other = "11111111-2222-4333-8444-555555555556"
+		}
+		if err := check(other); !errors.Is(err, consumercontrol.ErrStale) {
+			t.Fatal("different generation accepted", err)
+		}
+		if err := check(f.repo.Generation); err != nil {
+			t.Fatal("valid singleton not restored", err)
+		}
+	})
 	if err := guard(request); err != nil {
 		t.Fatal("legacy guard", err)
 	}
