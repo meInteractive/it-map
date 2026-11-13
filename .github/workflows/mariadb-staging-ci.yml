@@ -1477,11 +1477,11 @@ jobs:
           set -euo pipefail
           result_file="$(mktemp)"
           trap 'rm -f "$result_file"' EXIT
-          go test -race -tags mariadb,schedulerwrites,schedulerbilling ./internal/storage -run '^TestMariaDB(SchedulerBilling(Source|Ownership)|ParserAIExecution|StoredTitleStage|RawSnapshotSource|ExtractionStageSource|LeafStageSource|CandidateHandoff)Disposable$' -count=1 -json | tee "$result_file"
+          go test -race -tags mariadb,schedulerwrites,schedulerbilling ./internal/storage -run '^TestMariaDB(SchedulerBilling(Source|Ownership)|HistoricalSchedulerEvidence|ParserAIExecution|StoredTitleStage|RawSnapshotSource|ExtractionStageSource|LeafStageSource|CandidateHandoff)Disposable$' -count=1 -json | tee "$result_file"
           python3 - "$result_file" <<'PYCODE'
           import json,sys
           events=[json.loads(line) for line in open(sys.argv[1],encoding='utf8')]
-          for target in ['TestMariaDBSchedulerBillingSourceDisposable','TestMariaDBSchedulerBillingOwnershipDisposable','TestMariaDBParserAIExecutionDisposable','TestMariaDBStoredTitleStageDisposable','TestMariaDBRawSnapshotSourceDisposable','TestMariaDBExtractionStageSourceDisposable','TestMariaDBLeafStageSourceDisposable','TestMariaDBCandidateHandoffDisposable']:
+          for target in ['TestMariaDBSchedulerBillingSourceDisposable','TestMariaDBSchedulerBillingOwnershipDisposable','TestMariaDBHistoricalSchedulerEvidenceDisposable','TestMariaDBParserAIExecutionDisposable','TestMariaDBStoredTitleStageDisposable','TestMariaDBRawSnapshotSourceDisposable','TestMariaDBExtractionStageSourceDisposable','TestMariaDBLeafStageSourceDisposable','TestMariaDBCandidateHandoffDisposable']:
               assert any(e.get('Test')==target and e.get('Action')=='pass' for e in events), f'required scheduler billing parent did not pass/run: {target}'
           for target in ['TestMariaDBSchedulerBillingOwnershipDisposable/bound_reservation_unknown_commit_preserves_reserve_and_rejects_replay','TestMariaDBSchedulerBillingOwnershipDisposable/bound_interruption_unknown_commit_preserves_reserve_and_rejects_replay']:
               assert any(e.get('Test')==target and e.get('Action')=='pass' for e in events), f'bound unknown-commit test did not pass/run: {target}'
