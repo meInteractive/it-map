@@ -552,3 +552,55 @@ func TestMariaDBContinuousWorkerBudgetCommitDisposable(t *testing.T) {
 		t.Fatal("worker failed to recover after unknown commit", p.Starts(), p.AICalls())
 	}
 }
+
+func TestMariaDBContinuousWorkerRelevanceBudgetDisposable(t *testing.T) {
+	s, p, worker := continuousWorkerFixture(t, false)
+	// Строим pipeline по одному заданию, пока не появится готовая relevance.
+	worker.ScheduleSources = true
+	worker.ContinueOnStageFailure = true
+	for i := 0; i < 12; i++ {
+		if s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='score_relevance' AND status='pending'") != 0 {
+			break
+		}
+		result, err := worker.Cycle(s.ctx, parser.WorkerOptions{Run: parser.RunOptions{RequestID: fmt.Sprintf("CI_RELEVANCE_BUDGET_%d", i), Trigger: "automatic"}, MaxJobs: 1, QueueProfile: "balanced"})
+		if err != nil || result.Run.Status != "completed" {
+			t.Fatal("pipeline setup failed", err, result.Run.Status)
+		}
+	}
+	if s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='score_relevance' AND status='pending'") != 1 || s.count("SELECT COUNT(*) FROM company_vacancy_user_state WHERE user_name='CI_OWNER' AND relevance IS NOT NULL") != 0 {
+		t.Fatal("relevance fixture missing")
+	}
+	s.exec(`UPDATE firecrawl_settings SET scheduler_json=JSON_SET(scheduler_json,'$.dayBudgetUsd',0,'$.monthBudgetUsd',0) WHERE id=1`)
+	previousCalls := p.AICalls()
+	runPipeline := func() {
+		ctx, cancel := context.WithCancel(s.ctx)
+		done := make(chan error, 1)
+		go func() {
+			done <- (workerengine.Engine{Worker: worker, OnResult: func(profile workerloop.ProfileName, _ workerloop.ProfileOutcome) {
+				if profile == workerloop.Pipeline {
+					cancel()
+				}
+			}}).Run(ctx)
+		}()
+		select {
+		case err := <-done:
+			if !errors.Is(err, context.Canceled) {
+				t.Fatal("worker did not stop", err)
+			}
+		case <-time.After(12 * time.Second):
+			cancel()
+			<-done
+			t.Fatal("relevance budget test timed out")
+		}
+	}
+	runPipeline()
+	if p.AICalls() != previousCalls || s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='score_relevance' AND status='pending' AND reason_code='budget' AND attempts=0") != 1 {
+		t.Fatal("relevance did not defer without a paid call", p.AICalls(), previousCalls)
+	}
+	s.exec(`UPDATE firecrawl_settings SET scheduler_json=JSON_SET(scheduler_json,'$.dayBudgetUsd',5,'$.monthBudgetUsd',5) WHERE id=1`)
+	s.exec("UPDATE scheduler_jobs SET run_after=0 WHERE type='score_relevance' AND status='pending' AND reason_code='budget'")
+	runPipeline()
+	if p.Starts() != 1 || p.AICalls() <= previousCalls || s.count("SELECT COUNT(*) FROM company_vacancy_user_state WHERE user_name='CI_OWNER' AND relevance=67") != 1 {
+		t.Fatal("relevance did not resume", p.Starts(), p.AICalls())
+	}
+}
