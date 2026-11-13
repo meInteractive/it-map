@@ -116,6 +116,7 @@ jobs:
           done <<< "$all_packages"
           go test -tags mariadb "${packages[@]}" -count=1 -v
           CGO_ENABLED=0 go build -trimpath -tags mariadb -o /tmp/itmap-mariadb ./cmd/itmap
+          CGO_ENABLED=0 go build -trimpath -tags mariadb -o /tmp/itmap-worker ./cmd/itmap-worker
       - name: Verify durable and concurrent receipt writes ONLY in disposable CI
         env:
           ITMAP_REQUIRE_MARIADB_INTEGRATION: '1'
