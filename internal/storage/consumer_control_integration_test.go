@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"itmap/internal/consumercontrol"
+	"itmap/internal/dbschema"
 )
 
 // Только одноразовая CI MariaDB, проверенная openSchedulerFixture; это не миграция.
@@ -29,13 +30,32 @@ func testConsumerGuard(t *testing.T, f *schedulerFixture) {
 	if err := guard(request); !errors.Is(err, consumercontrol.ErrStorage) {
 		t.Fatalf("missing control table must fail closed: %v", err)
 	}
-	f.exec(`CREATE TABLE go_consumer_control (id BIGINT NOT NULL PRIMARY KEY, generation VARCHAR(36) NOT NULL, revision BIGINT NOT NULL, mode VARCHAR(16) NOT NULL, owner_digest VARBINARY(32) NULL, lease_until BIGINT NOT NULL) ENGINE=InnoDB`)
+	f.exec(`CREATE TABLE go_consumer_control (id BIGINT NOT NULL PRIMARY KEY, generation VARCHAR(36) NOT NULL, revision BIGINT NOT NULL, mode VARCHAR(16) NOT NULL, owner_digest VARBINARY(32) NULL, lease_until BIGINT NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin`)
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		if _, err := f.db.ExecContext(ctx, "DROP TABLE go_consumer_control"); err != nil {
 			t.Error("test control table cleanup failed")
 		}
+	})
+	t.Run("consumer_schema_metadata", func(t *testing.T) {
+		f := f.sub(t)
+		snapshot, err := dbschema.Inspect(f.ctx, f.db)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := dbschema.CheckConsumerOverlay(snapshot, dbschema.ConsumerOverlayVersion); err != nil {
+			t.Fatal("valid overlay rejected", err)
+		}
+		f.exec("ALTER TABLE go_consumer_control ADD COLUMN ci_unexpected BIGINT NULL")
+		snapshot, err = dbschema.Inspect(f.ctx, f.db)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := dbschema.CheckConsumerOverlay(snapshot, dbschema.ConsumerOverlayVersion); err == nil {
+			t.Fatal("unexpected column accepted")
+		}
+		f.exec("ALTER TABLE go_consumer_control DROP COLUMN ci_unexpected")
 	})
 	f.exec("INSERT INTO go_consumer_control(id,generation,revision,mode,owner_digest,lease_until) VALUES(1,?,1,'legacy',NULL,0)", f.repo.Generation)
 	if err := guard(request); err != nil {
