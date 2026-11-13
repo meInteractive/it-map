@@ -631,10 +631,14 @@ jobs:
           set -euo pipefail
           result_file="$(mktemp)"
           trap 'rm -f "$result_file"' EXIT
-          go test -race -tags mariadb,v39restore,consumerevaluation ./internal/storage -run '^(TestMariaDBV39RestoreDisposable|TestMariaDBConsumerRestoreCandidateDisposable)$' -count=1 -json | tee "$result_file"
+          go test -race -tags mariadb,v39restore,consumerevaluation ./internal/storage -run '^(TestMariaDBV39RestoreDisposable|TestMariaDBConsumerRestoreCandidateDisposable|TestMariaDBConsumerMigrationEvaluationDisposable|TestMariaDBVersionedConsumerRoundtripDisposable)$' -count=1 -json | tee "$result_file"
           python3 - "$result_file" <<'PYCODE'
           import json,sys
           events=[json.loads(line) for line in open(sys.argv[1],encoding='utf8')]
+          target='TestMariaDBVersionedConsumerRoundtripDisposable'
+          assert any(e.get('Test')==target and e.get('Action')=='pass' for e in events), 'required versioned consumer roundtrip did not pass/run'
+          target='TestMariaDBConsumerMigrationEvaluationDisposable'
+          assert any(e.get('Test')==target and e.get('Action')=='pass' for e in events), 'required candidate migration test did not pass/run'
           target='TestMariaDBConsumerRestoreCandidateDisposable'
           assert any(e.get('Test')==target and e.get('Action')=='pass' for e in events), 'required candidate restore test did not pass/run'
           target='TestMariaDBV39RestoreDisposable'

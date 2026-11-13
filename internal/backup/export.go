@@ -276,11 +276,14 @@ func (r Repository) Export(ctx context.Context) (Download, error) {
 
 // candidateGuard используется только из экспериментального пути: он проверяет
 // schema и singleton под общей advisory-блокировкой до и после чтения данных.
-type candidateGuard func(context.Context, *sql.Tx) error
+type candidateGuard struct {
+	check     func(context.Context, *sql.Tx) error
+	versioned bool
+}
 
-func exportSnapshot(ctx context.Context, tx *sql.Tx, guard candidateGuard) (Download, error) {
+func exportSnapshot(ctx context.Context, tx *sql.Tx, guard *candidateGuard) (Download, error) {
 	if guard != nil {
-		if err := guard(ctx, tx); err != nil {
+		if err := guard.check(ctx, tx); err != nil {
 			return Download{}, err
 		}
 	}
@@ -290,6 +293,9 @@ func exportSnapshot(ctx context.Context, tx *sql.Tx, guard candidateGuard) (Down
 	}
 	if guard != nil {
 		delete(before, "go_consumer_control")
+		if guard.versioned {
+			delete(before, "go_consumer_schema_version")
+		}
 	}
 	trusted := v39.Trusted()
 	if err = validateInventory(before, trusted); err != nil {
@@ -398,10 +404,13 @@ func exportSnapshot(ctx context.Context, tx *sql.Tx, guard candidateGuard) (Down
 		return Download{}, err
 	}
 	if guard != nil {
-		if err = guard(ctx, tx); err != nil {
+		if err = guard.check(ctx, tx); err != nil {
 			return Download{}, err
 		}
 		delete(after, "go_consumer_control")
+		if guard.versioned {
+			delete(after, "go_consumer_schema_version")
+		}
 	}
 	if !reflect.DeepEqual(before, after) {
 		return Download{}, invalid("Структура базы изменилась во время экспорта. Повторите скачивание.")
