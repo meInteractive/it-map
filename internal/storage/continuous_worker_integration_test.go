@@ -3,8 +3,12 @@
 package storage
 
 import (
+	"bufio"
 	"context"
 	"errors"
+	"fmt"
+	"os"
+	"os/exec"
 	"strings"
 	"testing"
 	"time"
@@ -68,6 +72,101 @@ func continuousWorkerFixture(t *testing.T, loseAck bool) (*schedulerFixture, *st
 		t.Fatal(err)
 	}
 	return s, p, w
+}
+
+// Проверяется потеря процесса внутри synthetic POST без выполнения cleanup.
+func TestMariaDBContinuousWorkerCrashDisposable(t *testing.T) {
+	if os.Getenv("ITMAP_CONTINUOUS_CRASH_CHILD") == "1" {
+		ctx, db := schedulerDB(t)
+		p := &stagingmock.Providers{AfterStart: func(ctx context.Context) {
+			fmt.Println("CI_CONTINUOUS_POST_ACCEPTED")
+			<-ctx.Done()
+		}}
+		worker, err := stagingmock.Worker(parser.RunRepository{DB: db, Generation: os.Getenv("ITMAP_TEST_DISPOSABLE_GENERATION")}, "CI_SECRET", p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := (workerengine.Engine{Worker: worker}).Run(ctx); err != nil {
+			t.Fatal("child stopped before kill", err)
+		}
+		return
+	}
+	s, provider, worker := continuousWorkerFixture(t, false)
+	cmd := exec.Command(os.Args[0], "-test.run=^TestMariaDBContinuousWorkerCrashDisposable$")
+	cmd.Env = append(os.Environ(), "ITMAP_CONTINUOUS_CRASH_CHILD=1")
+	pipe, err := cmd.StdoutPipe()
+	if err != nil || cmd.Start() != nil {
+		t.Fatal("synthetic crash worker did not start")
+	}
+	finished := false
+	defer func() {
+		if !finished {
+			_ = cmd.Process.Kill()
+			_ = cmd.Wait()
+		}
+	}()
+	ready := make(chan bool, 1)
+	go func() {
+		scanner := bufio.NewScanner(pipe)
+		for scanner.Scan() {
+			if scanner.Text() == "CI_CONTINUOUS_POST_ACCEPTED" {
+				ready <- true
+				return
+			}
+		}
+		ready <- false
+	}()
+	select {
+	case ok := <-ready:
+		if !ok {
+			t.Fatal("child did not reach synthetic POST")
+		}
+	case <-time.After(12 * time.Second):
+		t.Fatal("child synthetic POST timed out")
+	}
+	if err := cmd.Process.Kill(); err != nil {
+		t.Fatal("cannot kill synthetic child", err)
+	}
+	if cmd.Wait() == nil {
+		t.Fatal("child unexpectedly exited normally")
+	}
+	finished = true
+	if s.count("SELECT COUNT(*) FROM apify_runs WHERE state='uncertain' AND run_id='' AND charged_usd IS NULL AND reserved_usd>0") != 1 || s.count("SELECT COUNT(*) FROM scheduler_runs WHERE status='running'") != 1 {
+		t.Fatal("crash did not retain unknown operation and active lease")
+	}
+	// Ускоряем истечение leases только в принадлежащей тесту пустой БД.
+	s.exec("UPDATE scheduler_runs SET lease_until=0 WHERE status='running'")
+	s.exec("UPDATE scheduler_jobs SET locked_until=0 WHERE status='running'")
+	ctx, cancel := context.WithCancel(s.ctx)
+	done := make(chan error, 1)
+	launch := make(chan struct{}, 1)
+	go func() {
+		done <- (workerengine.Engine{Worker: worker, OnResult: func(profile workerloop.ProfileName, _ workerloop.ProfileOutcome) {
+			if profile == workerloop.Launch {
+				select {
+				case launch <- struct{}{}:
+				default:
+				}
+			}
+		}}).Run(ctx)
+	}()
+	select {
+	case <-launch:
+	case <-time.After(12 * time.Second):
+		cancel()
+		<-done
+		t.Fatal("worker recovery timed out")
+	}
+	cancel()
+	if err := <-done; !errors.Is(err, context.Canceled) {
+		t.Fatal("restarted worker did not stop", err)
+	}
+	if provider.Starts() != 0 || s.count("SELECT COUNT(*) FROM apify_runs WHERE state='uncertain' AND run_id='' AND charged_usd IS NULL AND reserved_usd>0") != 1 || s.count("SELECT COUNT(*) FROM apify_runs") != 1 {
+		t.Fatal("recovery changed unknown operation")
+	}
+	if s.count("SELECT COUNT(*) FROM scheduler_runs WHERE status='interrupted'") != 1 || s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='scan_source' AND status='pending' AND reason_code='interrupted'") != 1 {
+		t.Fatal("recovery did not preserve interrupted work")
+	}
 }
 
 func TestMariaDBContinuousWorkerDisposable(t *testing.T) {
