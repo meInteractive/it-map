@@ -353,6 +353,8 @@ jobs:
           assert any(e.get('Test')==target and e.get('Action')=='pass' for e in events), 'consumer schema metadata test did not pass/run'
           target='TestMariaDBSchedulerRunsDisposable/consumer_guard_locks_and_fails_closed/consumer_singleton_state'
           assert any(e.get('Test')==target and e.get('Action')=='pass' for e in events), 'consumer singleton test did not pass/run'
+          target='TestMariaDBSchedulerRunsDisposable/consumer_guard_locks_and_fails_closed/consumer_candidate_preflight'
+          assert any(e.get('Test')==target and e.get('Action')=='pass' for e in events), 'consumer candidate preflight test did not pass/run'
           assert not any(e.get('Action')=='skip' for e in events), 'required scheduler ownership test skipped'
           print('PASS: scheduler ownership/rollback/crash target ran with zero skips')
           PYCODE

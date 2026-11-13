@@ -58,6 +58,9 @@ func testConsumerGuard(t *testing.T, f *schedulerFixture) {
 		f.exec("ALTER TABLE go_consumer_control DROP COLUMN ci_unexpected")
 	})
 	f.exec("INSERT INTO go_consumer_control(id,generation,revision,mode,owner_digest,lease_until) VALUES(1,?,1,'legacy',NULL,0)", f.repo.Generation)
+	t.Run("consumer_candidate_preflight", func(t *testing.T) {
+		testConsumerCandidatePreflight(t, f.sub(t))
+	})
 	t.Run("consumer_singleton_state", func(t *testing.T) {
 		f := f.sub(t)
 		check := func(generation string) error {
