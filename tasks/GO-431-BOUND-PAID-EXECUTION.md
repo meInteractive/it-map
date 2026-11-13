@@ -77,3 +77,17 @@ reconcile известного run и терминальную запись со
 POST/settlement. Durable связь с конкретным attempt, consumer fence, atomic
 reserve/marker и восстановление после crash остаются необходимыми; данные
 функции сами по себе не подключаются к worker runtime.
+
+## Кандидат долговечной связи HH
+
+Для отдельного испытания предложена таблица `go_hh_attempt_bindings`: она
+содержит только `operation_id`, generation, непрозрачный `operation_key`,
+`job_id`, `attempt_id`; единственность по operation ID и паре generation/key.
+Стоимость и резерв остаются в `apify_runs` и `scheduler_attempts`: эта таблица
+не является вторым денежным ledger. В ней нет payload, URL и credential.
+
+Точная metadata кандидата проверяется вместе со всей baseline и versioned
+consumer. Проверка schema не подтверждает строки, новый migration marker,
+backup/restore, допустимость POST или settlement. Обычные backup/restore пока
+отклоняют таблицу. До её применения нужны versioned migration и политика
+сохранения paid evidence при restore; производственная DDL не разрешена.
