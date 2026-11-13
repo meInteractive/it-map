@@ -500,3 +500,55 @@ func TestMariaDBContinuousWorkerBudgetPriorDisposable(t *testing.T) {
 		})
 	}
 }
+
+// Подтверждение COMMIT теряется после записи budget deferral в disposable БД.
+func TestMariaDBContinuousWorkerBudgetCommitDisposable(t *testing.T) {
+	s, p, worker := continuousWorkerFixture(t, false)
+	s.exec(`UPDATE firecrawl_settings SET scheduler_json=JSON_SET(scheduler_json,'$.dayBudgetUsd',0,'$.monthBudgetUsd',0) WHERE id=1`)
+	runUntil := func(w parser.Worker, target workerloop.ProfileName) {
+		ctx, cancel := context.WithCancel(s.ctx)
+		done := make(chan error, 1)
+		go func() {
+			done <- (workerengine.Engine{Worker: w, OnResult: func(profile workerloop.ProfileName, _ workerloop.ProfileOutcome) {
+				if profile == target {
+					cancel()
+				}
+			}}).Run(ctx)
+		}()
+		select {
+		case err := <-done:
+			if !errors.Is(err, context.Canceled) {
+				t.Fatal("worker did not stop", err)
+			}
+		case <-time.After(12 * time.Second):
+			cancel()
+			<-done
+			t.Fatal("commit recovery timed out")
+		}
+	}
+	runUntil(worker, workerloop.Launch)
+	if p.Starts() != 1 || p.AICalls() != 0 {
+		t.Fatal("fixture did not reach classification")
+	}
+	repo, fired := billingCommitRepository(t, s.repo.Generation, "UPDATE scheduler_jobs SET status=?,attempts=GREATEST")
+	faultWorker, err := stagingmock.Worker(repo, "CI_SECRET", p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	runUntil(faultWorker, workerloop.Pipeline)
+	if !fired.Load() || p.AICalls() != 0 || s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='classify_title' AND status='pending' AND reason_code='budget' AND attempts=0") != 1 {
+		t.Fatal("lost acknowledgement did not retain budget deferral", fired.Load(), p.AICalls())
+	}
+	if s.count("SELECT COUNT(*) FROM scheduler_runs WHERE status='running'") != 1 {
+		t.Fatal("uncertain commit unexpectedly released run")
+	}
+	// Только в тестовой БД ускоряем истечение владельца и пополнение бюджета.
+	s.exec("UPDATE scheduler_runs SET lease_until=0 WHERE status='running'")
+	s.exec("UPDATE scheduler_jobs SET locked_until=0 WHERE status='running'")
+	s.exec(`UPDATE firecrawl_settings SET scheduler_json=JSON_SET(scheduler_json,'$.dayBudgetUsd',5,'$.monthBudgetUsd',5) WHERE id=1`)
+	s.exec("UPDATE scheduler_jobs SET run_after=0 WHERE status='pending' AND reason_code='budget'")
+	runUntil(worker, workerloop.Pipeline)
+	if p.Starts() != 1 || p.AICalls() == 0 || s.count("SELECT COUNT(*) FROM company_vacancies WHERE company_name='CI Apify Runtime'") != 1 {
+		t.Fatal("worker failed to recover after unknown commit", p.Starts(), p.AICalls())
+	}
+}
