@@ -45,8 +45,18 @@ func (r Repository) InspectHistoricalEvidence(ctx context.Context, expectedGener
 			outcome = historicalStorageError(ctx)
 		}
 	}()
+	return InspectHistoricalEvidenceTx(ctx, tx, expectedGeneration)
+}
+
+// InspectHistoricalEvidenceTx удерживает generation lock до конца caller-owned
+// транзакции. Caller ограничивает её время и обязан откатить при ошибке.
+// Это read-only snapshot без разрешения на платные действия.
+func InspectHistoricalEvidenceTx(ctx context.Context, tx *sql.Tx, expectedGeneration string) (summary HistoricalEvidence, outcome error) {
+	if ctx == nil || tx == nil || !jobGenerationPattern.MatchString(expectedGeneration) {
+		return HistoricalEvidence{}, ErrStorage
+	}
 	var current string
-	if err = tx.QueryRowContext(ctx, "SELECT generation FROM app_runtime_generation WHERE id=1 FOR UPDATE").Scan(&current); err != nil {
+	if err := tx.QueryRowContext(ctx, "SELECT generation FROM app_runtime_generation WHERE id=1 FOR UPDATE").Scan(&current); err != nil {
 		return HistoricalEvidence{}, historicalStorageError(ctx)
 	}
 	if current != expectedGeneration {
