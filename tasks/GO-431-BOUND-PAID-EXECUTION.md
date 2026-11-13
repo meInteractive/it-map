@@ -61,3 +61,19 @@ interrupt; обрыв до/после commit reservation и marker; lost ACK pro
 платного вызова. Выполнить существующие billing/source и Apify idempotency
 проверки без skip в CI на точном SHA. Production SQL и платные вызовы в эту
 проверку не входят.
+
+## Кандидат identity и диагностики HH
+
+`apifyruns.HHJobKey` строит непрозрачный стабильный ключ generation/job/step,
+не включая меняющиеся run, lease owner и attempt. Его можно использовать как
+аргумент существующей HH operation identity, которая также привязывает source и
+конкретный input. Никакие URL, payload и credential в этом ключе не хранятся.
+Изменение generation после restore создаёт другую identity: до нового старта
+обязательна отдельная проверка старых paid evidence и draining.
+
+`ClassifyRecoveryEvidence` различает неизвестный исход без run ID, необходимость
+reconcile известного run и терминальную запись со стоимостью. Это описание
+строки, не доказательство её связи с attempt, подлинности ответа или разрешение
+POST/settlement. Durable связь с конкретным attempt, consumer fence, atomic
+reserve/marker и восстановление после crash остаются необходимыми; данные
+функции сами по себе не подключаются к worker runtime.
