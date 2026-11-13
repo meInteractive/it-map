@@ -19,6 +19,7 @@ import (
 )
 
 func TestMariaDBV39ExportDisposable(t *testing.T) {
+	t.Run("consumer_candidate_export", testConsumerCandidateExport)
 	t.Run("all rows columns long text settings and source acceptance through SELECT-only credentials", func(t *testing.T) {
 		f := openProfileSettingsFixture(t)
 		reader := exportReadOnlyPool(f)

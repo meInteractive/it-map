@@ -264,9 +264,32 @@ func (r Repository) Export(ctx context.Context) (Download, error) {
 		return Download{}, err
 	}
 	defer tx.Rollback()
+	output, err := exportSnapshot(ctx, tx, nil)
+	if err != nil {
+		return Download{}, err
+	}
+	if err = tx.Commit(); err != nil {
+		return Download{}, err
+	}
+	return output, nil
+}
+
+// candidateGuard используется только из экспериментального пути: он проверяет
+// schema и singleton под общей advisory-блокировкой до и после чтения данных.
+type candidateGuard func(context.Context, *sql.Tx) error
+
+func exportSnapshot(ctx context.Context, tx *sql.Tx, guard candidateGuard) (Download, error) {
+	if guard != nil {
+		if err := guard(ctx, tx); err != nil {
+			return Download{}, err
+		}
+	}
 	before, err := inventory(ctx, tx)
 	if err != nil {
 		return Download{}, err
+	}
+	if guard != nil {
+		delete(before, "go_consumer_control")
 	}
 	trusted := v39.Trusted()
 	if err = validateInventory(before, trusted); err != nil {
@@ -374,6 +397,12 @@ func (r Repository) Export(ctx context.Context) (Download, error) {
 	if err != nil {
 		return Download{}, err
 	}
+	if guard != nil {
+		if err = guard(ctx, tx); err != nil {
+			return Download{}, err
+		}
+		delete(after, "go_consumer_control")
+	}
 	if !reflect.DeepEqual(before, after) {
 		return Download{}, invalid("Структура базы изменилась во время экспорта. Повторите скачивание.")
 	}
@@ -420,9 +449,6 @@ func (r Repository) Export(ctx context.Context) (Download, error) {
 	}
 	output, err := EncodeV39(encoded.Bytes())
 	if err != nil {
-		return Download{}, err
-	}
-	if err = tx.Commit(); err != nil {
 		return Download{}, err
 	}
 	return Download{Bytes: output, CreatedAt: now}, nil
