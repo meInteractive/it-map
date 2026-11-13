@@ -30,10 +30,24 @@ func discard(conn *sql.Conn) { _ = conn.Raw(func(any) error { return driver.ErrB
 
 var generationPattern = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
 
+type schemaKind uint8
+
+const (
+	baselineSchema schemaKind = iota
+	candidateSchema
+	versionedSchema
+)
+
 // CheckBaseline диагностирует исходную схему и generation под блокировками.
 // Это не доказательство migration marker или разрешение миграции и запуска.
 func CheckBaseline(ctx context.Context, db *sql.DB, expectedGeneration string) error {
-	return check(ctx, db, expectedGeneration, false)
+	return check(ctx, db, expectedGeneration, baselineSchema)
+}
+
+// CheckVersionedCandidate диагностирует полную схему с marker и singleton под
+// advisory и row locks. Результат не разрешает миграцию, backup или worker.
+func CheckVersionedCandidate(ctx context.Context, db *sql.DB, expectedGeneration string) error {
+	return check(ctx, db, expectedGeneration, versionedSchema)
 }
 
 // CheckCandidate читает метаданные и singleton до и после row lock на одной
@@ -44,10 +58,10 @@ func CheckBaseline(ctx context.Context, db *sql.DB, expectedGeneration string) e
 // Нет DDL, DML, создания строки или автоматического восстановления. В runtime
 // и production-командах метод не подключён.
 func CheckCandidate(ctx context.Context, db *sql.DB, expectedGeneration string) (result error) {
-	return check(ctx, db, expectedGeneration, true)
+	return check(ctx, db, expectedGeneration, candidateSchema)
 }
 
-func check(ctx context.Context, db *sql.DB, expectedGeneration string, candidate bool) (result error) {
+func check(ctx context.Context, db *sql.DB, expectedGeneration string, schema schemaKind) (result error) {
 	if ctx == nil || db == nil || !generationPattern.MatchString(expectedGeneration) {
 		return ErrInput
 	}
@@ -126,9 +140,12 @@ func check(ctx context.Context, db *sql.DB, expectedGeneration string, candidate
 		if err != nil {
 			return ErrStorage
 		}
-		if candidate {
+		switch schema {
+		case candidateSchema:
 			err = dbschema.CheckConsumerOverlay(snapshot, dbschema.ConsumerOverlayVersion)
-		} else {
+		case versionedSchema:
+			err = dbschema.CheckVersionedConsumerOverlay(snapshot, dbschema.ConsumerSchemaVersion)
+		default:
 			err = dbschema.CheckFull(snapshot)
 		}
 		if err != nil {
@@ -140,7 +157,10 @@ func check(ctx context.Context, db *sql.DB, expectedGeneration string, candidate
 		return err
 	}
 	guard := func() error {
-		if candidate {
+		if schema == versionedSchema {
+			return consumercontrol.GuardVersionedSingleton(ctx, tx, expectedGeneration)
+		}
+		if schema == candidateSchema {
 			return consumercontrol.GuardSingleton(ctx, tx, expectedGeneration)
 		}
 		var actual string

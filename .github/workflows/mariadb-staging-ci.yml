@@ -357,6 +357,8 @@ jobs:
           assert any(e.get('Test')==target and e.get('Action')=='pass' for e in events), 'consumer baseline preflight test did not pass/run'
           target='TestMariaDBSchedulerRunsDisposable/consumer_guard_locks_and_fails_closed/consumer_preflight_session_cleanup'
           assert any(e.get('Test')==target and e.get('Action')=='pass' for e in events), 'consumer session cleanup test did not pass/run'
+          target='TestMariaDBSchedulerRunsDisposable/consumer_guard_locks_and_fails_closed/consumer_version_evidence'
+          assert any(e.get('Test')==target and e.get('Action')=='pass' for e in events), 'consumer version evidence test did not pass/run'
           target='TestMariaDBSchedulerRunsDisposable/consumer_guard_locks_and_fails_closed/consumer_restore_reset'
           assert any(e.get('Test')==target and e.get('Action')=='pass' for e in events), 'consumer restore reset test did not pass/run'
           target='TestMariaDBSchedulerRunsDisposable/consumer_guard_locks_and_fails_closed/consumer_candidate_preflight'
