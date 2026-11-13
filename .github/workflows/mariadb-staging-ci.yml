@@ -381,7 +381,7 @@ jobs:
           python3 - "$result_file" <<'PYCODE'
           import json,sys
           events=[json.loads(line) for line in open(sys.argv[1],encoding='utf8')]
-          targets=['TestMariaDBV39ExportDisposable','TestMariaDBV39ExportHTTPDisposable']
+          targets=['TestMariaDBV39ExportDisposable','TestMariaDBV39ExportHTTPDisposable','TestMariaDBV39ExportDisposable/consumer_candidate_export']
           for target in targets:
               assert any(e.get('Test')==target and e.get('Action')=='pass' for e in events), f'required v39 export test did not pass/run: {target}'
           assert not any(e.get('Action')=='skip' for e in events), 'required v39 export test skipped'
