@@ -77,3 +77,12 @@ reconcile известного run и терминальную запись со
 POST/settlement. Durable связь с конкретным attempt, consumer fence, atomic
 reserve/marker и восстановление после crash остаются необходимыми; данные
 функции сами по себе не подключаются к worker runtime.
+
+## Диагностика evidence прежних generation
+
+`apifyruns.InspectHistoricalEvidence` под блокировкой текущей generation
+возвращает ограниченный агрегат строк прошлых generation: неизвестный исход,
+известный run для reconcile и терминальная строка со стоимостью. Некорректные
+записи и превышение лимита отклоняются без частичного результата. Снимок не
+читает scheduler ledger или архивы и не доказывает полноту истории: нулевые
+счётчики не разрешают POST или снятие draining. Метод не подключён к runtime.
