@@ -62,6 +62,22 @@ func TestMariaDBVersionedConsumerRoundtripDisposable(t *testing.T) {
 		t.Fatal("restore accepted incomplete marker")
 	}
 	f.exec("UPDATE go_consumer_schema_version SET status='complete'")
+	f.exec("UPDATE go_consumer_schema_version SET version=2")
+	if _, err = repo.ExportVersionedConsumerForEvaluation(f.ctx, oldGeneration); err == nil {
+		t.Fatal("export accepted unknown marker version")
+	}
+	if _, err = repo.RestoreVersionedConsumerForEvaluation(f.ctx, f.body); err == nil {
+		t.Fatal("restore accepted unknown marker version")
+	}
+	f.exec("UPDATE go_consumer_schema_version SET version=1")
+	f.exec("ALTER TABLE go_consumer_schema_version ADD COLUMN ci_unknown BIGINT NULL")
+	if _, err = repo.ExportVersionedConsumerForEvaluation(f.ctx, oldGeneration); err == nil {
+		t.Fatal("export accepted unknown marker column")
+	}
+	if _, err = repo.RestoreVersionedConsumerForEvaluation(f.ctx, f.body); err == nil {
+		t.Fatal("restore accepted unknown marker column")
+	}
+	f.exec("ALTER TABLE go_consumer_schema_version DROP COLUMN ci_unknown")
 	before, err := repo.ExportVersionedConsumerForEvaluation(f.ctx, oldGeneration)
 	if err != nil {
 		t.Fatal("versioned export failed", err)
@@ -99,6 +115,12 @@ func TestMariaDBVersionedConsumerRoundtripDisposable(t *testing.T) {
 	}
 	if err = consumerpreflight.CheckVersionedCandidate(f.ctx, f.db, result.Generation); err != nil {
 		t.Fatal("restored versioned schema rejected", err)
+	}
+	if err = consumermigration.InitializeForEvaluation(f.ctx, f.db); err != nil {
+		t.Fatal("migration retry after restore rejected", err)
+	}
+	if f.count("SELECT COUNT(*) FROM go_consumer_control WHERE revision=1 AND mode='draining' AND owner_digest IS NULL AND lease_until=0") != 1 {
+		t.Fatal("migration retry revived restored consumer")
 	}
 	tx, err := f.db.BeginTx(f.ctx, nil)
 	if err != nil {
