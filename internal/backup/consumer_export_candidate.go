@@ -21,6 +21,17 @@ import (
 // протокола, а не произвольный DDL. Migration marker и совместимость restore
 // здесь не подтверждаются: результат не разрешает миграцию или запуск worker.
 func (r Repository) ExportConsumerCandidateForEvaluation(ctx context.Context, generation string) (result Download, outcome error) {
+	return r.exportConsumerForEvaluation(ctx, generation, false)
+}
+
+// ExportVersionedConsumerForEvaluation дополнительно проверяет точный marker.
+// Этот экспериментальный путь не подключён к API и не подтверждает остановку
+// старых процессов или готовность production restore.
+func (r Repository) ExportVersionedConsumerForEvaluation(ctx context.Context, generation string) (Download, error) {
+	return r.exportConsumerForEvaluation(ctx, generation, true)
+}
+
+func (r Repository) exportConsumerForEvaluation(ctx context.Context, generation string, versioned bool) (result Download, outcome error) {
 	if ctx == nil || r.DB == nil || generation == "" {
 		return Download{}, errors.New("consumer export input invalid")
 	}
@@ -94,15 +105,25 @@ func (r Repository) ExportConsumerCandidateForEvaluation(ctx context.Context, ge
 		if err != nil {
 			return errors.New("consumer export metadata unavailable")
 		}
-		if err = dbschema.CheckConsumerOverlay(snapshot, dbschema.ConsumerOverlayVersion); err != nil {
+		if versioned {
+			err = dbschema.CheckVersionedConsumerOverlay(snapshot, dbschema.ConsumerSchemaVersion)
+		} else {
+			err = dbschema.CheckConsumerOverlay(snapshot, dbschema.ConsumerOverlayVersion)
+		}
+		if err != nil {
 			return errors.New("consumer export schema incompatible")
 		}
-		if err = consumercontrol.GuardSingleton(ctx, tx, generation); err != nil {
+		if versioned {
+			err = consumercontrol.GuardVersionedSingleton(ctx, tx, generation)
+		} else {
+			err = consumercontrol.GuardSingleton(ctx, tx, generation)
+		}
+		if err != nil {
 			return errors.New("consumer export singleton incompatible")
 		}
 		return nil
 	}
-	result, err = exportSnapshot(ctx, tx, guard)
+	result, err = exportSnapshot(ctx, tx, &candidateGuard{check: guard, versioned: versioned})
 	if err != nil {
 		return Download{}, err
 	}
