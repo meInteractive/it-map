@@ -44,6 +44,29 @@ func (e Engine) Run(ctx context.Context) error {
 }
 
 func (e Engine) cycle(ctx context.Context, profile workerloop.ProfileName) (bool, error) {
+	// Launch также планирует источники и восстанавливает leases, поэтому его
+	// нельзя пропускать только из-за отсутствия готового задания. Остальные
+	// профили избегают пустого run; снимок не заменяет атомарный claim.
+	if profile != workerloop.Launch {
+		source := "hh"
+		options := parser.ClaimOptions{SourceID: &source, VerifiedHHOnly: true}
+		switch profile {
+		case workerloop.Reconcile:
+			options.Types = []string{"scan_source"}
+			options.HHScanPhase = "reconcile"
+		case workerloop.Pipeline:
+			options.Types = []string{"classify_title", "fetch_full_text", "extract_vacancy", "assign_roles", "import_vacancy", "score_relevance"}
+		default:
+			return false, ErrCycle
+		}
+		ready, err := e.Worker.Runs.HasEligibleJob(ctx, options)
+		if err != nil {
+			return false, ErrCycle
+		}
+		if !ready {
+			return false, nil
+		}
+	}
 	var raw [16]byte
 	if _, err := rand.Read(raw[:]); err != nil {
 		return false, ErrCycle
