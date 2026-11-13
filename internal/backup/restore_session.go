@@ -198,21 +198,38 @@ func (r Repository) openRestorePlan(ctx context.Context, plan *RestorePlan) (_ *
 		}
 	}()
 	var database string
-	var transaction int
-	if err = conn.QueryRowContext(ctx, `SELECT DATABASE(),@@in_transaction`).Scan(&database, &transaction); err != nil {
-		return nil, err
+	var transaction, autocommit int
+	if err = conn.QueryRowContext(ctx, `SELECT DATABASE(),@@in_transaction,@@autocommit`).Scan(&database, &transaction, &autocommit); err != nil {
+		discardRestoreConnection(conn)
+		return nil, errors.New("cannot inspect restore session")
 	}
-	if database == "" || transaction != 0 {
-		return nil, errors.New("restore preflight requires an idle connection")
+	if database == "" || transaction != 0 || autocommit != 1 {
+		discardRestoreConnection(conn)
+		return nil, errors.New("restore preflight requires an idle autocommit connection")
 	}
 	hash := sha256.Sum256([]byte(database))
 	s.lock = "itmap.restore.v39:" + hex.EncodeToString(hash[:16])
+	var connectionID int64
+	var owner sql.NullInt64
+	if err = conn.QueryRowContext(ctx, `SELECT CONNECTION_ID(), IS_USED_LOCK(?)`, s.lock).Scan(&connectionID, &owner); err != nil {
+		discardRestoreConnection(conn)
+		return nil, errors.New("cannot inspect restore ownership")
+	}
+	if owner.Valid && owner.Int64 == connectionID {
+		discardRestoreConnection(conn)
+		return nil, errors.New("restore connection already owns lock")
+	}
 	var claimed sql.NullInt64
 	if err = conn.QueryRowContext(ctx, `SELECT GET_LOCK(?,0)`, s.lock).Scan(&claimed); err != nil {
-		return nil, err
+		discardRestoreConnection(conn)
+		return nil, errors.New("cannot acquire restore ownership")
+	}
+	if claimed.Valid && claimed.Int64 == 0 {
+		return nil, ErrRestoreBusy
 	}
 	if !claimed.Valid || claimed.Int64 != 1 {
-		return nil, ErrRestoreBusy
+		discardRestoreConnection(conn)
+		return nil, errors.New("invalid restore ownership response")
 	}
 	s.owned = true
 	if _, err = completeRestoreInventory(ctx, conn); err != nil {
