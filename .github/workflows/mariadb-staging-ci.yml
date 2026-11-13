@@ -347,6 +347,8 @@ jobs:
           events=[json.loads(line) for line in open(sys.argv[1],encoding='utf8')]
           target='TestMariaDBSchedulerRunsDisposable'
           assert any(e.get('Test')==target and e.get('Action')=='pass' for e in events), 'required scheduler ownership test did not pass/run'
+          target='TestMariaDBSchedulerRunsDisposable/consumer_guard_locks_and_fails_closed/bound_hh_evidence'
+          assert any(e.get('Test')==target and e.get('Action')=='pass' for e in events), 'bound HH evidence test did not pass/run'
           target='TestMariaDBSchedulerRunsDisposable/consumer_guard_locks_and_fails_closed/bound_reservation_interrupt_race'
           assert any(e.get('Test')==target and e.get('Action')=='pass' for e in events), 'bound reserve/interrupt race did not pass/run'
           target='TestMariaDBSchedulerRunsDisposable/consumer_guard_locks_and_fails_closed/consumer_schema_metadata'
