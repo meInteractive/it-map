@@ -69,6 +69,12 @@ func newProfilePlan(profiles []Profile) (*profilePlan, error) {
 	return p, nil
 }
 
+// ValidateProfiles проверяет параметры до открытия соединений и запуска шагов.
+func ValidateProfiles(profiles []Profile) error {
+	_, err := newProfilePlan(profiles)
+	return err
+}
+
 // profileJitter не сокращает ожидание и не превышает заданный предел.
 func profileJitter(delay, limit time.Duration) time.Duration {
 	spread := delay / 4

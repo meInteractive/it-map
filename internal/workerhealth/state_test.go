@@ -66,6 +66,37 @@ func TestStateRejectsInvalidFreshnessAndClockRollback(t *testing.T) {
 	}
 }
 
+func TestWorkFailureAndTimeoutPreventReadiness(t *testing.T) {
+	s, err := New(time.Minute, time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.Progress()
+	s.DatabaseCheck(true)
+	s.WorkResult(false, false)
+	if got := s.Snapshot(); !got.Live || got.Ready || got.Reason != ReasonWorkFailed {
+		t.Fatal(got)
+	}
+	s.WorkResult(true, true)
+	if got := s.Snapshot(); got.Ready || got.Reason != ReasonWorkTimeout {
+		t.Fatal(got)
+	}
+	s.DatabaseCheck(false)
+	if got := s.Snapshot(); got.Reason != ReasonDatabaseUnavailable {
+		t.Fatal(got)
+	}
+	s.DatabaseCheck(true)
+	s.WorkResult(true, false)
+	if got := s.Snapshot(); !got.Ready || got.Reason != ReasonReady {
+		t.Fatal(got)
+	}
+	s.Stop()
+	s.WorkResult(false, true)
+	if got := s.Snapshot(); got.Reason != ReasonStopped {
+		t.Fatal(got)
+	}
+}
+
 func TestConcurrentStateContainsOnlyFixedCodes(t *testing.T) {
 	s, err := New(time.Minute, time.Minute)
 	if err != nil {

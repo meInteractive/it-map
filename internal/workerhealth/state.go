@@ -18,6 +18,8 @@ const (
 	ReasonDatabaseUnchecked   Reason = "database_unchecked"
 	ReasonDatabaseStale       Reason = "database_stale"
 	ReasonDatabaseUnavailable Reason = "database_unavailable"
+	ReasonWorkFailed          Reason = "work_failed"
+	ReasonWorkTimeout         Reason = "work_timeout"
 )
 
 // Snapshot — только сведения о прогрессе и последней проверке БД, без ошибок и данных очереди.
@@ -32,8 +34,37 @@ type State struct {
 	mu                             sync.Mutex
 	maxProgressAge, maxDatabaseAge time.Duration
 	progressAt, databaseAt         time.Time
-	databaseOK, stopped            bool
+	databaseOK, started, stopped   bool
+	workFailure                    Reason
 	now                            func() time.Time
+}
+
+// StartOnce исключает повторное использование состояния для второго локального
+// supervisor. Это не межпроцессный lock и не заменяет consumer fence.
+func (s *State) StartOnce() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.started || s.stopped {
+		return false
+	}
+	s.started = true
+	return true
+}
+
+// WorkResult фиксирует только ограниченный исход, без текста ошибок.
+// Он не заменяет проверку БД и не подтверждает внешние операции.
+func (s *State) WorkResult(ok, timeout bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.stopped {
+		return
+	}
+	s.workFailure = ""
+	if timeout {
+		s.workFailure = ReasonWorkTimeout
+	} else if !ok {
+		s.workFailure = ReasonWorkFailed
+	}
 }
 
 // New создаёт состояние, изначально не готовое к работе.
@@ -100,6 +131,9 @@ func (s *State) Snapshot() Snapshot {
 	}
 	if !s.databaseOK {
 		return Snapshot{Live: true, Reason: ReasonDatabaseUnavailable}
+	}
+	if s.workFailure != "" {
+		return Snapshot{Live: true, Reason: s.workFailure}
 	}
 	return Snapshot{Live: true, Ready: true, Reason: ReasonReady}
 }
