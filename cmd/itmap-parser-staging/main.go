@@ -7,6 +7,8 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"itmap/internal/auth"
@@ -15,6 +17,8 @@ import (
 	"itmap/internal/parser/stagingmock"
 	"itmap/internal/storage"
 	"itmap/internal/vacancies"
+	"itmap/internal/workerengine"
+	"itmap/internal/workerloop"
 )
 
 type settings struct{ environment, enabled, host, port, database, user, password, secret, sitePassword string }
@@ -44,6 +48,27 @@ func run() error {
 		}
 		slog.Info("staging mock synthetic data initialized")
 		return nil
+	}
+	if len(os.Args) == 2 && os.Args[1] == "worker" {
+		var generation string
+		if err := db.QueryRowContext(ctx, "SELECT generation FROM app_runtime_generation WHERE id=1").Scan(&generation); err != nil {
+			return errors.New("staging mock: поколение базы недоступно")
+		}
+		worker, err := stagingmock.Worker(parser.RunRepository{DB: db, Generation: generation}, s.secret, &stagingmock.Providers{})
+		if err != nil {
+			return errors.New("staging mock: worker недоступен")
+		}
+		workerCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer stop()
+		err = (workerengine.Engine{Worker: worker, OnResult: func(profile workerloop.ProfileName, outcome workerloop.ProfileOutcome) {
+			if outcome == workerloop.ProfileFailed || outcome == workerloop.ProfileTimeout {
+				slog.Warn("staging mock worker step failed", "profile", profile, "outcome", outcome)
+			}
+		}}).Run(workerCtx)
+		if errors.Is(err, context.Canceled) {
+			return nil
+		}
+		return err
 	}
 	if len(os.Args) != 1 {
 		return errors.New("staging mock: неизвестная команда")
