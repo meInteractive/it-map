@@ -6,6 +6,8 @@ import (
 	"database/sql"
 	"errors"
 	"log/slog"
+	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -26,6 +28,7 @@ var errStartup = errors.New("worker staging startup failed")
 type settings struct {
 	database                    storage.Settings
 	password, secret, openAIKey string
+	health                      bool
 }
 
 // load проверяет все допуски до открытия соединения. Значения учётных данных
@@ -40,8 +43,11 @@ func load(getenv func(string) string) (settings, error) {
 		getenv("DB_PASSWORD") == "" || len(getenv("SESSION_SECRET")) < 32 {
 		return settings{}, errConfig
 	}
+	if value := getenv("ITMAP_WORKER_HEALTH_ENABLED"); value != "" && value != "0" && value != "1" {
+		return settings{}, errConfig
+	}
 	return settings{database: storage.Settings{Host: "127.0.0.1", Port: "3306", Database: "itmap_worker_staging", User: "itmap_worker_app"},
-		password: getenv("DB_PASSWORD"), secret: getenv("SESSION_SECRET"), openAIKey: getenv("OPENAI_API_KEY")}, nil
+		password: getenv("DB_PASSWORD"), secret: getenv("SESSION_SECRET"), openAIKey: getenv("OPENAI_API_KEY"), health: getenv("ITMAP_WORKER_HEALTH_ENABLED") == "1"}, nil
 }
 
 type opener func(context.Context, storage.Settings, string) (*sql.DB, error)
@@ -102,11 +108,40 @@ func runWorker(ctx context.Context, db *sql.DB, s settings) error {
 	if err != nil {
 		return errStartup
 	}
-	return (workerengine.Engine{Worker: w, OnResult: func(profile workerloop.ProfileName, outcome workerloop.ProfileOutcome) {
+	monitor := workerengine.NewMonitor(4 * time.Minute)
+	defer monitor.Stop()
+	workerCtx, stop := context.WithCancel(ctx)
+	defer stop()
+	var server *http.Server
+	var serverDone chan error
+	if s.health {
+		listener, err := net.Listen("tcp", "127.0.0.1:18082")
+		if err != nil {
+			return errStartup
+		}
+		server = &http.Server{Handler: monitor.Handler(), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 5 * time.Second, WriteTimeout: 5 * time.Second, IdleTimeout: 15 * time.Second}
+		serverDone = make(chan error, 1)
+		go func() {
+			err := server.Serve(listener)
+			serverDone <- err
+			if !errors.Is(err, http.ErrServerClosed) {
+				stop()
+			}
+		}()
+	}
+	err = (workerengine.Engine{Worker: w, OnResult: func(profile workerloop.ProfileName, outcome workerloop.ProfileOutcome) {
+		monitor.Record(profile, outcome)
 		if outcome == workerloop.ProfileFailed || outcome == workerloop.ProfileTimeout {
 			slog.Warn("worker step failed", "profile", profile, "outcome", outcome)
 		}
-	}}).Run(ctx)
+	}}).Run(workerCtx)
+	if server != nil {
+		_ = server.Close()
+		if serveErr := <-serverDone; !errors.Is(serveErr, http.ErrServerClosed) {
+			return errStartup
+		}
+	}
+	return err
 }
 
 func main() {
