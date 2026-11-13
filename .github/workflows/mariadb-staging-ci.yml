@@ -627,10 +627,12 @@ jobs:
           set -euo pipefail
           result_file="$(mktemp)"
           trap 'rm -f "$result_file"' EXIT
-          go test -race -tags mariadb,v39restore ./internal/storage -run '^TestMariaDBV39RestoreDisposable$' -count=1 -json | tee "$result_file"
+          go test -race -tags mariadb,v39restore,consumerevaluation ./internal/storage -run '^(TestMariaDBV39RestoreDisposable|TestMariaDBConsumerRestoreCandidateDisposable)$' -count=1 -json | tee "$result_file"
           python3 - "$result_file" <<'PYCODE'
           import json,sys
           events=[json.loads(line) for line in open(sys.argv[1],encoding='utf8')]
+          target='TestMariaDBConsumerRestoreCandidateDisposable'
+          assert any(e.get('Test')==target and e.get('Action')=='pass' for e in events), 'required candidate restore test did not pass/run'
           target='TestMariaDBV39RestoreDisposable'
           assert any(e.get('Test')==target and e.get('Action')=='pass' for e in events), 'required restore target did not pass/run'
           assert not any(e.get('Action')=='skip' for e in events), 'required restore test skipped'
