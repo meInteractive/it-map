@@ -45,6 +45,21 @@ func TestLostAcknowledgementOccursAfterSyntheticStart(t *testing.T) {
 	}
 }
 
+func TestAsyncActorFinishesOnReconcile(t *testing.T) {
+	p := &Providers{Async: true}
+	first, err := p.Start(context.Background(), SourceURL, apify.HHOptions{})
+	if err != nil || first.Status != "RUNNING" || p.Starts() != 1 {
+		t.Fatal("асинхронный Actor не запущен", err)
+	}
+	if _, err = p.Run(context.Background(), "unexpected"); err == nil || p.Polls() != 0 {
+		t.Fatal("чужой run принят")
+	}
+	done, err := p.Run(context.Background(), first.ID)
+	if err != nil || done.Status != "SUCCEEDED" || p.Polls() != 1 || p.Starts() != 1 {
+		t.Fatal("асинхронный Actor не завершён", err)
+	}
+}
+
 func TestSyntheticAIRejectsUnknownRequests(t *testing.T) {
 	p := &Providers{}
 	ctx := context.Background()

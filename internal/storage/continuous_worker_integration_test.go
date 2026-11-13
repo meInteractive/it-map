@@ -264,3 +264,66 @@ func TestMariaDBContinuousWorkerLostACKDisposable(t *testing.T) {
 		t.Fatal("restart repeated POST or lost reserve", p.Starts())
 	}
 }
+
+// Незавершённый Actor продолжается отдельным reconcile без нового POST.
+func TestMariaDBContinuousWorkerReconcileDisposable(t *testing.T) {
+	s, p, worker := continuousWorkerFixture(t, false)
+	p.Async = true
+	ctx, cancel := context.WithCancel(s.ctx)
+	firstDone := make(chan error, 1)
+	launched := make(chan struct{}, 1)
+	go func() {
+		firstDone <- (workerengine.Engine{Worker: worker, OnResult: func(profile workerloop.ProfileName, _ workerloop.ProfileOutcome) {
+			if profile == workerloop.Launch {
+				select {
+				case launched <- struct{}{}:
+				default:
+				}
+				cancel()
+			}
+		}}).Run(ctx)
+	}()
+	select {
+	case <-launched:
+	case <-time.After(12 * time.Second):
+		cancel()
+		<-firstDone
+		t.Fatal("initial launch timed out")
+	}
+	cancel()
+	if err := <-firstDone; !errors.Is(err, context.Canceled) {
+		t.Fatal("first worker did not stop", err)
+	}
+	if p.Starts() != 1 || p.Polls() != 0 || s.count("SELECT COUNT(*) FROM apify_runs WHERE state='running' AND run_id='MockRun0'") != 1 {
+		t.Fatal("synthetic actor did not remain running", p.Starts(), p.Polls())
+	}
+	// Ускоряем наступление срока только в disposable БД.
+	s.exec("UPDATE scheduler_jobs SET run_after=0 WHERE type='scan_source' AND status='pending'")
+	ctx, cancel = context.WithCancel(s.ctx)
+	done := make(chan error, 1)
+	go func() { done <- (workerengine.Engine{Worker: worker}).Run(ctx) }()
+	deadline := time.NewTimer(12 * time.Second)
+	ticker := time.NewTicker(100 * time.Millisecond)
+	completed := false
+wait:
+	for {
+		select {
+		case <-ticker.C:
+			if s.count("SELECT COUNT(*) FROM company_vacancy_user_state WHERE user_name='CI_OWNER' AND relevance=67") == 1 {
+				completed = true
+				break wait
+			}
+		case <-deadline.C:
+			break wait
+		}
+	}
+	ticker.Stop()
+	deadline.Stop()
+	cancel()
+	if err := <-done; !errors.Is(err, context.Canceled) {
+		t.Fatal("second worker did not stop", err)
+	}
+	if !completed || p.Starts() != 1 || p.Polls() < 1 || s.count("SELECT COUNT(*) FROM apify_runs WHERE state='succeeded' AND charged_usd IS NOT NULL") != 1 {
+		t.Fatal("reconcile did not finish without another POST", completed, p.Starts(), p.Polls())
+	}
+}
