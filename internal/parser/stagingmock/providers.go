@@ -31,13 +31,17 @@ var errUnexpected = errors.New("неожиданный запрос синтет
 // Providers не содержит сетевого клиента и принимает только известные фикстуры.
 type Providers struct {
 	starts atomic.Int64
+	polls  atomic.Int64
 	// LoseStartAck имитирует исполненный запрос без полученного ответа.
 	LoseStartAck bool
 	// AfterStart позволяет синтетическому тесту остановить процесс после POST.
 	AfterStart func(context.Context)
+	// Async возвращает работающий synthetic Actor до первого reconcile.
+	Async bool
 }
 
 func (p *Providers) Starts() int64 { return p.starts.Load() }
+func (p *Providers) Polls() int64  { return p.polls.Load() }
 
 func (p *Providers) Account(ctx context.Context) (apify.BillingAccount, error) {
 	if err := ctx.Err(); err != nil {
@@ -60,10 +64,20 @@ func (p *Providers) Start(ctx context.Context, source string, opts apify.HHOptio
 	if p.LoseStartAck {
 		return apify.ActorRun{}, errors.New("синтетическая потеря подтверждения")
 	}
+	if p.Async {
+		return apify.ActorRun{ID: "MockRun0", DefaultDatasetID: "MockData0", Status: "RUNNING", Raw: json.RawMessage(`{"id":"MockRun0","defaultDatasetId":"MockData0","status":"RUNNING","userId":"StagingMock"}`)}, nil
+	}
 	return apify.ActorRun{ID: "MockRun0", DefaultDatasetID: "MockData0", Status: "SUCCEEDED", Raw: json.RawMessage(`{"id":"MockRun0","defaultDatasetId":"MockData0","status":"SUCCEEDED","userId":"StagingMock","usageTotalUsd":0.02}`)}, nil
 }
-func (*Providers) Run(context.Context, string) (apify.ActorRun, error) {
-	return apify.ActorRun{}, errUnexpected
+func (p *Providers) Run(ctx context.Context, id string) (apify.ActorRun, error) {
+	if err := ctx.Err(); err != nil {
+		return apify.ActorRun{}, err
+	}
+	if !p.Async || id != "MockRun0" {
+		return apify.ActorRun{}, errUnexpected
+	}
+	p.polls.Add(1)
+	return apify.ActorRun{ID: "MockRun0", DefaultDatasetID: "MockData0", Status: "SUCCEEDED", Raw: json.RawMessage(`{"id":"MockRun0","defaultDatasetId":"MockData0","status":"SUCCEEDED","userId":"StagingMock","usageTotalUsd":0.02}`)}, nil
 }
 func (*Providers) DatasetInfo(ctx context.Context, id string) (apify.DatasetMetadata, error) {
 	if err := ctx.Err(); err != nil {
