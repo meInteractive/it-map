@@ -80,4 +80,7 @@ func testConsumerVersionEvidence(t *testing.T, f *schedulerFixture) {
 	if err = consumerpreflight.CheckVersionedCandidate(f.ctx, f.db, f.repo.Generation); err != nil {
 		t.Fatal("marker lock not released", err)
 	}
+	t.Run("hh_binding_metadata", func(t *testing.T) {
+		testHHBindingMetadata(t, f.sub(t))
+	})
 }
