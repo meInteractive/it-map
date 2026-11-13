@@ -79,11 +79,107 @@ func (c *counterConn) ExecContext(ctx context.Context, q string, args []driver.N
 	}
 	return result, nil
 }
+
+func (c *counterConn) QueryContext(ctx context.Context, q string, args []driver.NamedValue) (driver.Rows, error) {
+	rows, err := c.Conn.(driver.QueryerContext).QueryContext(ctx, q, args)
+	if err != nil || !strings.HasPrefix(q, c.hook.prefix) {
+		return rows, err
+	}
+	c.hook.mu.Lock()
+	first := !c.hook.fired
+	if first {
+		c.hook.fired = true
+	}
+	c.hook.mu.Unlock()
+	if first && c.hook.fail {
+		_ = rows.Close()
+		return nil, errCounterFault
+	}
+	return rows, nil
+}
+
+func testRestoreLostLockResponse(t *testing.T) {
+	f := openProfileSettingsFixture(t)
+	body := counterFile(f, counterNext(f))
+	hook := &counterFault{prefix: "SELECT GET_LOCK", fail: true}
+	pool := counterFaultPool(f, hook)
+	var original int64
+	if err := pool.QueryRowContext(f.ctx, "SELECT CONNECTION_ID()").Scan(&original); err != nil {
+		t.Fatal("cannot inspect test session", err)
+	}
+	if session, err := (backup.Repository{DB: pool}).OpenV39RestoreSession(f.ctx, body); err == nil {
+		session.Close()
+		t.Fatal("lost lock response was accepted")
+	}
+	if !hook.fired {
+		t.Fatal("fault did not run after GET_LOCK")
+	}
+	var next int64
+	var owner sql.NullInt64
+	if err := pool.QueryRowContext(f.ctx, "SELECT CONNECTION_ID(), IS_USED_LOCK(CONCAT('itmap.restore.v39:',LEFT(SHA2(DATABASE(),256),32)))").Scan(&next, &owner); err != nil || next == original || owner.Valid {
+		t.Fatal("uncertain lock session was returned to pool", err)
+	}
+	session, err := (backup.Repository{DB: pool}).OpenV39RestoreSession(f.ctx, body)
+	if err != nil {
+		t.Fatal("restore retry on clean session failed", err)
+	}
+	if err := session.Close(); err != nil {
+		t.Fatal("restore cleanup failed", err)
+	}
+}
+
+func testRestoreContaminatedSession(t *testing.T) {
+	f := openProfileSettingsFixture(t)
+	body := counterFile(f, counterNext(f))
+	pool := counterFaultPool(f, &counterFault{prefix: "CI_UNUSED_FAULT"})
+	for _, poison := range []string{
+		"SET SESSION autocommit=0",
+		"START TRANSACTION",
+		"DO GET_LOCK(CONCAT('itmap.restore.v39:',LEFT(SHA2(DATABASE(),256),32)),0)",
+	} {
+		conn, err := pool.Conn(f.ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var old int64
+		if err = conn.QueryRowContext(f.ctx, "SELECT CONNECTION_ID()").Scan(&old); err != nil {
+			t.Fatal(err)
+		}
+		if _, err = conn.ExecContext(f.ctx, poison); err != nil {
+			t.Fatal(err)
+		}
+		if err = conn.Close(); err != nil {
+			t.Fatal(err)
+		}
+		if session, err := (backup.Repository{DB: pool}).OpenV39RestoreSession(f.ctx, body); err == nil {
+			session.Close()
+			t.Fatal("contaminated restore session accepted")
+		}
+		var next int64
+		var autocommit int
+		var owner sql.NullInt64
+		if err = pool.QueryRowContext(f.ctx, "SELECT CONNECTION_ID(),@@autocommit,IS_USED_LOCK(CONCAT('itmap.restore.v39:',LEFT(SHA2(DATABASE(),256),32)))").Scan(&next, &autocommit, &owner); err != nil || next == old || autocommit != 1 || owner.Valid {
+			t.Fatal("contaminated session was not discarded", err)
+		}
+	}
+	session, err := (backup.Repository{DB: pool}).OpenV39RestoreSession(f.ctx, body)
+	if err != nil {
+		t.Fatal("clean restore session rejected", err)
+	}
+	if err := session.Close(); err != nil {
+		t.Fatal(err)
+	}
+}
 func counterFaultPool(f *profileSettingsFixture, hook *counterFault) *sql.DB {
 	f.t.Helper()
 	cfg, e := mysql.ParseDSN(os.Getenv("ITMAP_TEST_MARIADB_WRITE_DSN"))
 	if e != nil || requireDisposableTarget(cfg.Net, cfg.Addr, cfg.DBName, cfg.User) != nil {
 		f.t.Fatal("unsafe counter fault target")
+	}
+	// Для ошибки после реального GET_LOCK запрос должен пройти через QueryContext,
+	// а не через запасной путь с подготовленным выражением драйвера.
+	if hook.prefix == "SELECT GET_LOCK" {
+		cfg.InterpolateParams = true
 	}
 	connector, e := mysql.NewConnector(cfg)
 	if e != nil {

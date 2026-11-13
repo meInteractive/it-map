@@ -73,9 +73,11 @@ func Initialize(ctx context.Context, db *sql.DB) (result InitResult, err error) 
 	var database, version string
 	var transaction, autocommit int
 	if e = conn.QueryRowContext(ctx, "SELECT DATABASE(),VERSION(),@@in_transaction,@@autocommit").Scan(&database, &version, &transaction, &autocommit); e != nil {
+		discard(conn)
 		return result, errors.New("cannot inspect schema initialization session")
 	}
 	if database == "" || transaction != 0 || autocommit != 1 {
+		discard(conn)
 		return result, errors.New("schema initialization requires an idle autocommit connection")
 	}
 	if e = CheckServerVersion(version); e != nil {
@@ -85,12 +87,27 @@ func Initialize(ctx context.Context, db *sql.DB) (result InitResult, err error) 
 	// Same ownership key as backup.RestoreSession: metadata/DDL initialization
 	// cannot overlap another initializer or a prepared-schema restore.
 	lock := "itmap.restore.v39:" + hex.EncodeToString(hash[:16])
+	var connectionID int64
+	var owner sql.NullInt64
+	if e = conn.QueryRowContext(ctx, "SELECT CONNECTION_ID(), IS_USED_LOCK(?)", lock).Scan(&connectionID, &owner); e != nil {
+		discard(conn)
+		return result, errors.New("cannot inspect schema initialization ownership")
+	}
+	if owner.Valid && owner.Int64 == connectionID {
+		discard(conn)
+		return result, errors.New("schema initialization connection already owns lock")
+	}
 	var claimed sql.NullInt64
 	if e = conn.QueryRowContext(ctx, "SELECT GET_LOCK(?,0)", lock).Scan(&claimed); e != nil {
+		discard(conn)
 		return result, errors.New("cannot acquire schema initialization ownership")
 	}
-	if !claimed.Valid || claimed.Int64 != 1 {
+	if claimed.Valid && claimed.Int64 == 0 {
 		return result, ErrBusy
+	}
+	if !claimed.Valid || claimed.Int64 != 1 {
+		discard(conn)
+		return result, errors.New("invalid schema initialization ownership response")
 	}
 	defer func() {
 		cleanup, cancel := context.WithTimeout(context.Background(), 3*time.Second)

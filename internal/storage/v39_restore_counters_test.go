@@ -67,6 +67,8 @@ func seedCounterRecords(f *profileSettingsFixture) {
 	})
 }
 func TestMariaDBV39RestoreCountersDisposable(t *testing.T) {
+	t.Run("lost advisory lock response discards connection", testRestoreLostLockResponse)
+	t.Run("contaminated session is discarded", testRestoreContaminatedSession)
 	t.Run("real ALTER retains write fence until explicit unlock", testCounterDDLRetainsFence)
 	t.Run("error after actual table lock releases session and table", func(t *testing.T) { testCounterLateFault(t, "LOCK TABLES `agency_identity`") })
 	t.Run("error after actual DDL leaves only safe gaps", func(t *testing.T) { testCounterLateFault(t, "ALTER TABLE `agency_identity`") })
