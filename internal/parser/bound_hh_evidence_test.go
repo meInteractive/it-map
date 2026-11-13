@@ -16,9 +16,15 @@ func TestBoundHHEvidenceRejectsUnboundOrStaleInput(t *testing.T) {
 	if _, err := attempt.InspectHHRecovery(context.Background(), v, "step", apify.HHOptions{}); !errors.Is(err, ErrJobInput) {
 		t.Fatal("unbound attempt accepted", err)
 	}
+	if _, err := attempt.InspectBoundHHRecovery(context.Background(), v, "step", apify.HHOptions{}); !errors.Is(err, ErrJobInput) {
+		t.Fatal("unbound durable evidence accepted", err)
+	}
 	attempt = &BoundAttempt{bound: &BoundRun{repo: RunRepository{Generation: "11111111-2222-4333-8444-555555555556"}}, lease: &JobLease{jobID: "CI"}, id: "CI"}
 	if _, err := attempt.InspectHHRecovery(context.Background(), v, "step", apify.HHOptions{}); !errors.Is(err, consumercontrol.ErrStale) {
 		t.Fatal("stale generation accepted", err)
+	}
+	if _, err := attempt.InspectBoundHHRecovery(context.Background(), v, "step", apify.HHOptions{}); !errors.Is(err, consumercontrol.ErrStale) {
+		t.Fatal("stale durable evidence accepted", err)
 	}
 	if _, err := attempt.InspectHHRecovery(nil, v, "step", apify.HHOptions{}); !errors.Is(err, ErrJobInput) {
 		t.Fatal("missing context accepted", err)
