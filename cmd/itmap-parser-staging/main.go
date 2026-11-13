@@ -49,12 +49,13 @@ func run() error {
 		slog.Info("staging mock synthetic data initialized")
 		return nil
 	}
-	if len(os.Args) == 2 && os.Args[1] == "worker" {
+	if len(os.Args) == 2 && (os.Args[1] == "worker" || os.Args[1] == "worker-lost-ack") {
 		var generation string
 		if err := db.QueryRowContext(ctx, "SELECT generation FROM app_runtime_generation WHERE id=1").Scan(&generation); err != nil {
 			return errors.New("staging mock: поколение базы недоступно")
 		}
-		worker, err := stagingmock.Worker(parser.RunRepository{DB: db, Generation: generation}, s.secret, &stagingmock.Providers{})
+		providers := &stagingmock.Providers{LoseStartAck: os.Args[1] == "worker-lost-ack"}
+		worker, err := stagingmock.Worker(parser.RunRepository{DB: db, Generation: generation}, s.secret, providers)
 		if err != nil {
 			return errors.New("staging mock: worker недоступен")
 		}
@@ -65,6 +66,7 @@ func run() error {
 				slog.Warn("staging mock worker step failed", "profile", profile, "outcome", outcome)
 			}
 		}}).Run(workerCtx)
+		slog.Info("staging mock worker stopped", "synthetic_actor_starts", providers.Starts())
 		if errors.Is(err, context.Canceled) {
 			return nil
 		}

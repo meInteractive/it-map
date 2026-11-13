@@ -3,8 +3,12 @@
 package storage
 
 import (
+	"bufio"
 	"context"
 	"errors"
+	"fmt"
+	"os"
+	"os/exec"
 	"strings"
 	"testing"
 	"time"
@@ -17,7 +21,7 @@ import (
 	"itmap/internal/workerloop"
 )
 
-func TestMariaDBContinuousWorkerDisposable(t *testing.T) {
+func continuousWorkerFixture(t *testing.T, loseAck bool) (*schedulerFixture, *stagingmock.Providers, parser.Worker) {
 	_, s, lease, _ := hhScanFixture(t, &hhScanProvider{})
 	for _, table := range []string{"vacancy_classification_slots", "vacancy_candidate_classification_leases"} {
 		if s.count("SELECT COUNT(*) FROM "+table) != 0 {
@@ -62,11 +66,111 @@ func TestMariaDBContinuousWorkerDisposable(t *testing.T) {
 	if err := keys.SaveKey(s.ctx, aihttp.OpenRouter, s.repo.Generation, "sk-or-"+strings.Repeat("r", 16)); err != nil {
 		t.Fatal("synthetic key setup", err)
 	}
-	p := &stagingmock.Providers{}
+	p := &stagingmock.Providers{LoseStartAck: loseAck}
 	w, err := stagingmock.Worker(s.repo, "CI_SECRET", p)
 	if err != nil {
 		t.Fatal(err)
 	}
+	return s, p, w
+}
+
+// Проверяется потеря процесса внутри synthetic POST без выполнения cleanup.
+func TestMariaDBContinuousWorkerCrashDisposable(t *testing.T) {
+	if os.Getenv("ITMAP_CONTINUOUS_CRASH_CHILD") == "1" {
+		ctx, db := schedulerDB(t)
+		p := &stagingmock.Providers{AfterStart: func(ctx context.Context) {
+			fmt.Println("CI_CONTINUOUS_POST_ACCEPTED")
+			<-ctx.Done()
+		}}
+		worker, err := stagingmock.Worker(parser.RunRepository{DB: db, Generation: os.Getenv("ITMAP_TEST_DISPOSABLE_GENERATION")}, "CI_SECRET", p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := (workerengine.Engine{Worker: worker}).Run(ctx); err != nil {
+			t.Fatal("child stopped before kill", err)
+		}
+		return
+	}
+	s, provider, worker := continuousWorkerFixture(t, false)
+	cmd := exec.Command(os.Args[0], "-test.run=^TestMariaDBContinuousWorkerCrashDisposable$")
+	cmd.Env = append(os.Environ(), "ITMAP_CONTINUOUS_CRASH_CHILD=1")
+	pipe, err := cmd.StdoutPipe()
+	if err != nil || cmd.Start() != nil {
+		t.Fatal("synthetic crash worker did not start")
+	}
+	finished := false
+	defer func() {
+		if !finished {
+			_ = cmd.Process.Kill()
+			_ = cmd.Wait()
+		}
+	}()
+	ready := make(chan bool, 1)
+	go func() {
+		scanner := bufio.NewScanner(pipe)
+		for scanner.Scan() {
+			if scanner.Text() == "CI_CONTINUOUS_POST_ACCEPTED" {
+				ready <- true
+				return
+			}
+		}
+		ready <- false
+	}()
+	select {
+	case ok := <-ready:
+		if !ok {
+			t.Fatal("child did not reach synthetic POST")
+		}
+	case <-time.After(12 * time.Second):
+		t.Fatal("child synthetic POST timed out")
+	}
+	if err := cmd.Process.Kill(); err != nil {
+		t.Fatal("cannot kill synthetic child", err)
+	}
+	if cmd.Wait() == nil {
+		t.Fatal("child unexpectedly exited normally")
+	}
+	finished = true
+	if s.count("SELECT COUNT(*) FROM apify_runs WHERE state='uncertain' AND run_id='' AND charged_usd IS NULL AND reserved_usd>0") != 1 || s.count("SELECT COUNT(*) FROM scheduler_runs WHERE status='running'") != 1 {
+		t.Fatal("crash did not retain unknown operation and active lease")
+	}
+	// Ускоряем истечение leases только в принадлежащей тесту пустой БД.
+	s.exec("UPDATE scheduler_runs SET lease_until=0 WHERE status='running'")
+	s.exec("UPDATE scheduler_jobs SET locked_until=0 WHERE status='running'")
+	ctx, cancel := context.WithCancel(s.ctx)
+	done := make(chan error, 1)
+	launch := make(chan struct{}, 1)
+	go func() {
+		done <- (workerengine.Engine{Worker: worker, OnResult: func(profile workerloop.ProfileName, _ workerloop.ProfileOutcome) {
+			if profile == workerloop.Launch {
+				select {
+				case launch <- struct{}{}:
+				default:
+				}
+			}
+		}}).Run(ctx)
+	}()
+	select {
+	case <-launch:
+	case <-time.After(12 * time.Second):
+		cancel()
+		<-done
+		t.Fatal("worker recovery timed out")
+	}
+	cancel()
+	if err := <-done; !errors.Is(err, context.Canceled) {
+		t.Fatal("restarted worker did not stop", err)
+	}
+	if provider.Starts() != 0 || s.count("SELECT COUNT(*) FROM apify_runs WHERE state='uncertain' AND run_id='' AND charged_usd IS NULL AND reserved_usd>0") != 1 || s.count("SELECT COUNT(*) FROM apify_runs") != 1 {
+		t.Fatal("recovery changed unknown operation")
+	}
+	if s.count("SELECT COUNT(*) FROM scheduler_runs WHERE status='interrupted'") != 1 || s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='scan_source' AND status='pending' AND reason_code='interrupted'") != 1 {
+		t.Fatal("recovery did not preserve interrupted work")
+	}
+}
+
+func TestMariaDBContinuousWorkerDisposable(t *testing.T) {
+	s, p, w := continuousWorkerFixture(t, false)
 	workerCtx, stop := context.WithCancel(s.ctx)
 	finished := make(chan error, 1)
 	failures := make(chan struct{}, 1)
@@ -112,5 +216,51 @@ wait:
 	}
 	if s.count("SELECT COUNT(*) FROM company_vacancy_user_state WHERE user_name='CI_OWNER' AND relevance=67") != 1 {
 		t.Fatal("mock relevance missing")
+	}
+}
+
+// Перезапуск не даёт второй POST, если подтверждение первого потеряно.
+func TestMariaDBContinuousWorkerLostACKDisposable(t *testing.T) {
+	s, p, worker := continuousWorkerFixture(t, true)
+	run := func() {
+		ctx, cancel := context.WithCancel(s.ctx)
+		defer cancel()
+		done := make(chan error, 1)
+		launch := make(chan struct{}, 1)
+		go func() {
+			done <- (workerengine.Engine{Worker: worker, OnResult: func(profile workerloop.ProfileName, _ workerloop.ProfileOutcome) {
+				if profile == workerloop.Launch {
+					select {
+					case launch <- struct{}{}:
+					default:
+					}
+				}
+			}}).Run(ctx)
+		}()
+		select {
+		case <-launch:
+		case <-time.After(12 * time.Second):
+			cancel()
+			<-done
+			t.Fatal("worker launch did not finish")
+		}
+		cancel()
+		if err := <-done; !errors.Is(err, context.Canceled) {
+			t.Fatal("worker did not stop", err)
+		}
+	}
+	run()
+	if p.Starts() != 1 || s.count("SELECT COUNT(*) FROM apify_runs WHERE state='uncertain' AND run_id='' AND charged_usd IS NULL AND reserved_usd>0") != 1 {
+		t.Fatal("unknown paid outcome was not retained", p.Starts())
+	}
+	// В disposable БД принудительно возвращаем тот же job в очередь, чтобы
+	// проверить guard даже при повторно доступной работе после перезапуска.
+	s.exec("UPDATE scheduler_jobs SET status='pending',run_after=0 WHERE type='scan_source' AND status='failed'")
+	if s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='scan_source' AND status='pending'") != 1 {
+		t.Fatal("synthetic retry fixture missing")
+	}
+	run()
+	if p.Starts() != 1 || s.count("SELECT COUNT(*) FROM apify_runs WHERE state='uncertain' AND run_id='' AND charged_usd IS NULL AND reserved_usd>0") != 1 {
+		t.Fatal("restart repeated POST or lost reserve", p.Starts())
 	}
 }
