@@ -19,6 +19,17 @@ import (
 
 func continuousWorkerFixture(t *testing.T, loseAck bool) (*schedulerFixture, *stagingmock.Providers, parser.Worker) {
 	_, s, lease, _ := hhScanFixture(t, &hhScanProvider{})
+	for _, table := range []string{"vacancy_classification_slots", "vacancy_candidate_classification_leases"} {
+		if s.count("SELECT COUNT(*) FROM "+table) != 0 {
+			t.Fatal("classification lease fixture must be empty")
+		}
+		table := table
+		t.Cleanup(func() {
+			if _, err := s.db.ExecContext(context.Background(), "DELETE FROM "+table); err != nil {
+				t.Error("classification lease cleanup failed")
+			}
+		})
+	}
 	var previousRun string
 	if err := s.db.QueryRowContext(s.ctx, "SELECT id FROM scheduler_runs WHERE status='running'").Scan(&previousRun); err != nil {
 		t.Fatal(err)
