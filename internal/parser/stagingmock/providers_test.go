@@ -55,6 +55,15 @@ func TestCancellationAfterSyntheticStartDoesNotReturnAcknowledgement(t *testing.
 	}
 }
 
+func TestCancellationDuringSyntheticAccountLookup(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	p := &Providers{BeforeAccount: func(context.Context) { cancel() }}
+	if _, err := p.Account(ctx); !errors.Is(err, context.Canceled) || p.Starts() != 0 {
+		t.Fatal("account lookup did not honor cancellation", err)
+	}
+}
+
 func TestAsyncActorFinishesOnReconcile(t *testing.T) {
 	p := &Providers{Async: true}
 	first, err := p.Start(context.Background(), SourceURL, apify.HHOptions{})
