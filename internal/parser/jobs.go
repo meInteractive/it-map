@@ -39,6 +39,7 @@ type ClaimOptions struct {
 	ScanScope                     *ScanCandidateScope
 	VerifiedHHOnly                bool
 	HHScanPhase                   string // launch / reconcile; пусто — прежняя общая очередь
+	WorkerPipelineFairness        bool   // только внутренний порядок eligible pipeline jobs
 }
 
 // ScanCandidateScope идентифицирует серверный точечный запрос и его область.
@@ -279,7 +280,7 @@ func (r RunRepository) selectEligibleJob(ctx context.Context, tx *sql.Tx, now in
 			rows.Close()
 			return nil, storageError(ctx)
 		}
-		if eligible && inCandidateScope(job, options.ScanScope, scopedIDs) && (best == nil || claimBefore(job, page, *best, bestPage, now)) {
+		if eligible && inCandidateScope(job, options.ScanScope, scopedIDs) && (best == nil || claimBeforeForWorker(job, page, *best, bestPage, now, options.WorkerPipelineFairness)) {
 			copy := job
 			best = &copy
 			bestPage = page
