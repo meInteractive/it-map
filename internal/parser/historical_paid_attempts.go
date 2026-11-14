@@ -60,7 +60,7 @@ func InspectHistoricalPaidAttemptsTx(ctx context.Context, tx *sql.Tx, generation
 	if current != generation {
 		return HistoricalPaidAttempts{}, ErrRunGeneration
 	}
-	rows, err := tx.QueryContext(ctx, `SELECT a.status,a.reserved_usd,a.cost_usd,r.generation FROM scheduler_attempts a LEFT JOIN scheduler_runs r ON r.id=a.run_id WHERE a.reserved_usd>0 OR a.cost_usd IS NOT NULL ORDER BY a.id LIMIT 1025 FOR UPDATE`)
+	rows, err := tx.QueryContext(ctx, `SELECT a.status,a.reason_code,a.reserved_usd,a.cost_usd,r.generation FROM scheduler_attempts a LEFT JOIN scheduler_runs r ON r.id=a.run_id WHERE a.reserved_usd>0 OR a.cost_usd IS NOT NULL OR a.status='pending' ORDER BY a.id LIMIT 1025 FOR UPDATE`)
 	if err != nil {
 		return HistoricalPaidAttempts{}, storageError(ctx)
 	}
@@ -71,11 +71,11 @@ func InspectHistoricalPaidAttemptsTx(ctx context.Context, tx *sql.Tx, generation
 		if count > maxHistoricalPaidAttempts {
 			return HistoricalPaidAttempts{}, ErrHistoricalAttemptsLimit
 		}
-		var status string
+		var status, reason string
 		var reserved float64
 		var cost sql.NullFloat64
 		var generation sql.NullString
-		if err = rows.Scan(&status, &reserved, &cost, &generation); err != nil {
+		if err = rows.Scan(&status, &reason, &reserved, &cost, &generation); err != nil {
 			return HistoricalPaidAttempts{}, storageError(ctx)
 		}
 		if !finiteMoney(reserved) || (cost.Valid && !finiteMoney(cost.Float64)) {
@@ -83,6 +83,12 @@ func InspectHistoricalPaidAttemptsTx(ctx context.Context, tx *sql.Tx, generation
 		}
 		switch status {
 		case "running", "completed", "failed", "interrupted", "done":
+		case "pending":
+			// Отложенная попытка может иметь нулевой scheduler receipt. Это
+			// не доказывает отсутствие расходов провайдера: Apify проверяется отдельно.
+			if (reason != "budget" && reason != "deferred" && reason != "paid_start_disabled") || reserved != 0 || !cost.Valid || cost.Float64 != 0 {
+				return HistoricalPaidAttempts{}, ErrHistoricalAttemptsIncompatible
+			}
 		default:
 			return HistoricalPaidAttempts{}, ErrHistoricalAttemptsIncompatible
 		}

@@ -44,7 +44,7 @@ func (c paidSnapshotConn) BeginTx(ctx context.Context, o driver.TxOptions) (driv
 	return c.Conn.(driver.ConnBeginTx).BeginTx(ctx, o)
 }
 func (c paidSnapshotConn) QueryContext(ctx context.Context, q string, args []driver.NamedValue) (driver.Rows, error) {
-	if strings.HasPrefix(q, "SELECT a.status,a.reserved_usd") {
+	if strings.HasPrefix(q, "SELECT a.status,") && strings.Contains(q, "FROM scheduler_attempts a LEFT JOIN scheduler_runs r") {
 		c.barrier.once.Do(func() { close(c.barrier.entered) })
 		select {
 		case <-c.barrier.release:
@@ -102,8 +102,16 @@ func TestMariaDBPaidRecoverySnapshotDisposable(t *testing.T) {
 	}
 	done := make(chan result, 1)
 	go func() { s, e := paidrecovery.Inspect(f.ctx, wrapped, f.repo.Generation); done <- result{s, e} }()
+	timer := time.NewTimer(5 * time.Second)
+	defer timer.Stop()
 	select {
 	case <-barrier.entered:
+	case out := <-done:
+		close(barrier.release)
+		t.Fatal("snapshot returned before barrier", out.err)
+	case <-timer.C:
+		close(barrier.release)
+		t.Fatal("snapshot barrier timed out")
 	case <-f.ctx.Done():
 		close(barrier.release)
 		t.Fatal("snapshot barrier not reached")

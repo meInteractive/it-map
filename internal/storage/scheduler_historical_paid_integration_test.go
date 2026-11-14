@@ -36,6 +36,20 @@ func TestMariaDBHistoricalSchedulerEvidenceDisposable(t *testing.T) {
 	if err != nil || got.HistoricalUnknown != 1 || got.HistoricalCostRecorded != 1 || got.OrphanUnknown != 1 || got.OrphanCostRecorded != 1 {
 		t.Fatal("scheduler evidence counts invalid", got, err)
 	}
+	for _, row := range [][3]string{{"CI_pending_budget", "CI_old_run", "budget"}, {"CI_pending_deferred", "CI_missing_run", "deferred"}, {"CI_pending_disabled", "CI_current_run", "paid_start_disabled"}} {
+		f.exec("INSERT INTO scheduler_attempts(id,job_id,run_id,type,started_at,status,reason_code,reserved_usd,cost_usd) VALUES(?,'CIjob',?,'diagnostic',1,'pending',?,0,0)", row[0], row[1], row[2])
+	}
+	got, err = f.repo.InspectHistoricalPaidAttempts(f.ctx)
+	if err != nil || got.HistoricalUnknown != 1 || got.HistoricalCostRecorded != 2 || got.OrphanUnknown != 1 || got.OrphanCostRecorded != 2 {
+		t.Fatal("pending zero receipts changed historical evidence", got, err)
+	}
+	for _, change := range []string{"reason_code='unexpected'", "reserved_usd=0.1", "cost_usd=0.1", "cost_usd=NULL"} {
+		f.exec("UPDATE scheduler_attempts SET " + change + " WHERE id='CI_pending_budget'")
+		if result, err := f.repo.InspectHistoricalPaidAttempts(f.ctx); !errors.Is(err, parser.ErrHistoricalAttemptsIncompatible) || result != (parser.HistoricalPaidAttempts{}) {
+			t.Fatal("invalid pending receipt accepted", change, err)
+		}
+		f.exec("UPDATE scheduler_attempts SET reason_code='budget',reserved_usd=0,cost_usd=0 WHERE id='CI_pending_budget'")
+	}
 	other := parser.RunRepository{DB: f.db, Generation: old}
 	if _, err = other.InspectHistoricalPaidAttempts(f.ctx); !errors.Is(err, parser.ErrRunGeneration) {
 		t.Fatal("stale generation accepted", err)
