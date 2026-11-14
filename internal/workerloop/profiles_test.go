@@ -12,6 +12,47 @@ func testProfile(name ProfileName) Profile {
 	return Profile{Name: name, Step: func(context.Context) (bool, error) { return true, nil }, WorkDelay: time.Second, IdleDelay: 10 * time.Second, ErrorMin: 2 * time.Second, ErrorMax: 8 * time.Second, StepTimeout: time.Minute}
 }
 
+func TestRunContentionIsNotProfileFailure(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	p := testProfile(Launch)
+	p.Step = func(context.Context) (bool, error) { return true, ErrRunContended }
+	var got ProfileOutcome
+	p.OnResult = func(_ ProfileName, outcome ProfileOutcome) { got = outcome; cancel() }
+	failed := false
+	err := RunProfiles(ctx, []Profile{p}, func(ProfileName) { failed = true })
+	if !errors.Is(err, context.Canceled) || got != ProfileContended || failed {
+		t.Fatal("contention treated as failure or work", err, got)
+	}
+}
+
+func TestRunContentionDoesNotHideStepTimeout(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	p := testProfile(Launch)
+	p.StepTimeout = 20 * time.Millisecond
+	p.Step = func(ctx context.Context) (bool, error) { <-ctx.Done(); return false, ErrRunContended }
+	var got ProfileOutcome
+	p.OnResult = func(_ ProfileName, outcome ProfileOutcome) { got = outcome; cancel() }
+	if err := RunProfiles(ctx, []Profile{p}, nil); !errors.Is(err, context.Canceled) || got != ProfileTimeout {
+		t.Fatal("timeout hidden by contention", err, got)
+	}
+}
+
+func TestRunContentionDoesNotHideOtherFailure(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	p := testProfile(Launch)
+	p.Step = func(context.Context) (bool, error) {
+		return false, errors.Join(ErrRunContended, errors.New("storage failure"))
+	}
+	var got ProfileOutcome
+	p.OnResult = func(_ ProfileName, outcome ProfileOutcome) { got = outcome; cancel() }
+	if err := RunProfiles(ctx, []Profile{p}, nil); !errors.Is(err, context.Canceled) || got != ProfileFailed {
+		t.Fatal("additional failure hidden by contention", err, got)
+	}
+}
+
 func TestProfilePlanFairnessAndIndependentBackoff(t *testing.T) {
 	p, err := newProfilePlan([]Profile{testProfile(Launch), testProfile(Reconcile), testProfile(Pipeline)})
 	if err != nil {

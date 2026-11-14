@@ -8,11 +8,12 @@ import (
 // ProfileStats — локальные счётчики исходов без payload, ID и текста ошибок.
 // Они не измеряют состояние БД, backlog, расходы или вызовы провайдера.
 type ProfileStats struct {
-	Name     ProfileName `json:"name"`
-	Worked   uint64      `json:"worked"`
-	Idle     uint64      `json:"idle"`
-	Failed   uint64      `json:"failed"`
-	TimedOut uint64      `json:"timedOut"`
+	Name      ProfileName `json:"name"`
+	Worked    uint64      `json:"worked"`
+	Idle      uint64      `json:"idle"`
+	Failed    uint64      `json:"failed"`
+	TimedOut  uint64      `json:"timedOut"`
+	Contended uint64      `json:"contended"`
 }
 
 // ProfileCounters можно передать как OnResult; безопасен для чтения health.
@@ -48,6 +49,8 @@ func (c *ProfileCounters) Record(name ProfileName, outcome ProfileOutcome) {
 		increment(&v.Failed)
 	case ProfileTimeout:
 		increment(&v.TimedOut)
+	case ProfileContended:
+		increment(&v.Contended)
 	default:
 		return
 	}

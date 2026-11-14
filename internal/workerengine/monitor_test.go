@@ -91,6 +91,25 @@ func TestMonitorConcurrentUpdatesAndStop(t *testing.T) {
 	}
 }
 
+func TestMonitorDistinguishesContentionAndFailure(t *testing.T) {
+	m := NewMonitor(time.Minute)
+	m.Record(workerloop.Launch, workerloop.ProfileContended)
+	m.Record(workerloop.Reconcile, workerloop.ProfileIdle)
+	m.Record(workerloop.Pipeline, workerloop.ProfileIdle)
+	if s := m.Snapshot(); !s.Live || s.Ready || s.Reason != "run_busy" {
+		t.Fatal("contention health", s)
+	}
+	m.Record(workerloop.Pipeline, workerloop.ProfileFailed)
+	if s := m.Snapshot(); s.Ready || s.Reason != "profile_failed" {
+		t.Fatal("contention hid failure", s)
+	}
+	m.Record(workerloop.Pipeline, workerloop.ProfileIdle)
+	m.Record(workerloop.Launch, workerloop.ProfileWorked)
+	if s := m.Snapshot(); !s.Ready {
+		t.Fatal("health did not recover", s)
+	}
+}
+
 func TestMonitorHandlerExposesOnlyFixedStates(t *testing.T) {
 	m := NewMonitor(time.Minute)
 	call := func(method, path string) *httptest.ResponseRecorder {

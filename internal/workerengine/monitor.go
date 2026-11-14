@@ -42,7 +42,7 @@ func NewMonitor(maxAge time.Duration) *Monitor {
 // Record принимает только ограниченные профили и исходы без пользовательских данных.
 func (m *Monitor) Record(name workerloop.ProfileName, outcome workerloop.ProfileOutcome) {
 	if m == nil || (name != workerloop.Launch && name != workerloop.Reconcile && name != workerloop.Pipeline) ||
-		(outcome != workerloop.ProfileWorked && outcome != workerloop.ProfileIdle && outcome != workerloop.ProfileFailed && outcome != workerloop.ProfileTimeout) {
+		(outcome != workerloop.ProfileWorked && outcome != workerloop.ProfileIdle && outcome != workerloop.ProfileFailed && outcome != workerloop.ProfileTimeout && outcome != workerloop.ProfileContended) {
 		return
 	}
 	m.mu.Lock()
@@ -87,6 +87,7 @@ func (m *Monitor) Snapshot() MonitorSnapshot {
 		}
 		return MonitorSnapshot{Reason: "stale"}
 	}
+	contended := false
 	for _, name := range []workerloop.ProfileName{workerloop.Launch, workerloop.Reconcile, workerloop.Pipeline} {
 		v, ok := m.last[name]
 		if !ok {
@@ -99,6 +100,12 @@ func (m *Monitor) Snapshot() MonitorSnapshot {
 		if v.outcome == workerloop.ProfileFailed || v.outcome == workerloop.ProfileTimeout {
 			return MonitorSnapshot{Live: true, Reason: "profile_failed"}
 		}
+		if v.outcome == workerloop.ProfileContended {
+			contended = true
+		}
+	}
+	if contended {
+		return MonitorSnapshot{Live: true, Reason: "run_busy"}
 	}
 	return MonitorSnapshot{Live: true, Ready: true, Reason: "ready"}
 }

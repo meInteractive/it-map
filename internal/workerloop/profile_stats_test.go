@@ -27,10 +27,11 @@ func TestProfileCountersConcurrentAndSafeSnapshot(t *testing.T) {
 	c.Record(Pipeline, ProfileTimeout)
 	c.Record(Reconcile, ProfileFailed)
 	c.Record(Reconcile, ProfileIdle)
+	c.Record(Reconcile, ProfileContended)
 	c.Record("sensitive payload", ProfileWorked)
 	c.Record(Launch, "sensitive error")
 	s := c.Snapshot()
-	if len(s) != 3 || s[0].Name != Launch || s[0].Worked != 1000 || s[1].Failed != 1 || s[1].Idle != 1 || s[2].TimedOut != 1 {
+	if len(s) != 3 || s[0].Name != Launch || s[0].Worked != 1000 || s[1].Failed != 1 || s[1].Idle != 1 || s[1].Contended != 1 || s[2].TimedOut != 1 {
 		t.Fatal("unexpected counters", s)
 	}
 	s[0].Worked = 0

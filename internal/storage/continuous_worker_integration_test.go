@@ -673,7 +673,7 @@ func TestMariaDBContinuousWorkerCompetitionDisposable(t *testing.T) {
 	}()
 	select {
 	case result := <-secondResult:
-		if result != workerloop.ProfileFailed || providers.Starts() != 1 {
+		if result != workerloop.ProfileContended || providers.Starts() != 1 {
 			t.Fatal("second worker admitted concurrent actor", result, providers.Starts())
 		}
 	case <-time.After(12 * time.Second):
