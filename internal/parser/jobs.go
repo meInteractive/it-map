@@ -8,6 +8,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
+	"strings"
 	"time"
 	"unicode/utf8"
 
@@ -177,7 +179,7 @@ func (r RunRepository) claimJob(ctx context.Context, runID string, options Claim
 	if e != nil {
 		return nil, e
 	}
-	best, e := r.selectEligibleJob(ctx, tx, now, options)
+	best, e := r.selectEligibleJob(ctx, tx, now, options, false)
 	if e != nil || best == nil {
 		return nil, e
 	}
@@ -225,7 +227,7 @@ func (r RunRepository) claimJob(ctx context.Context, runID string, options Claim
 }
 
 // selectEligibleJob применяет единые правила допуска; транзакция принадлежит вызывающему.
-func (r RunRepository) selectEligibleJob(ctx context.Context, tx *sql.Tx, now int64, options ClaimOptions) (*Job, error) {
+func (r RunRepository) selectEligibleJob(ctx context.Context, tx *sql.Tx, now int64, options ClaimOptions, firstOnly bool) (*Job, error) {
 	var e error
 	settings := DefaultSettings()
 	var raw []byte
@@ -263,7 +265,18 @@ func (r RunRepository) selectEligibleJob(ctx context.Context, tx *sql.Tx, now in
 			return nil, e
 		}
 	}
-	rows, e := tx.QueryContext(ctx, "SELECT "+jobColumns+" FROM scheduler_jobs WHERE generation=? AND status='pending' AND run_after<=?", r.Generation, now)
+	kinds := make([]string, 0, len(types))
+	for kind := range types {
+		kinds = append(kinds, kind)
+	}
+	sort.Strings(kinds)
+	args := make([]any, 0, 2+len(kinds))
+	args = append(args, r.Generation, now)
+	for _, kind := range kinds {
+		args = append(args, kind)
+	}
+	query := "SELECT " + jobColumns + " FROM scheduler_jobs WHERE generation=? AND status='pending' AND run_after<=? AND type IN (" + strings.TrimSuffix(strings.Repeat("?,", len(kinds)), ",") + ")"
+	rows, e := tx.QueryContext(ctx, query, args...)
 	if e != nil {
 		return nil, storageError(ctx)
 	}
@@ -279,6 +292,12 @@ func (r RunRepository) selectEligibleJob(ctx context.Context, tx *sql.Tx, now in
 		if err != nil {
 			rows.Close()
 			return nil, storageError(ctx)
+		}
+		if eligible && inCandidateScope(job, options.ScanScope, scopedIDs) && firstOnly {
+			if err := rows.Close(); err != nil {
+				return nil, storageError(ctx)
+			}
+			return &job, nil
 		}
 		if eligible && inCandidateScope(job, options.ScanScope, scopedIDs) && (best == nil || claimBeforeForWorker(job, page, *best, bestPage, now, options.WorkerPipelineFairness)) {
 			copy := job
@@ -312,7 +331,7 @@ func (r RunRepository) HasEligibleJob(ctx context.Context, options ClaimOptions)
 	if err != nil {
 		return false, storageError(ctx)
 	}
-	job, err := r.selectEligibleJob(ctx, tx, now, options)
+	job, err := r.selectEligibleJob(ctx, tx, now, options, true)
 	if err != nil {
 		return false, err
 	}
