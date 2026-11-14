@@ -50,6 +50,21 @@ func TestMariaDBHistoricalSchedulerEvidenceDisposable(t *testing.T) {
 		}
 		f.exec("UPDATE scheduler_attempts SET reason_code='budget',reserved_usd=0,cost_usd=0 WHERE id='CI_pending_budget'")
 	}
+	// Большая текущая очередь не должна скрывать небольшой старый ledger.
+	var currentRows strings.Builder
+	currentRows.WriteString("INSERT INTO scheduler_attempts(id,job_id,run_id,type,started_at,status,reserved_usd) VALUES ")
+	currentArgs := make([]any, 0, 1025)
+	for i := 0; i < 1025; i++ {
+		if i > 0 {
+			currentRows.WriteByte(',')
+		}
+		currentRows.WriteString("(?,'CIcurrentjob','CI_current_run','diagnostic',1,'interrupted',0.25)")
+		currentArgs = append(currentArgs, fmt.Sprintf("CI_current_fill_%04d", i))
+	}
+	f.exec(currentRows.String(), currentArgs...)
+	if result, err := f.repo.InspectHistoricalPaidAttempts(f.ctx); err != nil || result.HistoricalUnknown != 1 || result.HistoricalCostRecorded != 2 || result.OrphanUnknown != 1 || result.OrphanCostRecorded != 2 {
+		t.Fatal("current-generation volume hid historical evidence", result, err)
+	}
 	other := parser.RunRepository{DB: f.db, Generation: old}
 	if _, err = other.InspectHistoricalPaidAttempts(f.ctx); !errors.Is(err, parser.ErrRunGeneration) {
 		t.Fatal("stale generation accepted", err)
