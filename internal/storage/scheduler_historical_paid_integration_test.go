@@ -93,6 +93,11 @@ func TestMariaDBHistoricalSchedulerEvidenceDisposable(t *testing.T) {
 		t.Fatal("invalid attempt accepted", err)
 	}
 	f.exec("UPDATE scheduler_attempts SET status='interrupted' WHERE id='CI_old_unknown'")
+	f.exec("UPDATE scheduler_attempts SET status='running',cost_usd=0.1 WHERE id='CI_old_unknown'")
+	if result, err := f.repo.InspectHistoricalPaidAttempts(f.ctx); !errors.Is(err, parser.ErrHistoricalAttemptsIncompatible) || result != (parser.HistoricalPaidAttempts{}) {
+		t.Fatal("running attempt with cost presented as settled", result, err)
+	}
+	f.exec("UPDATE scheduler_attempts SET status='interrupted',cost_usd=NULL WHERE id='CI_old_unknown'")
 	var q strings.Builder
 	q.WriteString("INSERT INTO scheduler_attempts(id,job_id,run_id,type,started_at,status,reserved_usd) VALUES ")
 	args := make([]any, 0, 1025)

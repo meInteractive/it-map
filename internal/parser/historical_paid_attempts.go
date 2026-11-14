@@ -84,7 +84,13 @@ func InspectHistoricalPaidAttemptsTx(ctx context.Context, tx *sql.Tx, generation
 			return HistoricalPaidAttempts{}, ErrHistoricalAttemptsIncompatible
 		}
 		switch status {
-		case "running", "completed", "failed", "interrupted", "done":
+		case "running":
+			// Завершение attempt записывает status и стоимость вместе.
+			// Стоимость у продолжающейся попытки не подтверждает её исход.
+			if cost.Valid {
+				return HistoricalPaidAttempts{}, ErrHistoricalAttemptsIncompatible
+			}
+		case "completed", "failed", "interrupted", "done":
 		case "pending":
 			// Отложенная попытка может иметь нулевой scheduler receipt. Это
 			// не доказывает отсутствие расходов провайдера: Apify проверяется отдельно.
