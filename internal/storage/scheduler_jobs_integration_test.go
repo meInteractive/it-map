@@ -303,6 +303,37 @@ func TestMariaDBSchedulerJobOwnershipDisposable(t *testing.T) {
 			t.Fatal("idle polling created runs")
 		}
 	})
+	t.Run("polling filters types and claim still selects highest priority", func(t *testing.T) {
+		f := f.sub(t)
+		f.exec("DELETE FROM scheduler_jobs")
+		for i := 0; i < 50; i++ {
+			id := fmt.Sprintf("CI_poll_other_%02d", i)
+			schedulerSeedJob(f, id, nil)
+			f.exec("UPDATE scheduler_jobs SET type='classify_title' WHERE id=?", id)
+		}
+		schedulerSeedJob(f, "CI_poll_future", nil)
+		f.exec("UPDATE scheduler_jobs SET run_after=? WHERE id='CI_poll_future'", schedulerClock(t, f.db)+int64(time.Hour/time.Millisecond))
+		opts := parser.ClaimOptions{Types: []string{"diagnostic"}, VerifiedHHOnly: true}
+		if ready, err := f.repo.HasEligibleJob(f.ctx, opts); err != nil || ready {
+			t.Fatal("other types or deferred work admitted", err)
+		}
+		schedulerSeedJob(f, "CI_poll_low", nil)
+		schedulerSeedJob(f, "CI_poll_high", nil)
+		f.exec("UPDATE scheduler_jobs SET priority=100 WHERE id='CI_poll_high'")
+		before := schedulerRows(t, f, "")
+		if ready, err := f.repo.HasEligibleJob(f.ctx, opts); err != nil || !ready || !reflect.DeepEqual(before, schedulerRows(t, f, "")) {
+			t.Fatal("eligible poll changed queue or missed work", err)
+		}
+		run := f.begin("CI polling priority")
+		lease, err := f.repo.ClaimJob(f.ctx, run.Run.ID, opts)
+		if err != nil || lease == nil || lease.Job().ID != "CI_poll_high" {
+			t.Fatal("claim lost priority ordering", err)
+		}
+		if err := lease.Finish(f.ctx, parser.FinishOptions{Status: "completed"}); err != nil {
+			t.Fatal("polling test finish failed", err)
+		}
+		f.finish(run)
+	})
 	t.Run("eligible snapshot does not claim and claim rechecks", func(t *testing.T) {
 		f := f.sub(t)
 		f.exec("DELETE FROM scheduler_jobs")
