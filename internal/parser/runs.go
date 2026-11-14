@@ -111,6 +111,34 @@ func readRun(ctx context.Context, tx *sql.Tx, id string) (Run, error) {
 	}
 	return run, err
 }
+
+func readRunEnabled(ctx context.Context, tx *sql.Tx) (bool, error) {
+	var raw []byte
+	if err := tx.QueryRowContext(ctx, "SELECT scheduler_json FROM firecrawl_settings WHERE id=1").Scan(&raw); err != nil {
+		return false, storageError(ctx)
+	}
+	var settings struct{ Enabled bool }
+	if json.Unmarshal(raw, &settings) != nil {
+		return false, ErrRunStorage
+	}
+	return settings.Enabled, nil
+}
+
+// SchedulerEnabledSnapshot не запускает run. Begin повторно проверяет флаг
+// под блокировкой перед любым выполнением; снимок не является допуском.
+func (r RunRepository) SchedulerEnabledSnapshot(ctx context.Context) (bool, error) {
+	if ctx == nil {
+		return false, ErrRunInput
+	}
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	tx, err := r.lockGeneration(ctx)
+	if err != nil {
+		return false, err
+	}
+	defer tx.Rollback()
+	return readRunEnabled(ctx, tx)
+}
 func (r RunRepository) recover(ctx context.Context, tx *sql.Tx, now int64, exclude string) error {
 	// Keep the legacy conservative money/result fields untouched. An interrupted
 	// attempt is not proof that its provider operation was free or unexecuted.
@@ -237,13 +265,9 @@ func (r RunRepository) beginLocked(ctx context.Context, tx *sql.Tx, options RunO
 	if err != nil {
 		return RunStart{}, storageError(ctx)
 	}
-	var settingsJSON []byte
-	if err = tx.QueryRowContext(ctx, "SELECT scheduler_json FROM firecrawl_settings WHERE id=1").Scan(&settingsJSON); err != nil {
-		return RunStart{}, storageError(ctx)
-	}
-	var settings struct{ Enabled bool }
-	if json.Unmarshal(settingsJSON, &settings) != nil {
-		return RunStart{}, ErrRunStorage
+	enabled, err := readRunEnabled(ctx, tx)
+	if err != nil {
+		return RunStart{}, err
 	}
 	id := runID(r.Generation, options.RequestID)
 	old, err := readRun(ctx, tx, id)
@@ -270,7 +294,7 @@ func (r RunRepository) beginLocked(ctx context.Context, tx *sql.Tx, options RunO
 		return RunStart{}, ErrRunBusy
 	}
 	run := Run{ID: id, Generation: r.Generation, Trigger: options.Trigger, Status: "paused", StartedAt: now}
-	acquired := settings.Enabled || options.Diagnostic
+	acquired := enabled || options.Diagnostic
 	if acquired {
 		run.Status = "running"
 		run.LeaseUntil = now + options.Duration.Milliseconds() + 30000
