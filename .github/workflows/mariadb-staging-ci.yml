@@ -653,6 +653,21 @@ jobs:
           assert not any(e.get('Action')=='skip' for e in events), 'required restore test skipped'
           print('PASS: atomic v39 restore ran in separate disposable CI with zero skips')
           PYCODE
+      - name: Проверить сохранение неизвестных расходов worker при восстановлении в одноразовой CI БД
+        env:
+          ITMAP_REQUIRE_MARIADB_INTEGRATION: '1'
+          ITMAP_TEST_MARIADB_WRITE_DSN: 'itmap_ci:ci_only_disposable_writer@tcp(127.0.0.1:3306)/itmap_ci?parseTime=true&clientFoundRows=true&collation=utf8mb4_bin'
+        run: |
+          set -euo pipefail
+          result_file="$(mktemp)"
+          trap 'rm -f "$result_file"' EXIT
+          go test -race -tags mariadb,v39restore ./internal/storage -run '^TestMariaDBRestorePaidWorkerDisposable$' -count=1 -json | tee "$result_file"
+          python3 - "$result_file" <<'PYCODE'
+          import json,sys
+          events=[json.loads(line) for line in open(sys.argv[1],encoding='utf8')]
+          assert any(e.get('Test')=='TestMariaDBRestorePaidWorkerDisposable' and e.get('Action')=='pass' for e in events), 'paid worker restore gate did not pass'
+          assert not any(e.get('Action')=='skip' for e in events), 'paid worker restore gate skipped'
+          PYCODE
   restore-http:
     runs-on: ubuntu-latest
     # This container database is disposable and has ZERO production credentials.
