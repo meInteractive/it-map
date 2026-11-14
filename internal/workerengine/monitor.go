@@ -13,11 +13,12 @@ import (
 // Monitor отражает только локальный прогресс профилей; он не доказывает
 // состояние внешних провайдеров, бюджет или полноту данных.
 type Monitor struct {
-	mu      sync.Mutex
-	last    map[workerloop.ProfileName]profileHealth
-	stopped bool
-	now     func() time.Time
-	maxAge  time.Duration
+	mu       sync.Mutex
+	last     map[workerloop.ProfileName]profileHealth
+	stopped  bool
+	now      func() time.Time
+	maxAge   time.Duration
+	counters workerloop.ProfileCounters
 }
 type profileHealth struct {
 	at      time.Time
@@ -48,6 +49,7 @@ func (m *Monitor) Record(name workerloop.ProfileName, outcome workerloop.Profile
 	defer m.mu.Unlock()
 	if !m.stopped {
 		m.last[name] = profileHealth{at: m.now(), outcome: outcome}
+		m.counters.Record(name, outcome)
 	}
 }
 
@@ -108,13 +110,24 @@ func (m *Monitor) Handler() http.Handler {
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			return
 		}
-		if r.URL.Path != "/healthz" && r.URL.Path != "/readyz" {
+		if r.URL.Path != "/healthz" && r.URL.Path != "/readyz" && r.URL.Path != "/profilez" {
 			http.NotFound(w, r)
 			return
 		}
 		snapshot := m.Snapshot()
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Cache-Control", "no-store")
+		if r.URL.Path == "/profilez" {
+			if m == nil {
+				w.WriteHeader(http.StatusServiceUnavailable)
+				_, _ = w.Write([]byte("{\"error\":\"profile_unavailable\"}\n"))
+				return
+			}
+			_ = json.NewEncoder(w).Encode(struct {
+				Profiles []workerloop.ProfileStats `json:"profiles"`
+			}{Profiles: m.counters.Snapshot()})
+			return
+		}
 		if (r.URL.Path == "/healthz" && !snapshot.Live) || (r.URL.Path == "/readyz" && !snapshot.Ready) {
 			w.WriteHeader(http.StatusServiceUnavailable)
 		}
