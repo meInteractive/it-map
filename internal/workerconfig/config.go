@@ -20,6 +20,7 @@ type Config struct {
 	LaunchIdle       time.Duration
 	ReconcileIdle    time.Duration
 	MaxJobs          int
+	ShutdownGrace    time.Duration
 }
 
 // Defaults сохраняет прежние интервалы и лимит работы за цикл.
@@ -29,7 +30,7 @@ func Defaults() Config {
 
 // Validate ограничивает polling и batch size; бюджеты и частота Actor задаются отдельно.
 func (c Config) Validate() error {
-	if c.IdleDelay < time.Second || c.IdleDelay > 60*time.Second || c.LaunchIdle < 15*time.Second || c.LaunchIdle > 60*time.Second || c.ReconcileIdle < 5*time.Second || c.ReconcileIdle > 60*time.Second || c.ErrorMin < time.Second || c.ErrorMax < c.ErrorMin || c.ErrorMax > 2*time.Minute || c.RecoveryInterval <= 0 || c.MaxJobs < 1 || c.MaxJobs > 50 {
+	if c.IdleDelay < time.Second || c.IdleDelay > 60*time.Second || c.LaunchIdle < 15*time.Second || c.LaunchIdle > 60*time.Second || c.ReconcileIdle < 5*time.Second || c.ReconcileIdle > 60*time.Second || c.ErrorMin < time.Second || c.ErrorMax < c.ErrorMin || c.ErrorMax > 2*time.Minute || c.RecoveryInterval <= 0 || c.MaxJobs < 1 || c.MaxJobs > 50 || c.ShutdownGrace < 0 || c.ShutdownGrace > 30*time.Second {
 		return ErrConfig
 	}
 	return nil
@@ -81,6 +82,13 @@ func Parse(getenv func(string) string) (Config, error) {
 			return Config{}, ErrConfig
 		}
 		c.MaxJobs = n
+	}
+	if raw := getenv("ITMAP_WORKER_SHUTDOWN_GRACE_SECONDS"); raw != "" && raw != "0" {
+		n, err := positiveInteger(raw)
+		if err != nil || n > 30 {
+			return Config{}, ErrConfig
+		}
+		c.ShutdownGrace = time.Duration(n) * time.Second
 	}
 	if err := c.Validate(); err != nil {
 		return Config{}, err

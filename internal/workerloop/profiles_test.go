@@ -253,3 +253,67 @@ func TestProfilesCancellationReachesActiveStep(t *testing.T) {
 		t.Fatal("active step ignored cancellation")
 	}
 }
+
+func TestGracefulStopLetsActiveStepFinishWithoutStartingAnother(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	started := make(chan struct{})
+	release := make(chan struct{})
+	second := make(chan struct{}, 1)
+	p := testProfile(Launch)
+	p.Step = func(step context.Context) (bool, error) {
+		close(started)
+		select {
+		case <-release:
+			return true, nil
+		case <-step.Done():
+			return false, step.Err()
+		}
+	}
+	other := testProfile(Reconcile)
+	other.Step = func(context.Context) (bool, error) { second <- struct{}{}; return true, nil }
+	done := make(chan error, 1)
+	go func() { done <- RunProfilesWithGrace(ctx, []Profile{p, other}, nil, time.Second) }()
+	<-started
+	cancel()
+	select {
+	case err := <-done:
+		t.Fatal("active step was interrupted", err)
+	case <-time.After(30 * time.Millisecond):
+	}
+	close(release)
+	if err := <-done; !errors.Is(err, context.Canceled) {
+		t.Fatal(err)
+	}
+	select {
+	case <-second:
+		t.Fatal("started another profile after stop")
+	default:
+	}
+}
+
+func TestGracefulStopCancelsStepAfterGrace(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	started := make(chan struct{})
+	stopped := make(chan struct{})
+	p := testProfile(Launch)
+	p.Step = func(step context.Context) (bool, error) {
+		close(started)
+		<-step.Done()
+		close(stopped)
+		return false, step.Err()
+	}
+	done := make(chan error, 1)
+	go func() { done <- RunProfilesWithGrace(ctx, []Profile{p}, nil, 30*time.Millisecond) }()
+	<-started
+	cancel()
+	select {
+	case <-stopped:
+	case <-time.After(time.Second):
+		t.Fatal("step outlived grace")
+	}
+	if err := <-done; !errors.Is(err, context.Canceled) {
+		t.Fatal(err)
+	}
+}

@@ -47,7 +47,8 @@ func NewWorker(runs RunRepository, settings apifysettings.Repository, providers 
 type WorkerOptions struct {
 	Run          RunOptions
 	MaxJobs      int
-	QueueProfile string // "" = прежний ручной цикл; balanced, launch, reconcile, pipeline
+	QueueProfile string          // "" = прежний ручной цикл; balanced, launch, reconcile, pipeline
+	StopClaims   <-chan struct{} // необязательный сигнал остановки перед следующим claim
 }
 type WorkerResult struct {
 	Run       Run
@@ -83,6 +84,9 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 	}
 	if !validTargetedCycle(w, options) {
 		return result, ErrRunInput
+	}
+	if claimsStopped(options.StopClaims) {
+		return result, context.Canceled
 	}
 	switch options.QueueProfile {
 	case "", "balanced", "launch", "reconcile", "pipeline":
@@ -145,9 +149,15 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 	}
 	var actorStarts atomic.Int32
 	admit := func() error {
+		if claimsStopped(options.StopClaims) {
+			return context.Canceled
+		}
 		return admitHHActorStart(w.ResumePreviousDataset || w.DenyActorStarts, actorStarts.Load())
 	}
 	denyNew := func() error {
+		if claimsStopped(options.StopClaims) {
+			return context.Canceled
+		}
 		if w.DenyActorStarts {
 			return ErrHHCycleLimit
 		}
@@ -259,6 +269,9 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 		phaseProcessed := 0
 		hhStages := 0
 		for result.Processed < options.MaxJobs && phaseProcessed < phaseLimit {
+			if claimsStopped(options.StopClaims) {
+				return result, nil
+			}
 			processed, stepErr := w.cycleStep(ctx, bounded, start.Run.ID, phase, d, owner, &result, &phaseProcessed, &hhStages, &status, &releaseRun)
 			if stepErr != nil {
 				return result, stepErr
@@ -269,6 +282,15 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 		}
 	}
 	return result, nil
+}
+
+func claimsStopped(stop <-chan struct{}) bool {
+	select {
+	case <-stop:
+		return true
+	default:
+		return false
+	}
 }
 
 // cycleStep выполняет один claim и обработку с прежними ограничениями run.

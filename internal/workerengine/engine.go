@@ -37,16 +37,16 @@ func (e Engine) Run(ctx context.Context) error {
 	if err := config.Validate(); err != nil {
 		return workerloop.ErrConfig
 	}
-	return workerloop.RunProfiles(ctx, e.profiles(config), nil)
+	return workerloop.RunProfilesWithGrace(ctx, e.profiles(ctx, config), nil, config.ShutdownGrace)
 }
 
-func (e Engine) profiles(config workerconfig.Config) []workerloop.Profile {
+func (e Engine) profiles(stop context.Context, config workerconfig.Config) []workerloop.Profile {
 	makeProfile := func(name workerloop.ProfileName, idle time.Duration) workerloop.Profile {
 		return workerloop.Profile{
 			Name: name, WorkDelay: time.Second, IdleDelay: idle,
 			ErrorMin: config.ErrorMin, ErrorMax: config.ErrorMax, StepTimeout: 2 * time.Minute,
 			OnResult: e.OnResult,
-			Step:     func(ctx context.Context) (bool, error) { return e.cycle(ctx, name, config.MaxJobs) },
+			Step:     func(ctx context.Context) (bool, error) { return e.cycle(ctx, stop.Done(), name, config.MaxJobs) },
 		}
 	}
 	return []workerloop.Profile{
@@ -56,7 +56,7 @@ func (e Engine) profiles(config workerconfig.Config) []workerloop.Profile {
 	}
 }
 
-func (e Engine) cycle(ctx context.Context, profile workerloop.ProfileName, maxJobs int) (bool, error) {
+func (e Engine) cycle(ctx context.Context, stopClaims <-chan struct{}, profile workerloop.ProfileName, maxJobs int) (bool, error) {
 	// Launch также планирует источники и восстанавливает leases, поэтому его
 	// нельзя пропускать только из-за отсутствия готового задания. Остальные
 	// профили избегают пустого run; снимок не заменяет атомарный claim.
@@ -92,7 +92,7 @@ func (e Engine) cycle(ctx context.Context, profile workerloop.ProfileName, maxJo
 	worker.DeferUnspentBudget = true
 	result, err := worker.Cycle(ctx, parser.WorkerOptions{
 		Run:     parser.RunOptions{RequestID: id, Trigger: "automatic", Duration: 100 * time.Second},
-		MaxJobs: maxJobs, QueueProfile: string(profile),
+		MaxJobs: maxJobs, QueueProfile: string(profile), StopClaims: stopClaims,
 	})
 	if err != nil || result.Reused || result.Run.Status != "completed" {
 		return false, ErrCycle

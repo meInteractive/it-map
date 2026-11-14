@@ -134,7 +134,16 @@ func (p *profilePlan) complete(i int, now time.Time, worked bool, failed bool) {
 // функцию без риска параллельной работы нельзя. Конфигурация не
 // заменяет durable rate limits, budget, fencing и единственность consumer.
 func RunProfiles(ctx context.Context, profiles []Profile, onFailure func(ProfileName)) error {
+	return RunProfilesWithGrace(ctx, profiles, onFailure, 0)
+}
+
+// RunProfilesWithGrace прекращает запуск новых шагов при отмене и даёт
+// текущему шагу до grace для завершения. Step обязан соблюдать свой контекст.
+func RunProfilesWithGrace(ctx context.Context, profiles []Profile, onFailure func(ProfileName), grace time.Duration) error {
 	if ctx == nil {
+		return ErrConfig
+	}
+	if grace < 0 || grace > 30*time.Second {
 		return ErrConfig
 	}
 	p, err := newProfilePlan(profiles)
@@ -157,7 +166,26 @@ func RunProfiles(ctx context.Context, profiles []Profile, onFailure func(Profile
 			continue
 		}
 		profile := p.slots[i].profile
-		stepCtx, cancel := context.WithTimeout(ctx, profile.StepTimeout)
+		stepParent := ctx
+		if grace > 0 {
+			stepParent = context.WithoutCancel(ctx)
+		}
+		stepCtx, cancel := context.WithTimeout(stepParent, profile.StepTimeout)
+		if grace > 0 {
+			go func() {
+				select {
+				case <-ctx.Done():
+					timer := time.NewTimer(grace)
+					defer timer.Stop()
+					select {
+					case <-timer.C:
+						cancel()
+					case <-stepCtx.Done():
+					}
+				case <-stepCtx.Done():
+				}
+			}()
+		}
 		worked, stepErr := profile.Step(stepCtx)
 		stepContextErr := stepCtx.Err()
 		cancel()
