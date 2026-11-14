@@ -37,6 +37,8 @@ type Providers struct {
 	LoseStartAck bool
 	// AfterStart позволяет синтетическому тесту остановить процесс после POST.
 	AfterStart func(context.Context)
+	// BeforeAccount позволяет проверить остановку до резервирования операции.
+	BeforeAccount func(context.Context)
 	// Async возвращает работающий synthetic Actor до первого reconcile.
 	Async bool
 	// ExhaustedAccount возвращает исчерпанный synthetic лимит Apify.
@@ -48,6 +50,12 @@ func (p *Providers) Polls() int64   { return p.polls.Load() }
 func (p *Providers) AICalls() int64 { return p.aiCalls.Load() }
 
 func (p *Providers) Account(ctx context.Context) (apify.BillingAccount, error) {
+	if err := ctx.Err(); err != nil {
+		return apify.BillingAccount{}, err
+	}
+	if p.BeforeAccount != nil {
+		p.BeforeAccount(ctx)
+	}
 	if err := ctx.Err(); err != nil {
 		return apify.BillingAccount{}, err
 	}
