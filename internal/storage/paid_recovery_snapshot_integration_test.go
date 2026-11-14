@@ -85,6 +85,11 @@ func TestMariaDBPaidRecoverySnapshotDisposable(t *testing.T) {
 		t.Fatal("partial snapshot returned", err)
 	}
 	f.exec("UPDATE scheduler_attempts SET status='interrupted' WHERE id='CI_old_paid'")
+	f.exec("UPDATE scheduler_attempts SET status='running',cost_usd=0.1 WHERE id='CI_old_paid'")
+	if got, err = paidrecovery.Inspect(f.ctx, f.db, f.repo.Generation); !errors.Is(err, parser.ErrHistoricalAttemptsIncompatible) || got != (paidrecovery.Snapshot{}) {
+		t.Fatal("partial snapshot returned for running receipt with cost", err)
+	}
+	f.exec("UPDATE scheduler_attempts SET status='interrupted',cost_usd=NULL WHERE id='CI_old_paid'")
 	cfg, err := mysql.ParseDSN(os.Getenv("ITMAP_TEST_MARIADB_WRITE_DSN"))
 	if err != nil || requireDisposableTarget(cfg.Net, cfg.Addr, cfg.DBName, cfg.User) != nil {
 		t.Fatal("unsafe snapshot target")
