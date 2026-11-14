@@ -317,6 +317,7 @@ func (w Worker) cycleStep(ctx, bounded context.Context, runID, phase string, d w
 		claim.HHScanPhase = "reconcile"
 	case "pipeline":
 		claim.Types = []string{"classify_title", "fetch_full_text", "extract_vacancy", "assign_roles", "import_vacancy", "score_relevance"}
+		claim.WorkerPipelineFairness = true
 	}
 	if w.ResumeJobID != "" {
 		if !w.ResumePreviousDataset {

@@ -33,17 +33,17 @@ func claimAgenciesEnabled(raw []byte) (bool, error) {
 const hhActorLaunchCooldown = 15 * time.Minute
 
 type claimView struct {
-	busy           map[int64]bool
-	pages          map[string]string
-	operations     map[string]bool
-	verifiedHH     map[hhCandidateKey]bool
+	busy            map[int64]bool
+	pages           map[string]string
+	operations      map[string]bool
+	verifiedHH      map[hhCandidateKey]bool
 	blockedHHScans  map[string]bool
 	goOperationKeys map[string]string
 	orphanPaidScans map[string]bool
 	// Зарезервированную операцию без Run ID провайдера нельзя безопасно дочитать.
 	// Блокируем обе фазы HH и не допускаем повторного платного POST.
 	unconfirmedRunIDs map[string]bool
-	lastListingStart int64
+	lastListingStart  int64
 }
 
 func claimTypes(requested []string) (map[string]bool, error) {
@@ -329,4 +329,23 @@ func claimBefore(a Job, aPage bool, b Job, bPage bool, now int64) bool {
 		return a.CreatedAt < b.CreatedAt
 	}
 	return strings.Compare(a.ID, b.ID) < 0
+}
+
+// В непрерывном pipeline задания, ожидающие после наступления run_after не
+// менее 30 минут, обрабатываются по времени готовности. Это предотвращает
+// бесконечное вытеснение более приоритетными свежими заданиями. Остальные
+// очереди и проверки допуска сохраняют прежний порядок.
+func claimBeforeForWorker(a Job, aPage bool, b Job, bPage bool, now int64, fair bool) bool {
+	const waitMillis int64 = 30 * 60 * 1000
+	if fair && now >= math.MinInt64+waitMillis {
+		cutoff := now - waitMillis
+		aOld, bOld := a.RunAfter <= cutoff, b.RunAfter <= cutoff
+		if aOld != bOld {
+			return aOld
+		}
+		if aOld && a.RunAfter != b.RunAfter {
+			return a.RunAfter < b.RunAfter
+		}
+	}
+	return claimBefore(a, aPage, b, bPage, now)
 }
