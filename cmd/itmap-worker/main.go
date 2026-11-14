@@ -114,6 +114,10 @@ func runWorker(ctx context.Context, db *sql.DB, s settings) error {
 	defer monitor.Stop()
 	workerCtx, stop := context.WithCancel(ctx)
 	defer stop()
+	go func() {
+		<-workerCtx.Done()
+		monitor.Stop()
+	}()
 	var server *http.Server
 	var serverDone chan error
 	if s.health {

@@ -39,7 +39,7 @@ func TestProfilesUseValidatedRuntimeConfiguration(t *testing.T) {
 	cfg.IdleDelay = 2 * time.Second
 	cfg.ErrorMin = 3 * time.Second
 	cfg.ErrorMax = 90 * time.Second
-	profiles := (Engine{}).profiles(cfg)
+	profiles := (Engine{}).profiles(context.Background(), cfg)
 	for i, idle := range []time.Duration{cfg.LaunchIdle, cfg.ReconcileIdle, cfg.IdleDelay} {
 		p := profiles[i]
 		if p.IdleDelay != idle || p.ErrorMin != cfg.ErrorMin || p.ErrorMax != cfg.ErrorMax || p.StepTimeout != 2*time.Minute {
