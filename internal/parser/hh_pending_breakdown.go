@@ -9,40 +9,40 @@ import (
 // HHPendingBreakdown описывает ожидающие HH-scan без идентификаторов,
 // payload, URL или платных вызовов. Категории взаимоисключающие.
 type HHPendingBreakdown struct {
-	Pending                 int64 `json:"pending"`
-	NotDue                  int64 `json:"notDue"`
-	UnverifiedCursor        int64 `json:"unverifiedCursor"`
-	UnverifiedLineage       int64 `json:"unverifiedLineage"`
+	Pending             int64  `json:"pending"`
+	NotDue              int64  `json:"notDue"`
+	UnverifiedCursor    int64  `json:"unverifiedCursor"`
+	UnverifiedLineage   int64  `json:"unverifiedLineage"`
 	UnverifiedSourceChanged int64 `json:"unverifiedSourceChanged"`
-	UnverifiedLegacyFilters int64 `json:"unverifiedLegacyFilters"`
-	UnverifiedLegacyVersion int64 `json:"unverifiedLegacyVersion"`
-	UnverifiedLegacyLineage int64 `json:"unverifiedLegacyLineage"`
-	UnverifiedLegacyMoscow  int64 `json:"unverifiedLegacyMoscow"`
-	UnverifiedLegacyDate    int64 `json:"unverifiedLegacyDate"`
-	UnverifiedLegacyTitle   int64 `json:"unverifiedLegacyTitle"`
-	UnverifiedLegacyRoles   int64 `json:"unverifiedLegacyRoles"`
-	// Признаки оплаченного прошлого: агрегаты только старых HH pending, не идентификаторы.
-	LegacySavedRunID                    int64  `json:"legacySavedRunId"`
-	LegacySavedDatasetID                int64  `json:"legacySavedDatasetId"`
-	LegacySavedMetadata                 int64  `json:"legacySavedMetadata"`
-	LegacyCurrentPageLedger             int64  `json:"legacyCurrentPageLedger"`
-	LegacyCurrentPageLedgerRunID        int64  `json:"legacyCurrentPageLedgerRunId"`
-	LegacyCurrentPageLedgerMissingRunID int64  `json:"legacyCurrentPageLedgerMissingRunId"`
-	LegacySavedRunNoCurrentLedger       int64  `json:"legacySavedRunNoCurrentLedger"`
-	UnverifiedMalformedCursor           int64  `json:"unverifiedMalformedCursor"`
-	UnverifiedOtherProof                int64  `json:"unverifiedOtherProof"`
-	MissingOperation                    int64  `json:"missingOperation"`
-	OrphanPaid                          int64  `json:"orphanPaid"`
-	ReconcileCandidate                  int64  `json:"reconcileCandidate"`
-	LaunchCooldown                      int64  `json:"launchCooldown"`
-	LaunchCandidate                     int64  `json:"launchCandidate"`
-	Other                               int64  `json:"other"`
-	UnconfirmedRunID                    int64  `json:"unconfirmedRunId"`
-	OldestUnconfirmedAt                 *int64 `json:"oldestUnconfirmedAt"`
-	OldestPendingAt                     *int64 `json:"oldestPendingAt"`
-	OldestUnverifiedAt                  *int64 `json:"oldestUnverifiedAt"`
-	OldestReconcileAt                   *int64 `json:"oldestReconcileAt"`
-	OldestCooldownAt                    *int64 `json:"oldestCooldownAt"`
+	UnverifiedLegacyFilters  int64 `json:"unverifiedLegacyFilters"`
+    UnverifiedLegacyVersion int64 `json:"unverifiedLegacyVersion"`
+    UnverifiedLegacyLineage int64 `json:"unverifiedLegacyLineage"`
+    UnverifiedLegacyMoscow int64 `json:"unverifiedLegacyMoscow"`
+    UnverifiedLegacyDate int64 `json:"unverifiedLegacyDate"`
+    UnverifiedLegacyTitle int64 `json:"unverifiedLegacyTitle"`
+    UnverifiedLegacyRoles int64 `json:"unverifiedLegacyRoles"`
+    // Признаки оплаченного прошлого: агрегаты только старых HH pending, не идентификаторы.
+    LegacySavedRunID int64 `json:"legacySavedRunId"`
+    LegacySavedDatasetID int64 `json:"legacySavedDatasetId"`
+    LegacySavedMetadata int64 `json:"legacySavedMetadata"`
+    LegacyCurrentPageLedger int64 `json:"legacyCurrentPageLedger"`
+    LegacyCurrentPageLedgerRunID int64 `json:"legacyCurrentPageLedgerRunId"`
+    LegacyCurrentPageLedgerMissingRunID int64 `json:"legacyCurrentPageLedgerMissingRunId"`
+    LegacySavedRunNoCurrentLedger int64 `json:"legacySavedRunNoCurrentLedger"`
+	UnverifiedMalformedCursor int64 `json:"unverifiedMalformedCursor"`
+	UnverifiedOtherProof int64 `json:"unverifiedOtherProof"`
+	MissingOperation    int64  `json:"missingOperation"`
+	OrphanPaid          int64  `json:"orphanPaid"`
+	ReconcileCandidate  int64  `json:"reconcileCandidate"`
+	LaunchCooldown      int64  `json:"launchCooldown"`
+	LaunchCandidate     int64  `json:"launchCandidate"`
+	Other               int64  `json:"other"`
+	UnconfirmedRunID    int64  `json:"unconfirmedRunId"`
+	OldestUnconfirmedAt *int64 `json:"oldestUnconfirmedAt"`
+	OldestPendingAt     *int64 `json:"oldestPendingAt"`
+	OldestUnverifiedAt  *int64 `json:"oldestUnverifiedAt"`
+	OldestReconcileAt   *int64 `json:"oldestReconcileAt"`
+	OldestCooldownAt    *int64 `json:"oldestCooldownAt"`
 }
 
 // olderHHStamp сохраняет самое раннее время внутри агрегата без ID заданий.
@@ -60,10 +60,10 @@ func summarizeHHPending(jobs []Job, now int64, settings Settings, view claimView
 }
 
 func summarizeHHPendingWithReasons(jobs []Job, now int64, settings Settings, view claimView, reasons map[string]string) HHPendingBreakdown {
-	return summarizeHHPendingWithDetails(jobs, now, settings, view, reasons, nil)
+    return summarizeHHPendingWithDetails(jobs,now,settings,view,reasons,nil)
 }
 func summarizeHHPendingWithDetails(jobs []Job, now int64, settings Settings, view claimView, reasons map[string]string, legacy map[string]hhLegacyFactors) HHPendingBreakdown {
-	return summarizeHHPendingWithPaidEvidence(jobs, now, settings, view, reasons, legacy, nil)
+    return summarizeHHPendingWithPaidEvidence(jobs, now, settings, view, reasons, legacy, nil)
 }
 
 // Дополнительные числовые признаки не влияют на claim/launch/reconcile.
@@ -90,50 +90,32 @@ func summarizeHHPendingWithPaidEvidence(jobs []Job, now int64, settings Settings
 			case hhBlockedSourceChanged:
 				out.UnverifiedSourceChanged++
 			case hhBlockedLegacyFilters:
-				out.UnverifiedLegacyFilters++
-				factors := legacy[job.ID]
-				if factors.Version {
-					out.UnverifiedLegacyVersion++
-				}
-				if factors.Lineage {
-					out.UnverifiedLegacyLineage++
-				}
-				if factors.Moscow {
-					out.UnverifiedLegacyMoscow++
-				}
-				if factors.Date {
-					out.UnverifiedLegacyDate++
-				}
-				if factors.Title {
-					out.UnverifiedLegacyTitle++
-				}
-				if factors.Roles {
-					out.UnverifiedLegacyRoles++
-				}
-				proof := saved[job.ID]
-				if proof.SavedRunID {
-					out.LegacySavedRunID++
-				}
-				if proof.SavedDatasetID {
-					out.LegacySavedDatasetID++
-				}
-				if proof.SavedMetadata {
-					out.LegacySavedMetadata++
-				}
-				key, known := view.goOperationKeys[job.ID]
-				hasLedger := known && view.operations[key]
-				if hasLedger {
-					out.LegacyCurrentPageLedger++
-					if view.unconfirmedRunIDs[key] {
-						out.LegacyCurrentPageLedgerMissingRunID++
-					} else {
-						out.LegacyCurrentPageLedgerRunID++
-					}
-				} else if proof.SavedRunID {
-					// Не считать отсутствие ledger текущей страницы доказательством
-					// неоплаченного Actor: ранее могла оплачиваться иная страница.
-					out.LegacySavedRunNoCurrentLedger++
-				}
+                out.UnverifiedLegacyFilters++
+                factors:=legacy[job.ID]
+                if factors.Version {out.UnverifiedLegacyVersion++}
+                if factors.Lineage {out.UnverifiedLegacyLineage++}
+                if factors.Moscow {out.UnverifiedLegacyMoscow++}
+                if factors.Date {out.UnverifiedLegacyDate++}
+                if factors.Title {out.UnverifiedLegacyTitle++}
+                if factors.Roles {out.UnverifiedLegacyRoles++}
+                proof := saved[job.ID]
+                if proof.SavedRunID {out.LegacySavedRunID++}
+                if proof.SavedDatasetID {out.LegacySavedDatasetID++}
+                if proof.SavedMetadata {out.LegacySavedMetadata++}
+                key, known := view.goOperationKeys[job.ID]
+                hasLedger := known && view.operations[key]
+                if hasLedger {
+                    out.LegacyCurrentPageLedger++
+                    if view.unconfirmedRunIDs[key] {
+                        out.LegacyCurrentPageLedgerMissingRunID++
+                    } else {
+                        out.LegacyCurrentPageLedgerRunID++
+                    }
+                } else if proof.SavedRunID {
+                    // Не считать отсутствие ledger текущей страницы доказательством
+                    // неоплаченного Actor: ранее могла оплачиваться иная страница.
+                    out.LegacySavedRunNoCurrentLedger++
+                }
 			case hhBlockedMalformedCursor:
 				out.UnverifiedMalformedCursor++
 			default:
