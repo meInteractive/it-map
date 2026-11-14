@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -550,6 +551,161 @@ func TestMariaDBContinuousWorkerBudgetCommitDisposable(t *testing.T) {
 	runUntil(worker, workerloop.Pipeline)
 	if p.Starts() != 1 || p.AICalls() == 0 || s.count("SELECT COUNT(*) FROM company_vacancies WHERE company_name='CI Apify Runtime'") != 1 {
 		t.Fatal("worker failed to recover after unknown commit", p.Starts(), p.AICalls())
+	}
+}
+
+func TestMariaDBContinuousWorkerRelevanceBudgetDisposable(t *testing.T) {
+	s, p, worker := continuousWorkerFixture(t, false)
+	// Строим pipeline по одному заданию, пока не появится готовая relevance.
+	worker.ScheduleSources = true
+	worker.ContinueOnStageFailure = true
+	for i := 0; i < 12; i++ {
+		if s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='score_relevance' AND status='pending'") != 0 {
+			break
+		}
+		result, err := worker.Cycle(s.ctx, parser.WorkerOptions{Run: parser.RunOptions{RequestID: fmt.Sprintf("CI_RELEVANCE_BUDGET_%d", i), Trigger: "automatic"}, MaxJobs: 1, QueueProfile: "balanced"})
+		if err != nil || result.Run.Status != "completed" {
+			t.Fatal("pipeline setup failed", err, result.Run.Status)
+		}
+	}
+	if s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='score_relevance' AND status='pending'") != 1 || s.count("SELECT COUNT(*) FROM company_vacancy_user_state WHERE user_name='CI_OWNER' AND relevance IS NOT NULL") != 0 {
+		t.Fatal("relevance fixture missing")
+	}
+	s.exec(`UPDATE firecrawl_settings SET scheduler_json=JSON_SET(scheduler_json,'$.dayBudgetUsd',0,'$.monthBudgetUsd',0) WHERE id=1`)
+	previousCalls := p.AICalls()
+	runPipeline := func() {
+		ctx, cancel := context.WithCancel(s.ctx)
+		done := make(chan error, 1)
+		go func() {
+			done <- (workerengine.Engine{Worker: worker, OnResult: func(profile workerloop.ProfileName, _ workerloop.ProfileOutcome) {
+				if profile == workerloop.Pipeline {
+					cancel()
+				}
+			}}).Run(ctx)
+		}()
+		select {
+		case err := <-done:
+			if !errors.Is(err, context.Canceled) {
+				t.Fatal("worker did not stop", err)
+			}
+		case <-time.After(12 * time.Second):
+			cancel()
+			<-done
+			t.Fatal("relevance budget test timed out")
+		}
+	}
+	runPipeline()
+	if p.AICalls() != previousCalls || s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='score_relevance' AND status='pending' AND reason_code='budget' AND attempts=0") != 1 {
+		t.Fatal("relevance did not defer without a paid call", p.AICalls(), previousCalls)
+	}
+	s.exec(`UPDATE firecrawl_settings SET scheduler_json=JSON_SET(scheduler_json,'$.dayBudgetUsd',5,'$.monthBudgetUsd',5) WHERE id=1`)
+	s.exec("UPDATE scheduler_jobs SET run_after=0 WHERE type='score_relevance' AND status='pending' AND reason_code='budget'")
+	runPipeline()
+	if p.Starts() != 1 || p.AICalls() <= previousCalls || s.count("SELECT COUNT(*) FROM company_vacancy_user_state WHERE user_name='CI_OWNER' AND relevance=67") != 1 {
+		t.Fatal("relevance did not resume", p.Starts(), p.AICalls())
+	}
+}
+
+func TestMariaDBContinuousWorkerCompetitionDisposable(t *testing.T) {
+	s, providers, first := continuousWorkerFixture(t, false)
+	_, db2 := schedulerDB(t)
+	c1, err := s.db.Conn(s.ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c2, err := db2.Conn(s.ctx)
+	if err != nil {
+		c1.Close()
+		t.Fatal(err)
+	}
+	var id1, id2 int64
+	if c1.QueryRowContext(s.ctx, "SELECT CONNECTION_ID()").Scan(&id1) != nil || c2.QueryRowContext(s.ctx, "SELECT CONNECTION_ID()").Scan(&id2) != nil || id1 == id2 {
+		c1.Close()
+		c2.Close()
+		t.Fatal("two independent database connections required")
+	}
+	c1.Close()
+	c2.Close()
+	second, err := stagingmock.Worker(parser.RunRepository{DB: db2, Generation: s.repo.Generation}, "CI_SECRET", providers)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(s.ctx)
+	var wg sync.WaitGroup
+	release := make(chan struct{})
+	var releaseOnce sync.Once
+	defer func() { releaseOnce.Do(func() { close(release) }); cancel(); wg.Wait() }()
+	started := make(chan struct{}, 1)
+	providers.AfterStart = func(ctx context.Context) {
+		select {
+		case started <- struct{}{}:
+		default:
+		}
+		select {
+		case <-release:
+		case <-ctx.Done():
+		}
+	}
+	firstDone := make(chan error, 1)
+	wg.Add(1)
+	go func() { defer wg.Done(); firstDone <- (workerengine.Engine{Worker: first}).Run(ctx) }()
+	select {
+	case <-started:
+	case <-time.After(12 * time.Second):
+		t.Fatal("first worker did not reach synthetic actor")
+	}
+	secondResult := make(chan workerloop.ProfileOutcome, 1)
+	secondDone := make(chan error, 1)
+	secondCtx, stopSecond := context.WithCancel(ctx)
+	defer stopSecond()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		secondDone <- (workerengine.Engine{Worker: second, OnResult: func(profile workerloop.ProfileName, outcome workerloop.ProfileOutcome) {
+			if profile == workerloop.Launch {
+				select {
+				case secondResult <- outcome:
+				default:
+				}
+				stopSecond()
+			}
+		}}).Run(secondCtx)
+	}()
+	select {
+	case result := <-secondResult:
+		if result != workerloop.ProfileFailed || providers.Starts() != 1 {
+			t.Fatal("second worker admitted concurrent actor", result, providers.Starts())
+		}
+	case <-time.After(12 * time.Second):
+		t.Fatal("second worker did not encounter the active run")
+	}
+	if err := <-secondDone; !errors.Is(err, context.Canceled) {
+		t.Fatal("second worker did not stop", err)
+	}
+	releaseOnce.Do(func() { close(release) })
+	deadline := time.NewTimer(12 * time.Second)
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer deadline.Stop()
+	defer ticker.Stop()
+	completed := false
+wait:
+	for {
+		select {
+		case <-ticker.C:
+			if s.count("SELECT COUNT(*) FROM company_vacancy_user_state WHERE user_name='CI_OWNER' AND relevance=67") == 1 {
+				completed = true
+				break wait
+			}
+		case <-deadline.C:
+			break wait
+		}
+	}
+	cancel()
+	if err := <-firstDone; !errors.Is(err, context.Canceled) {
+		t.Fatal("first worker did not stop", err)
+	}
+	if !completed || providers.Starts() != 1 || s.count("SELECT COUNT(*) FROM apify_runs") != 1 {
+		t.Fatal("concurrent workers failed to converge", completed, providers.Starts())
 	}
 }
 
