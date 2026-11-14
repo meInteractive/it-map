@@ -708,3 +708,46 @@ wait:
 		t.Fatal("concurrent workers failed to converge", completed, providers.Starts())
 	}
 }
+
+// До COMMIT имитируется потеря соединения с откатом транзакции.
+func TestMariaDBContinuousWorkerBudgetBeforeCommitDisposable(t *testing.T) {
+	s, p, worker := continuousWorkerFixture(t, false)
+	s.exec(`UPDATE firecrawl_settings SET scheduler_json=JSON_SET(scheduler_json,'$.dayBudgetUsd',0,'$.monthBudgetUsd',0) WHERE id=1`)
+	runUntil := func(w parser.Worker, target workerloop.ProfileName) {
+		ctx, cancel := context.WithCancel(s.ctx)
+		done := make(chan error, 1)
+		go func() {
+			done <- (workerengine.Engine{Worker: w, OnResult: func(profile workerloop.ProfileName, _ workerloop.ProfileOutcome) {
+				if profile == target {
+					cancel()
+				}
+			}}).Run(ctx)
+		}()
+		select {
+		case err := <-done:
+			if !errors.Is(err, context.Canceled) {
+				t.Fatal("worker did not stop", err)
+			}
+		case <-time.After(12 * time.Second):
+			cancel()
+			<-done
+			t.Fatal("budget rollback test timed out")
+		}
+	}
+	runUntil(worker, workerloop.Launch)
+	if p.Starts() != 1 || p.AICalls() != 0 {
+		t.Fatal("classification fixture missing")
+	}
+	repo, fired := billingCommitRepositoryMode(t, s.repo.Generation, "UPDATE scheduler_jobs SET status=?,attempts=GREATEST", true)
+	faultWorker, err := stagingmock.Worker(repo, "CI_SECRET", p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	runUntil(faultWorker, workerloop.Pipeline)
+	if !fired.Load() || p.AICalls() != 0 || s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='classify_title' AND status='failed' AND reason_code='stage_failed'") != 1 {
+		t.Fatal("failed pre-COMMIT did not leave a conservative job", fired.Load(), p.AICalls())
+	}
+	if s.count("SELECT COUNT(*) FROM scheduler_attempts WHERE type='classify_title' AND (reserved_usd>0 OR cost_usd>0)") != 0 {
+		t.Fatal("failed pre-COMMIT created paid evidence")
+	}
+}
