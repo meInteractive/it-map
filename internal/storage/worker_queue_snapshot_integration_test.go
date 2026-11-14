@@ -31,12 +31,15 @@ func TestMariaDBWorkerQueueSnapshotDisposable(t *testing.T) {
 		schedulerSeedJob(f, v.id, nil)
 		f.exec("UPDATE scheduler_jobs SET type=?,status=?,run_after=? WHERE id=?", v.kind, v.status, v.after, v.id)
 	}
+	f.exec("UPDATE scheduler_jobs SET reason_code='historical_paid_unknown' WHERE id IN ('CI_scan_delayed','CI_scan_running')")
+	f.exec("UPDATE scheduler_jobs SET reason_code='historical_ai_unknown' WHERE id='CI_pipeline_delayed'")
+	f.exec("UPDATE scheduler_jobs SET reason_code='budget' WHERE id='CI_pipeline_due'")
 	other := "11111111-2222-4333-8444-555555555555"
 	if other == f.repo.Generation {
 		other = "11111111-2222-4333-8444-555555555556"
 	}
 	schedulerSeedJob(f, "CI_other_generation", nil)
-	f.exec("UPDATE scheduler_jobs SET generation=?,type='classify_title',status='pending' WHERE id='CI_other_generation'", other)
+	f.exec("UPDATE scheduler_jobs SET generation=?,type='classify_title',status='pending',reason_code='historical_ai_unknown' WHERE id='CI_other_generation'", other)
 	before := schedulerRows(t, f, "")
 	got, err := workerengine.NewQueueReader(f.db, f.repo.Generation).ReadQueue(f.ctx)
 	if err != nil {
@@ -44,6 +47,9 @@ func TestMariaDBWorkerQueueSnapshotDisposable(t *testing.T) {
 	}
 	if got.Scan.Due != 1 || got.Scan.Delayed != 1 || got.Scan.Running != 1 || got.Scan.Failed != 1 || got.Scan.OldestDueSeconds < 20 || got.Pipeline.Due != 1 || got.Pipeline.Delayed != 1 || got.Pipeline.Running != 1 || got.Pipeline.Failed != 1 || got.Pipeline.OldestDueSeconds < 10 {
 		t.Fatal("unexpected aggregate", got)
+	}
+	if got.Scan.HistoricalActor != 1 || got.Scan.HistoricalAI != 0 || got.Pipeline.HistoricalActor != 0 || got.Pipeline.HistoricalAI != 1 || got.Pipeline.Budget != 1 {
+		t.Fatal("pending reasons miscounted", got)
 	}
 	if !reflect.DeepEqual(before, schedulerRows(t, f, "")) {
 		t.Fatal("snapshot changed scheduler rows")

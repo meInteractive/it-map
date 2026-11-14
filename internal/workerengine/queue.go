@@ -16,6 +16,9 @@ type QueueGroup struct {
 	Running          int64 `json:"running"`
 	Failed           int64 `json:"failed"`
 	OldestDueSeconds int64 `json:"oldestDueSeconds"`
+	HistoricalActor  int64 `json:"historicalActor"`
+	HistoricalAI     int64 `json:"historicalAI"`
+	Budget           int64 `json:"budget"`
 }
 type QueueSnapshot struct {
 	Scan     QueueGroup `json:"scan"`
@@ -41,11 +44,17 @@ const queueSQL = `SELECT
  COALESCE(SUM(CASE WHEN type='scan_source' AND status='running' THEN 1 ELSE 0 END),0),
  COALESCE(SUM(CASE WHEN type='scan_source' AND status='failed' THEN 1 ELSE 0 END),0),
  COALESCE(MAX(CASE WHEN type='scan_source' AND status='pending' AND run_after<=clock.now_ms THEN clock.now_ms-run_after ELSE 0 END),0),
+ COALESCE(SUM(CASE WHEN type='scan_source' AND status='pending' AND reason_code='historical_paid_unknown' THEN 1 ELSE 0 END),0),
+ COALESCE(SUM(CASE WHEN type='scan_source' AND status='pending' AND reason_code='historical_ai_unknown' THEN 1 ELSE 0 END),0),
+ COALESCE(SUM(CASE WHEN type='scan_source' AND status='pending' AND reason_code='budget' THEN 1 ELSE 0 END),0),
  COALESCE(SUM(CASE WHEN type<>'scan_source' AND status='pending' AND run_after<=clock.now_ms THEN 1 ELSE 0 END),0),
  COALESCE(SUM(CASE WHEN type<>'scan_source' AND status='pending' AND run_after>clock.now_ms THEN 1 ELSE 0 END),0),
  COALESCE(SUM(CASE WHEN type<>'scan_source' AND status='running' THEN 1 ELSE 0 END),0),
  COALESCE(SUM(CASE WHEN type<>'scan_source' AND status='failed' THEN 1 ELSE 0 END),0),
- COALESCE(MAX(CASE WHEN type<>'scan_source' AND status='pending' AND run_after<=clock.now_ms THEN clock.now_ms-run_after ELSE 0 END),0)
+ COALESCE(MAX(CASE WHEN type<>'scan_source' AND status='pending' AND run_after<=clock.now_ms THEN clock.now_ms-run_after ELSE 0 END),0),
+ COALESCE(SUM(CASE WHEN type<>'scan_source' AND status='pending' AND reason_code='historical_paid_unknown' THEN 1 ELSE 0 END),0),
+ COALESCE(SUM(CASE WHEN type<>'scan_source' AND status='pending' AND reason_code='historical_ai_unknown' THEN 1 ELSE 0 END),0),
+ COALESCE(SUM(CASE WHEN type<>'scan_source' AND status='pending' AND reason_code='budget' THEN 1 ELSE 0 END),0)
  FROM scheduler_jobs CROSS JOIN (SELECT CAST(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000 AS SIGNED) AS now_ms) clock
  WHERE generation=? AND status IN ('pending','running','failed')
  AND type IN ('scan_source','classify_title','fetch_full_text','extract_vacancy','assign_roles','import_vacancy','score_relevance')`
@@ -60,7 +69,7 @@ func (r *sqlQueueReader) ReadQueue(ctx context.Context) (QueueSnapshot, error) {
 	var gen sql.NullString
 	var out QueueSnapshot
 	var scanMs, pipelineMs int64
-	err := r.db.QueryRowContext(ctx, queueSQL, r.generation).Scan(&gen, &out.Scan.Due, &out.Scan.Delayed, &out.Scan.Running, &out.Scan.Failed, &scanMs, &out.Pipeline.Due, &out.Pipeline.Delayed, &out.Pipeline.Running, &out.Pipeline.Failed, &pipelineMs)
+	err := r.db.QueryRowContext(ctx, queueSQL, r.generation).Scan(&gen, &out.Scan.Due, &out.Scan.Delayed, &out.Scan.Running, &out.Scan.Failed, &scanMs, &out.Scan.HistoricalActor, &out.Scan.HistoricalAI, &out.Scan.Budget, &out.Pipeline.Due, &out.Pipeline.Delayed, &out.Pipeline.Running, &out.Pipeline.Failed, &pipelineMs, &out.Pipeline.HistoricalActor, &out.Pipeline.HistoricalAI, &out.Pipeline.Budget)
 	if err != nil || !gen.Valid || gen.String != r.generation || scanMs < 0 || pipelineMs < 0 {
 		return QueueSnapshot{}, errQueue
 	}
