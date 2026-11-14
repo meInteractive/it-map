@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -602,5 +603,108 @@ func TestMariaDBContinuousWorkerRelevanceBudgetDisposable(t *testing.T) {
 	runPipeline()
 	if p.Starts() != 1 || p.AICalls() <= previousCalls || s.count("SELECT COUNT(*) FROM company_vacancy_user_state WHERE user_name='CI_OWNER' AND relevance=67") != 1 {
 		t.Fatal("relevance did not resume", p.Starts(), p.AICalls())
+	}
+}
+
+func TestMariaDBContinuousWorkerCompetitionDisposable(t *testing.T) {
+	s, providers, first := continuousWorkerFixture(t, false)
+	_, db2 := schedulerDB(t)
+	c1, err := s.db.Conn(s.ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c2, err := db2.Conn(s.ctx)
+	if err != nil {
+		c1.Close()
+		t.Fatal(err)
+	}
+	var id1, id2 int64
+	if c1.QueryRowContext(s.ctx, "SELECT CONNECTION_ID()").Scan(&id1) != nil || c2.QueryRowContext(s.ctx, "SELECT CONNECTION_ID()").Scan(&id2) != nil || id1 == id2 {
+		c1.Close()
+		c2.Close()
+		t.Fatal("two independent database connections required")
+	}
+	c1.Close()
+	c2.Close()
+	second, err := stagingmock.Worker(parser.RunRepository{DB: db2, Generation: s.repo.Generation}, "CI_SECRET", providers)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(s.ctx)
+	var wg sync.WaitGroup
+	release := make(chan struct{})
+	var releaseOnce sync.Once
+	defer func() { releaseOnce.Do(func() { close(release) }); cancel(); wg.Wait() }()
+	started := make(chan struct{}, 1)
+	providers.AfterStart = func(ctx context.Context) {
+		select {
+		case started <- struct{}{}:
+		default:
+		}
+		select {
+		case <-release:
+		case <-ctx.Done():
+		}
+	}
+	firstDone := make(chan error, 1)
+	wg.Add(1)
+	go func() { defer wg.Done(); firstDone <- (workerengine.Engine{Worker: first}).Run(ctx) }()
+	select {
+	case <-started:
+	case <-time.After(12 * time.Second):
+		t.Fatal("first worker did not reach synthetic actor")
+	}
+	secondResult := make(chan workerloop.ProfileOutcome, 1)
+	secondDone := make(chan error, 1)
+	secondCtx, stopSecond := context.WithCancel(ctx)
+	defer stopSecond()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		secondDone <- (workerengine.Engine{Worker: second, OnResult: func(profile workerloop.ProfileName, outcome workerloop.ProfileOutcome) {
+			if profile == workerloop.Launch {
+				select {
+				case secondResult <- outcome:
+				default:
+				}
+				stopSecond()
+			}
+		}}).Run(secondCtx)
+	}()
+	select {
+	case result := <-secondResult:
+		if result != workerloop.ProfileFailed || providers.Starts() != 1 {
+			t.Fatal("second worker admitted concurrent actor", result, providers.Starts())
+		}
+	case <-time.After(12 * time.Second):
+		t.Fatal("second worker did not encounter the active run")
+	}
+	if err := <-secondDone; !errors.Is(err, context.Canceled) {
+		t.Fatal("second worker did not stop", err)
+	}
+	releaseOnce.Do(func() { close(release) })
+	deadline := time.NewTimer(12 * time.Second)
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer deadline.Stop()
+	defer ticker.Stop()
+	completed := false
+wait:
+	for {
+		select {
+		case <-ticker.C:
+			if s.count("SELECT COUNT(*) FROM company_vacancy_user_state WHERE user_name='CI_OWNER' AND relevance=67") == 1 {
+				completed = true
+				break wait
+			}
+		case <-deadline.C:
+			break wait
+		}
+	}
+	cancel()
+	if err := <-firstDone; !errors.Is(err, context.Canceled) {
+		t.Fatal("first worker did not stop", err)
+	}
+	if !completed || providers.Starts() != 1 || s.count("SELECT COUNT(*) FROM apify_runs") != 1 {
+		t.Fatal("concurrent workers failed to converge", completed, providers.Starts())
 	}
 }
