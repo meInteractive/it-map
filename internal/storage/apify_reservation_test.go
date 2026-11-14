@@ -115,6 +115,12 @@ func TestMariaDBApifyReservationDisposable(t *testing.T) {
 	if _, e = db.ExecContext(ctx, "UPDATE apify_runs SET created_at=? WHERE id=?", time.Now().UnixMilli()-301000, id); e != nil {
 		t.Fatal(e)
 	}
+	if _, e = repo.Reserve(ctx, version, "CI aged unknown"); !errors.Is(e, apifyruns.ErrCurrentUnconfirmed) {
+		t.Fatal("aged unknown operation did not block new reserve", e)
+	}
+	if _, e = db.ExecContext(ctx, "UPDATE apify_runs SET state='succeeded',run_id='CIKnown',dataset_id='CIData',charged_usd=0 WHERE id=?", id); e != nil {
+		t.Fatal(e)
+	}
 	account["providerUsedUsd"] = 4.9
 	saveAccount()
 	if _, e = repo.Reserve(ctx, version, "CI insufficient budget"); !errors.Is(e, apifyruns.ErrBudget) {
@@ -136,7 +142,7 @@ func TestMariaDBApifyReservationDisposable(t *testing.T) {
 	}
 	for i := 0; i < 58; i++ {
 		key := fmt.Sprintf("CI_OLD_%d", i)
-		if _, e = db.ExecContext(ctx, `INSERT INTO apify_runs(id,generation,operation_key,profile,account_id,key_hash,period_start,period_end,reserved_usd,charged_usd,state,created_at,updated_at) VALUES(?,?,?,'free','CIReserve','CI_HASH',?,?,0.25,0,'succeeded',1,1)`, key, generation, key, snapshot.PeriodStart, snapshot.PeriodEnd); e != nil {
+		if _, e = db.ExecContext(ctx, `INSERT INTO apify_runs(id,generation,operation_key,profile,account_id,key_hash,period_start,period_end,reserved_usd,charged_usd,state,run_id,dataset_id,created_at,updated_at) VALUES(?,?,?,'free','CIReserve','CI_HASH',?,?,0.25,0,'succeeded','CIKnown','CIData',1,1)`, key, generation, key, snapshot.PeriodStart, snapshot.PeriodEnd); e != nil {
 			t.Fatal(e)
 		}
 	}
@@ -159,7 +165,7 @@ func TestMariaDBApifyReservationDisposable(t *testing.T) {
 	if _, e = db.ExecContext(ctx, "UPDATE apify_runs SET created_at=1 WHERE id=?", allowed.ID); e != nil {
 		t.Fatal(e)
 	}
-	if _, e = optin.Reserve(ctx, version, "CI unknown reserve"); !errors.Is(e, apifyruns.ErrBudget) {
+	if _, e = optin.Reserve(ctx, version, "CI unknown reserve"); !errors.Is(e, apifyruns.ErrCurrentUnconfirmed) {
 		t.Fatal("unknown outcome lost its reserve", e)
 	}
 

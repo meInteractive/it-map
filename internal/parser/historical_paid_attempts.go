@@ -88,7 +88,7 @@ func InspectHistoricalPaidAttemptsTx(ctx context.Context, tx *sql.Tx, generation
 		case "pending":
 			// Отложенная попытка может иметь нулевой scheduler receipt. Это
 			// не доказывает отсутствие расходов провайдера: Apify проверяется отдельно.
-			if (reason != "budget" && reason != "deferred" && reason != "paid_start_disabled" && reason != "historical_ai_unknown" && reason != "historical_paid_unknown") || reserved != 0 || !cost.Valid || cost.Float64 != 0 {
+			if (reason != "budget" && reason != "deferred" && reason != "paid_start_disabled" && reason != "historical_ai_unknown" && reason != "historical_paid_unknown" && reason != "current_paid_unknown") || reserved != 0 || !cost.Valid || cost.Float64 != 0 {
 				return HistoricalPaidAttempts{}, ErrHistoricalAttemptsIncompatible
 			}
 		default:
