@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"itmap/internal/parser"
+	"itmap/internal/workerconfig"
 	"itmap/internal/workerloop"
 )
 
@@ -19,6 +20,7 @@ var ErrCycle = errors.New("worker cycle failed")
 type Engine struct {
 	Worker   parser.Worker
 	OnResult func(workerloop.ProfileName, workerloop.ProfileOutcome)
+	Config   *workerconfig.Config
 }
 
 // Run продолжает обход до отмены контекста. Новый случайный идентификатор
@@ -28,22 +30,33 @@ func (e Engine) Run(ctx context.Context) error {
 	if ctx == nil || e.Worker.Runs.DB == nil || e.Worker.Settings.DB != e.Worker.Runs.DB {
 		return workerloop.ErrConfig
 	}
+	config := workerconfig.Defaults()
+	if e.Config != nil {
+		config = *e.Config
+	}
+	if err := config.Validate(); err != nil {
+		return workerloop.ErrConfig
+	}
+	return workerloop.RunProfiles(ctx, e.profiles(config), nil)
+}
+
+func (e Engine) profiles(config workerconfig.Config) []workerloop.Profile {
 	makeProfile := func(name workerloop.ProfileName, idle time.Duration) workerloop.Profile {
 		return workerloop.Profile{
 			Name: name, WorkDelay: time.Second, IdleDelay: idle,
-			ErrorMin: 5 * time.Second, ErrorMax: time.Minute, StepTimeout: 2 * time.Minute,
+			ErrorMin: config.ErrorMin, ErrorMax: config.ErrorMax, StepTimeout: 2 * time.Minute,
 			OnResult: e.OnResult,
-			Step:     func(ctx context.Context) (bool, error) { return e.cycle(ctx, name) },
+			Step:     func(ctx context.Context) (bool, error) { return e.cycle(ctx, name, config.MaxJobs) },
 		}
 	}
-	return workerloop.RunProfiles(ctx, []workerloop.Profile{
-		makeProfile(workerloop.Launch, 30*time.Second),
-		makeProfile(workerloop.Reconcile, 30*time.Second),
-		makeProfile(workerloop.Pipeline, 5*time.Second),
-	}, nil)
+	return []workerloop.Profile{
+		makeProfile(workerloop.Launch, config.LaunchIdle),
+		makeProfile(workerloop.Reconcile, config.ReconcileIdle),
+		makeProfile(workerloop.Pipeline, config.IdleDelay),
+	}
 }
 
-func (e Engine) cycle(ctx context.Context, profile workerloop.ProfileName) (bool, error) {
+func (e Engine) cycle(ctx context.Context, profile workerloop.ProfileName, maxJobs int) (bool, error) {
 	// Launch также планирует источники и восстанавливает leases, поэтому его
 	// нельзя пропускать только из-за отсутствия готового задания. Остальные
 	// профили избегают пустого run; снимок не заменяет атомарный claim.
@@ -79,7 +92,7 @@ func (e Engine) cycle(ctx context.Context, profile workerloop.ProfileName) (bool
 	worker.DeferUnspentBudget = true
 	result, err := worker.Cycle(ctx, parser.WorkerOptions{
 		Run:     parser.RunOptions{RequestID: id, Trigger: "automatic", Duration: 100 * time.Second},
-		MaxJobs: 50, QueueProfile: string(profile),
+		MaxJobs: maxJobs, QueueProfile: string(profile),
 	})
 	if err != nil || result.Reused || result.Run.Status != "completed" {
 		return false, ErrCycle

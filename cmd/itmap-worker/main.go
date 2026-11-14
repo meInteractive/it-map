@@ -27,6 +27,7 @@ var errStartup = errors.New("worker staging startup failed")
 
 type settings struct {
 	database                    storage.Settings
+	runtime                     workerconfig.Config
 	password, secret, openAIKey string
 	health                      bool
 }
@@ -34,7 +35,8 @@ type settings struct {
 // load проверяет все допуски до открытия соединения. Значения учётных данных
 // остаются в памяти и не возвращаются в сообщениях об ошибках.
 func load(getenv func(string) string) (settings, error) {
-	if _, err := workerconfig.Parse(getenv); err != nil {
+	runtime, err := workerconfig.Parse(getenv)
+	if err != nil {
 		return settings{}, errConfig
 	}
 	if getenv("APP_ENV") != "staging" || getenv("ITMAP_WORKER_STAGING_REAL_PROVIDERS") != "1" ||
@@ -46,7 +48,7 @@ func load(getenv func(string) string) (settings, error) {
 	if value := getenv("ITMAP_WORKER_HEALTH_ENABLED"); value != "" && value != "0" && value != "1" {
 		return settings{}, errConfig
 	}
-	return settings{database: storage.Settings{Host: "127.0.0.1", Port: "3306", Database: "itmap_worker_staging", User: "itmap_worker_app"},
+	return settings{runtime: runtime, database: storage.Settings{Host: "127.0.0.1", Port: "3306", Database: "itmap_worker_staging", User: "itmap_worker_app"},
 		password: getenv("DB_PASSWORD"), secret: getenv("SESSION_SECRET"), openAIKey: getenv("OPENAI_API_KEY"), health: getenv("ITMAP_WORKER_HEALTH_ENABLED") == "1"}, nil
 }
 
@@ -129,7 +131,7 @@ func runWorker(ctx context.Context, db *sql.DB, s settings) error {
 			}
 		}()
 	}
-	err = (workerengine.Engine{Worker: w, OnResult: func(profile workerloop.ProfileName, outcome workerloop.ProfileOutcome) {
+	err = (workerengine.Engine{Worker: w, Config: &s.runtime, OnResult: func(profile workerloop.ProfileName, outcome workerloop.ProfileOutcome) {
 		monitor.Record(profile, outcome)
 		if outcome == workerloop.ProfileFailed || outcome == workerloop.ProfileTimeout {
 			slog.Warn("worker step failed", "profile", profile, "outcome", outcome)
