@@ -21,6 +21,9 @@ func TestMariaDBApifyCurrentUnknownGuardDisposable(t *testing.T) {
 		{"tab", "uncertain", "\t", nil},
 		{"invalid_id", "uncertain", "bad-run", nil},
 		{"contradictory", "failed", "", 0.1},
+		{"running_known", "running", "CIRunOther", nil},
+		{"terminal_no_cost", "succeeded", "CIRunOther", nil},
+		{"running_with_cost", "running", "CIRunOther", 0.1},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := openApifyRuntimeFixture(t)
@@ -38,7 +41,7 @@ func TestMariaDBApifyCurrentUnknownGuardDisposable(t *testing.T) {
 			if err != nil || known.State != "succeeded" || p.starts.Load() != 1 || p.runs.Load() != 1 {
 				t.Fatal("known run did not reconcile", err)
 			}
-			if _, err = service.Execute(f.ctx, f.v, "CI different job", options); !errors.Is(err, apifyruns.ErrCurrentUnconfirmed) || p.starts.Load() != 1 {
+			if _, err = service.Execute(f.ctx, f.v, "CI different job", options); !errors.Is(err, apifyruns.ErrCurrentUnresolved) || p.starts.Load() != 1 {
 				t.Fatal("old unknown allowed new POST", err)
 			}
 			var count int

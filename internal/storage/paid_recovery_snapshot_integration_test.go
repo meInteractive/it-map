@@ -76,9 +76,14 @@ func TestMariaDBPaidRecoverySnapshotDisposable(t *testing.T) {
 	f.exec("INSERT INTO scheduler_runs(id,generation,`trigger`,started_at,status) VALUES('CI_old_snapshot',?,'automatic',1,'interrupted')", old)
 	f.exec("INSERT INTO scheduler_attempts(id,job_id,run_id,type,started_at,status,reserved_usd) VALUES('CI_old_paid','CIjob','CI_old_snapshot','diagnostic',1,'interrupted',0.25),('CI_orphan_paid','CIjob','CI_missing','diagnostic',1,'interrupted',0.25)")
 	f.exec(`INSERT INTO apify_runs(id,generation,operation_key,profile,account_id,key_hash,period_start,period_end,reserved_usd,state,created_at,updated_at) VALUES('00000000000000000000000000000001',?,'CIkey','free','CISnapshot','CIhash','CIstart','CIend',0.25,'uncertain',1,1)`, old)
+	f.exec(`INSERT INTO apify_runs(id,generation,operation_key,profile,account_id,key_hash,period_start,period_end,reserved_usd,state,run_id,created_at,updated_at) VALUES('00000000000000000000000000000002',?,'CIcurrent','free','CISnapshot','CIhash','CIstart','CIend',0.25,'running','CIRun1',1,1)`, f.repo.Generation)
 	got, err := paidrecovery.Inspect(f.ctx, f.db, f.repo.Generation)
-	if err != nil || got.Apify.Unknown != 1 || got.Scheduler.HistoricalUnknown != 1 || got.Scheduler.OrphanUnknown != 1 {
+	if err != nil || got.CurrentActorUnresolved != 1 || got.Apify.Unknown != 1 || got.Scheduler.HistoricalUnknown != 1 || got.Scheduler.OrphanUnknown != 1 {
 		t.Fatal("combined snapshot mismatch", got, err)
+	}
+	f.exec("UPDATE apify_runs SET state='succeeded', charged_usd=0.10 WHERE operation_key='CIcurrent'")
+	if settled, e := paidrecovery.Inspect(f.ctx, f.db, f.repo.Generation); e != nil || settled.CurrentActorUnresolved != 0 {
+		t.Fatal("settled current operation still unresolved", settled, e)
 	}
 	f.exec("UPDATE scheduler_attempts SET status='CI_invalid' WHERE id='CI_old_paid'")
 	if got, err = paidrecovery.Inspect(f.ctx, f.db, f.repo.Generation); !errors.Is(err, parser.ErrHistoricalAttemptsIncompatible) || got != (paidrecovery.Snapshot{}) {

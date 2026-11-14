@@ -9,6 +9,7 @@ import (
 
 // RecoverySnapshot — только категории сохранённых записей, не право запуска.
 type RecoverySnapshot struct {
+	ActorCurrentUnresolved          int `json:"actorCurrentUnresolved"`
 	ActorUnknown                    int `json:"actorUnknown"`
 	ActorReconcile                  int `json:"actorReconcile"`
 	ActorCostRecorded               int `json:"actorCostRecorded"`
@@ -36,6 +37,6 @@ func (r *sqlRecoveryReader) ReadRecovery(ctx context.Context) (RecoverySnapshot,
 	if err != nil {
 		return RecoverySnapshot{}, errQueue
 	}
-	return RecoverySnapshot{ActorUnknown: snap.Apify.Unknown, ActorReconcile: snap.Apify.Reconcile, ActorCostRecorded: snap.Apify.TerminalCostRecorded,
+	return RecoverySnapshot{ActorCurrentUnresolved: snap.CurrentActorUnresolved, ActorUnknown: snap.Apify.Unknown, ActorReconcile: snap.Apify.Reconcile, ActorCostRecorded: snap.Apify.TerminalCostRecorded,
 		SchedulerHistoricalUnknown: snap.Scheduler.HistoricalUnknown, SchedulerHistoricalCostRecorded: snap.Scheduler.HistoricalCostRecorded, SchedulerOrphanUnknown: snap.Scheduler.OrphanUnknown, SchedulerOrphanCostRecorded: snap.Scheduler.OrphanCostRecorded}, nil
 }

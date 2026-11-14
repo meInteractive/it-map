@@ -23,8 +23,8 @@ var ErrBudget = errors.New("недостаточно подтверждённо�
 // неопределённый платный исход; это не означает отсутствия других расходов.
 var ErrHistoricalUnresolved = errors.New("есть незавершённые платные операции предыдущего поколения")
 
-// ErrCurrentUnconfirmed означает, что текущий ledger содержит запуск без корректного Run ID.
-var ErrCurrentUnconfirmed = errors.New("есть платная операция без корректного Run ID")
+// ErrCurrentUnresolved означает, что текущий ledger содержит неопределённый запуск.
+var ErrCurrentUnresolved = errors.New("есть незавершённая платная операция текущего поколения")
 
 type Repository struct {
 	DB                     *sql.DB
@@ -150,13 +150,13 @@ func (r Repository) Reserve(ctx context.Context, v apifysettings.OperationVersio
 		return Reservation{}, ErrBusy
 	}
 	// Ключ привязан к job; новый job может получить иной ключ для того же
-	// источника. Пока в текущем поколении есть запуск без Run ID, нельзя
-	// доказать, что новый POST не повторит неизвестную операцию.
-	if tx.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM apify_runs WHERE generation=? AND BINARY run_id NOT REGEXP BINARY '^[A-Za-z0-9]+$')", generation).Scan(&unresolved) != nil {
+	// источника. Пока в текущем поколении есть незавершённый запуск или
+	// некорректный Run ID, новый POST может повторить прежнюю операцию.
+	if tx.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM apify_runs WHERE "+currentUnresolvedPredicate+")", generation).Scan(&unresolved) != nil {
 		return Reservation{}, ErrStorage
 	}
 	if unresolved != 0 {
-		return Reservation{}, ErrCurrentUnconfirmed
+		return Reservation{}, ErrCurrentUnresolved
 	}
 	column := "free_account_json"
 	if v.Profile == "starter" {

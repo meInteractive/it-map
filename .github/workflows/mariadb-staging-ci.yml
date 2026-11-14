@@ -1654,7 +1654,7 @@ jobs:
           python3 - "$result_file" <<'PYCODE'
           import json,sys
           events=[json.loads(line) for line in open(sys.argv[1],encoding='utf8')]
-          for target in ('TestMariaDBApifyCurrentUnknownGuardDisposable','TestMariaDBApifyCurrentUnknownGuardDisposable/starting','TestMariaDBApifyCurrentUnknownGuardDisposable/uncertain','TestMariaDBApifyCurrentUnknownGuardDisposable/whitespace','TestMariaDBApifyCurrentUnknownGuardDisposable/tab','TestMariaDBApifyCurrentUnknownGuardDisposable/invalid_id','TestMariaDBApifyCurrentUnknownGuardDisposable/contradictory','TestMariaDBContinuousWorkerCurrentUnknownDisposable'):
+          for target in ('TestMariaDBApifyCurrentUnknownGuardDisposable','TestMariaDBApifyCurrentUnknownGuardDisposable/starting','TestMariaDBApifyCurrentUnknownGuardDisposable/uncertain','TestMariaDBApifyCurrentUnknownGuardDisposable/whitespace','TestMariaDBApifyCurrentUnknownGuardDisposable/tab','TestMariaDBApifyCurrentUnknownGuardDisposable/invalid_id','TestMariaDBApifyCurrentUnknownGuardDisposable/contradictory','TestMariaDBApifyCurrentUnknownGuardDisposable/running_known','TestMariaDBApifyCurrentUnknownGuardDisposable/terminal_no_cost','TestMariaDBApifyCurrentUnknownGuardDisposable/running_with_cost','TestMariaDBContinuousWorkerCurrentUnknownDisposable'):
               assert any(e.get('Test')==target and e.get('Action')=='pass' for e in events), f'current unknown guard did not pass: {target}'
           assert not any(e.get('Action')=='skip' for e in events), 'current unknown guard skipped'
           PYCODE

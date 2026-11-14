@@ -115,7 +115,7 @@ func TestMariaDBApifyReservationDisposable(t *testing.T) {
 	if _, e = db.ExecContext(ctx, "UPDATE apify_runs SET created_at=? WHERE id=?", time.Now().UnixMilli()-301000, id); e != nil {
 		t.Fatal(e)
 	}
-	if _, e = repo.Reserve(ctx, version, "CI aged unknown"); !errors.Is(e, apifyruns.ErrCurrentUnconfirmed) {
+	if _, e = repo.Reserve(ctx, version, "CI aged unknown"); !errors.Is(e, apifyruns.ErrCurrentUnresolved) {
 		t.Fatal("aged unknown operation did not block new reserve", e)
 	}
 	if _, e = db.ExecContext(ctx, "UPDATE apify_runs SET state='succeeded',run_id='CIKnown',dataset_id='CIData',charged_usd=0 WHERE id=?", id); e != nil {
@@ -165,7 +165,7 @@ func TestMariaDBApifyReservationDisposable(t *testing.T) {
 	if _, e = db.ExecContext(ctx, "UPDATE apify_runs SET created_at=1 WHERE id=?", allowed.ID); e != nil {
 		t.Fatal(e)
 	}
-	if _, e = optin.Reserve(ctx, version, "CI unknown reserve"); !errors.Is(e, apifyruns.ErrCurrentUnconfirmed) {
+	if _, e = optin.Reserve(ctx, version, "CI unknown reserve"); !errors.Is(e, apifyruns.ErrCurrentUnresolved) {
 		t.Fatal("unknown outcome lost its reserve", e)
 	}
 
