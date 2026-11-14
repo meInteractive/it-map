@@ -2,6 +2,7 @@ package workerloop
 
 import (
 	"context"
+	"errors"
 	"math/rand"
 	"time"
 )
@@ -24,11 +25,15 @@ const maxProfileStep = 5 * time.Minute
 type ProfileOutcome string
 
 const (
-	ProfileWorked  ProfileOutcome = "worked"
-	ProfileIdle    ProfileOutcome = "idle"
-	ProfileFailed  ProfileOutcome = "failed"
-	ProfileTimeout ProfileOutcome = "timeout"
+	ProfileWorked    ProfileOutcome = "worked"
+	ProfileIdle      ProfileOutcome = "idle"
+	ProfileFailed    ProfileOutcome = "failed"
+	ProfileTimeout   ProfileOutcome = "timeout"
+	ProfileContended ProfileOutcome = "contended"
 )
+
+// ErrRunContended означает, что другой корректный consumer уже владеет run.
+var ErrRunContended = errors.New("worker run owned by another consumer")
 
 // Profile задаёт ограниченную последовательную итерацию и интервалы ожидания.
 // Step обязан соблюдать контекст и собственные бюджетные/paid guards.
@@ -193,12 +198,18 @@ func RunProfilesWithGrace(ctx context.Context, profiles []Profile, onFailure fun
 			return err
 		}
 		outcome := ProfileIdle
-		failed := stepErr != nil || stepContextErr != nil
+		contended := stepErr == ErrRunContended && stepContextErr == nil
+		failed := (stepErr != nil && !contended) || stepContextErr != nil
+		if contended {
+			worked = false
+		}
 		switch {
 		case stepContextErr == context.DeadlineExceeded:
 			outcome = ProfileTimeout
 		case failed:
 			outcome = ProfileFailed
+		case contended:
+			outcome = ProfileContended
 		case worked:
 			outcome = ProfileWorked
 		}

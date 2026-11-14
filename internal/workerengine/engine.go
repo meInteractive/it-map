@@ -94,6 +94,9 @@ func (e Engine) cycle(ctx context.Context, stopClaims <-chan struct{}, profile w
 		Run:     parser.RunOptions{RequestID: id, Trigger: "automatic", Duration: 100 * time.Second},
 		MaxJobs: maxJobs, QueueProfile: string(profile), StopClaims: stopClaims,
 	})
+	if err == parser.ErrRunBusy {
+		return false, workerloop.ErrRunContended
+	}
 	if err != nil || result.Reused || result.Run.Status != "completed" {
 		return false, ErrCycle
 	}
