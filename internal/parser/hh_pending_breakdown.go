@@ -169,7 +169,7 @@ func summarizeHHPendingWithPaidEvidence(jobs []Job, now int64, settings Settings
 // lease и не изменяя таблицы. Сведения о конкретных компаниях не возвращаются.
 func readHHPendingBreakdown(ctx context.Context, tx *sql.Tx, generation string, now int64, settings Settings) (HHPendingBreakdown, error) {
 	var empty HHPendingBreakdown
-	view, err := readClaimView(ctx, tx, generation)
+	view, err := readClaimView(ctx, tx, generation, true)
 	if err != nil {
 		return empty, err
 	}

@@ -63,7 +63,7 @@ func claimTypes(requested []string) (map[string]bool, error) {
 	}
 	return out, nil
 }
-func readClaimView(ctx context.Context, tx *sql.Tx, generation string) (claimView, error) {
+func readClaimView(ctx context.Context, tx *sql.Tx, generation string, includeScans bool) (claimView, error) {
 	view := claimView{busy: map[int64]bool{}, pages: map[string]string{}, operations: map[string]bool{}, goOperationKeys: map[string]string{}, orphanPaidScans: map[string]bool{}, unconfirmedRunIDs: map[string]bool{}}
 	operationCreated := map[string]int64{}
 	rows, e := tx.QueryContext(ctx, "SELECT candidate_id FROM scheduler_jobs WHERE generation=? AND status='running' AND candidate_id IS NOT NULL", generation)
@@ -82,6 +82,11 @@ func readClaimView(ctx context.Context, tx *sql.Tx, generation string) (claimVie
 	rows.Close()
 	if e != nil {
 		return view, e
+	}
+	// Данные Actor и cursor влияют только на допуск scan_source. Остальные
+	// типы по-прежнему проверяют ownership кандидата и guards исполнителя.
+	if !includeScans {
+		return view, nil
 	}
 	rows, e = tx.QueryContext(ctx, "SELECT operation_key,created_at,run_id FROM apify_runs WHERE generation=?", generation)
 	if e != nil {

@@ -246,7 +246,7 @@ func (r RunRepository) selectEligibleJob(ctx context.Context, tx *sql.Tx, now in
 	if len(types) == 0 {
 		return nil, nil
 	}
-	view, e := readClaimView(ctx, tx, r.Generation)
+	view, e := readClaimView(ctx, tx, r.Generation, types["scan_source"])
 	if e != nil {
 		return nil, storageError(ctx)
 	}
