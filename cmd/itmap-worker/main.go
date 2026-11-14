@@ -125,7 +125,7 @@ func runWorker(ctx context.Context, db *sql.DB, s settings) error {
 		if err != nil {
 			return errStartup
 		}
-		server = &http.Server{Handler: monitor.HandlerWithQueue(workerengine.NewQueueReader(db, generation)), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 5 * time.Second, WriteTimeout: 5 * time.Second, IdleTimeout: 15 * time.Second}
+		server = &http.Server{Handler: monitor.HandlerWithDiagnostics(workerengine.NewQueueReader(db, generation), workerengine.NewRecoveryReader(db, generation)), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 5 * time.Second, WriteTimeout: 5 * time.Second, IdleTimeout: 15 * time.Second}
 		serverDone = make(chan error, 1)
 		go func() {
 			err := server.Serve(listener)

@@ -138,10 +138,15 @@ func (m *Monitor) Handler() http.Handler {
 // HandlerWithQueue добавляет агрегаты только к уже ограниченному loopback HTTP.
 // Не допускает одновременных тяжёлых снимков и не раскрывает ошибки БД.
 func (m *Monitor) HandlerWithQueue(reader QueueReader) http.Handler {
+	return m.HandlerWithDiagnostics(reader, nil)
+}
+
+// HandlerWithDiagnostics ограничивает общую конкуренцию обоих снимков.
+func (m *Monitor) HandlerWithDiagnostics(reader QueueReader, recovery RecoveryReader) http.Handler {
 	base := m.Handler()
 	semaphore := make(chan struct{}, 1)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/queuez" {
+		if r.URL.Path != "/queuez" && r.URL.Path != "/recoveryz" {
 			base.ServeHTTP(w, r)
 			return
 		}
@@ -149,26 +154,36 @@ func (m *Monitor) HandlerWithQueue(reader QueueReader) http.Handler {
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			return
 		}
-		if reader == nil {
+		if (r.URL.Path == "/queuez" && reader == nil) || (r.URL.Path == "/recoveryz" && recovery == nil) {
 			http.NotFound(w, r)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Cache-Control", "no-store")
+		errorBody := "{\"error\":\"queue_unavailable\"}\n"
+		if r.URL.Path == "/recoveryz" {
+			errorBody = "{\"error\":\"recovery_unavailable\"}\n"
+		}
 		select {
 		case semaphore <- struct{}{}:
 			defer func() { <-semaphore }()
 		default:
 			w.WriteHeader(http.StatusServiceUnavailable)
-			_, _ = w.Write([]byte("{\"error\":\"queue_unavailable\"}\n"))
+			_, _ = w.Write([]byte(errorBody))
 			return
 		}
 		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
 		defer cancel()
-		result, err := reader.ReadQueue(ctx)
+		var result any
+		var err error
+		if r.URL.Path == "/queuez" {
+			result, err = reader.ReadQueue(ctx)
+		} else {
+			result, err = recovery.ReadRecovery(ctx)
+		}
 		if err != nil || ctx.Err() != nil {
 			w.WriteHeader(http.StatusServiceUnavailable)
-			_, _ = w.Write([]byte("{\"error\":\"queue_unavailable\"}\n"))
+			_, _ = w.Write([]byte(errorBody))
 			return
 		}
 		_ = json.NewEncoder(w).Encode(result)
