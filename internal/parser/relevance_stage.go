@@ -96,6 +96,14 @@ func (s RelevanceStageStore) Save(ctx context.Context, tx *sql.Tx, j Job, plan A
 	return nil
 }
 
+// Abort проверяет принадлежность плана: Prepare не создаёт отдельные leases.
+func (s RelevanceStageStore) Abort(_ context.Context, _ *sql.Tx, _ Job, plan AIStagePlan) error {
+	if _, ok := plan.provenance.(relevanceSnapshot); !ok {
+		return ErrJobInput
+	}
+	return nil
+}
+
 // enqueueHHRelevance вызывается после импорта в той же транзакции.
 func enqueueHHRelevance(ctx context.Context, tx *sql.Tx, j Job, owner string) error {
 	x, err := readRelevanceSnapshot(ctx, tx, j, owner)
