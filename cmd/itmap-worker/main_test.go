@@ -30,7 +30,7 @@ func getter(m map[string]string) func(string) string {
 }
 
 func TestRejectsUnsafeConfigurationBeforeOpeningDatabase(t *testing.T) {
-	for _, key := range []string{"ITMAP_WORKER_ENABLED", "ITMAP_PARSER_EXECUTION_ENABLED", "ITMAP_WORKER_STAGING_REAL_PROVIDERS", "ITMAP_WORKER_HEALTH_ENABLED", "APP_ENV", "DB_HOST", "DB_PORT", "DB_NAME", "DB_USER", "DB_PASSWORD", "SESSION_SECRET"} {
+	for _, key := range []string{"ITMAP_WORKER_ENABLED", "ITMAP_PARSER_EXECUTION_ENABLED", "ITMAP_WORKER_STAGING_REAL_PROVIDERS", "ITMAP_WORKER_HEALTH_ENABLED", "ITMAP_WORKER_LAUNCH_IDLE_SECONDS", "ITMAP_WORKER_RECONCILE_IDLE_SECONDS", "ITMAP_WORKER_PIPELINE_IDLE_SECONDS", "ITMAP_WORKER_ERROR_MIN_SECONDS", "ITMAP_WORKER_ERROR_MAX_SECONDS", "ITMAP_WORKER_MAX_JOBS", "APP_ENV", "DB_HOST", "DB_PORT", "DB_NAME", "DB_USER", "DB_PASSWORD", "SESSION_SECRET"} {
 		t.Run(key, func(t *testing.T) {
 			env := testEnvironment()
 			env[key] = "invalid"
@@ -48,6 +48,7 @@ func TestRejectsUnsafeConfigurationBeforeOpeningDatabase(t *testing.T) {
 
 func TestRunClosesPoolAndRedactsErrors(t *testing.T) {
 	env := testEnvironment()
+	env["ITMAP_WORKER_MAX_JOBS"] = "2"
 	db := sql.OpenDB(testConnector{})
 	called := false
 	err := run(context.Background(), getter(env), func(_ context.Context, s storage.Settings, password string) (*sql.DB, error) {
@@ -57,7 +58,7 @@ func TestRunClosesPoolAndRedactsErrors(t *testing.T) {
 		return db, nil
 	}, func(_ context.Context, got *sql.DB, s settings) error {
 		called = true
-		if got != db || s.secret != env["SESSION_SECRET"] {
+		if got != db || s.secret != env["SESSION_SECRET"] || s.runtime.MaxJobs != 2 {
 			t.Fatal("неверная композиция")
 		}
 		return errors.New("provider-secret-should-not-escape")

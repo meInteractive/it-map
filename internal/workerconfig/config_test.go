@@ -46,3 +46,40 @@ func TestContextHonoursParent(t *testing.T) {
 		t.Fatal("parent cancellation did not propagate")
 	}
 }
+
+func TestRuntimeConfiguration(t *testing.T) {
+	values := map[string]string{"ITMAP_WORKER_ENABLED": "1", "ITMAP_PARSER_EXECUTION_ENABLED": "1"}
+	cfg, err := Parse(env(values))
+	if err != nil || cfg != Defaults() {
+		t.Fatalf("defaults: %+v %v", cfg, err)
+	}
+	values["ITMAP_WORKER_LAUNCH_IDLE_SECONDS"] = "15"
+	values["ITMAP_WORKER_RECONCILE_IDLE_SECONDS"] = "7"
+	values["ITMAP_WORKER_PIPELINE_IDLE_SECONDS"] = "2"
+	values["ITMAP_WORKER_ERROR_MIN_SECONDS"] = "3"
+	values["ITMAP_WORKER_ERROR_MAX_SECONDS"] = "90"
+	values["ITMAP_WORKER_MAX_JOBS"] = "2"
+	cfg, err = Parse(env(values))
+	if err != nil || cfg.LaunchIdle != 15*time.Second || cfg.ReconcileIdle != 7*time.Second || cfg.IdleDelay != 2*time.Second || cfg.ErrorMin != 3*time.Second || cfg.ErrorMax != 90*time.Second || cfg.MaxJobs != 2 {
+		t.Fatalf("custom: %+v %v", cfg, err)
+	}
+}
+
+func TestRuntimeConfigurationRejectsUnsafeValues(t *testing.T) {
+	for _, tc := range []struct{ key, value string }{
+		{"ITMAP_WORKER_LAUNCH_IDLE_SECONDS", "14"}, {"ITMAP_WORKER_LAUNCH_IDLE_SECONDS", "61"},
+		{"ITMAP_WORKER_RECONCILE_IDLE_SECONDS", "4"}, {"ITMAP_WORKER_PIPELINE_IDLE_SECONDS", "0"},
+		{"ITMAP_WORKER_ERROR_MIN_SECONDS", "61"}, {"ITMAP_WORKER_ERROR_MAX_SECONDS", "121"},
+		{"ITMAP_WORKER_MAX_JOBS", "51"}, {"ITMAP_WORKER_MAX_JOBS", "-1"},
+		{"ITMAP_WORKER_MAX_JOBS", " 2"}, {"ITMAP_WORKER_MAX_JOBS", "1.5"},
+		{"ITMAP_WORKER_MAX_JOBS", "99999999999999999999999999999999999"},
+	} {
+		t.Run(tc.key+"/"+tc.value, func(t *testing.T) {
+			values := map[string]string{"ITMAP_WORKER_ENABLED": "1", "ITMAP_PARSER_EXECUTION_ENABLED": "1", tc.key: tc.value}
+			_, err := Parse(env(values))
+			if !errors.Is(err, ErrConfig) || err.Error() != ErrConfig.Error() {
+				t.Fatalf("unsafe configuration accepted or exposed: %v", err)
+			}
+		})
+	}
+}
