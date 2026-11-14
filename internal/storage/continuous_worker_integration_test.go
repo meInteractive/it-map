@@ -405,7 +405,98 @@ func TestMariaDBContinuousWorkerAIBudgetDisposable(t *testing.T) {
 	if p.Starts() != 1 || p.AICalls() != 0 {
 		t.Fatal("AI budget did not prevent calls independently of Apify", p.Starts(), p.AICalls())
 	}
-	if s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='classify_title' AND status='failed' AND reason_code='budget'") == 0 || s.count("SELECT COUNT(*) FROM company_vacancies WHERE company_name='CI Apify Runtime'") != 0 {
+	if s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='classify_title' AND status='pending' AND reason_code='budget' AND attempts=0") == 0 || s.count("SELECT COUNT(*) FROM company_vacancies WHERE company_name='CI Apify Runtime'") != 0 {
 		t.Fatal("AI budget test did not reach classification")
+	}
+	// Повторная проверка без пополнения не должна расходовать попытки или вызывать AI.
+	s.exec("UPDATE scheduler_jobs SET run_after=0 WHERE status='pending' AND reason_code='budget'")
+	ctx, cancel = context.WithCancel(s.ctx)
+	done = make(chan error, 1)
+	go func() {
+		done <- (workerengine.Engine{Worker: worker, OnResult: func(profile workerloop.ProfileName, _ workerloop.ProfileOutcome) {
+			if profile == workerloop.Pipeline {
+				cancel()
+			}
+		}}).Run(ctx)
+	}()
+	select {
+	case err := <-done:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatal("worker did not stop after repeated budget check", err)
+		}
+	case <-time.After(12 * time.Second):
+		cancel()
+		<-done
+		t.Fatal("repeated budget check timed out")
+	}
+	if p.AICalls() != 0 || s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='classify_title' AND status='pending' AND reason_code='budget' AND attempts=0") == 0 {
+		t.Fatal("repeated budget check consumed work or called provider")
+	}
+	// Пополнение и наступление срока моделируются только в disposable БД.
+	s.exec(`UPDATE firecrawl_settings SET scheduler_json=JSON_SET(scheduler_json,'$.dayBudgetUsd',5,'$.monthBudgetUsd',5) WHERE id=1`)
+	s.exec("UPDATE scheduler_jobs SET run_after=0 WHERE status='pending' AND reason_code='budget'")
+	ctx, cancel = context.WithCancel(s.ctx)
+	done = make(chan error, 1)
+	go func() {
+		done <- (workerengine.Engine{Worker: worker, OnResult: func(profile workerloop.ProfileName, _ workerloop.ProfileOutcome) {
+			if profile == workerloop.Pipeline {
+				cancel()
+			}
+		}}).Run(ctx)
+	}()
+	select {
+	case err := <-done:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatal("worker did not stop after budget refill", err)
+		}
+	case <-time.After(12 * time.Second):
+		cancel()
+		<-done
+		t.Fatal("budget refill test timed out")
+	}
+	if p.Starts() != 1 || p.AICalls() == 0 || s.count("SELECT COUNT(*) FROM company_vacancies WHERE company_name='CI Apify Runtime'") != 1 {
+		t.Fatal("worker did not resume after refill", p.Starts(), p.AICalls())
+	}
+}
+
+func TestMariaDBContinuousWorkerBudgetPriorDisposable(t *testing.T) {
+	for _, prior := range []struct{ name, cost, code string }{
+		{"unknown", "NULL", "money_uncertain"},
+		{"settled", "0.02", "budget"},
+	} {
+		t.Run(prior.name, func(t *testing.T) {
+			s, p, worker := continuousWorkerFixture(t, false)
+			s.exec(`UPDATE firecrawl_settings SET scheduler_json=JSON_SET(scheduler_json,'$.dayBudgetUsd',0,'$.monthBudgetUsd',0) WHERE id=1`)
+			runUntil := func(target workerloop.ProfileName) {
+				ctx, cancel := context.WithCancel(s.ctx)
+				done := make(chan error, 1)
+				go func() {
+					done <- (workerengine.Engine{Worker: worker, OnResult: func(profile workerloop.ProfileName, _ workerloop.ProfileOutcome) {
+						if profile == target {
+							cancel()
+						}
+					}}).Run(ctx)
+				}()
+				select {
+				case err := <-done:
+					if !errors.Is(err, context.Canceled) {
+						t.Fatal("worker did not stop", err)
+					}
+				case <-time.After(12 * time.Second):
+					cancel()
+					<-done
+					t.Fatal("budget history test timed out")
+				}
+			}
+			runUntil(workerloop.Launch)
+			if p.Starts() != 1 || s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='classify_title' AND status='pending'") == 0 {
+				t.Fatal("classification fixture missing")
+			}
+			s.exec(`INSERT INTO scheduler_attempts(id,job_id,run_id,type,started_at,status,reserved_usd,cost_usd) SELECT CONCAT('CI_prior_',id),id,'CI_prior_run','classify_title',1,'interrupted',0.25,` + prior.cost + ` FROM scheduler_jobs WHERE type='classify_title'`)
+			runUntil(workerloop.Pipeline)
+			if p.AICalls() != 0 || s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='classify_title' AND status='pending' AND reason_code='budget'") != 0 || s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='classify_title' AND status='failed' AND reason_code=?", prior.code) == 0 {
+				t.Fatal("prior paid evidence was automatically deferred", prior.name, p.AICalls())
+			}
+		})
 	}
 }

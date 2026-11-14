@@ -6,9 +6,10 @@ import "context"
 // сервером; payload задания не является источником полномочий. Этот тип не
 // запускает очередь, таймеры или фоновые операции.
 type AIStageDispatcher struct {
-	Owner      string
-	Generator  AIStageGenerator
-	Classifier AIStageClassifier
+	Owner              string
+	Generator          AIStageGenerator
+	Classifier         AIStageClassifier
+	DeferUnspentBudget bool
 }
 
 func (d AIStageDispatcher) executor(kind string) (*AIStageExecutor, error) {
@@ -29,7 +30,7 @@ func (d AIStageDispatcher) executor(kind string) (*AIStageExecutor, error) {
 		return nil, ErrAIStageUnavailable
 	}
 	executor := &AIStageExecutor{
-		Store: store, Generator: d.Generator, Classifier: d.Classifier,
+		Store: store, Generator: d.Generator, Classifier: d.Classifier, DeferUnspentBudget: d.DeferUnspentBudget,
 		Handoff: &CandidateHandoff{Planner: SQLCandidateHandoffPlanner{Owner: d.Owner}},
 	}
 	if kind == "score_relevance" {

@@ -29,6 +29,7 @@ type Worker struct {
 	ResumeJobID            string
 	TargetJobID            string
 	DenyActorStarts        bool
+	DeferUnspentBudget     bool
 	TrustFreeProviderLimit bool
 	CandidateScope         *ScanCandidateScope
 }
@@ -234,7 +235,7 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 		listing:  HHListingExecutor{Settings: w.Settings, Runtime: listingRuntime, Owner: owner, ResumePrevious: w.ResumePreviousDataset},
 		detail:   HHFullTextExecutor{Settings: w.Settings, Runtime: detailRuntime, Public: w.Public, Owner: owner},
 		importer: HHImportExecutor{Settings: w.Settings, Owner: owner},
-		ai:       AIStageDispatcher{Owner: owner, Generator: w.Generator, Classifier: w.Classifier},
+		ai:       AIStageDispatcher{Owner: owner, Generator: w.Generator, Classifier: w.Classifier, DeferUnspentBudget: w.DeferUnspentBudget},
 	}
 	if err := w.Runs.reportCycle(bounded, start.Run.ID, 0, true); err != nil {
 		status = "partial"
