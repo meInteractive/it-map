@@ -403,6 +403,9 @@ func workerExecute(ctx context.Context, d workerDispatch, lease *JobLease, owner
 		if errors.Is(executeErr, apifyruns.ErrHistoricalUnresolved) {
 			finish = FinishOptions{Status: "pending", Code: "historical_paid_unknown", Delay: 30 * time.Minute, Deferred: true}
 		}
+		if errors.Is(executeErr, apifyruns.ErrCurrentUnresolved) {
+			finish = FinishOptions{Status: "pending", Code: "current_paid_unknown", Delay: 30 * time.Minute, Deferred: true}
+		}
 	} else if out.pending {
 		finish = FinishOptions{Status: "pending", Code: "deferred", Delay: 10 * time.Second, Deferred: true}
 	}

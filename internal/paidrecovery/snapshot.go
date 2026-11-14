@@ -1,4 +1,4 @@
-// Package paidrecovery содержит только диагностику старых денежных записей.
+// Package paidrecovery содержит диагностику сохранённых денежных записей.
 package paidrecovery
 
 import (
@@ -16,8 +16,9 @@ var ErrUnavailable = errors.New("paid recovery snapshot unavailable")
 // Snapshot — агрегаты обеих таблиц внутри одной транзакции. Он не доказывает
 // полноту архивов, связь с attempt или подтверждение оплаты и не разрешает POST.
 type Snapshot struct {
-	Apify     apifyruns.HistoricalEvidence
-	Scheduler parser.HistoricalPaidAttempts
+	Apify                  apifyruns.HistoricalEvidence
+	Scheduler              parser.HistoricalPaidAttempts
+	CurrentActorUnresolved int
 }
 
 // Inspect блокирует generation и читает оба журнала в одной транзакции без
@@ -50,10 +51,14 @@ func Inspect(ctx context.Context, db *sql.DB, generation string) (snapshot Snaps
 	if err != nil {
 		return Snapshot{}, err
 	}
+	current, err := apifyruns.CountCurrentUnresolvedTx(ctx, tx, generation)
+	if err != nil {
+		return Snapshot{}, err
+	}
 	if err = ctx.Err(); err != nil {
 		return Snapshot{}, err
 	}
-	return Snapshot{Apify: apify, Scheduler: scheduler}, nil
+	return Snapshot{Apify: apify, Scheduler: scheduler, CurrentActorUnresolved: current}, nil
 }
 
 func snapshotStorageError(ctx context.Context) error {

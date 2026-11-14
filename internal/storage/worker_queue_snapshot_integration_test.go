@@ -33,6 +33,7 @@ func TestMariaDBWorkerQueueSnapshotDisposable(t *testing.T) {
 	}
 	f.exec("UPDATE scheduler_jobs SET reason_code='historical_paid_unknown' WHERE id IN ('CI_scan_delayed','CI_scan_running')")
 	f.exec("UPDATE scheduler_jobs SET reason_code='historical_ai_unknown' WHERE id='CI_pipeline_delayed'")
+	f.exec("UPDATE scheduler_jobs SET reason_code='current_paid_unknown' WHERE id='CI_scan_due'")
 	f.exec("UPDATE scheduler_jobs SET reason_code='budget' WHERE id='CI_pipeline_due'")
 	other := "11111111-2222-4333-8444-555555555555"
 	if other == f.repo.Generation {
@@ -48,7 +49,7 @@ func TestMariaDBWorkerQueueSnapshotDisposable(t *testing.T) {
 	if got.Scan.Due != 1 || got.Scan.Delayed != 1 || got.Scan.Running != 1 || got.Scan.Failed != 1 || got.Scan.OldestDueSeconds < 20 || got.Pipeline.Due != 1 || got.Pipeline.Delayed != 1 || got.Pipeline.Running != 1 || got.Pipeline.Failed != 1 || got.Pipeline.OldestDueSeconds < 10 {
 		t.Fatal("unexpected aggregate", got)
 	}
-	if got.Scan.HistoricalActor != 1 || got.Scan.HistoricalAI != 0 || got.Pipeline.HistoricalActor != 0 || got.Pipeline.HistoricalAI != 1 || got.Pipeline.Budget != 1 {
+	if got.Scan.HistoricalActor != 1 || got.Scan.CurrentActor != 1 || got.Scan.HistoricalAI != 0 || got.Pipeline.HistoricalActor != 0 || got.Pipeline.CurrentActor != 0 || got.Pipeline.HistoricalAI != 1 || got.Pipeline.Budget != 1 {
 		t.Fatal("pending reasons miscounted", got)
 	}
 	if !reflect.DeepEqual(before, schedulerRows(t, f, "")) {
