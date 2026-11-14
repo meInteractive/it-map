@@ -41,3 +41,12 @@ func TestRecoverExpiredRequiresValidRepository(t *testing.T) {
 		t.Fatalf("invalid repository: %v", err)
 	}
 }
+
+func TestSchedulerEnabledSnapshotRejectsInvalidRepository(t *testing.T) {
+	if _, err := (RunRepository{}).SchedulerEnabledSnapshot(nil); !errors.Is(err, ErrRunInput) {
+		t.Fatal("nil context accepted", err)
+	}
+	if _, err := (RunRepository{}).SchedulerEnabledSnapshot(context.Background()); !errors.Is(err, ErrRunInput) {
+		t.Fatal("nil repository accepted", err)
+	}
+}

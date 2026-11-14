@@ -60,7 +60,12 @@ func (e Engine) cycle(ctx context.Context, stopClaims <-chan struct{}, profile w
 	// Launch также планирует источники и восстанавливает leases, поэтому его
 	// нельзя пропускать только из-за отсутствия готового задания. Остальные
 	// профили избегают пустого run; снимок не заменяет атомарный claim.
-	if profile != workerloop.Launch {
+	if profile == workerloop.Launch {
+		enabled, err := e.Worker.Runs.SchedulerEnabledSnapshot(ctx)
+		if err != nil || !enabled {
+			return false, ErrCycle
+		}
+	} else {
 		source := "hh"
 		options := parser.ClaimOptions{SourceID: &source, VerifiedHHOnly: true}
 		switch profile {
