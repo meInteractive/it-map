@@ -23,8 +23,9 @@ type Snapshot struct {
 // Inspect блокирует generation и читает оба журнала в одной транзакции без
 // изменения данных. Ошибка любой части возвращает пустой результат. Участники
 // протокола обязаны блокировать generation перед записью; произвольные внешние
-// писатели этим снимком не ограничены. Архивы и attempts без денежных полей не
-// проверяются. Нулевой результат не разрешает worker или снятие draining.
+// писатели этим снимком не ограничены. Текущие attempts, архивы и attempts без
+// денежных полей не проверяются. Нулевой результат не разрешает worker или
+// снятие draining.
 func Inspect(ctx context.Context, db *sql.DB, generation string) (snapshot Snapshot, outcome error) {
 	if ctx == nil || db == nil {
 		return Snapshot{}, ErrUnavailable

@@ -23,7 +23,8 @@ type HistoricalPaidAttempts struct {
 }
 
 // InspectHistoricalPaidAttempts кратковременно удерживает generation lock и
-// читает ограниченный набор attempts с резервом или записанной стоимостью.
+// читает ограниченный набор старых и осиротевших attempts с резервом,
+// записанной стоимостью или pending receipt. Текущее поколение не проверяется.
 // Непривязанные к run строки считаются отдельно и никогда не игнорируются.
 // Это не снимок apify_runs/архивов, не проверка оплаты и не разрешение POST,
 // settlement, освобождения резерва или снятия draining. Runtime его не вызывает.
@@ -48,7 +49,8 @@ func (r RunRepository) InspectHistoricalPaidAttempts(ctx context.Context) (summa
 
 // InspectHistoricalPaidAttemptsTx удерживает generation lock в транзакции
 // вызывающего; caller ограничивает время и откатывает её при ошибке. Это только
-// чтение evidence, не допуск к provider или восстановлению owner.
+// чтение исторического evidence, не проверка текущих attempts и не допуск
+// к provider или восстановлению owner.
 func InspectHistoricalPaidAttemptsTx(ctx context.Context, tx *sql.Tx, generation string) (summary HistoricalPaidAttempts, outcome error) {
 	if ctx == nil || tx == nil || !generationPattern.MatchString(generation) {
 		return HistoricalPaidAttempts{}, ErrRunInput
@@ -60,7 +62,7 @@ func InspectHistoricalPaidAttemptsTx(ctx context.Context, tx *sql.Tx, generation
 	if current != generation {
 		return HistoricalPaidAttempts{}, ErrRunGeneration
 	}
-	rows, err := tx.QueryContext(ctx, `SELECT a.status,a.reason_code,a.reserved_usd,a.cost_usd,r.generation FROM scheduler_attempts a LEFT JOIN scheduler_runs r ON r.id=a.run_id WHERE a.reserved_usd>0 OR a.cost_usd IS NOT NULL OR a.status='pending' ORDER BY a.id LIMIT 1025 FOR UPDATE`)
+	rows, err := tx.QueryContext(ctx, `SELECT a.status,a.reason_code,a.reserved_usd,a.cost_usd,r.generation FROM scheduler_attempts a LEFT JOIN scheduler_runs r ON r.id=a.run_id WHERE (a.reserved_usd>0 OR a.cost_usd IS NOT NULL OR a.status='pending') AND (r.id IS NULL OR r.generation IS NULL OR BINARY r.generation<>BINARY ?) ORDER BY a.id LIMIT 1025 FOR UPDATE`, current)
 	if err != nil {
 		return HistoricalPaidAttempts{}, storageError(ctx)
 	}
@@ -100,9 +102,6 @@ func InspectHistoricalPaidAttemptsTx(ctx context.Context, tx *sql.Tx, generation
 		}
 		if generation.Valid && !generationPattern.MatchString(generation.String) {
 			return HistoricalPaidAttempts{}, ErrHistoricalAttemptsIncompatible
-		}
-		if generation.Valid && generation.String == current {
-			continue
 		}
 		if !generation.Valid {
 			if cost.Valid {
