@@ -17,10 +17,11 @@ import (
 )
 
 var (
-	ErrAttemptReplay  = errors.New("scheduler attempt already started")
-	ErrAttemptClosed  = errors.New("scheduler attempt is not active")
-	ErrBudgetLimit    = errors.New("scheduler day or month budget exhausted")
-	ErrMoneyUncertain = errors.New("scheduler request outcome unresolved; paid replay denied")
+	ErrAttemptReplay          = errors.New("scheduler attempt already started")
+	ErrAttemptClosed          = errors.New("scheduler attempt is not active")
+	ErrBudgetLimit            = errors.New("scheduler day or month budget exhausted")
+	ErrMoneyUncertain         = errors.New("scheduler request outcome unresolved; paid replay denied")
+	ErrHistoricalAIUnresolved = errors.New("historical AI paid outcome unresolved")
 )
 
 // Attempt is an execution handle, never reconstructed from a public receipt ID.
@@ -188,6 +189,17 @@ func reserveAttemptLocked(ctx context.Context, tx *sql.Tx, lease *JobLease, id s
 				relevanceScope = string(scope)
 			}
 		}
+		// Более конкретный запрет повтора по вакансии проверяется раньше.
+		// Прочие старые или осиротевшие AI attempts также блокируют новый
+		// платный вызов, пока их происхождение и исход не установлены.
+		if lease.job.Type == "classify_title" || lease.job.Type == "extract_vacancy" || lease.job.Type == "assign_roles" || lease.job.Type == "score_relevance" {
+			if e = tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM scheduler_attempts a LEFT JOIN scheduler_runs r ON r.id=a.run_id WHERE a.type IN ('classify_title','extract_vacancy','assign_roles','score_relevance') AND a.reserved_usd>0 AND (a.cost_usd IS NULL OR a.status IN ('running','pending')) AND (r.id IS NULL OR r.generation<>?))`, lease.repo.Generation).Scan(&unresolved); e != nil {
+				return storageError(ctx)
+			}
+			if unresolved != 0 {
+				return ErrHistoricalAIUnresolved
+			}
+		}
 		var raw []byte
 		if tx.QueryRowContext(ctx, "SELECT scheduler_json FROM firecrawl_settings WHERE id=1").Scan(&raw) != nil {
 			return storageError(ctx)
@@ -262,7 +274,7 @@ func (a *Attempt) Run(ctx context.Context, request json.RawMessage, work func(co
 		return nil, ErrBudgetUnknown
 	}
 	if e = s.reserve(ctx, upper, meta.Provider, meta.Model); e != nil {
-		if !errors.Is(e, ErrBudgetLimit) && !errors.Is(e, ErrBudgetUnknown) && !errors.Is(e, ErrMoneyUncertain) {
+		if !errors.Is(e, ErrBudgetLimit) && !errors.Is(e, ErrBudgetUnknown) && !errors.Is(e, ErrMoneyUncertain) && !errors.Is(e, ErrHistoricalAIUnresolved) {
 			s.unknown.Store(true)
 		}
 		return nil, e

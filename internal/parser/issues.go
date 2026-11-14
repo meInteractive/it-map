@@ -72,6 +72,7 @@ var issueActions = map[string]string{
 	"budget":                  "Проверьте остаток и резервы в разделе лимитов.",
 	"hh_roles_missing":        "Выберите профессиональные роли HH и проверьте область сканирования.",
 	"historical_paid_unknown": "Проверьте неразрешённые платные операции предыдущего поколения до нового запуска Actor.",
+	"historical_ai_unknown":   "Проверьте неразрешённые платные AI-запросы предыдущего поколения до нового вызова.",
 }
 
 func issueAction(code string) string {
