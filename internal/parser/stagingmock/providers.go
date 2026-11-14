@@ -69,6 +69,9 @@ func (p *Providers) Start(ctx context.Context, source string, opts apify.HHOptio
 	if p.AfterStart != nil {
 		p.AfterStart(ctx)
 	}
+	if err := ctx.Err(); err != nil {
+		return apify.ActorRun{}, err
+	}
 	if p.LoseStartAck {
 		return apify.ActorRun{}, errors.New("синтетическая потеря подтверждения")
 	}

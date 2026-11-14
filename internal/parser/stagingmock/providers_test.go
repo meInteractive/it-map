@@ -3,6 +3,7 @@ package stagingmock
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"testing"
 
 	"itmap/internal/aiproviders"
@@ -42,6 +43,15 @@ func TestLostAcknowledgementOccursAfterSyntheticStart(t *testing.T) {
 	p := &Providers{LoseStartAck: true}
 	if _, err := p.Start(context.Background(), SourceURL, apify.HHOptions{}); err == nil || p.Starts() != 1 {
 		t.Fatal("потеря подтверждения не последовала за синтетическим запуском", err)
+	}
+}
+
+func TestCancellationAfterSyntheticStartDoesNotReturnAcknowledgement(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	p := &Providers{AfterStart: func(context.Context) { cancel() }}
+	if _, err := p.Start(ctx, SourceURL, apify.HHOptions{}); !errors.Is(err, context.Canceled) || p.Starts() != 1 {
+		t.Fatal("отмена после синтетического POST не сохранила неопределённый результат", err)
 	}
 }
 
