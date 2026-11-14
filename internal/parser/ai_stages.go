@@ -134,14 +134,18 @@ func (e *AIStageExecutor) Execute(ctx context.Context, lease *JobLease) (AIStage
 		}
 	}
 	if err != nil {
-		if e.DeferUnspentBudget && errors.Is(err, ErrBudgetLimit) && attempt.Requests() == 0 && !attempt.Unknown() {
+		if e.DeferUnspentBudget && (errors.Is(err, ErrBudgetLimit) || errors.Is(err, ErrHistoricalAIUnresolved)) && attempt.Requests() == 0 && !attempt.Unknown() {
 			if store, ok := e.Store.(AIStageAbortStore); ok {
-				deferErr := attempt.FinishWithin(ctx, AttemptFinish{Job: FinishOptions{Status: "pending", Code: "budget", Message: "Ожидание доступного AI-бюджета.", Deferred: true, Delay: 30 * time.Minute}}, func(tx *sql.Tx) error {
+				code, message := "budget", "Ожидание доступного AI-бюджета."
+				if errors.Is(err, ErrHistoricalAIUnresolved) {
+					code, message = "historical_ai_unknown", "Ожидание проверки прежних платных AI-запросов."
+				}
+				deferErr := attempt.FinishWithin(ctx, AttemptFinish{Job: FinishOptions{Status: "pending", Code: code, Message: message, Deferred: true, Delay: 30 * time.Minute}}, func(tx *sql.Tx) error {
 					if err := e.Store.Revalidate(ctx, tx, job, plan); err != nil {
 						return err
 					}
 					var unsafe int
-					if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM scheduler_attempts WHERE job_id=? AND id<>? AND NOT (status='pending' AND reason_code='budget' AND reserved_usd=0 AND COALESCE(cost_usd,-1)=0)`, job.ID, attempt.ID()).Scan(&unsafe); err != nil {
+					if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM scheduler_attempts WHERE job_id=? AND id<>? AND NOT (status='pending' AND reason_code IN ('budget','historical_ai_unknown') AND reserved_usd=0 AND COALESCE(cost_usd,-1)=0)`, job.ID, attempt.ID()).Scan(&unsafe); err != nil {
 						return storageError(ctx)
 					}
 					if unsafe != 0 {
@@ -229,6 +233,8 @@ func aiStageErrorCode(err error) string {
 		code = "budget"
 	case errors.Is(err, ErrMoneyUncertain):
 		code = "money_uncertain"
+	case errors.Is(err, ErrHistoricalAIUnresolved):
+		code = "historical_ai_unknown"
 	case errors.Is(err, context.Canceled):
 		code = "cancelled"
 	case errors.Is(err, context.DeadlineExceeded):

@@ -36,7 +36,7 @@ func TestMariaDBHistoricalSchedulerEvidenceDisposable(t *testing.T) {
 	if err != nil || got.HistoricalUnknown != 1 || got.HistoricalCostRecorded != 1 || got.OrphanUnknown != 1 || got.OrphanCostRecorded != 1 {
 		t.Fatal("scheduler evidence counts invalid", got, err)
 	}
-	for _, row := range [][3]string{{"CI_pending_budget", "CI_old_run", "budget"}, {"CI_pending_deferred", "CI_missing_run", "deferred"}, {"CI_pending_disabled", "CI_current_run", "paid_start_disabled"}} {
+	for _, row := range [][3]string{{"CI_pending_budget", "CI_old_run", "budget"}, {"CI_pending_deferred", "CI_missing_run", "deferred"}, {"CI_pending_disabled", "CI_current_run", "paid_start_disabled"}, {"CI_pending_historical_ai", "CI_current_run", "historical_ai_unknown"}, {"CI_pending_historical_paid", "CI_current_run", "historical_paid_unknown"}} {
 		f.exec("INSERT INTO scheduler_attempts(id,job_id,run_id,type,started_at,status,reason_code,reserved_usd,cost_usd) VALUES(?,'CIjob',?,'diagnostic',1,'pending',?,0,0)", row[0], row[1], row[2])
 	}
 	got, err = f.repo.InspectHistoricalPaidAttempts(f.ctx)

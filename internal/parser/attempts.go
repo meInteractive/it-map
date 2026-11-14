@@ -17,10 +17,11 @@ import (
 )
 
 var (
-	ErrAttemptReplay  = errors.New("scheduler attempt already started")
-	ErrAttemptClosed  = errors.New("scheduler attempt is not active")
-	ErrBudgetLimit    = errors.New("scheduler day or month budget exhausted")
-	ErrMoneyUncertain = errors.New("scheduler request outcome unresolved; paid replay denied")
+	ErrAttemptReplay          = errors.New("scheduler attempt already started")
+	ErrAttemptClosed          = errors.New("scheduler attempt is not active")
+	ErrBudgetLimit            = errors.New("scheduler day or month budget exhausted")
+	ErrMoneyUncertain         = errors.New("scheduler request outcome unresolved; paid replay denied")
+	ErrHistoricalAIUnresolved = errors.New("historical AI paid outcome unresolved")
 )
 
 // Attempt is an execution handle, never reconstructed from a public receipt ID.
@@ -161,6 +162,17 @@ func reserveAttemptLocked(ctx context.Context, tx *sql.Tx, lease *JobLease, id s
 		if unresolved != 0 {
 			return ErrMoneyUncertain
 		}
+		// Старые или осиротевшие оплаченные AI attempts могут относиться к
+		// тому же запросу после восстановления с новыми ID. Без подтверждённой
+		// связи нельзя безопасно выдавать разрешение на новый платный вызов.
+		if lease.job.Type == "classify_title" || lease.job.Type == "extract_vacancy" || lease.job.Type == "assign_roles" || lease.job.Type == "score_relevance" {
+			if e = tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM scheduler_attempts a LEFT JOIN scheduler_runs r ON r.id=a.run_id WHERE a.type IN ('classify_title','extract_vacancy','assign_roles','score_relevance') AND a.reserved_usd>0 AND (a.cost_usd IS NULL OR a.status IN ('running','pending')) AND (r.id IS NULL OR r.generation<>?))`, lease.repo.Generation).Scan(&unresolved); e != nil {
+				return storageError(ctx)
+			}
+			if unresolved != 0 {
+				return ErrHistoricalAIUnresolved
+			}
+		}
 		// Разные ключи оценки одной вакансии не обходят неизвестный исход
 		// предыдущего платного запроса после изменения входных данных.
 		if lease.job.Type == "score_relevance" {
@@ -262,7 +274,7 @@ func (a *Attempt) Run(ctx context.Context, request json.RawMessage, work func(co
 		return nil, ErrBudgetUnknown
 	}
 	if e = s.reserve(ctx, upper, meta.Provider, meta.Model); e != nil {
-		if !errors.Is(e, ErrBudgetLimit) && !errors.Is(e, ErrBudgetUnknown) && !errors.Is(e, ErrMoneyUncertain) {
+		if !errors.Is(e, ErrBudgetLimit) && !errors.Is(e, ErrBudgetUnknown) && !errors.Is(e, ErrMoneyUncertain) && !errors.Is(e, ErrHistoricalAIUnresolved) {
 			s.unknown.Store(true)
 		}
 		return nil, e
