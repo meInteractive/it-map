@@ -400,6 +400,9 @@ func workerExecute(ctx context.Context, d workerDispatch, lease *JobLease, owner
 			// Частые pipeline-сессии не должны непрерывно повторять платный fallback.
 			finish = FinishOptions{Status: "pending", Code: "paid_start_disabled", Delay: 15 * time.Minute, Deferred: true}
 		}
+		if errors.Is(executeErr, apifyruns.ErrHistoricalUnresolved) {
+			finish = FinishOptions{Status: "pending", Code: "historical_paid_unknown", Delay: 30 * time.Minute, Deferred: true}
+		}
 	} else if out.pending {
 		finish = FinishOptions{Status: "pending", Code: "deferred", Delay: 10 * time.Second, Deferred: true}
 	}

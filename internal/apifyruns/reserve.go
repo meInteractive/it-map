@@ -19,6 +19,10 @@ var ErrStorage = errors.New("журнал Apify недоступен")
 var ErrBusy = errors.New("другой запуск Apify ещё выполняется")
 var ErrBudget = errors.New("недостаточно подтверждённого бюджета Apify")
 
+// ErrHistoricalUnresolved запрещает новый POST, пока старое поколение содержит
+// неопределённый платный исход; это не означает отсутствия других расходов.
+var ErrHistoricalUnresolved = errors.New("есть незавершённые платные операции предыдущего поколения")
+
 type Repository struct {
 	DB                     *sql.DB
 	Settings               apifysettings.Repository
@@ -121,6 +125,18 @@ func (r Repository) Reserve(ctx context.Context, v apifysettings.OperationVersio
 	}
 	if !errors.Is(e, sql.ErrNoRows) {
 		return Reservation{}, ErrStorage
+	}
+	// Restore меняет generation, но существующий денежный ledger может остаться.
+	// Пока есть неопределённые старые операции, новый ключ не доказывает, что
+	// этот же платный запрос не был отправлен до смены поколения. Проверка и
+	// резерв проходят под одной блокировкой generation; текущую операцию выше
+	// по-прежнему можно обнаружить и обработать без нового POST.
+	var unresolved int
+	if tx.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM apify_runs WHERE generation<>? AND (charged_usd IS NULL OR state IN ('starting','running','uncertain')))", generation).Scan(&unresolved) != nil {
+		return Reservation{}, ErrStorage
+	}
+	if unresolved != 0 {
+		return Reservation{}, ErrHistoricalUnresolved
 	}
 	now := time.Now()
 	var busy int

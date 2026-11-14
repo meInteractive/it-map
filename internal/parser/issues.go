@@ -65,12 +65,13 @@ var expectedIssueWait = map[string]bool{
 	"budget_monthly": true, "lease_busy": true,
 }
 var issueActions = map[string]string{
-	"storage": "Проверьте сохранённый прогресс и ошибку в очереди перед повтором.",
-	"extraction": "Проверьте правило извлечения вакансий и сохранённую порцию.",
-	"roles_pending": "Проверьте справочник дочерних ролей и результат назначения.",
-	"roles_unresolved": "Проверьте результат назначения ролей перед импортом.",
-	"budget": "Проверьте остаток и резервы в разделе лимитов.",
-	"hh_roles_missing": "Выберите профессиональные роли HH и проверьте область сканирования.",
+	"storage":                 "Проверьте сохранённый прогресс и ошибку в очереди перед повтором.",
+	"extraction":              "Проверьте правило извлечения вакансий и сохранённую порцию.",
+	"roles_pending":           "Проверьте справочник дочерних ролей и результат назначения.",
+	"roles_unresolved":        "Проверьте результат назначения ролей перед импортом.",
+	"budget":                  "Проверьте остаток и резервы в разделе лимитов.",
+	"hh_roles_missing":        "Выберите профессиональные роли HH и проверьте область сканирования.",
+	"historical_paid_unknown": "Проверьте неразрешённые платные операции предыдущего поколения до нового запуска Actor.",
 }
 
 func issueAction(code string) string {
@@ -252,7 +253,7 @@ func (r IssuesRepository) collect(ctx context.Context, now time.Time, includeBac
 				add("queue:"+key, 2, label+" · Требует проверки", "observed",
 					"Последнее доступное состояние содержит ошибку или проблемное ожидание. Это не обязательно отказ всего источника.",
 					issueAction(reason), "queue")
-				index = len(report.Issues)-1
+				index = len(report.Issues) - 1
 				report.Issues[index].SourceID = source
 				report.Issues[index].Stage = kind
 				report.Issues[index].ReasonCode = reason
