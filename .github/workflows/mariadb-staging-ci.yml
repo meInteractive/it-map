@@ -1361,7 +1361,7 @@ jobs:
           python3 - "$result_file" <<'PYCODE'
           import json,sys
           events=[json.loads(line) for line in open(sys.argv[1],encoding='utf8')]
-          for target in ['TestMariaDBSchedulerJobSourceDisposable','TestMariaDBSchedulerJobOwnershipDisposable']:
+          for target in ['TestMariaDBSchedulerJobSourceDisposable','TestMariaDBSchedulerJobOwnershipDisposable','TestMariaDBSchedulerJobOwnershipDisposable/polling_filters_types_and_claim_still_selects_highest_priority']:
               assert any(e.get('Test')==target and e.get('Action')=='pass' for e in events), f'required scheduler job parent did not pass/run: {target}'
           assert not any(e.get('Action')=='skip' for e in events), 'required scheduler job gate skipped'
           print('PASS: source row differential/concurrent claim/stale fences/late rollback/SIGKILL recovery ran with zero skips')
