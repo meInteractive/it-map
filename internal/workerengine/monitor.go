@@ -1,6 +1,7 @@
 package workerengine
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"sync"
@@ -118,5 +119,45 @@ func (m *Monitor) Handler() http.Handler {
 			w.WriteHeader(http.StatusServiceUnavailable)
 		}
 		_ = json.NewEncoder(w).Encode(snapshot)
+	})
+}
+
+// HandlerWithQueue добавляет агрегаты только к уже ограниченному loopback HTTP.
+// Не допускает одновременных тяжёлых снимков и не раскрывает ошибки БД.
+func (m *Monitor) HandlerWithQueue(reader QueueReader) http.Handler {
+	base := m.Handler()
+	semaphore := make(chan struct{}, 1)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/queuez" {
+			base.ServeHTTP(w, r)
+			return
+		}
+		if r.Method != http.MethodGet {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		if reader == nil {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "no-store")
+		select {
+		case semaphore <- struct{}{}:
+			defer func() { <-semaphore }()
+		default:
+			w.WriteHeader(http.StatusServiceUnavailable)
+			_, _ = w.Write([]byte("{\"error\":\"queue_unavailable\"}\n"))
+			return
+		}
+		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+		defer cancel()
+		result, err := reader.ReadQueue(ctx)
+		if err != nil || ctx.Err() != nil {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			_, _ = w.Write([]byte("{\"error\":\"queue_unavailable\"}\n"))
+			return
+		}
+		_ = json.NewEncoder(w).Encode(result)
 	})
 }
