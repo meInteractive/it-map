@@ -67,11 +67,19 @@ func TestMariaDBContinuousWorkerApifyReadRetryDisposable(t *testing.T) {
 			if stage == "account" {
 				expectedStarts = 0
 			}
-			if p.Starts() != expectedStarts || s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='scan_source' AND status='pending' AND reason_code='deferred' AND attempts=0") != 1 || s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='scan_source' AND status='failed'") != 0 {
+			if p.Starts() != expectedStarts || s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='scan_source' AND status='pending' AND reason_code='apify_read_retry' AND attempts=0") != 1 || s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='scan_source' AND status='failed'") != 0 {
 				t.Fatal("temporary GET did not defer safely", p.Starts())
 			}
 			if (stage == "retry_after" || stage == "status_408" || stage == "status_425") && s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='scan_source' AND status='pending' AND run_after > CAST(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000 AS SIGNED)+150000") != 1 {
 				t.Fatal("provider retry interval was ignored")
+			}
+			if stage == "reconcile" {
+				// Ускоряем время только в CI и повторяем тот же безопасный GET.
+				s.exec("UPDATE scheduler_jobs SET run_after=0 WHERE type='scan_source' AND status='pending'")
+				runProfile(workerloop.Reconcile)
+				if p.Starts() != 1 || s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='scan_source' AND status='pending' AND reason_code='apify_read_retry' AND attempts=0 AND run_after > CAST(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000 AS SIGNED)+90000") != 1 {
+					t.Fatal("repeated read did not back off without another POST")
+				}
 			}
 			p.AccountError = nil
 			p.RunError = nil

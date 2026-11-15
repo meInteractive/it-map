@@ -60,6 +60,7 @@ var expectedIssueWait = map[string]bool{
 	"agencies_disabled": true, "disabled": true, "apify_disabled": true,
 	"apify_running": true, "apify_busy": true, "apify_budget": true,
 	"apify_cycle_limit": true, "time_slice": true, "slice": true,
+	hhReadRetryReason: true, apifyReadRetryReason: true,
 	"scheduler_budget": true, "rate_limit": true, "provider_busy": true,
 	"concurrency": true, "budget": true, "budget_daily": true,
 	"budget_monthly": true, "lease_busy": true,

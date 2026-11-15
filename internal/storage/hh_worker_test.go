@@ -108,7 +108,7 @@ func TestMariaDBHHWorkerDisposable(t *testing.T) {
 				}
 				var transientPublic *hhPublicFixture
 				if mode == "engine_public_transient" {
-					transientPublic = &hhPublicFixture{err: &hhpublic.TemporaryError{RetryAfter: 3 * time.Minute}}
+					transientPublic = &hhPublicFixture{err: &hhpublic.TemporaryError{RetryAfter: time.Minute}}
 					w.Public = transientPublic
 					w.DetailRuntime = hhDetailRuntime(s, detailProvider)
 				}
@@ -151,8 +151,34 @@ func TestMariaDBHHWorkerDisposable(t *testing.T) {
 					}
 				}
 				if mode == "engine_public_transient" {
-					if detailProvider.starts != 0 || detailProvider.accounts != 0 || extraction.calls != 0 || s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='fetch_full_text' AND status='pending' AND reason_code='deferred' AND attempts=0 AND run_after>CAST(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000 AS SIGNED)+150000") != 1 {
+					if detailProvider.starts != 0 || detailProvider.accounts != 0 || extraction.calls != 0 || s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='fetch_full_text' AND status='pending' AND reason_code='hh_public_retry' AND attempts=0 AND run_after>CAST(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000 AS SIGNED)+40000") != 1 {
 						t.Fatal("temporary HH failure did not defer without paid fallback")
+					}
+					// Только disposable CI: повторяем тот же временный ответ.
+					s.exec("UPDATE scheduler_jobs SET run_after=0 WHERE type='fetch_full_text'")
+					retryCtx, retryCancel := context.WithCancel(s.ctx)
+					retryDone := make(chan error, 1)
+					retryFinished := make(chan struct{}, 1)
+					go func() {
+						retryDone <- (workerengine.Engine{Worker: w, OnResult: func(name workerloop.ProfileName, result workerloop.ProfileOutcome) {
+							if name == workerloop.Pipeline && result == workerloop.ProfileWorked {
+								select {
+								case retryFinished <- struct{}{}:
+								default:
+								}
+							}
+						}}).Run(retryCtx)
+					}()
+					select {
+					case <-retryFinished:
+					case <-time.After(15 * time.Second):
+						retryCancel()
+						<-retryDone
+						t.Fatal("second public retry timed out")
+					}
+					retryCancel()
+					if e := <-retryDone; !errors.Is(e, context.Canceled) || detailProvider.starts != 0 || s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='fetch_full_text' AND status='pending' AND reason_code='hh_public_retry' AND attempts=0 AND run_after>CAST(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000 AS SIGNED)+90000") != 1 {
+						t.Fatal("public retry did not back off", e)
 					}
 					transientPublic.err = nil
 					transientPublic.job = &hhpublic.Job{ID: "123", URL: "https://hh.ru/vacancy/123", Title: "CI_TITLE", Description: hhDetailBody()}
