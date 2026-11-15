@@ -21,5 +21,10 @@ func (r Repository) ExistingRun(ctx context.Context, v apifysettings.OperationVe
 	if err != nil {
 		return false, err
 	}
+	if row.RunID != "" {
+		if err := validateStoredIdentity(row); err != nil {
+			return false, err
+		}
+	}
 	return row.RunID != "" && (row.State == "running" || row.State == "succeeded" || row.State == "failed" || row.State == "uncertain"), nil
 }

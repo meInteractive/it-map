@@ -21,6 +21,19 @@ type Record struct {
 	ChargedUSD *float64
 }
 
+// validateStoredIdentity rejects malformed stored IDs before using them in a
+// provider call or treating a terminal result as usable. A missing dataset on
+// an unfinished operation can still be filled by reconciliation.
+func validateStoredIdentity(row Record) error {
+	if !accountID.MatchString(row.RunID) || (row.DatasetID != "" && !accountID.MatchString(row.DatasetID)) {
+		return ErrIdentity
+	}
+	if (row.State == "succeeded" || row.State == "failed") && row.ChargedUSD != nil && row.DatasetID == "" {
+		return ErrIdentity
+	}
+	return nil
+}
+
 func mergeRun(row Record, run apify.ActorRun, now time.Time) (Record, error) {
 	state, e := run.State()
 	if e != nil || !accountID.MatchString(run.ID) || !accountID.MatchString(run.DefaultDatasetID) || row.RunID != "" && row.RunID != run.ID || row.DatasetID != "" && row.DatasetID != run.DefaultDatasetID {

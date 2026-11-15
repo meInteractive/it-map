@@ -106,6 +106,39 @@ func runtimeService(f apifyRuntimeFixture, p *runtimeProvider) apifyruns.Service
 }
 
 func TestMariaDBApifyRuntimeDisposable(t *testing.T) {
+	t.Run("malformed stored identity never reaches provider", func(t *testing.T) {
+		f := openApifyRuntimeFixture(t)
+		p := &runtimeProvider{}
+		s := runtimeService(f, p)
+		options := apify.HHOptions{}
+		if _, err := s.Execute(f.ctx, f.v, "CI identity", options); err != nil {
+			t.Fatal(err)
+		}
+		for _, tc := range []struct {
+			state, run, dataset string
+			cost                any
+		}{
+			{"running", "bad-run", "CIData123", nil},
+			{"running", "CIRun123", "bad-data", nil},
+			{"succeeded", "CIRun123", "", 0.1},
+		} {
+			if _, err := f.db.ExecContext(f.ctx, "UPDATE apify_runs SET state=?,run_id=?,dataset_id=?,charged_usd=?", tc.state, tc.run, tc.dataset, tc.cost); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := s.Execute(f.ctx, f.v, "CI identity", options); !errors.Is(err, apifyruns.ErrIdentity) {
+				t.Fatal("execute accepted malformed identity", err)
+			}
+			if _, err := s.Reconcile(f.ctx, f.v, "CI identity", options); !errors.Is(err, apifyruns.ErrIdentity) {
+				t.Fatal("reconcile accepted malformed identity", err)
+			}
+			if _, err := f.repo.ExistingRun(f.ctx, f.v, "CI identity", options); !errors.Is(err, apifyruns.ErrIdentity) {
+				t.Fatal("lookup accepted malformed identity", err)
+			}
+		}
+		if p.starts.Load() != 1 || p.runs.Load() != 0 {
+			t.Fatal("malformed identity reached provider")
+		}
+	})
 	t.Run("new operation guard precedes account and permits existing reconcile", func(t *testing.T) {
 		f := openApifyRuntimeFixture(t)
 		var accounts atomic.Int64

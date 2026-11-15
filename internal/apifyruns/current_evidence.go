@@ -6,7 +6,7 @@ import (
 )
 
 // currentUnresolvedPredicate is shared by admission and recovery diagnostics.
-const currentUnresolvedPredicate = "generation=? AND (charged_usd IS NULL OR state IN ('starting','running','uncertain') OR BINARY run_id NOT REGEXP BINARY '^[A-Za-z0-9]+$')"
+const currentUnresolvedPredicate = "generation=? AND (charged_usd IS NULL OR state IN ('starting','running','uncertain') OR BINARY run_id NOT REGEXP BINARY '^[A-Za-z0-9]+$' OR BINARY dataset_id NOT REGEXP BINARY '^[A-Za-z0-9]+$')"
 
 // CountCurrentUnresolvedTx requires the caller to hold the generation lock.
 // The count describes saved ledger entries and does not establish completeness.
