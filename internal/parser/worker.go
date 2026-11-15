@@ -364,7 +364,7 @@ func (w Worker) cycleStep(ctx, bounded context.Context, runID, phase string, d w
 	if kind := lease.Job().Type; kind == "scan_source" || kind == "fetch_full_text" {
 		(*hhStages)++
 	}
-	executeErr := workerExecute(bounded, d, lease, owner, w.DenyActorStarts)
+	executeErr := workerExecute(bounded, d, lease, owner, w.DenyActorStarts, w.DeferUnspentBudget && w.EnforceActorCooldown)
 	reportCtx, reportCancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
 	reportErr := w.Runs.reportCycle(reportCtx, runID, result.Processed, false)
 	reportCancel()
@@ -386,7 +386,7 @@ func (w Worker) cycleStep(ctx, bounded context.Context, runID, phase string, d w
 	return true, nil
 }
 
-func workerExecute(ctx context.Context, d workerDispatch, lease *JobLease, owner string, denyActorStarts bool) error {
+func workerExecute(ctx context.Context, d workerDispatch, lease *JobLease, owner string, denyActorStarts, deferUnspent bool) error {
 	kind := lease.Job().Type
 	ai := kind == "classify_title" || kind == "extract_vacancy" || kind == "assign_roles" || kind == "score_relevance"
 	var attempt *Attempt
@@ -409,14 +409,24 @@ func workerExecute(ctx context.Context, d workerDispatch, lease *JobLease, owner
 		if errors.Is(executeErr, ErrHHRoleFilter) {
 			finish = FinishOptions{Status: "failed", Code: "hh_roles_missing", Message: "Выберите профессиональные роли HH для каждого активного направления и повторите запуск."}
 		}
-		if errors.Is(executeErr, ErrHHDetailPending) || errors.Is(executeErr, ErrDetailBusy) || errors.Is(executeErr, ErrHHCycleLimit) || errors.Is(executeErr, context.Canceled) || errors.Is(executeErr, context.DeadlineExceeded) {
+		if onlyAdmissionCause(executeErr, ErrHHDetailPending) || onlyAdmissionCause(executeErr, ErrDetailBusy) || onlyAdmissionCause(executeErr, ErrHHCycleLimit) || onlyAdmissionCause(executeErr, context.Canceled) || onlyAdmissionCause(executeErr, context.DeadlineExceeded) {
 			finish = FinishOptions{Status: "pending", Code: "deferred", Delay: 10 * time.Second, Deferred: true}
 		}
-		if denyActorStarts && errors.Is(executeErr, ErrHHCycleLimit) {
+		if denyActorStarts && onlyAdmissionCause(executeErr, ErrHHCycleLimit) {
 			// Частые pipeline-сессии не должны непрерывно повторять платный fallback.
 			finish = FinishOptions{Status: "pending", Code: "paid_start_disabled", Delay: 15 * time.Minute, Deferred: true}
 		}
-		if errors.Is(executeErr, apifyruns.ErrCooldown) {
+		// Эти ошибки Service возникают до резерва и POST. Повтор допустим
+		// только у worker, использующего проверенный runtime и paid ledger.
+		if deferUnspent && (kind == "scan_source" || kind == "fetch_full_text") {
+			if onlyAdmissionCause(executeErr, apifyruns.ErrBusy) {
+				finish = FinishOptions{Status: "pending", Code: "deferred", Delay: 30 * time.Second, Deferred: true}
+			}
+			if onlyAdmissionCause(executeErr, apifyruns.ErrBudget) {
+				finish = FinishOptions{Status: "pending", Code: "budget", Delay: 30 * time.Minute, Deferred: true}
+			}
+		}
+		if onlyAdmissionCause(executeErr, apifyruns.ErrCooldown) {
 			delay := 15 * time.Minute
 			var cooldown *apifyruns.CooldownError
 			if errors.As(executeErr, &cooldown) && cooldown != nil && cooldown.RetryAfter > 0 && cooldown.RetryAfter <= 15*time.Minute {
@@ -425,10 +435,10 @@ func workerExecute(ctx context.Context, d workerDispatch, lease *JobLease, owner
 			// Даём запас на разницу часов и планирование; Reserve проверит снова.
 			finish = FinishOptions{Status: "pending", Code: "deferred", Delay: delay + time.Second, Deferred: true}
 		}
-		if errors.Is(executeErr, apifyruns.ErrHistoricalUnresolved) {
+		if onlyAdmissionCause(executeErr, apifyruns.ErrHistoricalUnresolved) {
 			finish = FinishOptions{Status: "pending", Code: "historical_paid_unknown", Delay: 30 * time.Minute, Deferred: true}
 		}
-		if errors.Is(executeErr, apifyruns.ErrCurrentUnresolved) {
+		if onlyAdmissionCause(executeErr, apifyruns.ErrCurrentUnresolved) {
 			finish = FinishOptions{Status: "pending", Code: "current_paid_unknown", Delay: 30 * time.Minute, Deferred: true}
 		}
 	} else if out.pending {
