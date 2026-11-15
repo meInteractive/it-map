@@ -14,14 +14,14 @@ import (
 )
 
 func TestMariaDBContinuousWorkerApifyReadRetryDisposable(t *testing.T) {
-	for _, stage := range []string{"account", "reconcile", "dataset", "retry_after"} {
+	for _, stage := range []string{"account", "reconcile", "dataset", "retry_after", "status_408", "status_425"} {
 		t.Run(stage, func(t *testing.T) {
 			s, p, w := continuousWorkerFixture(t, false)
 			transient := &apify.Error{Code: "apify_network", Status: 503}
 			if stage == "account" {
 				p.AccountError = transient
 			}
-			if stage == "reconcile" || stage == "retry_after" {
+			if stage == "reconcile" || stage == "retry_after" || stage == "status_408" || stage == "status_425" {
 				p.Async = true
 			}
 			if stage == "dataset" {
@@ -52,7 +52,10 @@ func TestMariaDBContinuousWorkerApifyReadRetryDisposable(t *testing.T) {
 			if stage == "retry_after" {
 				transient = &apify.Error{Code: "apify_busy", Status: 503, RetryAfter: 3 * time.Minute}
 			}
-			if stage == "reconcile" || stage == "retry_after" {
+			if stage == "status_408" || stage == "status_425" {
+				transient = &apify.Error{Code: "apify_data", Status: 503, RetryableRead: true, RetryAfter: 3 * time.Minute}
+			}
+			if stage == "reconcile" || stage == "retry_after" || stage == "status_408" || stage == "status_425" {
 				if p.Starts() != 1 {
 					t.Fatal("known Actor missing")
 				}
@@ -67,7 +70,7 @@ func TestMariaDBContinuousWorkerApifyReadRetryDisposable(t *testing.T) {
 			if p.Starts() != expectedStarts || s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='scan_source' AND status='pending' AND reason_code='deferred' AND attempts=0") != 1 || s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='scan_source' AND status='failed'") != 0 {
 				t.Fatal("temporary GET did not defer safely", p.Starts())
 			}
-			if stage == "retry_after" && s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='scan_source' AND status='pending' AND run_after > CAST(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000 AS SIGNED)+150000") != 1 {
+			if (stage == "retry_after" || stage == "status_408" || stage == "status_425") && s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='scan_source' AND status='pending' AND run_after > CAST(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000 AS SIGNED)+150000") != 1 {
 				t.Fatal("provider retry interval was ignored")
 			}
 			p.AccountError = nil
