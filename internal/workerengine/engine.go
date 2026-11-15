@@ -14,6 +14,7 @@ import (
 )
 
 var ErrCycle = errors.New("worker cycle failed")
+var ErrGenerationChanged = errors.New("worker generation changed; restart required")
 
 // Engine выполняет только один ограниченный цикл за раз. Владелец обязан
 // обеспечить допустимость исполнителя и хранилища до запуска Run.
@@ -37,7 +38,11 @@ func (e Engine) Run(ctx context.Context) error {
 	if err := config.Validate(); err != nil {
 		return workerloop.ErrConfig
 	}
-	return workerloop.RunProfilesWithGrace(ctx, e.profiles(ctx, config), nil, config.ShutdownGrace)
+	err := workerloop.RunProfilesWithGrace(ctx, e.profiles(ctx, config), nil, config.ShutdownGrace)
+	if errors.Is(err, workerloop.ErrHalt) {
+		return ErrGenerationChanged
+	}
+	return err
 }
 
 func (e Engine) profiles(stop context.Context, config workerconfig.Config) []workerloop.Profile {
@@ -57,6 +62,15 @@ func (e Engine) profiles(stop context.Context, config workerconfig.Config) []wor
 }
 
 func (e Engine) cycle(ctx context.Context, stopClaims <-chan struct{}, profile workerloop.ProfileName, maxJobs int) (bool, error) {
+	// После restore продолжать работу со старым generation бессмысленно;
+	// при доступной БД завершаем процесс, чтобы supervisor перечитал состояние.
+	generation, err := e.Worker.Settings.Generation(ctx)
+	if err != nil {
+		return false, ErrCycle
+	}
+	if generation != e.Worker.Runs.Generation {
+		return false, workerloop.ErrHalt
+	}
 	// Launch также планирует источники и восстанавливает leases, поэтому его
 	// нельзя пропускать только из-за отсутствия готового задания. Остальные
 	// профили избегают пустого run; снимок не заменяет атомарный claim.
