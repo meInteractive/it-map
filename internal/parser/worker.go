@@ -417,7 +417,13 @@ func workerExecute(ctx context.Context, d workerDispatch, lease *JobLease, owner
 			finish = FinishOptions{Status: "pending", Code: "paid_start_disabled", Delay: 15 * time.Minute, Deferred: true}
 		}
 		if errors.Is(executeErr, apifyruns.ErrCooldown) {
-			finish = FinishOptions{Status: "pending", Code: "deferred", Delay: 15 * time.Minute, Deferred: true}
+			delay := 15 * time.Minute
+			var cooldown *apifyruns.CooldownError
+			if errors.As(executeErr, &cooldown) && cooldown != nil && cooldown.RetryAfter > 0 && cooldown.RetryAfter <= 15*time.Minute {
+				delay = cooldown.RetryAfter
+			}
+			// Даём запас на разницу часов и планирование; Reserve проверит снова.
+			finish = FinishOptions{Status: "pending", Code: "deferred", Delay: delay + time.Second, Deferred: true}
 		}
 		if errors.Is(executeErr, apifyruns.ErrHistoricalUnresolved) {
 			finish = FinishOptions{Status: "pending", Code: "historical_paid_unknown", Delay: 30 * time.Minute, Deferred: true}

@@ -20,6 +20,28 @@ var ErrBusy = errors.New("другой запуск Apify ещё выполня�
 
 // ErrCooldown откладывает новый Actor после завершения предыдущего.
 var ErrCooldown = errors.New("интервал между платными запусками ещё не истёк")
+
+// CooldownError хранит только ограниченную задержку; новых расходов он не подтверждает.
+type CooldownError struct{ RetryAfter time.Duration }
+
+func (e *CooldownError) Error() string { return ErrCooldown.Error() }
+func (e *CooldownError) Unwrap() error { return ErrCooldown }
+
+const actorCooldown = 15 * time.Minute
+
+// retryAfterCooldown использует значения часов БД. Будущие timestamps и
+// погрешность часов приводят к дополнительной проверке, а не раннему POST.
+func retryAfterCooldown(last, now int64) time.Duration {
+	if last > now {
+		return actorCooldown
+	}
+	threshold := now - actorCooldown.Milliseconds()
+	if last <= threshold {
+		return 0
+	}
+	return time.Duration(last-threshold) * time.Millisecond
+}
+
 var ErrBudget = errors.New("недостаточно подтверждённого бюджета Apify")
 
 // ErrHistoricalUnresolved запрещает новый POST, пока старое поколение содержит
@@ -167,12 +189,15 @@ func (r Repository) Reserve(ctx context.Context, v apifysettings.OperationVersio
 	// стоимости, поэтому интервал консервативнее отсчёта от начала Actor.
 	// Generation lock сериализует проверку с резервированием и record.
 	if r.EnforceActorCooldown {
-		var recent int
-		if tx.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM apify_runs WHERE state IN ('succeeded','failed') AND updated_at > CAST(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000 AS SIGNED)-900000)").Scan(&recent) != nil {
+		var last sql.NullInt64
+		var databaseNow int64
+		if tx.QueryRowContext(ctx, "SELECT MAX(updated_at),CAST(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000 AS SIGNED) FROM apify_runs WHERE state IN ('succeeded','failed')").Scan(&last, &databaseNow) != nil {
 			return Reservation{}, ErrStorage
 		}
-		if recent != 0 {
-			return Reservation{}, ErrCooldown
+		if last.Valid {
+			if delay := retryAfterCooldown(last.Int64, databaseNow); delay > 0 {
+				return Reservation{}, &CooldownError{RetryAfter: delay}
+			}
 		}
 	}
 	column := "free_account_json"
