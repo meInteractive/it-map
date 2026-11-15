@@ -91,7 +91,7 @@ func TestMariaDBApifyRuntimeFaultsDisposable(t *testing.T) {
 }
 
 func TestMariaDBApifyRuntimeCrashDisposable(t *testing.T) {
-	for _, point := range []string{"before-post", "after-post"} {
+	for _, point := range []string{"after-reserve", "before-post", "after-post"} {
 		t.Run(point, func(t *testing.T) {
 			f := openApifyRuntimeFixture(t)
 			exe, e := os.Executable()
@@ -136,8 +136,24 @@ func TestMariaDBApifyRuntimeCrashDisposable(t *testing.T) {
 			_ = child.Wait()
 			p := &runtimeProvider{}
 			got, e := runtimeService(f, p).Execute(f.ctx, f.v, "CI crash", apify.HHOptions{})
-			if !errors.Is(e, apifyruns.ErrUncertain) || got.State != "uncertain" || got.ChargedUSD != nil || p.starts.Load() != 0 {
+			wantState := "uncertain"
+			if point == "after-reserve" {
+				wantState = "starting"
+			}
+			if !errors.Is(e, apifyruns.ErrUncertain) || got.State != wantState || got.ChargedUSD != nil || p.starts.Load() != 0 {
 				t.Fatal("restart resurrected crashed POST", e)
+			}
+			// Время изменяется только в disposable CI: истечение краткого
+			// single-flight не разрешает другой ключ для того же источника.
+			if _, e = f.db.ExecContext(f.ctx, "UPDATE apify_runs SET created_at=1 WHERE id=?", got.ID); e != nil {
+				t.Fatal(e)
+			}
+			if _, e = runtimeService(f, p).Execute(f.ctx, f.v, "CI other job", apify.HHOptions{}); !errors.Is(e, apifyruns.ErrCurrentUnresolved) || p.starts.Load() != 0 {
+				t.Fatal("aged crashed reservation allowed a new POST", e)
+			}
+			var count int
+			if e = f.db.QueryRowContext(f.ctx, "SELECT COUNT(*) FROM apify_runs WHERE state=? AND run_id='' AND charged_usd IS NULL AND reserved_usd>0", wantState).Scan(&count); e != nil || count != 1 {
+				t.Fatal("crash did not preserve paid evidence", e)
 			}
 		})
 	}
@@ -165,6 +181,9 @@ func TestMariaDBApifyRuntimeCrashChild(t *testing.T) {
 		}
 		return p, nil
 	}}
+	if point == "after-reserve" {
+		s.AfterReserve = block
+	}
 	if _, e := s.Execute(ctx, v, "CI crash", apify.HHOptions{}); e != nil {
 		t.Fatal(e)
 	}
