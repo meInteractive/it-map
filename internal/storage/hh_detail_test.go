@@ -22,6 +22,7 @@ type hhPublicFixture struct {
 	calls int
 	job   *hhpublic.Job
 	after func()
+	err   error
 }
 
 func (p *hhPublicFixture) Fetch(context.Context, string) (*hhpublic.Job, error) {
@@ -29,7 +30,7 @@ func (p *hhPublicFixture) Fetch(context.Context, string) (*hhpublic.Job, error) 
 	if p.after != nil {
 		p.after()
 	}
-	return p.job, nil
+	return p.job, p.err
 }
 func hhDetailBody() string {
 	return "Задачи: развивать продукт и управлять командой. Требования: опыт управления, навыки планирования. " + strings.Repeat("CI full vacancy description. ", 15)

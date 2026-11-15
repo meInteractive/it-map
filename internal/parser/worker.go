@@ -406,6 +406,11 @@ func workerExecute(ctx context.Context, d workerDispatch, lease *JobLease, owner
 	finish := FinishOptions{Status: "completed", Code: out.code}
 	if executeErr != nil {
 		finish = FinishOptions{Status: "failed", Code: "stage_failed", Message: "Не удалось выполнить этап обработки."}
+		// Публичный GET безопасно повторить. Временный сбой не должен
+		// превращаться в новый платный fallback или расходовать попытку.
+		if kind == "fetch_full_text" && onlyTemporaryPublicHH(executeErr) {
+			finish = FinishOptions{Status: "pending", Code: "deferred", Delay: time.Minute, Deferred: true}
+		}
 		if errors.Is(executeErr, ErrHHRoleFilter) {
 			finish = FinishOptions{Status: "failed", Code: "hh_roles_missing", Message: "Выберите профессиональные роли HH для каждого активного направления и повторите запуск."}
 		}
