@@ -43,6 +43,8 @@ type Providers struct {
 	Async bool
 	// ExhaustedAccount возвращает исчерпанный synthetic лимит Apify.
 	ExhaustedAccount bool
+	// NewAccountPeriod моделирует смену платёжного периода только на синтетике.
+	NewAccountPeriod bool
 }
 
 func (p *Providers) Starts() int64  { return p.starts.Load() }
@@ -64,7 +66,11 @@ func (p *Providers) Account(ctx context.Context) (apify.BillingAccount, error) {
 	if p.ExhaustedAccount {
 		used = 5
 	}
-	return apify.BillingAccount{AccountID: "StagingMock", PlanCreditsUSD: 5, ProviderLimitUSD: 5, ProviderUsedUSD: used, PeriodStart: now.Truncate(time.Hour).Add(-time.Hour).Format(time.RFC3339), PeriodEnd: now.Truncate(time.Hour).Add(2 * time.Hour).Format(time.RFC3339), CheckedAt: now.UnixMilli()}, nil
+	periodStart := now.Truncate(time.Hour).Add(-time.Hour)
+	if p.NewAccountPeriod {
+		periodStart = periodStart.Add(30 * time.Minute)
+	}
+	return apify.BillingAccount{AccountID: "StagingMock", PlanCreditsUSD: 5, ProviderLimitUSD: 5, ProviderUsedUSD: used, PeriodStart: periodStart.Format(time.RFC3339), PeriodEnd: now.Truncate(time.Hour).Add(2 * time.Hour).Format(time.RFC3339), CheckedAt: now.UnixMilli()}, nil
 }
 func (p *Providers) Start(ctx context.Context, source string, opts apify.HHOptions) (apify.ActorRun, error) {
 	if err := ctx.Err(); err != nil {

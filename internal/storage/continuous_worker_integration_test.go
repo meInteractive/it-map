@@ -379,6 +379,37 @@ func TestMariaDBContinuousWorkerApifyBudgetDisposable(t *testing.T) {
 	if s.count("SELECT COUNT(*) FROM scheduler_runs WHERE `trigger`='automatic'") == 0 {
 		t.Fatal("worker did not attempt scheduling")
 	}
+	if s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='scan_source' AND status='pending' AND reason_code='budget' AND attempts=0 AND run_after>0") != 1 || s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='scan_source' AND status='failed'") != 0 {
+		t.Fatal("budget exhaustion did not defer the unspent job")
+	}
+	// Только mock и одноразовая БД: имитируем новый платёжный период.
+	p.ExhaustedAccount = false
+	p.NewAccountPeriod = true
+	s.exec("UPDATE scheduler_jobs SET run_after=0 WHERE reason_code='budget'")
+	ctx, cancel = context.WithCancel(s.ctx)
+	done = make(chan error, 1)
+	go func() { done <- (workerengine.Engine{Worker: worker}).Run(ctx) }()
+	deadline := time.NewTimer(15 * time.Second)
+	ticker := time.NewTicker(100 * time.Millisecond)
+	completed := false
+waitBudgetRecovery:
+	for {
+		select {
+		case <-ticker.C:
+			if s.count("SELECT COUNT(*) FROM company_vacancies WHERE company_name='CI Apify Runtime'") == 1 {
+				completed = true
+				break waitBudgetRecovery
+			}
+		case <-deadline.C:
+			break waitBudgetRecovery
+		}
+	}
+	ticker.Stop()
+	deadline.Stop()
+	cancel()
+	if err := <-done; !errors.Is(err, context.Canceled) || !completed || p.Starts() != 1 {
+		t.Fatal("worker did not resume after budget renewal", err, p.Starts())
+	}
 }
 
 func TestMariaDBContinuousWorkerAIBudgetDisposable(t *testing.T) {

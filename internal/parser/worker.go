@@ -364,7 +364,7 @@ func (w Worker) cycleStep(ctx, bounded context.Context, runID, phase string, d w
 	if kind := lease.Job().Type; kind == "scan_source" || kind == "fetch_full_text" {
 		(*hhStages)++
 	}
-	executeErr := workerExecute(bounded, d, lease, owner, w.DenyActorStarts)
+	executeErr := workerExecute(bounded, d, lease, owner, w.DenyActorStarts, w.DeferUnspentBudget && w.EnforceActorCooldown)
 	reportCtx, reportCancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
 	reportErr := w.Runs.reportCycle(reportCtx, runID, result.Processed, false)
 	reportCancel()
@@ -386,7 +386,7 @@ func (w Worker) cycleStep(ctx, bounded context.Context, runID, phase string, d w
 	return true, nil
 }
 
-func workerExecute(ctx context.Context, d workerDispatch, lease *JobLease, owner string, denyActorStarts bool) error {
+func workerExecute(ctx context.Context, d workerDispatch, lease *JobLease, owner string, denyActorStarts, deferUnspent bool) error {
 	kind := lease.Job().Type
 	ai := kind == "classify_title" || kind == "extract_vacancy" || kind == "assign_roles" || kind == "score_relevance"
 	var attempt *Attempt
@@ -415,6 +415,16 @@ func workerExecute(ctx context.Context, d workerDispatch, lease *JobLease, owner
 		if denyActorStarts && errors.Is(executeErr, ErrHHCycleLimit) {
 			// Частые pipeline-сессии не должны непрерывно повторять платный fallback.
 			finish = FinishOptions{Status: "pending", Code: "paid_start_disabled", Delay: 15 * time.Minute, Deferred: true}
+		}
+		// Эти ошибки Service возникают до резерва и POST. Повтор допустим
+		// только у worker, использующего проверенный runtime и paid ledger.
+		if deferUnspent && (kind == "scan_source" || kind == "fetch_full_text") {
+			if errors.Is(executeErr, apifyruns.ErrBusy) {
+				finish = FinishOptions{Status: "pending", Code: "deferred", Delay: 30 * time.Second, Deferred: true}
+			}
+			if errors.Is(executeErr, apifyruns.ErrBudget) {
+				finish = FinishOptions{Status: "pending", Code: "budget", Delay: 30 * time.Minute, Deferred: true}
+			}
 		}
 		if errors.Is(executeErr, apifyruns.ErrCooldown) {
 			delay := 15 * time.Minute
