@@ -130,21 +130,21 @@ func (s Service) readDataset(ctx context.Context, v apifysettings.OperationVersi
 	}
 	before, e := dataset.DatasetInfo(ctx, row.DatasetID)
 	if e != nil {
-		return DatasetSlice{}, e
+		return DatasetSlice{}, classifyReadError(e)
 	}
 	if err := s.checkActive(ctx); err != nil {
 		return DatasetSlice{}, err
 	}
 	items, e := dataset.DatasetItems(ctx, row.DatasetID, offset, false)
 	if e != nil {
-		return DatasetSlice{}, e
+		return DatasetSlice{}, classifyReadError(e)
 	}
 	if err := s.checkActive(ctx); err != nil {
 		return DatasetSlice{}, err
 	}
 	after, e := dataset.DatasetInfo(ctx, row.DatasetID)
 	if e != nil {
-		return DatasetSlice{}, e
+		return DatasetSlice{}, classifyReadError(e)
 	}
 	if before.ItemCount != after.ItemCount || before.ModifiedAt != after.ModifiedAt || before.ItemCount < 0 || before.ItemCount > 9007199254740991 || len(items) > 10 || offset > before.ItemCount || int64(len(items)) > before.ItemCount-offset {
 		return DatasetSlice{}, ErrDatasetChanged

@@ -144,6 +144,19 @@ func TestMariaDBApifyRuntimeDisposable(t *testing.T) {
 			t.Fatal("malformed identity reached provider")
 		}
 	})
+	t.Run("temporary POST error remains uncertain", func(t *testing.T) {
+		f := openApifyRuntimeFixture(t)
+		p := &runtimeProvider{start: func(context.Context) (apify.ActorRun, error) {
+			return apify.ActorRun{}, &apify.Error{Code: "apify_network", Status: 503}
+		}}
+		s := runtimeService(f, p)
+		for i := 0; i < 2; i++ {
+			_, err := s.Execute(f.ctx, f.v, "CI lost POST", apify.HHOptions{})
+			if !errors.Is(err, apifyruns.ErrUncertain) || errors.Is(err, apifyruns.ErrReadTemporary) || p.starts.Load() != 1 {
+				t.Fatal("POST failure was treated as retryable GET", err)
+			}
+		}
+	})
 	t.Run("new operation guard precedes account and permits existing reconcile", func(t *testing.T) {
 		f := openApifyRuntimeFixture(t)
 		var accounts atomic.Int64

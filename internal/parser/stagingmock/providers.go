@@ -44,7 +44,8 @@ type Providers struct {
 	// ExhaustedAccount возвращает исчерпанный synthetic лимит Apify.
 	ExhaustedAccount bool
 	// NewAccountPeriod моделирует смену платёжного периода только на синтетике.
-	NewAccountPeriod bool
+	NewAccountPeriod                     bool
+	AccountError, RunError, DatasetError error
 }
 
 func (p *Providers) Starts() int64  { return p.starts.Load() }
@@ -60,6 +61,9 @@ func (p *Providers) Account(ctx context.Context) (apify.BillingAccount, error) {
 	}
 	if err := ctx.Err(); err != nil {
 		return apify.BillingAccount{}, err
+	}
+	if p.AccountError != nil {
+		return apify.BillingAccount{}, p.AccountError
 	}
 	now := time.Now().UTC()
 	used := float64(0)
@@ -102,9 +106,15 @@ func (p *Providers) Run(ctx context.Context, id string) (apify.ActorRun, error) 
 		return apify.ActorRun{}, errUnexpected
 	}
 	p.polls.Add(1)
+	if p.RunError != nil {
+		return apify.ActorRun{}, p.RunError
+	}
 	return apify.ActorRun{ID: "MockRun0", DefaultDatasetID: "MockData0", Status: "SUCCEEDED", Raw: json.RawMessage(`{"id":"MockRun0","defaultDatasetId":"MockData0","status":"SUCCEEDED","userId":"StagingMock","usageTotalUsd":0.02}`)}, nil
 }
-func (*Providers) DatasetInfo(ctx context.Context, id string) (apify.DatasetMetadata, error) {
+func (p *Providers) DatasetInfo(ctx context.Context, id string) (apify.DatasetMetadata, error) {
+	if p.DatasetError != nil {
+		return apify.DatasetMetadata{}, p.DatasetError
+	}
 	if err := ctx.Err(); err != nil {
 		return apify.DatasetMetadata{}, err
 	}
