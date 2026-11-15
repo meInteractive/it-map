@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -14,6 +15,41 @@ const maxBytes = 2000000
 
 // ErrTemporary не содержит URL или исходной ошибки сети и допускает повтор GET.
 var ErrTemporary = errors.New("public HH temporarily unavailable")
+
+// TemporaryError carries a bounded provider retry hint, without response data.
+type TemporaryError struct{ RetryAfter time.Duration }
+
+func (e *TemporaryError) Error() string { return ErrTemporary.Error() }
+func (e *TemporaryError) Unwrap() error { return ErrTemporary }
+
+const MinRetryDelay = time.Minute
+const MaxRetryDelay = 24 * time.Hour
+
+func retryAfter(raw string, now time.Time) time.Duration {
+	raw = strings.TrimSpace(raw)
+	var d time.Duration
+	if seconds, err := strconv.ParseUint(raw, 10, 64); err == nil {
+		if seconds > uint64(MaxRetryDelay/time.Second) {
+			return MaxRetryDelay
+		}
+		d = time.Duration(seconds) * time.Second
+	} else if date, err := http.ParseTime(raw); err == nil {
+		d = date.Sub(now)
+	} else {
+		// Число больше uint64 не должно превращаться в ранний retry.
+		if raw != "" && strings.Trim(raw, "0123456789") == "" {
+			return MaxRetryDelay
+		}
+		return MinRetryDelay
+	}
+	if d < MinRetryDelay {
+		return MinRetryDelay
+	}
+	if d > MaxRetryDelay {
+		return MaxRetryDelay
+	}
+	return d
+}
 
 type Client struct{ http *http.Client }
 
@@ -48,7 +84,7 @@ func (c *Client) Fetch(ctx context.Context, value string) (*Job, error) {
 	}
 	defer response.Body.Close()
 	if response.StatusCode == http.StatusTooManyRequests || response.StatusCode >= 500 {
-		return nil, ErrTemporary
+		return nil, &TemporaryError{RetryAfter: retryAfter(response.Header.Get("Retry-After"), time.Now())}
 	}
 	if response.StatusCode != http.StatusOK || !strings.Contains(response.Header.Get("Content-Type"), "text/html") || response.ContentLength > maxBytes {
 		return nil, nil
