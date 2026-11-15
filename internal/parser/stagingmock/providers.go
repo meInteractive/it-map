@@ -44,8 +44,8 @@ type Providers struct {
 	// ExhaustedAccount возвращает исчерпанный synthetic лимит Apify.
 	ExhaustedAccount bool
 	// NewAccountPeriod моделирует смену платёжного периода только на синтетике.
-	NewAccountPeriod                     bool
-	AccountError, RunError, DatasetError error
+	NewAccountPeriod                                  bool
+	AccountError, RunError, DatasetError, PublicError error
 }
 
 func (p *Providers) Starts() int64  { return p.starts.Load() }
@@ -137,9 +137,12 @@ func (*Providers) DatasetItems(ctx context.Context, id string, offset int64, cle
 	}
 	return items[offset:], nil
 }
-func (*Providers) Fetch(ctx context.Context, url string) (*hhpublic.Job, error) {
+func (p *Providers) Fetch(ctx context.Context, url string) (*hhpublic.Job, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
+	}
+	if p.PublicError != nil {
+		return nil, p.PublicError
 	}
 	if url != "https://hh.ru/vacancy/123" {
 		return nil, errUnexpected
