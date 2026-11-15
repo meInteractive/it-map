@@ -1,0 +1,29 @@
+[Unit]
+Description=it-map continuous worker (isolated staging only)
+After=network-online.target mariadb.service
+Wants=network-online.target
+StartLimitIntervalSec=60s
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=itmap-worker-staging
+Group=itmap-worker-staging
+EnvironmentFile=/etc/itmap/worker-staging.env
+WorkingDirectory=/opt/itmap/worker-staging
+ExecStart=/opt/itmap/worker-staging/itmap-worker
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=90s
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectProc=invisible
+RestrictSUIDSGID=true
+CapabilityBoundingSet=
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
