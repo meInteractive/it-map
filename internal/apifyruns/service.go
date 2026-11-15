@@ -146,7 +146,7 @@ func (s Service) Execute(ctx context.Context, v apifysettings.OperationVersion, 
 	}
 	account, e := client.Account(ctx)
 	if e != nil {
-		return Record{}, e
+		return Record{}, classifyReadError(e)
 	}
 	if err := s.checkActive(ctx); err != nil {
 		return Record{}, err
@@ -240,7 +240,7 @@ func (s Service) reconcile(ctx context.Context, v apifysettings.OperationVersion
 	}
 	run, e := client.Run(ctx, row.RunID)
 	if e != nil {
-		return row, e
+		return row, classifyReadError(e)
 	}
 	return s.Repository.record(ctx, v, key, run)
 }

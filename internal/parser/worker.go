@@ -431,6 +431,11 @@ func workerExecute(ctx context.Context, d workerDispatch, lease *JobLease, owner
 				finish = FinishOptions{Status: "pending", Code: "budget", Delay: 30 * time.Minute, Deferred: true}
 			}
 		}
+		// Повторяем только типизированную ошибку безопасного GET; POST
+		// с неизвестным результатом остаётся в отдельном состоянии.
+		if (kind == "scan_source" || kind == "fetch_full_text") && onlyAdmissionCause(executeErr, apifyruns.ErrReadTemporary) {
+			finish = FinishOptions{Status: "pending", Code: "deferred", Delay: time.Minute, Deferred: true}
+		}
 		if onlyAdmissionCause(executeErr, apifyruns.ErrCooldown) {
 			delay := 15 * time.Minute
 			var cooldown *apifyruns.CooldownError
