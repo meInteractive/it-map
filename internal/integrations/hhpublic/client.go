@@ -61,7 +61,7 @@ func (c *Client) Fetch(ctx context.Context, value string) (*Job, error) {
 	}
 	defer response.Body.Close()
 	if response.StatusCode == http.StatusRequestTimeout || response.StatusCode == http.StatusTooEarly || response.StatusCode == http.StatusTooManyRequests || response.StatusCode >= 500 {
-		return nil, &TemporaryError{RetryAfter: retryAfter(response.Header.Get("Retry-After"), time.Now())}
+		return nil, &TemporaryError{RetryAfter: retryafter.ParseResponse(response.Header.Get("Retry-After"), response.Header.Get("Date"), time.Now())}
 	}
 	if response.StatusCode != http.StatusOK && response.StatusCode != http.StatusForbidden {
 		return nil, nil
@@ -95,7 +95,7 @@ func (c *Client) Fetch(ctx context.Context, value string) (*Job, error) {
 		}
 	}
 	if verificationChallenge(body) {
-		return nil, &TemporaryError{RetryAfter: retryAfter(response.Header.Get("Retry-After"), time.Now())}
+		return nil, &TemporaryError{RetryAfter: retryafter.ParseResponse(response.Header.Get("Retry-After"), response.Header.Get("Date"), time.Now())}
 	}
 	return nil, nil
 }

@@ -36,3 +36,15 @@ func Parse(raw string, now time.Time) time.Duration {
 	}
 	return d
 }
+
+// ParseResponse accounts for clock skew using the provider's Date header.
+// The longer delay is conservative and remains bounded by MaxDelay.
+func ParseResponse(raw, serverDate string, receivedAt time.Time) time.Duration {
+	delay := Parse(raw, receivedAt)
+	if date, err := http.ParseTime(serverDate); err == nil {
+		if providerDelay := Parse(raw, date); providerDelay > delay {
+			return providerDelay
+		}
+	}
+	return delay
+}

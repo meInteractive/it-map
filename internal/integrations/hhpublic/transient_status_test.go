@@ -23,3 +23,16 @@ func TestTransientStatusRespectsRetryAfter(t *testing.T) {
 		}
 	}
 }
+
+func TestTransientStatusUsesProviderClock(t *testing.T) {
+	server := time.Now().UTC().Add(-2 * time.Minute).Truncate(time.Second)
+	client := New()
+	client.http.Transport = localTransport(func(r *http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: http.StatusTooManyRequests, Header: http.Header{"Retry-After": {server.Add(3 * time.Minute).Format(http.TimeFormat)}, "Date": {server.Format(http.TimeFormat)}}, Body: io.NopCloser(strings.NewReader("")), Request: r}, nil
+	})
+	_, err := client.Fetch(context.Background(), "https://hh.ru/vacancy/123")
+	var hint *TemporaryError
+	if !errors.As(err, &hint) || hint.RetryAfter != 3*time.Minute {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}

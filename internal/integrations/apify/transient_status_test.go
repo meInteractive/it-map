@@ -25,3 +25,17 @@ func TestTransientStatusReadAndUncertainPost(t *testing.T) {
 		}
 	}
 }
+
+func TestTransientReadUsesProviderClock(t *testing.T) {
+	server := time.Now().UTC().Add(-2 * time.Minute).Truncate(time.Second)
+	client, _ := mockClient(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Date", server.Format(http.TimeFormat))
+		w.Header().Set("Retry-After", server.Add(3*time.Minute).Format(http.TimeFormat))
+		w.WriteHeader(http.StatusTooManyRequests)
+	})
+	_, err := client.Run(context.Background(), "Run123")
+	var hint *Error
+	if !errors.As(err, &hint) || hint.RetryAfter != 3*time.Minute {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
