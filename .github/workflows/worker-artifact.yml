@@ -1,0 +1,43 @@
+name: Worker build artifact
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  worker-artifact:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Build worker from the checked commit
+        env:
+          CGO_ENABLED: '0'
+          GOOS: linux
+          GOARCH: amd64
+        run: |
+          set -euo pipefail
+          go mod download
+          go mod verify
+          mkdir -p "$RUNNER_TEMP/worker-artifact"
+          go build -mod=readonly -trimpath -buildvcs=true -tags mariadb -o "$RUNNER_TEMP/worker-artifact/itmap-worker" ./cmd/itmap-worker
+          go version -m "$RUNNER_TEMP/worker-artifact/itmap-worker" > "$RUNNER_TEMP/worker-artifact/build-info.txt"
+          grep -F "vcs.revision=$GITHUB_SHA" "$RUNNER_TEMP/worker-artifact/build-info.txt"
+          grep -F 'vcs.modified=false' "$RUNNER_TEMP/worker-artifact/build-info.txt"
+          printf '%s\n' "$GITHUB_SHA" > "$RUNNER_TEMP/worker-artifact/commit.txt"
+          (cd "$RUNNER_TEMP/worker-artifact" && sha256sum itmap-worker > SHA256SUMS)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: worker-linux-amd64-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/worker-artifact/
+          if-no-files-found: error
+          retention-days: 7
