@@ -33,6 +33,9 @@ const (
 )
 
 // ErrRunContended означает, что другой корректный consumer уже владеет run.
+// ErrHalt останавливает цикл без повторов; не содержит исходной ошибки.
+var ErrHalt = errors.New("worker cannot continue")
+
 var ErrRunContended = errors.New("worker run owned by another consumer")
 
 // Profile задаёт ограниченную последовательную итерацию и интервалы ожидания.
@@ -196,6 +199,15 @@ func RunProfilesWithGrace(ctx context.Context, profiles []Profile, onFailure fun
 		cancel()
 		if err := ctx.Err(); err != nil {
 			return err
+		}
+		if stepErr == ErrHalt {
+			if profile.OnResult != nil {
+				profile.OnResult(profile.Name, ProfileFailed)
+			}
+			if onFailure != nil {
+				onFailure(profile.Name)
+			}
+			return ErrHalt
 		}
 		outcome := ProfileIdle
 		contended := stepErr == ErrRunContended && stepContextErr == nil

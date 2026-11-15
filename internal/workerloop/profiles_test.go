@@ -358,3 +358,18 @@ func TestGracefulStopCancelsStepAfterGrace(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestFatalStepStopsWithoutRetryAndReportsFailure(t *testing.T) {
+	p := testProfile(Launch)
+	var calls, reports, failures int
+	p.Step = func(context.Context) (bool, error) { calls++; return false, ErrHalt }
+	p.OnResult = func(_ ProfileName, outcome ProfileOutcome) {
+		if outcome != ProfileFailed {
+			t.Fatal("fatal outcome hidden")
+		}
+		reports++
+	}
+	if err := RunProfiles(context.Background(), []Profile{p}, func(ProfileName) { failures++ }); err != ErrHalt || calls != 1 || reports != 1 || failures != 1 {
+		t.Fatal("fatal step retried", err, calls, reports, failures)
+	}
+}

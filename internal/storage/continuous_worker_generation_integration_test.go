@@ -101,3 +101,28 @@ func TestMariaDBContinuousWorkerGenerationPaidDisposable(t *testing.T) {
 		t.Fatal("restart repeated POST or lost reserve")
 	}
 }
+
+// Worker завершается при новой generation даже с пустой очередью.
+func TestMariaDBContinuousWorkerGenerationExitDisposable(t *testing.T) {
+	s, provider, worker := continuousWorkerFixture(t, false)
+	next := "22222222-2222-4333-8444-555555555555"
+	if next == s.repo.Generation {
+		next = "33333333-3333-4333-8444-555555555555"
+	}
+	defer s.exec("UPDATE app_runtime_generation SET generation=? WHERE id=1", s.repo.Generation)
+	s.exec("UPDATE app_runtime_generation SET generation=? WHERE id=1", next)
+	ctx, cancel := context.WithTimeout(s.ctx, 12*time.Second)
+	defer cancel()
+	var failed int
+	err := (workerengine.Engine{Worker: worker, OnResult: func(_ workerloop.ProfileName, outcome workerloop.ProfileOutcome) {
+		if outcome == workerloop.ProfileFailed {
+			failed++
+		}
+	}}).Run(ctx)
+	if !errors.Is(err, workerengine.ErrGenerationChanged) || failed != 1 {
+		t.Fatal("stale worker did not exit", err, failed)
+	}
+	if provider.Starts() != 0 || provider.AICalls() != 0 || s.count("SELECT COUNT(*) FROM apify_runs") != 0 {
+		t.Fatal("stale worker contacted paid provider")
+	}
+}
