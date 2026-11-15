@@ -24,6 +24,7 @@ import (
 
 var errConfig = errors.New("worker staging configuration invalid")
 var errStartup = errors.New("worker staging startup failed")
+var errGeneration = errors.New("worker generation changed")
 
 type settings struct {
 	database                    storage.Settings
@@ -92,6 +93,9 @@ func run(ctx context.Context, getenv func(string) string, open opener, execute w
 	if errors.Is(err, context.DeadlineExceeded) {
 		return context.DeadlineExceeded
 	}
+	if errors.Is(err, workerengine.ErrGenerationChanged) {
+		return errGeneration
+	}
 	if err != nil {
 		return errStartup
 	}
@@ -150,6 +154,14 @@ func runWorker(ctx context.Context, db *sql.DB, s settings) error {
 	return err
 }
 
+// exitReason is a fixed category; it never includes driver or provider errors.
+func exitReason(err error) string {
+	if errors.Is(err, errGeneration) {
+		return "generation_changed"
+	}
+	return "startup_or_runtime_failure"
+}
+
 func main() {
 	if len(os.Args) != 1 {
 		slog.Error("worker does not accept arguments")
@@ -158,7 +170,7 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	if err := run(ctx, os.Getenv, storage.Open, runWorker); err != nil && !errors.Is(err, context.Canceled) {
-		slog.Error("worker stopped", "reason", "startup_or_runtime_failure")
+		slog.Error("worker stopped", "reason", exitReason(err))
 		os.Exit(1)
 	}
 }

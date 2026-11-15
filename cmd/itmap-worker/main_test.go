@@ -5,10 +5,12 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"errors"
+	"os"
 	"strings"
 	"testing"
 
 	"itmap/internal/storage"
+	"itmap/internal/workerengine"
 )
 
 type testConnector struct{}
@@ -78,5 +80,31 @@ func TestCancelledRunDoesNotOpenDatabase(t *testing.T) {
 	err := run(ctx, getter(testEnvironment()), func(context.Context, storage.Settings, string) (*sql.DB, error) { called = true; return nil, nil }, func(context.Context, *sql.DB, settings) error { return nil })
 	if !errors.Is(err, context.Canceled) || called {
 		t.Fatal("отменённый worker открыл БД", err)
+	}
+}
+
+func TestGenerationChangeReturnsSafeRestartReason(t *testing.T) {
+	db := sql.OpenDB(testConnector{})
+	err := run(context.Background(), getter(testEnvironment()), func(context.Context, storage.Settings, string) (*sql.DB, error) { return db, nil }, func(context.Context, *sql.DB, settings) error {
+		return errors.Join(workerengine.ErrGenerationChanged, errors.New("CI private diagnostic"))
+	})
+	if !errors.Is(err, errGeneration) || exitReason(err) != "generation_changed" || strings.Contains(err.Error(), "CI private") {
+		t.Fatal("generation failure was not safely classified", err)
+	}
+	if exitReason(errors.New("CI private")) != "startup_or_runtime_failure" {
+		t.Fatal("unexpected error leaked to log category")
+	}
+}
+
+func TestStagingServiceRestartAndIsolationContract(t *testing.T) {
+	data, err := os.ReadFile("../../deploy/itmap-worker-staging.service.example")
+	if err != nil {
+		t.Fatal(err)
+	}
+	required := []string{"User=itmap-worker-staging", "Group=itmap-worker-staging", "EnvironmentFile=/etc/itmap/worker-staging.env", "ExecStart=/opt/itmap/worker-staging/itmap-worker", "Restart=on-failure", "TimeoutStopSec=90s", "NoNewPrivileges=true", "ProtectSystem=strict"}
+	for _, line := range required {
+		if !strings.Contains("\n"+string(data)+"\n", "\n"+line+"\n") {
+			t.Fatalf("service contract missing %s", line)
+		}
 	}
 }
