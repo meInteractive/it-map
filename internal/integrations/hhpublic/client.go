@@ -5,10 +5,11 @@ import (
 	"errors"
 	"io"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
+
+	"itmap/internal/retryafter"
 )
 
 const maxBytes = 2000000
@@ -22,34 +23,10 @@ type TemporaryError struct{ RetryAfter time.Duration }
 func (e *TemporaryError) Error() string { return ErrTemporary.Error() }
 func (e *TemporaryError) Unwrap() error { return ErrTemporary }
 
-const MinRetryDelay = time.Minute
-const MaxRetryDelay = 24 * time.Hour
+const MinRetryDelay = retryafter.MinDelay
+const MaxRetryDelay = retryafter.MaxDelay
 
-func retryAfter(raw string, now time.Time) time.Duration {
-	raw = strings.TrimSpace(raw)
-	var d time.Duration
-	if seconds, err := strconv.ParseUint(raw, 10, 64); err == nil {
-		if seconds > uint64(MaxRetryDelay/time.Second) {
-			return MaxRetryDelay
-		}
-		d = time.Duration(seconds) * time.Second
-	} else if date, err := http.ParseTime(raw); err == nil {
-		d = date.Sub(now)
-	} else {
-		// Число больше uint64 не должно превращаться в ранний retry.
-		if raw != "" && strings.Trim(raw, "0123456789") == "" {
-			return MaxRetryDelay
-		}
-		return MinRetryDelay
-	}
-	if d < MinRetryDelay {
-		return MinRetryDelay
-	}
-	if d > MaxRetryDelay {
-		return MaxRetryDelay
-	}
-	return d
-}
+func retryAfter(raw string, now time.Time) time.Duration { return retryafter.Parse(raw, now) }
 
 type Client struct{ http *http.Client }
 

@@ -12,6 +12,7 @@ import (
 	"itmap/internal/apifyruns"
 	"itmap/internal/apifysettings"
 	"itmap/internal/integrations/hhpublic"
+	"itmap/internal/retryafter"
 )
 
 // Worker запускается только явным вызовом Cycle; таймеров и фоновых задач нет.
@@ -440,7 +441,12 @@ func workerExecute(ctx context.Context, d workerDispatch, lease *JobLease, owner
 		// Повторяем только типизированную ошибку безопасного GET; POST
 		// с неизвестным результатом остаётся в отдельном состоянии.
 		if (kind == "scan_source" || kind == "fetch_full_text") && onlyAdmissionCause(executeErr, apifyruns.ErrReadTemporary) {
-			finish = FinishOptions{Status: "pending", Code: "deferred", Delay: time.Minute, Deferred: true}
+			delay := retryafter.MinDelay
+			var hint *apifyruns.ReadTemporaryError
+			if errors.As(executeErr, &hint) && hint != nil && hint.RetryAfter >= retryafter.MinDelay && hint.RetryAfter <= retryafter.MaxDelay {
+				delay = hint.RetryAfter
+			}
+			finish = FinishOptions{Status: "pending", Code: "deferred", Delay: delay, Deferred: true}
 		}
 		if onlyAdmissionCause(executeErr, apifyruns.ErrCooldown) {
 			delay := 15 * time.Minute
