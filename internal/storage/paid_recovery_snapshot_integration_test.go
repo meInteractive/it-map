@@ -81,10 +81,15 @@ func TestMariaDBPaidRecoverySnapshotDisposable(t *testing.T) {
 	if err != nil || got.CurrentActorUnresolved != 1 || got.Apify.Unknown != 1 || got.Scheduler.HistoricalUnknown != 1 || got.Scheduler.OrphanUnknown != 1 {
 		t.Fatal("combined snapshot mismatch", got, err)
 	}
-	f.exec("UPDATE apify_runs SET state='succeeded', charged_usd=0.10 WHERE operation_key='CIcurrent'")
+	f.exec("UPDATE apify_runs SET state='succeeded', dataset_id='CIData1', charged_usd=0.10 WHERE operation_key='CIcurrent'")
 	if settled, e := paidrecovery.Inspect(f.ctx, f.db, f.repo.Generation); e != nil || settled.CurrentActorUnresolved != 0 {
 		t.Fatal("settled current operation still unresolved", settled, e)
 	}
+	f.exec("UPDATE apify_runs SET dataset_id='invalid-data' WHERE operation_key='CIcurrent'")
+	if damaged, e := paidrecovery.Inspect(f.ctx, f.db, f.repo.Generation); e != nil || damaged.CurrentActorUnresolved != 1 {
+		t.Fatal("damaged current identity missing from recovery snapshot", damaged, e)
+	}
+	f.exec("UPDATE apify_runs SET dataset_id='CIData1' WHERE operation_key='CIcurrent'")
 	f.exec("UPDATE scheduler_attempts SET status='CI_invalid' WHERE id='CI_old_paid'")
 	if got, err = paidrecovery.Inspect(f.ctx, f.db, f.repo.Generation); !errors.Is(err, parser.ErrHistoricalAttemptsIncompatible) || got != (paidrecovery.Snapshot{}) {
 		t.Fatal("partial snapshot returned", err)

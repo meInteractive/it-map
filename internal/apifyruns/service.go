@@ -118,6 +118,9 @@ func (s Service) Execute(ctx context.Context, v apifysettings.OperationVersion, 
 		if row.RunID == "" {
 			return row, ErrUncertain
 		}
+		if err := validateStoredIdentity(row); err != nil {
+			return row, err
+		}
 		if (row.State == "succeeded" || row.State == "failed") && row.ChargedUSD != nil {
 			return row, nil
 		}
@@ -220,6 +223,9 @@ func (s Service) reconcile(ctx context.Context, v apifysettings.OperationVersion
 	}
 	if row.RunID == "" {
 		return row, ErrUncertain
+	}
+	if err := validateStoredIdentity(row); err != nil {
+		return row, err
 	}
 	token, e := s.Repository.Settings.ResolveOperation(ctx, v)
 	if e != nil {

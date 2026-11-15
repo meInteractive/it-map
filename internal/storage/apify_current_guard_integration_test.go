@@ -12,18 +12,20 @@ import (
 
 func TestMariaDBApifyCurrentUnknownGuardDisposable(t *testing.T) {
 	for _, tc := range []struct {
-		name, state, run string
-		charge           any
+		name, state, run, dataset string
+		charge                    any
 	}{
-		{"starting", "starting", "", nil},
-		{"uncertain", "uncertain", "", nil},
-		{"whitespace", "uncertain", "   ", nil},
-		{"tab", "uncertain", "\t", nil},
-		{"invalid_id", "uncertain", "bad-run", nil},
-		{"contradictory", "failed", "", 0.1},
-		{"running_known", "running", "CIRunOther", nil},
-		{"terminal_no_cost", "succeeded", "CIRunOther", nil},
-		{"running_with_cost", "running", "CIRunOther", 0.1},
+		{"starting", "starting", "", "", nil},
+		{"uncertain", "uncertain", "", "", nil},
+		{"whitespace", "uncertain", "   ", "", nil},
+		{"tab", "uncertain", "\t", "", nil},
+		{"invalid_id", "uncertain", "bad-run", "", nil},
+		{"contradictory", "failed", "", "", 0.1},
+		{"running_known", "running", "CIRunOther", "CIData", nil},
+		{"terminal_no_cost", "succeeded", "CIRunOther", "CIData", nil},
+		{"running_with_cost", "running", "CIRunOther", "CIData", 0.1},
+		{"terminal_bad_dataset", "succeeded", "CIRunOther", "bad-data", 0.1},
+		{"terminal_missing_dataset", "succeeded", "CIRunOther", "", 0.1},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := openApifyRuntimeFixture(t)
@@ -33,7 +35,7 @@ func TestMariaDBApifyCurrentUnknownGuardDisposable(t *testing.T) {
 			if _, err := service.Execute(f.ctx, f.v, "CI known current", options); err != nil {
 				t.Fatal("cannot seed known run", err)
 			}
-			_, err := f.db.ExecContext(f.ctx, `INSERT INTO apify_runs(id,generation,operation_key,profile,account_id,key_hash,period_start,period_end,reserved_usd,charged_usd,state,run_id,dataset_id,created_at,updated_at) VALUES('CI_current_unknown',?,'CI_unknown','free','CIHistory','CIhash','CIstart','CIend',0.25,?,?,?,'',1,1)`, f.v.Generation, tc.charge, tc.state, tc.run)
+			_, err := f.db.ExecContext(f.ctx, `INSERT INTO apify_runs(id,generation,operation_key,profile,account_id,key_hash,period_start,period_end,reserved_usd,charged_usd,state,run_id,dataset_id,created_at,updated_at) VALUES('CI_current_unknown',?,'CI_unknown','free','CIHistory','CIhash','CIstart','CIend',0.25,?,?,?,?,1,1)`, f.v.Generation, tc.charge, tc.state, tc.run, tc.dataset)
 			if err != nil {
 				t.Fatal("cannot seed current unknown", err)
 			}
