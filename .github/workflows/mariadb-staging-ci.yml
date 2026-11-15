@@ -2025,3 +2025,14 @@ jobs:
           assert not any(e.get('Action')=='skip' for e in events), 'required backup browser parent skipped'
           print('PASS: required backup UI desktop/mobile, actual SQL export/validate/cancel/restore/reload/roles, zero skips')
           PYTEST
+
+  worker-command-smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Проверить команду worker в отдельном контейнере без сети
+        run: ./deploy/tests/worker_command_smoke.sh
