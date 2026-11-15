@@ -419,10 +419,10 @@ func workerExecute(ctx context.Context, d workerDispatch, lease *JobLease, owner
 		// Эти ошибки Service возникают до резерва и POST. Повтор допустим
 		// только у worker, использующего проверенный runtime и paid ledger.
 		if deferUnspent && (kind == "scan_source" || kind == "fetch_full_text") {
-			if errors.Is(executeErr, apifyruns.ErrBusy) {
+			if onlyAdmissionCause(executeErr, apifyruns.ErrBusy) {
 				finish = FinishOptions{Status: "pending", Code: "deferred", Delay: 30 * time.Second, Deferred: true}
 			}
-			if errors.Is(executeErr, apifyruns.ErrBudget) {
+			if onlyAdmissionCause(executeErr, apifyruns.ErrBudget) {
 				finish = FinishOptions{Status: "pending", Code: "budget", Delay: 30 * time.Minute, Deferred: true}
 			}
 		}
