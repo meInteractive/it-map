@@ -29,6 +29,7 @@ type Worker struct {
 	ResumeJobID            string
 	TargetJobID            string
 	DenyActorStarts        bool
+	EnforceActorCooldown   bool
 	DeferUnspentBudget     bool
 	TrustFreeProviderLimit bool
 	CandidateScope         *ScanCandidateScope
@@ -81,6 +82,19 @@ func validTargetedCycle(w Worker, options WorkerOptions) bool {
 func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result WorkerResult, failure error) {
 	if w.Runs.DB == nil || w.Settings.DB != w.Runs.DB || options.MaxJobs < 1 || options.MaxJobs > 50 || options.Run.Diagnostic {
 		return result, ErrRunInput
+	}
+	// Не допускаем runtime, обходящий общий ledger/cooldown worker.
+	if w.EnforceActorCooldown {
+		switch w.ListingRuntime.(type) {
+		case nil, apifyruns.Service, *apifyruns.Service:
+		default:
+			return result, ErrRunInput
+		}
+		switch w.DetailRuntime.(type) {
+		case nil, apifyruns.Service, *apifyruns.Service:
+		default:
+			return result, ErrRunInput
+		}
 	}
 	if !validTargetedCycle(w, options) {
 		return result, ErrRunInput
@@ -164,7 +178,7 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 		return nil
 	}
 	count := func() { actorStarts.Add(1) }
-	service := apifyruns.Service{Repository: apifyruns.Repository{DB: w.Settings.DB, Settings: w.Settings, TrustFreeProviderLimit: w.TrustFreeProviderLimit}, BeforeNewOperation: denyNew, BeforeReserve: admit, AfterReserve: count}
+	service := apifyruns.Service{Repository: apifyruns.Repository{DB: w.Settings.DB, Settings: w.Settings, TrustFreeProviderLimit: w.TrustFreeProviderLimit, EnforceActorCooldown: w.EnforceActorCooldown}, BeforeNewOperation: denyNew, BeforeReserve: admit, AfterReserve: count}
 	listingRuntime := w.ListingRuntime
 	if existing, ok := listingRuntime.(*apifyruns.Service); ok {
 		if existing == nil {
@@ -176,6 +190,7 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 	if listingRuntime == nil {
 		listingRuntime = service
 	} else if existing, ok := listingRuntime.(apifyruns.Service); ok {
+		existing.Repository.EnforceActorCooldown = existing.Repository.EnforceActorCooldown || w.EnforceActorCooldown
 		previousNew := existing.BeforeNewOperation
 		existing.BeforeNewOperation = func() error {
 			if previousNew != nil {
@@ -214,6 +229,7 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 	if detailRuntime == nil {
 		detailRuntime = service
 	} else if existing, ok := detailRuntime.(apifyruns.Service); ok {
+		existing.Repository.EnforceActorCooldown = existing.Repository.EnforceActorCooldown || w.EnforceActorCooldown
 		previousNew := existing.BeforeNewOperation
 		existing.BeforeNewOperation = func() error {
 			if previousNew != nil {
@@ -399,6 +415,9 @@ func workerExecute(ctx context.Context, d workerDispatch, lease *JobLease, owner
 		if denyActorStarts && errors.Is(executeErr, ErrHHCycleLimit) {
 			// Частые pipeline-сессии не должны непрерывно повторять платный fallback.
 			finish = FinishOptions{Status: "pending", Code: "paid_start_disabled", Delay: 15 * time.Minute, Deferred: true}
+		}
+		if errors.Is(executeErr, apifyruns.ErrCooldown) {
+			finish = FinishOptions{Status: "pending", Code: "deferred", Delay: 15 * time.Minute, Deferred: true}
 		}
 		if errors.Is(executeErr, apifyruns.ErrHistoricalUnresolved) {
 			finish = FinishOptions{Status: "pending", Code: "historical_paid_unknown", Delay: 30 * time.Minute, Deferred: true}

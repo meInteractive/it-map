@@ -142,11 +142,45 @@ func TestMariaDBHHWorkerDisposable(t *testing.T) {
 					}
 				}
 				if mode == "pipeline_paid_fallback" || mode == "engine_paid_fallback" {
-					if provider.starts != 1 || detailProvider.starts != 0 || detailProvider.accounts != 0 || extraction.calls != 0 || s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='fetch_full_text' AND status='pending' AND attempts=0 AND reason_code='paid_start_disabled' AND run_after > CAST(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000 AS SIGNED) + 840000") != 1 {
+					reason := "paid_start_disabled"
+					if mode == "engine_paid_fallback" {
+						reason = "deferred"
+					}
+					if provider.starts != 1 || detailProvider.starts != 0 || extraction.calls != 0 || s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='fetch_full_text' AND status='pending' AND attempts=0 AND reason_code=? AND run_after > CAST(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000 AS SIGNED) + 840000", reason) != 1 {
 						t.Fatal("pipeline admitted new paid fallback or did not defer it")
 					}
 					if mode == "engine_paid_fallback" {
+						// Только disposable CI: моделируем наступление срока.
+						s.exec("UPDATE apify_runs SET updated_at=1")
+						s.exec("UPDATE scheduler_jobs SET run_after=0 WHERE type='fetch_full_text'")
+						ctx, cancel := context.WithCancel(s.ctx)
+						done := make(chan error, 1)
+						pipeline := make(chan struct{}, 1)
+						go func() {
+							done <- (workerengine.Engine{Worker: w, OnResult: func(name workerloop.ProfileName, result workerloop.ProfileOutcome) {
+								if name == workerloop.Pipeline && result == workerloop.ProfileWorked {
+									select {
+									case pipeline <- struct{}{}:
+									default:
+									}
+								}
+							}}).Run(ctx)
+						}()
+						select {
+						case <-pipeline:
+						case <-time.After(15 * time.Second):
+							cancel()
+							<-done
+							t.Fatal("resumed engine timed out")
+						}
+						cancel()
+						if e := <-done; !errors.Is(e, context.Canceled) || detailProvider.starts != 1 || extraction.calls != 1 {
+							t.Fatal("fallback did not resume", e, detailProvider.starts, extraction.calls)
+						}
 						return
+					}
+					if detailProvider.accounts != 0 {
+						t.Fatal("disabled pipeline contacted provider")
 					}
 					// Проверяем прежний consumer после наступления срока только на mock.
 					s.exec("UPDATE scheduler_jobs SET run_after=0 WHERE type='fetch_full_text' AND reason_code='paid_start_disabled'")

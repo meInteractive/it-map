@@ -121,7 +121,7 @@ func (r Repository) record(ctx context.Context, v apifysettings.OperationVersion
 	if updated.ChargedUSD != nil {
 		cost = *updated.ChargedUSD
 	}
-	result, e := tx.ExecContext(ctx, "UPDATE apify_runs SET state=?,run_id=?,dataset_id=?,charged_usd=?,error_code=?,updated_at=? WHERE id=?", updated.State, updated.RunID, updated.DatasetID, cost, code, time.Now().UnixMilli(), row.ID)
+	result, e := tx.ExecContext(ctx, "UPDATE apify_runs SET state=?,run_id=?,dataset_id=?,charged_usd=?,error_code=?,updated_at=GREATEST(updated_at,CAST(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000 AS SIGNED)) WHERE id=?", updated.State, updated.RunID, updated.DatasetID, cost, code, row.ID)
 	if e != nil {
 		return Record{}, ErrStorage
 	}
