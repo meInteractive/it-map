@@ -108,7 +108,7 @@ func TestMariaDBHHWorkerDisposable(t *testing.T) {
 				}
 				var transientPublic *hhPublicFixture
 				if mode == "engine_public_transient" {
-					transientPublic = &hhPublicFixture{err: hhpublic.ErrTemporary}
+					transientPublic = &hhPublicFixture{err: &hhpublic.TemporaryError{RetryAfter: 3 * time.Minute}}
 					w.Public = transientPublic
 					w.DetailRuntime = hhDetailRuntime(s, detailProvider)
 				}
@@ -151,7 +151,7 @@ func TestMariaDBHHWorkerDisposable(t *testing.T) {
 					}
 				}
 				if mode == "engine_public_transient" {
-					if detailProvider.starts != 0 || detailProvider.accounts != 0 || extraction.calls != 0 || s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='fetch_full_text' AND status='pending' AND reason_code='deferred' AND attempts=0") != 1 {
+					if detailProvider.starts != 0 || detailProvider.accounts != 0 || extraction.calls != 0 || s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='fetch_full_text' AND status='pending' AND reason_code='deferred' AND attempts=0 AND run_after>CAST(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000 AS SIGNED)+150000") != 1 {
 						t.Fatal("temporary HH failure did not defer without paid fallback")
 					}
 					transientPublic.err = nil

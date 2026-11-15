@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 )
 
 type localTransport func(*http.Request) (*http.Response, error)
@@ -93,5 +94,17 @@ func TestTemporaryPublicFailuresDoNotBecomePaidFallback(t *testing.T) {
 	client.http.Transport = localTransport(func(*http.Request) (*http.Response, error) { return nil, errors.New("private network error") })
 	if got, err := client.Fetch(context.Background(), "https://hh.ru/vacancy/123"); got != nil || !errors.Is(err, ErrTemporary) || strings.Contains(err.Error(), "private") {
 		t.Fatal("transport failure not temporary", err)
+	}
+}
+
+func TestPublicRateLimitPropagatesBoundedRetryHint(t *testing.T) {
+	client := New()
+	client.http.Transport = localTransport(func(r *http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: 429, Header: http.Header{"Retry-After": {"180"}}, Body: io.NopCloser(strings.NewReader("private")), Request: r}, nil
+	})
+	_, err := client.Fetch(context.Background(), "https://hh.ru/vacancy/123")
+	var hint *TemporaryError
+	if !errors.As(err, &hint) || hint.RetryAfter != 3*time.Minute || !errors.Is(err, ErrTemporary) {
+		t.Fatal("retry hint lost", err)
 	}
 }

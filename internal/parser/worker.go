@@ -11,6 +11,7 @@ import (
 	"itmap/internal/aiproviders"
 	"itmap/internal/apifyruns"
 	"itmap/internal/apifysettings"
+	"itmap/internal/integrations/hhpublic"
 )
 
 // Worker запускается только явным вызовом Cycle; таймеров и фоновых задач нет.
@@ -409,7 +410,12 @@ func workerExecute(ctx context.Context, d workerDispatch, lease *JobLease, owner
 		// Публичный GET безопасно повторить. Временный сбой не должен
 		// превращаться в новый платный fallback или расходовать попытку.
 		if kind == "fetch_full_text" && onlyTemporaryPublicHH(executeErr) {
-			finish = FinishOptions{Status: "pending", Code: "deferred", Delay: time.Minute, Deferred: true}
+			delay := hhpublic.MinRetryDelay
+			var retry *hhpublic.TemporaryError
+			if errors.As(executeErr, &retry) && retry != nil && retry.RetryAfter >= hhpublic.MinRetryDelay && retry.RetryAfter <= hhpublic.MaxRetryDelay {
+				delay = retry.RetryAfter
+			}
+			finish = FinishOptions{Status: "pending", Code: "deferred", Delay: delay, Deferred: true}
 		}
 		if errors.Is(executeErr, ErrHHRoleFilter) {
 			finish = FinishOptions{Status: "failed", Code: "hh_roles_missing", Message: "Выберите профессиональные роли HH для каждого активного направления и повторите запуск."}
