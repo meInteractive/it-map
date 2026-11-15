@@ -13,11 +13,14 @@ import (
 
 func TestMariaDBHistoricalAIGuardDisposable(t *testing.T) {
 	for _, tc := range []struct {
-		name   string
-		orphan bool
-		status string
-		cost   any
-	}{{"orphan", true, "interrupted", nil}, {"old_generation", false, "interrupted", nil}, {"contradictory", true, "running", 0.1}} {
+		name     string
+		orphan   bool
+		status   string
+		cost     any
+		reserved float64
+	}{{"orphan", true, "interrupted", nil, 0.25}, {"old_generation", false, "interrupted", nil, 0.25}, {"contradictory", true, "running", 0.1, 0.25},
+		{"orphan_running_zero_reserve", true, "running", 0.1, 0}, {"historical_running_zero_reserve", false, "running", 0.0, 0},
+		{"orphan_pending_cost", true, "pending", 0.1, 0}} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := billingFixture(t)
 			billingReset(f)
@@ -38,7 +41,7 @@ func TestMariaDBHistoricalAIGuardDisposable(t *testing.T) {
 				oldRun = "CI_old_ai_run"
 				f.exec("INSERT INTO scheduler_runs(id,generation,`trigger`,started_at,status) VALUES(?,?,'automatic',1,'interrupted')", oldRun, old)
 			}
-			f.exec("INSERT INTO scheduler_attempts(id,job_id,run_id,type,started_at,status,reserved_usd,cost_usd) VALUES('CI_old_ai','CI_other_job',?,'classify_title',1,?,0.25,?)", oldRun, tc.status, tc.cost)
+			f.exec("INSERT INTO scheduler_attempts(id,job_id,run_id,type,started_at,status,reserved_usd,cost_usd) VALUES('CI_old_ai','CI_other_job',?,'classify_title',1,?,?,?)", oldRun, tc.status, tc.reserved, tc.cost)
 			calls := 0
 			work := func(context.Context) (json.RawMessage, error) { calls++; return syntheticUsage, nil }
 			if _, err := attempt.Run(f.ctx, syntheticPaid, work); !errors.Is(err, parser.ErrHistoricalAIUnresolved) || calls != 0 || attempt.Requests() != 0 || attempt.Unknown() {
