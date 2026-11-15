@@ -13,6 +13,24 @@ import (
 	"itmap/internal/workerloop"
 )
 
+const profileStepTimeout = 2 * time.Minute
+
+// MonitorMaxAge accounts for serialized steps and bounded scheduling delay.
+// A delayed heartbeat still does not prove the worker or providers are healthy.
+func MonitorMaxAge(config workerconfig.Config) time.Duration {
+	delay := config.LaunchIdle
+	for _, candidate := range []time.Duration{config.ReconcileIdle, config.IdleDelay} {
+		if candidate > delay {
+			delay = candidate
+		}
+	}
+	delay += delay / 4 // profile jitter never exceeds 25 percent
+	if config.ErrorMax > delay {
+		delay = config.ErrorMax
+	}
+	return 3*profileStepTimeout + delay + time.Second
+}
+
 var ErrCycle = errors.New("worker cycle failed")
 var ErrGenerationChanged = errors.New("worker generation changed; restart required")
 
@@ -49,7 +67,7 @@ func (e Engine) profiles(stop context.Context, config workerconfig.Config) []wor
 	makeProfile := func(name workerloop.ProfileName, idle time.Duration) workerloop.Profile {
 		return workerloop.Profile{
 			Name: name, WorkDelay: time.Second, IdleDelay: idle,
-			ErrorMin: config.ErrorMin, ErrorMax: config.ErrorMax, StepTimeout: 2 * time.Minute,
+			ErrorMin: config.ErrorMin, ErrorMax: config.ErrorMax, StepTimeout: profileStepTimeout,
 			OnResult: e.OnResult,
 			Step:     func(ctx context.Context) (bool, error) { return e.cycle(ctx, stop.Done(), name, config.MaxJobs) },
 		}

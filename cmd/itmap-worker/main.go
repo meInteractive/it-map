@@ -114,7 +114,7 @@ func runWorker(ctx context.Context, db *sql.DB, s settings) error {
 	if err != nil {
 		return errStartup
 	}
-	monitor := workerengine.NewMonitor(4 * time.Minute)
+	monitor := workerengine.NewMonitor(workerengine.MonitorMaxAge(s.runtime))
 	defer monitor.Stop()
 	workerCtx, stop := context.WithCancel(ctx)
 	defer stop()

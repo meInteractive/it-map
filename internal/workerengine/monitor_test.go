@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"itmap/internal/workerconfig"
 	"itmap/internal/workerloop"
 )
 
@@ -131,5 +132,33 @@ func TestMonitorHandlerExposesOnlyFixedStates(t *testing.T) {
 	}
 	if w := call(http.MethodGet, "/readyz"); w.Code != http.StatusOK || w.Header().Get("Cache-Control") != "no-store" {
 		t.Fatal(w.Code, w.Body.String())
+	}
+}
+
+func TestMonitorFreshnessAllowsSequentialBoundedSteps(t *testing.T) {
+	cfg := workerconfig.Defaults()
+	m := NewMonitor(MonitorMaxAge(cfg))
+	now := time.Unix(100, 0)
+	m.now = func() time.Time { return now }
+	for _, name := range []workerloop.ProfileName{workerloop.Launch, workerloop.Reconcile, workerloop.Pipeline} {
+		m.Record(name, workerloop.ProfileIdle)
+	}
+	// Two other long steps and this profile's next long step can precede a result.
+	now = now.Add(3*profileStepTimeout - time.Second)
+	if s := m.Snapshot(); !s.Live || !s.Ready {
+		t.Fatal("valid serialized work appeared stale", s)
+	}
+	now = now.Add(MonitorMaxAge(cfg))
+	if s := m.Snapshot(); s.Live || s.Ready || s.Reason != "stale" {
+		t.Fatal("stalled loop stayed healthy", s)
+	}
+}
+
+func TestMonitorFreshnessTracksConfiguredBounds(t *testing.T) {
+	cfg := workerconfig.Defaults()
+	cfg.LaunchIdle = 60 * time.Second
+	cfg.ErrorMax = 2 * time.Minute
+	if got, want := MonitorMaxAge(cfg), 8*time.Minute+time.Second; got != want {
+		t.Fatalf("got %s want %s", got, want)
 	}
 }
