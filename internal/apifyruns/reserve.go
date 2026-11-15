@@ -139,7 +139,7 @@ func (r Repository) Reserve(ctx context.Context, v apifysettings.OperationVersio
 	// резерв проходят под одной блокировкой generation; текущую операцию выше
 	// по-прежнему можно обнаружить и обработать без нового POST.
 	var unresolved int
-	if tx.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM apify_runs WHERE generation<>? AND (charged_usd IS NULL OR state IN ('starting','running','uncertain')))", generation).Scan(&unresolved) != nil {
+	if tx.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM apify_runs WHERE "+historicalUnresolvedPredicate+")", generation).Scan(&unresolved) != nil {
 		return Reservation{}, ErrStorage
 	}
 	if unresolved != 0 {
