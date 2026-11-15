@@ -2,6 +2,7 @@ package hhpublic
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -64,5 +65,33 @@ func TestPublicHHHTTPBoundsAndNoRedirect(t *testing.T) {
 	before := calls.Load()
 	if _, err = client.Fetch(ctx, "https://hh.ru/vacancy/123"); err != context.Canceled || calls.Load() != before {
 		t.Fatal("cancelled request sent network", err)
+	}
+}
+
+type brokenBody struct{}
+
+func (brokenBody) Read([]byte) (int, error) { return 0, errors.New("private read error") }
+func (brokenBody) Close() error             { return nil }
+
+func TestTemporaryPublicFailuresDoNotBecomePaidFallback(t *testing.T) {
+	client := New()
+	for _, status := range []int{http.StatusTooManyRequests, http.StatusInternalServerError, http.StatusServiceUnavailable} {
+		client.http.Transport = localTransport(func(r *http.Request) (*http.Response, error) {
+			return &http.Response{StatusCode: status, Header: http.Header{}, Body: io.NopCloser(strings.NewReader("private response")), Request: r}, nil
+		})
+		got, err := client.Fetch(context.Background(), "https://hh.ru/vacancy/123")
+		if got != nil || !errors.Is(err, ErrTemporary) || strings.Contains(err.Error(), "private") {
+			t.Fatalf("status %d not temporary: %v", status, err)
+		}
+	}
+	client.http.Transport = localTransport(func(r *http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": {"text/html"}}, Body: brokenBody{}, Request: r}, nil
+	})
+	if got, err := client.Fetch(context.Background(), "https://hh.ru/vacancy/123"); got != nil || !errors.Is(err, ErrTemporary) || strings.Contains(err.Error(), "private") {
+		t.Fatal("body failure not temporary", err)
+	}
+	client.http.Transport = localTransport(func(*http.Request) (*http.Response, error) { return nil, errors.New("private network error") })
+	if got, err := client.Fetch(context.Background(), "https://hh.ru/vacancy/123"); got != nil || !errors.Is(err, ErrTemporary) || strings.Contains(err.Error(), "private") {
+		t.Fatal("transport failure not temporary", err)
 	}
 }

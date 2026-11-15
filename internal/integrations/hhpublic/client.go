@@ -2,6 +2,7 @@ package hhpublic
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"strings"
@@ -10,6 +11,9 @@ import (
 )
 
 const maxBytes = 2000000
+
+// ErrTemporary не содержит URL или исходной ошибки сети и допускает повтор GET.
+var ErrTemporary = errors.New("public HH temporarily unavailable")
 
 type Client struct{ http *http.Client }
 
@@ -40,9 +44,12 @@ func (c *Client) Fetch(ctx context.Context, value string) (*Job, error) {
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
 		}
-		return nil, nil
+		return nil, ErrTemporary
 	}
 	defer response.Body.Close()
+	if response.StatusCode == http.StatusTooManyRequests || response.StatusCode >= 500 {
+		return nil, ErrTemporary
+	}
 	if response.StatusCode != http.StatusOK || !strings.Contains(response.Header.Get("Content-Type"), "text/html") || response.ContentLength > maxBytes {
 		return nil, nil
 	}
@@ -50,7 +57,10 @@ func (c *Client) Fetch(ctx context.Context, value string) (*Job, error) {
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
 	}
-	if err != nil || len(raw) > maxBytes || !utf8.Valid(raw) {
+	if err != nil {
+		return nil, ErrTemporary
+	}
+	if len(raw) > maxBytes || !utf8.Valid(raw) {
 		return nil, nil
 	}
 	return ParseJob(string(raw), id, time.Now()), nil

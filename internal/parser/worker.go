@@ -11,6 +11,7 @@ import (
 	"itmap/internal/aiproviders"
 	"itmap/internal/apifyruns"
 	"itmap/internal/apifysettings"
+	"itmap/internal/integrations/hhpublic"
 )
 
 // Worker запускается только явным вызовом Cycle; таймеров и фоновых задач нет.
@@ -386,6 +387,33 @@ func (w Worker) cycleStep(ctx, bounded context.Context, runID, phase string, d w
 	return true, nil
 }
 
+// Ошибка освобождения lease, объединённая с сетевой, не должна маскироваться
+// автоматическим retry. Допускаем только обёртки без других причин.
+func onlyTemporaryPublicHH(err error) bool {
+	if err == hhpublic.ErrTemporary {
+		return true
+	}
+	if err == nil {
+		return false
+	}
+	if joined, ok := err.(interface{ Unwrap() []error }); ok {
+		causes := joined.Unwrap()
+		if len(causes) == 0 {
+			return false
+		}
+		for _, cause := range causes {
+			if !onlyTemporaryPublicHH(cause) {
+				return false
+			}
+		}
+		return true
+	}
+	if wrapped, ok := err.(interface{ Unwrap() error }); ok {
+		return onlyTemporaryPublicHH(wrapped.Unwrap())
+	}
+	return false
+}
+
 func workerExecute(ctx context.Context, d workerDispatch, lease *JobLease, owner string, denyActorStarts bool) error {
 	kind := lease.Job().Type
 	ai := kind == "classify_title" || kind == "extract_vacancy" || kind == "assign_roles" || kind == "score_relevance"
@@ -406,6 +434,11 @@ func workerExecute(ctx context.Context, d workerDispatch, lease *JobLease, owner
 	finish := FinishOptions{Status: "completed", Code: out.code}
 	if executeErr != nil {
 		finish = FinishOptions{Status: "failed", Code: "stage_failed", Message: "Не удалось выполнить этап обработки."}
+		// Публичный GET безопасно повторить. Временный сбой не должен
+		// превращаться в новый платный fallback или расходовать попытку.
+		if kind == "fetch_full_text" && onlyTemporaryPublicHH(executeErr) {
+			finish = FinishOptions{Status: "pending", Code: "deferred", Delay: time.Minute, Deferred: true}
+		}
 		if errors.Is(executeErr, ErrHHRoleFilter) {
 			finish = FinishOptions{Status: "failed", Code: "hh_roles_missing", Message: "Выберите профессиональные роли HH для каждого активного направления и повторите запуск."}
 		}

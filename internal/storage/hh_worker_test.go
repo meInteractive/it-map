@@ -48,7 +48,7 @@ func (g workerGenerator) Automatic(ctx context.Context, req aiproviders.Generati
 }
 
 func TestMariaDBHHWorkerDisposable(t *testing.T) {
-	for _, mode := range []string{"cycle", "pipeline_session", "pipeline_paid_fallback", "engine_paid_fallback", "engine_near_expiry"} {
+	for _, mode := range []string{"cycle", "pipeline_session", "pipeline_paid_fallback", "engine_paid_fallback", "engine_near_expiry", "engine_public_transient"} {
 		t.Run(mode, func(t *testing.T) {
 			provider := &hhScanProvider{rows: [][]json.RawMessage{{hhScanItem(123, "CI_TITLE")}}}
 			_, s, scan, listing := hhScanFixture(t, provider)
@@ -106,6 +106,12 @@ func TestMariaDBHHWorkerDisposable(t *testing.T) {
 					w.Public = &hhPublicFixture{}
 					w.DetailRuntime = hhDetailRuntime(s, detailProvider)
 				}
+				var transientPublic *hhPublicFixture
+				if mode == "engine_public_transient" {
+					transientPublic = &hhPublicFixture{err: hhpublic.ErrTemporary}
+					w.Public = transientPublic
+					w.DetailRuntime = hhDetailRuntime(s, detailProvider)
+				}
 				control := parser.NewCycleControlWithFactory(s.db, func(r parser.RunRepository) (parser.Worker, error) {
 					w.Runs = r
 					return w, nil
@@ -113,7 +119,7 @@ func TestMariaDBHHWorkerDisposable(t *testing.T) {
 				if mode == "engine_near_expiry" {
 					s.exec("UPDATE apify_runs SET updated_at=CAST(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000 AS SIGNED)-840000")
 				}
-				if mode == "engine_paid_fallback" || mode == "engine_near_expiry" {
+				if mode == "engine_paid_fallback" || mode == "engine_near_expiry" || mode == "engine_public_transient" {
 					ctx, cancel := context.WithCancel(s.ctx)
 					done := make(chan error, 1)
 					pipeline := make(chan struct{}, 1)
@@ -143,6 +149,39 @@ func TestMariaDBHHWorkerDisposable(t *testing.T) {
 					if sessionErr != nil || !worked {
 						t.Fatal("pipeline session", worked, sessionErr)
 					}
+				}
+				if mode == "engine_public_transient" {
+					if detailProvider.starts != 0 || detailProvider.accounts != 0 || extraction.calls != 0 || s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='fetch_full_text' AND status='pending' AND reason_code='deferred' AND attempts=0") != 1 {
+						t.Fatal("temporary HH failure did not defer without paid fallback")
+					}
+					transientPublic.err = nil
+					transientPublic.job = &hhpublic.Job{ID: "123", URL: "https://hh.ru/vacancy/123", Title: "CI_TITLE", Description: hhDetailBody()}
+					s.exec("UPDATE scheduler_jobs SET run_after=0 WHERE type='fetch_full_text'")
+					ctx, cancel := context.WithCancel(s.ctx)
+					done := make(chan error, 1)
+					finished := make(chan struct{}, 1)
+					go func() {
+						done <- (workerengine.Engine{Worker: w, OnResult: func(name workerloop.ProfileName, result workerloop.ProfileOutcome) {
+							if name == workerloop.Pipeline && result == workerloop.ProfileWorked {
+								select {
+								case finished <- struct{}{}:
+								default:
+								}
+							}
+						}}).Run(ctx)
+					}()
+					select {
+					case <-finished:
+					case <-time.After(15 * time.Second):
+						cancel()
+						<-done
+						t.Fatal("public retry timed out")
+					}
+					cancel()
+					if e := <-done; !errors.Is(e, context.Canceled) || detailProvider.starts != 0 || detailProvider.accounts != 0 || extraction.calls != 1 {
+						t.Fatal("public retry did not resume", e)
+					}
+					return
 				}
 				if mode == "pipeline_paid_fallback" || mode == "engine_paid_fallback" || mode == "engine_near_expiry" {
 					reason := "paid_start_disabled"
