@@ -90,11 +90,7 @@ func (e Engine) cycle(ctx context.Context, stopClaims <-chan struct{}, profile w
 		return false, ErrCycle
 	}
 	id := "worker:" + hex.EncodeToString(raw[:])
-	worker := e.Worker
-	worker.ScheduleSources = profile == workerloop.Launch
-	worker.VerifiedHHOnly = true
-	worker.ContinueOnStageFailure = true
-	worker.DeferUnspentBudget = true
+	worker := e.workerForProfile(profile)
 	result, err := worker.Cycle(ctx, parser.WorkerOptions{
 		Run:     parser.RunOptions{RequestID: id, Trigger: "automatic", Duration: 100 * time.Second},
 		MaxJobs: maxJobs, QueueProfile: string(profile), StopClaims: stopClaims,
@@ -106,4 +102,17 @@ func (e Engine) cycle(ctx context.Context, stopClaims <-chan struct{}, profile w
 		return false, ErrCycle
 	}
 	return result.Processed > 0, nil
+}
+
+// workerForProfile prevents the fast queues from starting a new paid Actor.
+// Known operations can still be reconciled; public full-text reads are allowed.
+// Paid detail fallback remains deferred until it has a durable rate-limited path.
+func (e Engine) workerForProfile(profile workerloop.ProfileName) parser.Worker {
+	worker := e.Worker
+	worker.ScheduleSources = profile == workerloop.Launch
+	worker.VerifiedHHOnly = true
+	worker.ContinueOnStageFailure = true
+	worker.DeferUnspentBudget = true
+	worker.DenyActorStarts = worker.DenyActorStarts || profile != workerloop.Launch
+	return worker
 }

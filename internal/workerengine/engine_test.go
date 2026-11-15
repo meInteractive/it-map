@@ -56,3 +56,16 @@ func TestProfilesUseValidatedRuntimeConfiguration(t *testing.T) {
 		t.Fatal("invalid config reached worker", err)
 	}
 }
+
+func TestProfilePaidStartPolicy(t *testing.T) {
+	for _, profile := range []workerloop.ProfileName{workerloop.Launch, workerloop.Reconcile, workerloop.Pipeline} {
+		w := (Engine{}).workerForProfile(profile)
+		if w.DenyActorStarts != (profile != workerloop.Launch) || w.ScheduleSources != (profile == workerloop.Launch) || !w.VerifiedHHOnly || !w.ContinueOnStageFailure || !w.DeferUnspentBudget {
+			t.Fatalf("wrong policy for %s: %+v", profile, w)
+		}
+		restricted := (Engine{Worker: parser.Worker{DenyActorStarts: true}}).workerForProfile(profile)
+		if !restricted.DenyActorStarts {
+			t.Fatalf("%s weakened explicit restriction", profile)
+		}
+	}
+}

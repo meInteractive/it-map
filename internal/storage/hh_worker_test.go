@@ -25,6 +25,8 @@ import (
 	"itmap/internal/parser"
 	"itmap/internal/profiles"
 	"itmap/internal/vacancies"
+	"itmap/internal/workerengine"
+	"itmap/internal/workerloop"
 )
 
 type workerGenerator struct {
@@ -46,7 +48,7 @@ func (g workerGenerator) Automatic(ctx context.Context, req aiproviders.Generati
 }
 
 func TestMariaDBHHWorkerDisposable(t *testing.T) {
-	for _, mode := range []string{"cycle", "pipeline_session", "pipeline_paid_fallback"} {
+	for _, mode := range []string{"cycle", "pipeline_session", "pipeline_paid_fallback", "engine_paid_fallback"} {
 		t.Run(mode, func(t *testing.T) {
 			provider := &hhScanProvider{rows: [][]json.RawMessage{{hhScanItem(123, "CI_TITLE")}}}
 			_, s, scan, listing := hhScanFixture(t, provider)
@@ -100,7 +102,7 @@ func TestMariaDBHHWorkerDisposable(t *testing.T) {
 					t.Fatal("initial scan", result, provider.starts)
 				}
 				detailProvider := &hhDetailProvider{item: hhDetailItem(hhDetailBody())}
-				if mode == "pipeline_paid_fallback" {
+				if mode == "pipeline_paid_fallback" || mode == "engine_paid_fallback" {
 					w.Public = &hhPublicFixture{}
 					w.DetailRuntime = hhDetailRuntime(s, detailProvider)
 				}
@@ -108,13 +110,43 @@ func TestMariaDBHHWorkerDisposable(t *testing.T) {
 					w.Runs = r
 					return w, nil
 				})
-				worked, sessionErr := control.TryPipelineSession(s.ctx)
-				if sessionErr != nil || !worked {
-					t.Fatal("pipeline session", worked, sessionErr)
+				if mode == "engine_paid_fallback" {
+					ctx, cancel := context.WithCancel(s.ctx)
+					done := make(chan error, 1)
+					pipeline := make(chan struct{}, 1)
+					go func() {
+						done <- (workerengine.Engine{Worker: w, OnResult: func(name workerloop.ProfileName, result workerloop.ProfileOutcome) {
+							if name == workerloop.Pipeline && result == workerloop.ProfileWorked {
+								select {
+								case pipeline <- struct{}{}:
+								default:
+								}
+							}
+						}}).Run(ctx)
+					}()
+					select {
+					case <-pipeline:
+					case <-time.After(15 * time.Second):
+						cancel()
+						<-done
+						t.Fatal("engine pipeline timed out")
+					}
+					cancel()
+					if e := <-done; !errors.Is(e, context.Canceled) {
+						t.Fatal("engine did not stop", e)
+					}
+				} else {
+					worked, sessionErr := control.TryPipelineSession(s.ctx)
+					if sessionErr != nil || !worked {
+						t.Fatal("pipeline session", worked, sessionErr)
+					}
 				}
-				if mode == "pipeline_paid_fallback" {
+				if mode == "pipeline_paid_fallback" || mode == "engine_paid_fallback" {
 					if provider.starts != 1 || detailProvider.starts != 0 || detailProvider.accounts != 0 || extraction.calls != 0 || s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='fetch_full_text' AND status='pending' AND attempts=0 AND reason_code='paid_start_disabled' AND run_after > CAST(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000 AS SIGNED) + 840000") != 1 {
 						t.Fatal("pipeline admitted new paid fallback or did not defer it")
+					}
+					if mode == "engine_paid_fallback" {
+						return
 					}
 					// Проверяем прежний consumer после наступления срока только на mock.
 					s.exec("UPDATE scheduler_jobs SET run_after=0 WHERE type='fetch_full_text' AND reason_code='paid_start_disabled'")
