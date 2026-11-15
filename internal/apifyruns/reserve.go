@@ -17,6 +17,9 @@ import (
 
 var ErrStorage = errors.New("журнал Apify недоступен")
 var ErrBusy = errors.New("другой запуск Apify ещё выполняется")
+
+// ErrCooldown откладывает новый Actor после завершения предыдущего.
+var ErrCooldown = errors.New("интервал между платными запусками ещё не истёк")
 var ErrBudget = errors.New("недостаточно подтверждённого бюджета Apify")
 
 // ErrHistoricalUnresolved запрещает новый POST, пока старое поколение содержит
@@ -30,6 +33,7 @@ type Repository struct {
 	DB                     *sql.DB
 	Settings               apifysettings.Repository
 	TrustFreeProviderLimit bool
+	EnforceActorCooldown   bool
 }
 type Reservation struct {
 	ID        string
@@ -157,6 +161,19 @@ func (r Repository) Reserve(ctx context.Context, v apifysettings.OperationVersio
 	}
 	if unresolved != 0 {
 		return Reservation{}, ErrCurrentUnresolved
+	}
+	// Для worker cooldown отсчитывается от последней сохранённой terminal
+	// записи во всех поколениях. Она появляется после POST и после подтверждения
+	// стоимости, поэтому интервал консервативнее отсчёта от начала Actor.
+	// Generation lock сериализует проверку с резервированием и record.
+	if r.EnforceActorCooldown {
+		var recent int
+		if tx.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM apify_runs WHERE state IN ('succeeded','failed') AND updated_at > CAST(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000 AS SIGNED)-900000)").Scan(&recent) != nil {
+			return Reservation{}, ErrStorage
+		}
+		if recent != 0 {
+			return Reservation{}, ErrCooldown
+		}
 	}
 	column := "free_account_json"
 	if v.Profile == "starter" {

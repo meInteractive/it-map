@@ -104,15 +104,13 @@ func (e Engine) cycle(ctx context.Context, stopClaims <-chan struct{}, profile w
 	return result.Processed > 0, nil
 }
 
-// workerForProfile prevents the fast queues from starting a new paid Actor.
-// Known operations can still be reconciled; public full-text reads are allowed.
-// Paid detail fallback remains deferred until it has a durable rate-limited path.
+// workerForProfile uses the same durable paid-start cooldown in every queue.
 func (e Engine) workerForProfile(profile workerloop.ProfileName) parser.Worker {
 	worker := e.Worker
 	worker.ScheduleSources = profile == workerloop.Launch
 	worker.VerifiedHHOnly = true
 	worker.ContinueOnStageFailure = true
 	worker.DeferUnspentBudget = true
-	worker.DenyActorStarts = worker.DenyActorStarts || profile != workerloop.Launch
+	worker.EnforceActorCooldown = true
 	return worker
 }
