@@ -102,6 +102,11 @@ func (s Service) readDataset(ctx context.Context, v apifysettings.OperationVersi
 	if e != nil {
 		return DatasetSlice{}, e
 	}
+	if row.RunID != "" {
+		if err := validateStoredIdentity(row); err != nil {
+			return DatasetSlice{}, err
+		}
+	}
 	if row.RunID == "" || row.DatasetID == "" || row.State != "succeeded" && row.State != "failed" {
 		return DatasetSlice{}, ErrUncertain
 	}
