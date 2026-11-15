@@ -25,7 +25,7 @@ type Record struct {
 // provider call or treating a terminal result as usable. A missing dataset on
 // an unfinished operation can still be filled by reconciliation.
 func validateStoredIdentity(row Record) error {
-	if !accountID.MatchString(row.RunID) || (row.DatasetID != "" && !accountID.MatchString(row.DatasetID)) {
+	if row.ID == "" || !accountID.MatchString(row.AccountID) || !accountID.MatchString(row.RunID) || (row.DatasetID != "" && !accountID.MatchString(row.DatasetID)) {
 		return ErrIdentity
 	}
 	if (row.State == "succeeded" || row.State == "failed") && row.ChargedUSD != nil && row.DatasetID == "" {

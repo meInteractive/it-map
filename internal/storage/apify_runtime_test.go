@@ -115,14 +115,16 @@ func TestMariaDBApifyRuntimeDisposable(t *testing.T) {
 			t.Fatal(err)
 		}
 		for _, tc := range []struct {
-			state, run, dataset string
-			cost                any
+			state, run, dataset, account, id string
+			cost                             any
 		}{
-			{"running", "bad-run", "CIData123", nil},
-			{"running", "CIRun123", "bad-data", nil},
-			{"succeeded", "CIRun123", "", 0.1},
+			{"running", "bad-run", "CIData123", "CIRuntime", "CIvalid1", nil},
+			{"running", "CIRun123", "bad-data", "CIRuntime", "CIvalid1", nil},
+			{"succeeded", "CIRun123", "", "CIRuntime", "CIvalid1", 0.1},
+			{"succeeded", "CIRun123", "CIData123", "bad-account", "CIvalid1", 0.1},
+			{"succeeded", "CIRun123", "CIData123", "CIRuntime", "", 0.1},
 		} {
-			if _, err := f.db.ExecContext(f.ctx, "UPDATE apify_runs SET state=?,run_id=?,dataset_id=?,charged_usd=?", tc.state, tc.run, tc.dataset, tc.cost); err != nil {
+			if _, err := f.db.ExecContext(f.ctx, "UPDATE apify_runs SET state=?,run_id=?,dataset_id=?,account_id=?,id=?,charged_usd=?", tc.state, tc.run, tc.dataset, tc.account, tc.id, tc.cost); err != nil {
 				t.Fatal(err)
 			}
 			if _, err := s.Execute(f.ctx, f.v, "CI identity", options); !errors.Is(err, apifyruns.ErrIdentity) {
@@ -130,6 +132,9 @@ func TestMariaDBApifyRuntimeDisposable(t *testing.T) {
 			}
 			if _, err := s.Reconcile(f.ctx, f.v, "CI identity", options); !errors.Is(err, apifyruns.ErrIdentity) {
 				t.Fatal("reconcile accepted malformed identity", err)
+			}
+			if _, err := s.ReadDataset(f.ctx, f.v, "CI identity", options, 0); !errors.Is(err, apifyruns.ErrIdentity) {
+				t.Fatal("dataset read accepted malformed identity", err)
 			}
 			if _, err := f.repo.ExistingRun(f.ctx, f.v, "CI identity", options); !errors.Is(err, apifyruns.ErrIdentity) {
 				t.Fatal("lookup accepted malformed identity", err)
