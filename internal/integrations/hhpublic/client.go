@@ -60,18 +60,24 @@ func (c *Client) Fetch(ctx context.Context, value string) (*Job, error) {
 		return nil, ErrTemporary
 	}
 	defer response.Body.Close()
+	temporary := func() error {
+		return &TemporaryError{RetryAfter: retryafter.ParseResponse(response.Header.Get("Retry-After"), response.Header.Get("Date"), time.Now())}
+	}
 	if response.StatusCode == http.StatusRequestTimeout || response.StatusCode == http.StatusTooEarly || response.StatusCode == http.StatusTooManyRequests || response.StatusCode >= 500 {
-		return nil, &TemporaryError{RetryAfter: retryafter.ParseResponse(response.Header.Get("Retry-After"), response.Header.Get("Date"), time.Now())}
+		return nil, temporary()
 	}
 	if response.StatusCode != http.StatusOK && response.StatusCode != http.StatusForbidden {
 		return nil, nil
 	}
 	if !strings.Contains(response.Header.Get("Content-Type"), "text/html") {
+		if response.StatusCode == http.StatusForbidden {
+			return nil, temporary()
+		}
 		return nil, nil
 	}
 	if response.ContentLength > maxBytes {
 		if response.StatusCode == http.StatusForbidden {
-			return nil, ErrTemporary
+			return nil, temporary()
 		}
 		return nil, nil
 	}
@@ -80,11 +86,11 @@ func (c *Client) Fetch(ctx context.Context, value string) (*Job, error) {
 		return nil, ctx.Err()
 	}
 	if err != nil {
-		return nil, ErrTemporary
+		return nil, temporary()
 	}
 	if len(raw) > maxBytes || !utf8.Valid(raw) {
 		if response.StatusCode == http.StatusForbidden {
-			return nil, ErrTemporary
+			return nil, temporary()
 		}
 		return nil, nil
 	}
@@ -95,7 +101,7 @@ func (c *Client) Fetch(ctx context.Context, value string) (*Job, error) {
 		}
 	}
 	if verificationChallenge(body) {
-		return nil, &TemporaryError{RetryAfter: retryafter.ParseResponse(response.Header.Get("Retry-After"), response.Header.Get("Date"), time.Now())}
+		return nil, temporary()
 	}
 	return nil, nil
 }

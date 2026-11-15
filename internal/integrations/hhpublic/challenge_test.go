@@ -57,10 +57,28 @@ func TestForbiddenUnreadableBodyDoesNotTriggerFallback(t *testing.T) {
 	for _, body := range []io.ReadCloser{brokenBody{}, io.NopCloser(strings.NewReader(strings.Repeat("x", maxBytes+1)))} {
 		client := New()
 		client.http.Transport = localTransport(func(r *http.Request) (*http.Response, error) {
-			return &http.Response{StatusCode: 403, Header: http.Header{"Content-Type": {"text/html"}}, Body: body, Request: r}, nil
+			return &http.Response{StatusCode: 403, Header: http.Header{"Content-Type": {"text/html"}, "Retry-After": {"180"}}, Body: body, Request: r}, nil
 		})
-		if job, err := client.Fetch(context.Background(), "https://hh.ru/vacancy/123"); job != nil || !errors.Is(err, ErrTemporary) {
-			t.Fatal("unreadable forbidden response enabled fallback", err)
+		job, err := client.Fetch(context.Background(), "https://hh.ru/vacancy/123")
+		var hint *TemporaryError
+		if job != nil || !errors.As(err, &hint) || hint.RetryAfter != 3*time.Minute {
+			t.Fatal("unreadable forbidden response enabled fallback or lost retry hint", err)
 		}
+	}
+}
+
+func TestForbiddenNonHTMLDoesNotTriggerPaidFallback(t *testing.T) {
+	for _, contentType := range []string{"application/json", "text/plain", ""} {
+		t.Run(contentType, func(t *testing.T) {
+			client := New()
+			client.http.Transport = localTransport(func(r *http.Request) (*http.Response, error) {
+				return &http.Response{StatusCode: http.StatusForbidden, Header: http.Header{"Content-Type": {contentType}, "Retry-After": {"180"}}, Body: io.NopCloser(strings.NewReader("private provider response")), Request: r}, nil
+			})
+			job, err := client.Fetch(context.Background(), "https://hh.ru/vacancy/123")
+			var hint *TemporaryError
+			if job != nil || !errors.As(err, &hint) || hint.RetryAfter != 3*time.Minute || strings.Contains(err.Error(), "private") {
+				t.Fatalf("non-html forbidden must defer: %v", err)
+			}
+		})
 	}
 }
