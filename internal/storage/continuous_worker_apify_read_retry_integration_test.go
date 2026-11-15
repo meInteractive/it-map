@@ -20,7 +20,7 @@ func TestMariaDBContinuousWorkerApifyReadRetryDisposable(t *testing.T) {
 			transient := &apify.Error{Code: "apify_network", Status: 503}
 			isBudget := stage == "account_budget" || stage == "reconcile_budget" || stage == "dataset_budget"
 			if isBudget {
-				transient = &apify.Error{Code: "apify_budget", Status: 503}
+				transient = &apify.Error{Code: "apify_budget", Status: 503, RetryAfter: 2 * time.Hour}
 			}
 			if stage == "account" || stage == "account_budget" {
 				p.AccountError = transient
@@ -80,6 +80,9 @@ func TestMariaDBContinuousWorkerApifyReadRetryDisposable(t *testing.T) {
 			}
 			if (stage == "retry_after" || stage == "status_408" || stage == "status_425") && s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='scan_source' AND status='pending' AND run_after > CAST(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000 AS SIGNED)+150000") != 1 {
 				t.Fatal("provider retry interval was ignored")
+			}
+			if isBudget && s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='scan_source' AND status='pending' AND run_after > CAST(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000 AS SIGNED)+6900000") != 1 {
+				t.Fatal("budget retry interval was ignored")
 			}
 			if stage == "reconcile" {
 				// Ускоряем время только в CI и повторяем тот же безопасный GET.

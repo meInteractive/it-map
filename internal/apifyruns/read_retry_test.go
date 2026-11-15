@@ -51,3 +51,15 @@ func TestReadBudgetDoesNotAuthorizeActorBudgetFallback(t *testing.T) {
 		t.Fatal("compound error lost its other cause")
 	}
 }
+
+func TestReadBudgetPreservesBoundedProviderHint(t *testing.T) {
+	err := classifyReadError(&apify.Error{Code: "apify_budget", RetryAfter: 2 * time.Hour})
+	var hint *ReadBudgetError
+	if !errors.As(err, &hint) || !errors.Is(err, ErrReadBudget) || errors.Is(err, ErrBudget) || hint.RetryAfter != 2*time.Hour {
+		t.Fatal("budget hint lost or confused with admission", err)
+	}
+	err = classifyReadError(&apify.Error{Code: "apify_budget", RetryAfter: 25 * time.Hour})
+	if err != ErrReadBudget {
+		t.Fatal("unbounded budget hint accepted", err)
+	}
+}

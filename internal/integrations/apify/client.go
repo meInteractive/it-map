@@ -130,7 +130,7 @@ func (c *Client) request(ctx context.Context, path string, options requestOption
 			}
 		}
 		e := apiError(code, status)
-		if method == "GET" && (code == "apify_busy" || code == "apify_network" || response.StatusCode == 408 || response.StatusCode == 425) {
+		if method == "GET" && (code == "apify_busy" || code == "apify_network" || code == "apify_budget" || response.StatusCode == 408 || response.StatusCode == 425) {
 			e.RetryableRead = true
 			e.RetryAfter = retryafter.ParseResponse(response.Header.Get("Retry-After"), response.Header.Get("Date"), time.Now())
 		}
