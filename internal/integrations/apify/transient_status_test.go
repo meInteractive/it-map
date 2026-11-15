@@ -39,3 +39,19 @@ func TestTransientReadUsesProviderClock(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
+
+func TestBudgetRetryHintOnlyOnSafeRead(t *testing.T) {
+	client, calls := mockClient(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Retry-After", "7200")
+		w.WriteHeader(http.StatusPaymentRequired)
+	})
+	_, err := client.Run(context.Background(), "Run123")
+	var hint *Error
+	if !errors.As(err, &hint) || hint.Code != "apify_budget" || hint.RetryAfter != 2*time.Hour {
+		t.Fatal("GET budget hint missing", err)
+	}
+	_, err = client.Start(context.Background(), "https://hh.ru/employer/1", HHOptions{})
+	if !IsStartUncertain(err) || !errors.As(err, &hint) || hint.RetryAfter != 0 || calls.Load() != 2 {
+		t.Fatal("POST budget must remain uncertain", err)
+	}
+}

@@ -446,7 +446,12 @@ func workerExecute(ctx context.Context, d workerDispatch, lease *JobLease, owner
 		// Провайдер может отклонить GET из-за бюджета; это не разрешает
 		// менять профиль известной операции и запускать новый Actor.
 		if (kind == "scan_source" || kind == "fetch_full_text") && onlyAdmissionCause(executeErr, apifyruns.ErrReadBudget) {
-			finish = FinishOptions{Status: "pending", Code: "budget", Delay: 30 * time.Minute, Deferred: true}
+			delay := 30 * time.Minute
+			var hint *apifyruns.ReadBudgetError
+			if errors.As(executeErr, &hint) && hint != nil && hint.RetryAfter > delay && hint.RetryAfter <= retryafter.MaxDelay {
+				delay = hint.RetryAfter
+			}
+			finish = FinishOptions{Status: "pending", Code: "budget", Delay: delay, Deferred: true}
 		}
 		// Повторяем только типизированную ошибку безопасного GET; POST
 		// с неизвестным результатом остаётся в отдельном состоянии.
