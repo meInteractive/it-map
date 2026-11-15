@@ -12,20 +12,21 @@ import (
 
 func TestMariaDBApifyCurrentUnknownGuardDisposable(t *testing.T) {
 	for _, tc := range []struct {
-		name, state, run, dataset string
-		charge                    any
+		name, state, run, dataset, account string
+		charge                             any
 	}{
-		{"starting", "starting", "", "", nil},
-		{"uncertain", "uncertain", "", "", nil},
-		{"whitespace", "uncertain", "   ", "", nil},
-		{"tab", "uncertain", "\t", "", nil},
-		{"invalid_id", "uncertain", "bad-run", "", nil},
-		{"contradictory", "failed", "", "", 0.1},
-		{"running_known", "running", "CIRunOther", "CIData", nil},
-		{"terminal_no_cost", "succeeded", "CIRunOther", "CIData", nil},
-		{"running_with_cost", "running", "CIRunOther", "CIData", 0.1},
-		{"terminal_bad_dataset", "succeeded", "CIRunOther", "bad-data", 0.1},
-		{"terminal_missing_dataset", "succeeded", "CIRunOther", "", 0.1},
+		{"starting", "starting", "", "", "CIHistory", nil},
+		{"uncertain", "uncertain", "", "", "CIHistory", nil},
+		{"whitespace", "uncertain", "   ", "", "CIHistory", nil},
+		{"tab", "uncertain", "\t", "", "CIHistory", nil},
+		{"invalid_id", "uncertain", "bad-run", "", "CIHistory", nil},
+		{"contradictory", "failed", "", "", "CIHistory", 0.1},
+		{"running_known", "running", "CIRunOther", "CIData", "CIHistory", nil},
+		{"terminal_no_cost", "succeeded", "CIRunOther", "CIData", "CIHistory", nil},
+		{"running_with_cost", "running", "CIRunOther", "CIData", "CIHistory", 0.1},
+		{"terminal_bad_dataset", "succeeded", "CIRunOther", "bad-data", "CIHistory", 0.1},
+		{"terminal_missing_dataset", "succeeded", "CIRunOther", "", "CIHistory", 0.1},
+		{"terminal_bad_account", "succeeded", "CIRunOther", "CIData", "bad-account", 0.1},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := openApifyRuntimeFixture(t)
@@ -35,7 +36,7 @@ func TestMariaDBApifyCurrentUnknownGuardDisposable(t *testing.T) {
 			if _, err := service.Execute(f.ctx, f.v, "CI known current", options); err != nil {
 				t.Fatal("cannot seed known run", err)
 			}
-			_, err := f.db.ExecContext(f.ctx, `INSERT INTO apify_runs(id,generation,operation_key,profile,account_id,key_hash,period_start,period_end,reserved_usd,charged_usd,state,run_id,dataset_id,created_at,updated_at) VALUES('CI_current_unknown',?,'CI_unknown','free','CIHistory','CIhash','CIstart','CIend',0.25,?,?,?,?,1,1)`, f.v.Generation, tc.charge, tc.state, tc.run, tc.dataset)
+			_, err := f.db.ExecContext(f.ctx, `INSERT INTO apify_runs(id,generation,operation_key,profile,account_id,key_hash,period_start,period_end,reserved_usd,charged_usd,state,run_id,dataset_id,created_at,updated_at) VALUES('CI_current_unknown',?,'CI_unknown','free',?,'CIhash','CIstart','CIend',0.25,?,?,?,?,1,1)`, f.v.Generation, tc.account, tc.charge, tc.state, tc.run, tc.dataset)
 			if err != nil {
 				t.Fatal("cannot seed current unknown", err)
 			}
@@ -51,7 +52,7 @@ func TestMariaDBApifyCurrentUnknownGuardDisposable(t *testing.T) {
 				t.Fatal("blocked reserve changed ledger", err)
 			}
 			// Подтверждённый исход моделируется только в одноразовой CI БД.
-			if _, err = f.db.ExecContext(f.ctx, "UPDATE apify_runs SET state='succeeded',run_id='CIResolved',dataset_id='CIData',charged_usd=0.1 WHERE id='CI_current_unknown'"); err != nil {
+			if _, err = f.db.ExecContext(f.ctx, "UPDATE apify_runs SET state='succeeded',run_id='CIResolved',dataset_id='CIData',account_id='CIHistory',charged_usd=0.1 WHERE id='CI_current_unknown'"); err != nil {
 				t.Fatal(err)
 			}
 			if _, err = service.Execute(f.ctx, f.v, "CI different job", options); err != nil || p.starts.Load() != 2 {
