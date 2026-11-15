@@ -176,3 +176,19 @@ func TestApifyConcurrentReadsAndRedaction(t *testing.T) {
 		t.Fatal("header injection accepted")
 	}
 }
+
+func TestRetryAfterOnlyOnSafeReads(t *testing.T) {
+	client, calls := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Retry-After", "180")
+		w.WriteHeader(http.StatusTooManyRequests)
+	})
+	_, err := client.Run(context.Background(), "Run123")
+	var provider *Error
+	if !errors.As(err, &provider) || provider.RetryAfter != 3*time.Minute || provider.Code != "apify_busy" {
+		t.Fatal("GET retry hint missing", err)
+	}
+	_, err = client.Start(context.Background(), "https://hh.ru/employer/1", HHOptions{})
+	if !IsStartUncertain(err) || !errors.As(err, &provider) || provider.RetryAfter != 0 || calls.Load() != 2 {
+		t.Fatal("POST lost uncertain status", err)
+	}
+}

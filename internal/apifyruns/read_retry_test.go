@@ -5,6 +5,7 @@ import (
 	"errors"
 	"itmap/internal/integrations/apify"
 	"testing"
+	"time"
 )
 
 func TestReadFailureClassificationNeverTreatsUnknownAsSafe(t *testing.T) {
@@ -23,5 +24,17 @@ func TestReadFailureClassificationNeverTreatsUnknownAsSafe(t *testing.T) {
 		if got := errors.Is(classifyReadError(tc.in), ErrReadTemporary); got != tc.retry {
 			t.Fatalf("classification %v = %v", tc.in, got)
 		}
+	}
+}
+
+func TestReadRetryHintIsBoundedAndPreservesSentinel(t *testing.T) {
+	err := classifyReadError(&apify.Error{Code: "apify_busy", Status: 503, RetryAfter: 3 * time.Minute})
+	var hint *ReadTemporaryError
+	if !errors.As(err, &hint) || hint.RetryAfter != 3*time.Minute || !errors.Is(err, ErrReadTemporary) {
+		t.Fatal("hint lost", err)
+	}
+	err = classifyReadError(&apify.Error{Code: "apify_busy", Status: 503, RetryAfter: 25 * time.Hour})
+	if err != ErrReadTemporary {
+		t.Fatal("unbounded retry accepted", err)
 	}
 }
