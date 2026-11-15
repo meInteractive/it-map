@@ -14,9 +14,10 @@ import (
 
 func TestMariaDBContinuousWorkerHistoricalAIDisposable(t *testing.T) {
 	for _, tc := range []struct {
-		name   string
-		orphan bool
-	}{{"orphan", true}, {"old_generation", false}} {
+		name         string
+		orphan       bool
+		inconsistent bool
+	}{{"orphan", true, false}, {"old_generation", false, false}, {"inconsistent_zero_reserve", false, true}} {
 		t.Run(tc.name, func(t *testing.T) {
 			s, provider, worker := continuousWorkerFixture(t, false)
 			runUntil := func(target workerloop.ProfileName) {
@@ -54,14 +55,18 @@ func TestMariaDBContinuousWorkerHistoricalAIDisposable(t *testing.T) {
 				runID = "CI_historical_ai_run"
 				s.exec("INSERT INTO scheduler_runs(id,generation,`trigger`,started_at,status) VALUES(?,?,'automatic',1,'interrupted')", runID, old)
 			}
-			s.exec("INSERT INTO scheduler_attempts(id,job_id,run_id,type,started_at,status,reserved_usd,cost_usd) VALUES('CI_historical_ai','CI_other_job',?,'classify_title',1,'interrupted',0.25,NULL)", runID)
+			if tc.inconsistent {
+				s.exec("INSERT INTO scheduler_attempts(id,job_id,run_id,type,started_at,status,reserved_usd,cost_usd) VALUES('CI_historical_ai','CI_other_job',?,'classify_title',1,'running',0,0.1)", runID)
+			} else {
+				s.exec("INSERT INTO scheduler_attempts(id,job_id,run_id,type,started_at,status,reserved_usd,cost_usd) VALUES('CI_historical_ai','CI_other_job',?,'classify_title',1,'interrupted',0.25,NULL)", runID)
+			}
 			runUntil(workerloop.Pipeline)
 			deferred := s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='classify_title' AND status='pending' AND reason_code='historical_ai_unknown' AND attempts=0")
 			failed := s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='classify_title' AND status='failed'")
 			if provider.AICalls() != 0 || deferred == 0 || failed != 0 {
 				t.Fatalf("unknown AI history: calls=%d deferred=%d failed=%d", provider.AICalls(), deferred, failed)
 			}
-			if s.count("SELECT COUNT(*) FROM scheduler_attempts WHERE id='CI_historical_ai' AND reserved_usd=0.25 AND cost_usd IS NULL") != 1 {
+			if !tc.inconsistent && s.count("SELECT COUNT(*) FROM scheduler_attempts WHERE id='CI_historical_ai' AND reserved_usd=0.25 AND cost_usd IS NULL") != 1 {
 				t.Fatal("unknown reserve changed")
 			}
 			s.exec("UPDATE scheduler_jobs SET run_after=0 WHERE reason_code='historical_ai_unknown'")
@@ -71,7 +76,7 @@ func TestMariaDBContinuousWorkerHistoricalAIDisposable(t *testing.T) {
 				t.Fatalf("repeat AI guard: calls=%d deferred=%d expected=%d", provider.AICalls(), repeated, deferred)
 			}
 			// Подтверждение стоимости и сроки изменяются только в disposable CI.
-			s.exec("UPDATE scheduler_attempts SET cost_usd=0.1 WHERE id='CI_historical_ai'")
+			s.exec("UPDATE scheduler_attempts SET status='completed',cost_usd=0.1 WHERE id='CI_historical_ai'")
 			s.exec("UPDATE scheduler_jobs SET run_after=0 WHERE reason_code='historical_ai_unknown'")
 			runUntil(workerloop.Pipeline)
 			if provider.AICalls() == 0 || s.count("SELECT COUNT(*) FROM company_vacancies WHERE company_name='CI Apify Runtime'") != 1 {

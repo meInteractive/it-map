@@ -1638,7 +1638,7 @@ jobs:
           python3 - "$result_file" <<'PYCODE'
           import json,sys
           events=[json.loads(line) for line in open(sys.argv[1],encoding='utf8')]
-          for target in ('TestMariaDBHistoricalAIGuardDisposable','TestMariaDBHistoricalAIGuardDisposable/orphan','TestMariaDBHistoricalAIGuardDisposable/old_generation','TestMariaDBHistoricalAIGuardDisposable/contradictory','TestMariaDBHistoricalAIGuardDisposable/non_ai','TestMariaDBContinuousWorkerHistoricalAIDisposable','TestMariaDBContinuousWorkerHistoricalAIDisposable/orphan','TestMariaDBContinuousWorkerHistoricalAIDisposable/old_generation'):
+          for target in ('TestMariaDBHistoricalAIGuardDisposable','TestMariaDBHistoricalAIGuardDisposable/orphan','TestMariaDBHistoricalAIGuardDisposable/old_generation','TestMariaDBHistoricalAIGuardDisposable/contradictory','TestMariaDBHistoricalAIGuardDisposable/orphan_running_zero_reserve','TestMariaDBHistoricalAIGuardDisposable/historical_running_zero_reserve','TestMariaDBHistoricalAIGuardDisposable/orphan_pending_cost','TestMariaDBHistoricalAIGuardDisposable/non_ai','TestMariaDBContinuousWorkerHistoricalAIDisposable','TestMariaDBContinuousWorkerHistoricalAIDisposable/orphan','TestMariaDBContinuousWorkerHistoricalAIDisposable/old_generation','TestMariaDBContinuousWorkerHistoricalAIDisposable/inconsistent_zero_reserve'):
               assert any(e.get('Test')==target and e.get('Action')=='pass' for e in events), f'historical AI guard did not pass: {target}'
           assert not any(e.get('Action')=='skip' for e in events), 'historical AI guard skipped'
           PYCODE
