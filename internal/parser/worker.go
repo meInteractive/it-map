@@ -409,10 +409,10 @@ func workerExecute(ctx context.Context, d workerDispatch, lease *JobLease, owner
 		if errors.Is(executeErr, ErrHHRoleFilter) {
 			finish = FinishOptions{Status: "failed", Code: "hh_roles_missing", Message: "Выберите профессиональные роли HH для каждого активного направления и повторите запуск."}
 		}
-		if errors.Is(executeErr, ErrHHDetailPending) || errors.Is(executeErr, ErrDetailBusy) || errors.Is(executeErr, ErrHHCycleLimit) || errors.Is(executeErr, context.Canceled) || errors.Is(executeErr, context.DeadlineExceeded) {
+		if onlyAdmissionCause(executeErr, ErrHHDetailPending) || onlyAdmissionCause(executeErr, ErrDetailBusy) || onlyAdmissionCause(executeErr, ErrHHCycleLimit) || onlyAdmissionCause(executeErr, context.Canceled) || onlyAdmissionCause(executeErr, context.DeadlineExceeded) {
 			finish = FinishOptions{Status: "pending", Code: "deferred", Delay: 10 * time.Second, Deferred: true}
 		}
-		if denyActorStarts && errors.Is(executeErr, ErrHHCycleLimit) {
+		if denyActorStarts && onlyAdmissionCause(executeErr, ErrHHCycleLimit) {
 			// Частые pipeline-сессии не должны непрерывно повторять платный fallback.
 			finish = FinishOptions{Status: "pending", Code: "paid_start_disabled", Delay: 15 * time.Minute, Deferred: true}
 		}
@@ -426,7 +426,7 @@ func workerExecute(ctx context.Context, d workerDispatch, lease *JobLease, owner
 				finish = FinishOptions{Status: "pending", Code: "budget", Delay: 30 * time.Minute, Deferred: true}
 			}
 		}
-		if errors.Is(executeErr, apifyruns.ErrCooldown) {
+		if onlyAdmissionCause(executeErr, apifyruns.ErrCooldown) {
 			delay := 15 * time.Minute
 			var cooldown *apifyruns.CooldownError
 			if errors.As(executeErr, &cooldown) && cooldown != nil && cooldown.RetryAfter > 0 && cooldown.RetryAfter <= 15*time.Minute {
@@ -435,10 +435,10 @@ func workerExecute(ctx context.Context, d workerDispatch, lease *JobLease, owner
 			// Даём запас на разницу часов и планирование; Reserve проверит снова.
 			finish = FinishOptions{Status: "pending", Code: "deferred", Delay: delay + time.Second, Deferred: true}
 		}
-		if errors.Is(executeErr, apifyruns.ErrHistoricalUnresolved) {
+		if onlyAdmissionCause(executeErr, apifyruns.ErrHistoricalUnresolved) {
 			finish = FinishOptions{Status: "pending", Code: "historical_paid_unknown", Delay: 30 * time.Minute, Deferred: true}
 		}
-		if errors.Is(executeErr, apifyruns.ErrCurrentUnresolved) {
+		if onlyAdmissionCause(executeErr, apifyruns.ErrCurrentUnresolved) {
 			finish = FinishOptions{Status: "pending", Code: "current_paid_unknown", Delay: 30 * time.Minute, Deferred: true}
 		}
 	} else if out.pending {
