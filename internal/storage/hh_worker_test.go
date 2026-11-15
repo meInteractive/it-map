@@ -48,7 +48,7 @@ func (g workerGenerator) Automatic(ctx context.Context, req aiproviders.Generati
 }
 
 func TestMariaDBHHWorkerDisposable(t *testing.T) {
-	for _, mode := range []string{"cycle", "pipeline_session", "pipeline_paid_fallback", "engine_paid_fallback"} {
+	for _, mode := range []string{"cycle", "pipeline_session", "pipeline_paid_fallback", "engine_paid_fallback", "engine_near_expiry"} {
 		t.Run(mode, func(t *testing.T) {
 			provider := &hhScanProvider{rows: [][]json.RawMessage{{hhScanItem(123, "CI_TITLE")}}}
 			_, s, scan, listing := hhScanFixture(t, provider)
@@ -102,7 +102,7 @@ func TestMariaDBHHWorkerDisposable(t *testing.T) {
 					t.Fatal("initial scan", result, provider.starts)
 				}
 				detailProvider := &hhDetailProvider{item: hhDetailItem(hhDetailBody())}
-				if mode == "pipeline_paid_fallback" || mode == "engine_paid_fallback" {
+				if mode == "pipeline_paid_fallback" || mode == "engine_paid_fallback" || mode == "engine_near_expiry" {
 					w.Public = &hhPublicFixture{}
 					w.DetailRuntime = hhDetailRuntime(s, detailProvider)
 				}
@@ -110,7 +110,10 @@ func TestMariaDBHHWorkerDisposable(t *testing.T) {
 					w.Runs = r
 					return w, nil
 				})
-				if mode == "engine_paid_fallback" {
+				if mode == "engine_near_expiry" {
+					s.exec("UPDATE apify_runs SET updated_at=CAST(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000 AS SIGNED)-840000")
+				}
+				if mode == "engine_paid_fallback" || mode == "engine_near_expiry" {
 					ctx, cancel := context.WithCancel(s.ctx)
 					done := make(chan error, 1)
 					pipeline := make(chan struct{}, 1)
@@ -141,15 +144,22 @@ func TestMariaDBHHWorkerDisposable(t *testing.T) {
 						t.Fatal("pipeline session", worked, sessionErr)
 					}
 				}
-				if mode == "pipeline_paid_fallback" || mode == "engine_paid_fallback" {
+				if mode == "pipeline_paid_fallback" || mode == "engine_paid_fallback" || mode == "engine_near_expiry" {
 					reason := "paid_start_disabled"
-					if mode == "engine_paid_fallback" {
+					if mode == "engine_paid_fallback" || mode == "engine_near_expiry" {
 						reason = "deferred"
 					}
-					if provider.starts != 1 || detailProvider.starts != 0 || extraction.calls != 0 || s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='fetch_full_text' AND status='pending' AND attempts=0 AND reason_code=? AND run_after > CAST(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000 AS SIGNED) + 840000", reason) != 1 {
+					minimumDelay := int64(840000)
+					if mode == "engine_near_expiry" {
+						minimumDelay = 40000
+					}
+					if provider.starts != 1 || detailProvider.starts != 0 || extraction.calls != 0 || s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='fetch_full_text' AND status='pending' AND attempts=0 AND reason_code=? AND run_after > CAST(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000 AS SIGNED) + ?", reason, minimumDelay) != 1 {
 						t.Fatal("pipeline admitted new paid fallback or did not defer it")
 					}
-					if mode == "engine_paid_fallback" {
+					if mode == "engine_near_expiry" && s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='fetch_full_text' AND run_after < CAST(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000 AS SIGNED)+120000") != 1 {
+						t.Fatal("fallback waited a full extra cooldown")
+					}
+					if mode == "engine_paid_fallback" || mode == "engine_near_expiry" {
 						// Только disposable CI: моделируем наступление срока.
 						s.exec("UPDATE apify_runs SET updated_at=1")
 						s.exec("UPDATE scheduler_jobs SET run_after=0 WHERE type='fetch_full_text'")
