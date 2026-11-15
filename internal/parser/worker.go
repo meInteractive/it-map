@@ -416,7 +416,7 @@ func workerExecute(ctx context.Context, d workerDispatch, lease *JobLease, owner
 			if errors.As(executeErr, &retry) && retry != nil && retry.RetryAfter >= hhpublic.MinRetryDelay && retry.RetryAfter <= hhpublic.MaxRetryDelay {
 				delay = retry.RetryAfter
 			}
-			finish = FinishOptions{Status: "pending", Code: "deferred", Delay: delay, Deferred: true}
+			finish = FinishOptions{Status: "pending", Code: "deferred", Delay: spreadDeferredRetry(lease.Job().ID, "hh-public", delay, hhpublic.MaxRetryDelay), Deferred: true}
 		}
 		if errors.Is(executeErr, ErrHHRoleFilter) {
 			finish = FinishOptions{Status: "failed", Code: "hh_roles_missing", Message: "Выберите профессиональные роли HH для каждого активного направления и повторите запуск."}
@@ -446,7 +446,7 @@ func workerExecute(ctx context.Context, d workerDispatch, lease *JobLease, owner
 			if errors.As(executeErr, &hint) && hint != nil && hint.RetryAfter >= retryafter.MinDelay && hint.RetryAfter <= retryafter.MaxDelay {
 				delay = hint.RetryAfter
 			}
-			finish = FinishOptions{Status: "pending", Code: "deferred", Delay: delay, Deferred: true}
+			finish = FinishOptions{Status: "pending", Code: "deferred", Delay: spreadDeferredRetry(lease.Job().ID, "apify-read", delay, retryafter.MaxDelay), Deferred: true}
 		}
 		if onlyAdmissionCause(executeErr, apifyruns.ErrCooldown) {
 			delay := 15 * time.Minute
