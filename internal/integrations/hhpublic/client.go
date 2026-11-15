@@ -63,7 +63,16 @@ func (c *Client) Fetch(ctx context.Context, value string) (*Job, error) {
 	if response.StatusCode == http.StatusRequestTimeout || response.StatusCode == http.StatusTooEarly || response.StatusCode == http.StatusTooManyRequests || response.StatusCode >= 500 {
 		return nil, &TemporaryError{RetryAfter: retryAfter(response.Header.Get("Retry-After"), time.Now())}
 	}
-	if response.StatusCode != http.StatusOK || !strings.Contains(response.Header.Get("Content-Type"), "text/html") || response.ContentLength > maxBytes {
+	if response.StatusCode != http.StatusOK && response.StatusCode != http.StatusForbidden {
+		return nil, nil
+	}
+	if !strings.Contains(response.Header.Get("Content-Type"), "text/html") {
+		return nil, nil
+	}
+	if response.ContentLength > maxBytes {
+		if response.StatusCode == http.StatusForbidden {
+			return nil, ErrTemporary
+		}
 		return nil, nil
 	}
 	raw, err := io.ReadAll(io.LimitReader(response.Body, maxBytes+1))
@@ -74,7 +83,19 @@ func (c *Client) Fetch(ctx context.Context, value string) (*Job, error) {
 		return nil, ErrTemporary
 	}
 	if len(raw) > maxBytes || !utf8.Valid(raw) {
+		if response.StatusCode == http.StatusForbidden {
+			return nil, ErrTemporary
+		}
 		return nil, nil
 	}
-	return ParseJob(string(raw), id, time.Now()), nil
+	body := string(raw)
+	if response.StatusCode == http.StatusOK {
+		if job := ParseJob(body, id, time.Now()); job != nil {
+			return job, nil
+		}
+	}
+	if verificationChallenge(body) {
+		return nil, &TemporaryError{RetryAfter: retryAfter(response.Header.Get("Retry-After"), time.Now())}
+	}
+	return nil, nil
 }
