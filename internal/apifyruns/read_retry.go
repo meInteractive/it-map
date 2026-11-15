@@ -10,6 +10,9 @@ import (
 // ErrReadTemporary разрешает повтор только известного GET, не POST Actor.
 var ErrReadTemporary = errors.New("apify read temporarily unavailable")
 
+// ErrReadBudget относится только к GET; он не разрешает запуск другого Actor.
+var ErrReadBudget = errors.New("apify read blocked by provider budget")
+
 // ReadTemporaryError carries a bounded GET retry hint without provider data.
 type ReadTemporaryError struct{ RetryAfter time.Duration }
 
@@ -30,6 +33,8 @@ func classifyReadError(err error) error {
 		return ErrReadTemporary
 	}
 	switch e.Code {
+	case "apify_budget":
+		return ErrReadBudget
 	case "apify_network", "apify_timeout", "apify_busy":
 		if e.RetryAfter >= retryafter.MinDelay && e.RetryAfter <= retryafter.MaxDelay {
 			return &ReadTemporaryError{RetryAfter: e.RetryAfter}

@@ -157,6 +157,19 @@ func TestMariaDBApifyRuntimeDisposable(t *testing.T) {
 			}
 		}
 	})
+	t.Run("budget POST error remains uncertain", func(t *testing.T) {
+		f := openApifyRuntimeFixture(t)
+		p := &runtimeProvider{start: func(context.Context) (apify.ActorRun, error) {
+			return apify.ActorRun{}, &apify.Error{Code: "apify_budget", Status: 503}
+		}}
+		s := runtimeService(f, p)
+		for i := 0; i < 2; i++ {
+			_, err := s.Execute(f.ctx, f.v, "CI budget POST", apify.HHOptions{})
+			if !errors.Is(err, apifyruns.ErrUncertain) || errors.Is(err, apifyruns.ErrReadBudget) || p.starts.Load() != 1 {
+				t.Fatal("budget POST error enabled replay", err)
+			}
+		}
+	})
 	t.Run("new operation guard precedes account and permits existing reconcile", func(t *testing.T) {
 		f := openApifyRuntimeFixture(t)
 		var accounts atomic.Int64

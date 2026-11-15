@@ -443,6 +443,11 @@ func workerExecute(ctx context.Context, d workerDispatch, lease *JobLease, owner
 				finish = FinishOptions{Status: "pending", Code: "budget", Delay: 30 * time.Minute, Deferred: true}
 			}
 		}
+		// Провайдер может отклонить GET из-за бюджета; это не разрешает
+		// менять профиль известной операции и запускать новый Actor.
+		if (kind == "scan_source" || kind == "fetch_full_text") && onlyAdmissionCause(executeErr, apifyruns.ErrReadBudget) {
+			finish = FinishOptions{Status: "pending", Code: "budget", Delay: 30 * time.Minute, Deferred: true}
+		}
 		// Повторяем только типизированную ошибку безопасного GET; POST
 		// с неизвестным результатом остаётся в отдельном состоянии.
 		if (kind == "scan_source" || kind == "fetch_full_text") && onlyAdmissionCause(executeErr, apifyruns.ErrReadTemporary) {
