@@ -23,7 +23,7 @@ func classifyReadError(err error) error {
 	if !ok || e == nil {
 		return err
 	}
-	if e.RetryableRead {
+	if e.RetryableRead && e.Code == "apify_data" && e.Status == 503 {
 		if e.RetryAfter >= retryafter.MinDelay && e.RetryAfter <= retryafter.MaxDelay {
 			return &ReadTemporaryError{RetryAfter: e.RetryAfter}
 		}

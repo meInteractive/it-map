@@ -17,6 +17,7 @@ func TestReadFailureClassificationNeverTreatsUnknownAsSafe(t *testing.T) {
 		{&apify.Error{Code: "apify_timeout", Status: 503}, true},
 		{&apify.Error{Code: "apify_busy", Status: 503}, true},
 		{&apify.Error{Code: "apify_auth", Status: 400}, false},
+		{&apify.Error{Code: "apify_auth", Status: 400, RetryableRead: true}, false},
 		{&apify.Error{Code: "apify_data", Status: 502}, false},
 		{&apify.Error{Code: "apify_data", Status: 503, RetryableRead: true}, true},
 		{errors.Join(&apify.Error{Code: "apify_network"}, errors.New("cleanup")), false},
