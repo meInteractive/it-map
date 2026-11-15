@@ -23,6 +23,12 @@ func classifyReadError(err error) error {
 	if !ok || e == nil {
 		return err
 	}
+	if e.RetryableRead && e.Code == "apify_data" && e.Status == 503 {
+		if e.RetryAfter >= retryafter.MinDelay && e.RetryAfter <= retryafter.MaxDelay {
+			return &ReadTemporaryError{RetryAfter: e.RetryAfter}
+		}
+		return ErrReadTemporary
+	}
 	switch e.Code {
 	case "apify_network", "apify_timeout", "apify_busy":
 		if e.RetryAfter >= retryafter.MinDelay && e.RetryAfter <= retryafter.MaxDelay {

@@ -60,7 +60,7 @@ func (c *Client) Fetch(ctx context.Context, value string) (*Job, error) {
 		return nil, ErrTemporary
 	}
 	defer response.Body.Close()
-	if response.StatusCode == http.StatusTooManyRequests || response.StatusCode >= 500 {
+	if response.StatusCode == http.StatusRequestTimeout || response.StatusCode == http.StatusTooEarly || response.StatusCode == http.StatusTooManyRequests || response.StatusCode >= 500 {
 		return nil, &TemporaryError{RetryAfter: retryAfter(response.Header.Get("Retry-After"), time.Now())}
 	}
 	if response.StatusCode != http.StatusOK || !strings.Contains(response.Header.Get("Content-Type"), "text/html") || response.ContentLength > maxBytes {

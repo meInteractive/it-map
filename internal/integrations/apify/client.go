@@ -26,9 +26,10 @@ var logPath = regexp.MustCompile(`^/logs/[A-Za-z0-9]+(?:\?|$)`)
 var messages = map[string]string{"apify_auth": "Apify: проверьте API-токен и его права.", "apify_network": "Apify временно недоступен.", "apify_timeout": "Apify не ответил вовремя.", "apify_data": "Apify вернул неподдерживаемые данные.", "apify_budget": "Недостаточно доступного бюджета Apify для нового запуска с учётом резервов. Сбор сохранён для продолжения.", "apify_disabled": "Apify выключен или API-токен не настроен.", "apify_scope": "Для Apify допустим только источник hh.ru с конкретным работодателем или вакансией.", "apify_busy": "Другой запуск Apify ещё выполняется."}
 
 type Error struct {
-	Code       string
-	Status     int
-	RetryAfter time.Duration
+	Code          string
+	Status        int
+	RetryAfter    time.Duration
+	RetryableRead bool
 }
 
 func (e *Error) Error() string {
@@ -129,7 +130,8 @@ func (c *Client) request(ctx context.Context, path string, options requestOption
 			}
 		}
 		e := apiError(code, status)
-		if method == "GET" && (code == "apify_busy" || code == "apify_network") {
+		if method == "GET" && (code == "apify_busy" || code == "apify_network" || response.StatusCode == 408 || response.StatusCode == 425) {
+			e.RetryableRead = true
 			e.RetryAfter = retryafter.Parse(response.Header.Get("Retry-After"), time.Now())
 		}
 		return nil, true, e
