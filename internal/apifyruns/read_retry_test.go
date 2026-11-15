@@ -40,3 +40,14 @@ func TestReadRetryHintIsBoundedAndPreservesSentinel(t *testing.T) {
 		t.Fatal("unbounded retry accepted", err)
 	}
 }
+
+func TestReadBudgetDoesNotAuthorizeActorBudgetFallback(t *testing.T) {
+	err := classifyReadError(&apify.Error{Code: "apify_budget", Status: 503})
+	if !errors.Is(err, ErrReadBudget) || errors.Is(err, ErrBudget) || errors.Is(err, ErrReadTemporary) {
+		t.Fatal("read budget confused with new Actor admission", err)
+	}
+	joined := errors.Join(&apify.Error{Code: "apify_budget"}, errors.New("cleanup"))
+	if classifyReadError(joined) != joined {
+		t.Fatal("compound error lost its other cause")
+	}
+}

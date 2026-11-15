@@ -14,17 +14,21 @@ import (
 )
 
 func TestMariaDBContinuousWorkerApifyReadRetryDisposable(t *testing.T) {
-	for _, stage := range []string{"account", "reconcile", "dataset", "retry_after", "status_408", "status_425"} {
+	for _, stage := range []string{"account", "reconcile", "dataset", "retry_after", "status_408", "status_425", "account_budget", "reconcile_budget", "dataset_budget"} {
 		t.Run(stage, func(t *testing.T) {
 			s, p, w := continuousWorkerFixture(t, false)
 			transient := &apify.Error{Code: "apify_network", Status: 503}
-			if stage == "account" {
+			isBudget := stage == "account_budget" || stage == "reconcile_budget" || stage == "dataset_budget"
+			if isBudget {
+				transient = &apify.Error{Code: "apify_budget", Status: 503}
+			}
+			if stage == "account" || stage == "account_budget" {
 				p.AccountError = transient
 			}
-			if stage == "reconcile" || stage == "retry_after" || stage == "status_408" || stage == "status_425" {
+			if stage == "reconcile" || stage == "retry_after" || stage == "status_408" || stage == "status_425" || stage == "reconcile_budget" {
 				p.Async = true
 			}
-			if stage == "dataset" {
+			if stage == "dataset" || stage == "dataset_budget" {
 				p.DatasetError = transient
 			}
 			runProfile := func(target workerloop.ProfileName) {
@@ -55,7 +59,7 @@ func TestMariaDBContinuousWorkerApifyReadRetryDisposable(t *testing.T) {
 			if stage == "status_408" || stage == "status_425" {
 				transient = &apify.Error{Code: "apify_data", Status: 503, RetryableRead: true, RetryAfter: 3 * time.Minute}
 			}
-			if stage == "reconcile" || stage == "retry_after" || stage == "status_408" || stage == "status_425" {
+			if stage == "reconcile" || stage == "retry_after" || stage == "status_408" || stage == "status_425" || stage == "reconcile_budget" {
 				if p.Starts() != 1 {
 					t.Fatal("known Actor missing")
 				}
@@ -64,10 +68,14 @@ func TestMariaDBContinuousWorkerApifyReadRetryDisposable(t *testing.T) {
 				runProfile(workerloop.Reconcile)
 			}
 			expectedStarts := int64(1)
-			if stage == "account" {
+			if stage == "account" || stage == "account_budget" {
 				expectedStarts = 0
 			}
-			if p.Starts() != expectedStarts || s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='scan_source' AND status='pending' AND reason_code='apify_read_retry' AND attempts=0") != 1 || s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='scan_source' AND status='failed'") != 0 {
+			reason := "apify_read_retry"
+			if isBudget {
+				reason = "budget"
+			}
+			if p.Starts() != expectedStarts || s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='scan_source' AND status='pending' AND reason_code=? AND attempts=0", reason) != 1 || s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='scan_source' AND status='failed'") != 0 {
 				t.Fatal("temporary GET did not defer safely", p.Starts())
 			}
 			if (stage == "retry_after" || stage == "status_408" || stage == "status_425") && s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='scan_source' AND status='pending' AND run_after > CAST(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000 AS SIGNED)+150000") != 1 {
