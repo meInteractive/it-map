@@ -72,6 +72,20 @@ func (r Repository) lockRecovery(ctx context.Context, generation, id string) (*s
 // after I/O under locks. This method is not connected to an HTTP endpoint or
 // automatic worker. Caller must supply an ID from trusted local inventory.
 func (s Service) ReconcileKnownRecovery(ctx context.Context, generation, id string) error {
+	return s.reconcileKnownRecovery(ctx, generation, id, s.Repository.Settings.Resolve)
+}
+
+// ReconcileKnownRecoveryWithToken uses an operator-supplied credential only for
+// authenticated reads. Account and operation identity still must match exactly.
+// It does not change the stored credential or its hash.
+func (s Service) ReconcileKnownRecoveryWithToken(ctx context.Context, generation, id, token string) error {
+	if token == "" {
+		return ErrRecoveryEvidence
+	}
+	return s.reconcileKnownRecovery(ctx, generation, id, func(context.Context, string) (string, error) { return token, nil })
+}
+
+func (s Service) reconcileKnownRecovery(ctx context.Context, generation, id string, resolve func(context.Context, string) (string, error)) error {
 	if ctx == nil || !jobGenerationPattern.MatchString(generation) || !recoveryID.MatchString(id) {
 		return ErrRecoveryEvidence
 	}
@@ -85,7 +99,7 @@ func (s Service) ReconcileKnownRecovery(ctx context.Context, generation, id stri
 	if err = tx.Commit(); err != nil {
 		return ErrStorage
 	}
-	token, err := s.Repository.Settings.Resolve(ctx, original.profile)
+	token, err := resolve(ctx, original.profile)
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
