@@ -17,7 +17,7 @@ func (f recoveryFunc) ReadRecovery(ctx context.Context) (RecoverySnapshot, error
 func TestRecoveryHandlerReturnsAggregateAndHidesErrors(t *testing.T) {
 	m := NewMonitor(time.Minute)
 	handler := m.HandlerWithDiagnostics(nil, recoveryFunc(func(context.Context) (RecoverySnapshot, error) {
-		return RecoverySnapshot{ActorUnknown: 2, SchedulerOrphanUnknown: 1}, nil
+		return RecoverySnapshot{ActorUnknown: 2, SchedulerOrphanUnknown: 1, CurrentAIReservedOther: 3}, nil
 	}))
 	call := func(method, path string) *httptest.ResponseRecorder {
 		w := httptest.NewRecorder()
@@ -25,7 +25,7 @@ func TestRecoveryHandlerReturnsAggregateAndHidesErrors(t *testing.T) {
 		return w
 	}
 	w := call(http.MethodGet, "/recoveryz")
-	if w.Code != http.StatusOK || w.Header().Get("Cache-Control") != "no-store" || !strings.Contains(w.Body.String(), `"actorUnknown":2`) || !strings.Contains(w.Body.String(), `"schedulerOrphanUnknown":1`) {
+	if w.Code != http.StatusOK || w.Header().Get("Cache-Control") != "no-store" || !strings.Contains(w.Body.String(), `"actorUnknown":2`) || !strings.Contains(w.Body.String(), `"schedulerOrphanUnknown":1`) || !strings.Contains(w.Body.String(), `"currentAIReservedOther":3`) {
 		t.Fatal(w.Code, w.Body.String())
 	}
 	if w = call(http.MethodPost, "/recoveryz"); w.Code != http.StatusMethodNotAllowed {
