@@ -34,11 +34,15 @@ jobs:
           go mod verify
           mkdir -p "$RUNNER_TEMP/worker-artifact"
           go build -mod=readonly -trimpath -buildvcs=true -tags mariadb -o "$RUNNER_TEMP/worker-artifact/itmap-worker" ./cmd/itmap-worker
+          go build -mod=readonly -trimpath -buildvcs=true -tags mariadb -o "$RUNNER_TEMP/worker-artifact/itmap-recovery" ./cmd/itmap-recovery
+          go version -m "$RUNNER_TEMP/worker-artifact/itmap-recovery" > "$RUNNER_TEMP/worker-artifact/recovery-build-info.txt"
+          grep -F "vcs.revision=$GITHUB_SHA" "$RUNNER_TEMP/worker-artifact/recovery-build-info.txt"
+          grep -F 'vcs.modified=false' "$RUNNER_TEMP/worker-artifact/recovery-build-info.txt"
           go version -m "$RUNNER_TEMP/worker-artifact/itmap-worker" > "$RUNNER_TEMP/worker-artifact/build-info.txt"
           grep -F "vcs.revision=$GITHUB_SHA" "$RUNNER_TEMP/worker-artifact/build-info.txt"
           grep -F 'vcs.modified=false' "$RUNNER_TEMP/worker-artifact/build-info.txt"
           printf '%s\n' "$GITHUB_SHA" > "$RUNNER_TEMP/worker-artifact/commit.txt"
-          (cd "$RUNNER_TEMP/worker-artifact" && sha256sum itmap-worker > SHA256SUMS)
+          (cd "$RUNNER_TEMP/worker-artifact" && sha256sum itmap-worker itmap-recovery > SHA256SUMS)
       - uses: actions/upload-artifact@v4
         with:
           name: worker-linux-${{ matrix.arch }}-${{ github.run_id }}-${{ github.run_attempt }}

@@ -14,6 +14,7 @@ trap cleanup EXIT
 
 cd "$repo_dir"
 CGO_ENABLED=0 go build -tags mariadb -o "$tmp_dir/itmap-worker" ./cmd/itmap-worker
+CGO_ENABLED=0 go build -tags mariadb -o "$tmp_dir/itmap-recovery" ./cmd/itmap-recovery
 CGO_ENABLED=0 go build -tags mariadb -o "$tmp_dir/itmap-schema-audit" ./cmd/itmap-schema-audit
 chmod 755 "$tmp_dir/itmap-worker"
 docker run -d --name "$container" --network none \
@@ -34,6 +35,17 @@ docker exec -i "$container" mariadb -u root -pci_only_disposable_root itmap_work
 docker exec "$container" mariadb -u root -pci_only_disposable_root itmap_worker_staging -e \
   "INSERT INTO app_runtime_generation(id,generation) VALUES(1,'11111111-2222-4333-8444-555555555555'); INSERT INTO firecrawl_settings(id,scheduler_json) VALUES(1,'{\"enabled\":false}');"
 docker cp "$tmp_dir/itmap-worker" "$container:/tmp/itmap-worker"
+docker cp "$tmp_dir/itmap-recovery" "$container:/tmp/itmap-recovery"
+run_recovery() {
+  docker exec --user mysql -e ITMAP_RECOVERY_ENABLED=1 \
+    -e DB_HOST=127.0.0.1 -e DB_PORT=3306 -e DB_NAME=itmap_worker_staging \
+    -e DB_USER=itmap_worker_app -e DB_PASSWORD=ci_only_disposable_worker \
+    -e SESSION_SECRET=ci_only_synthetic_session_secret_32_characters \
+    "$container" /tmp/itmap-recovery "$@"
+}
+[[ "$(run_recovery inspect)" == 'confirmed=0 blocked=0 commit_unknown=0' ]] || { echo 'empty recovery inspection failed' >&2; exit 1; }
+if run_recovery apply >"$tmp_dir/recovery-guard"; then echo 'recovery apply bypassed explicit guard' >&2; exit 1; fi
+[[ "$(cat "$tmp_dir/recovery-guard")" == recovery_apply_not_enabled ]] || { echo 'unexpected recovery guard result' >&2; exit 1; }
 docker cp "$tmp_dir/itmap-schema-audit" "$container:/tmp/itmap-schema-audit"
 run_schema_audit() {
   docker exec --user mysql -e ITMAP_SCHEMA_AUDIT=1 \
