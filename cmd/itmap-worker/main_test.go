@@ -108,3 +108,53 @@ func TestStagingServiceRestartAndIsolationContract(t *testing.T) {
 		}
 	}
 }
+
+func productionEnvironment() map[string]string {
+	e := testEnvironment()
+	e["APP_ENV"] = "production"
+	e["ITMAP_WORKER_PRODUCTION_ENABLED"] = "1"
+	e["ITMAP_WORKER_HEALTH_ENABLED"] = "1"
+	e["DB_NAME"] = "ci_worker_database"
+	e["DB_USER"] = "ci_worker_user"
+	return e
+}
+
+func TestProductionRequiresExplicitGuardAndValidLocalDatabase(t *testing.T) {
+	for _, tc := range []struct{ key, value string }{
+		{"ITMAP_WORKER_ENABLED", "0"}, {"ITMAP_PARSER_EXECUTION_ENABLED", "0"},
+		{"ITMAP_WORKER_PRODUCTION_ENABLED", ""}, {"ITMAP_WORKER_HEALTH_ENABLED", "0"},
+		{"DB_HOST", "remote.invalid"}, {"DB_PORT", "0"}, {"DB_NAME", "invalid/name"},
+		{"DB_USER", "root"}, {"DB_USER", ""}, {"DB_PASSWORD", ""}, {"SESSION_SECRET", "short"},
+	} {
+		t.Run(tc.key+"_"+tc.value, func(t *testing.T) {
+			env := productionEnvironment()
+			env[tc.key] = tc.value
+			opened := false
+			err := run(context.Background(), getter(env), func(context.Context, storage.Settings, string) (*sql.DB, error) { opened = true; return nil, nil }, func(context.Context, *sql.DB, settings) error { return nil })
+			if !errors.Is(err, errConfig) || opened {
+				t.Fatal("invalid production configuration reached DB", err)
+			}
+		})
+	}
+	env := productionEnvironment()
+	s, err := load(getter(env))
+	if err != nil || s.database.Database != env["DB_NAME"] || s.database.User != env["DB_USER"] || !s.health {
+		t.Fatal("valid guarded configuration rejected", err)
+	}
+}
+
+func TestProductionServiceHasNoEmbeddedSecretsOrEnableFlags(t *testing.T) {
+	data, err := os.ReadFile("../../deploy/itmap-worker.service.example")
+	if err != nil {
+		t.Fatal(err)
+	}
+	service := string(data)
+	for _, line := range []string{"User=itmap-worker", "EnvironmentFile=/etc/itmap/worker.env", "ExecStart=/opt/itmap/worker/current/itmap-worker", "Restart=on-failure", "NoNewPrivileges=true", "ProtectSystem=strict"} {
+		if !strings.Contains("\n"+service+"\n", "\n"+line+"\n") {
+			t.Fatalf("service contract missing %s", line)
+		}
+	}
+	if strings.Contains(service, "ITMAP_WORKER_PRODUCTION_ENABLED=1") || strings.Contains(service, "DB_PASSWORD=") {
+		t.Fatal("service embeds activation or secret")
+	}
+}
