@@ -92,9 +92,10 @@ func run(ctx context.Context, args []string, getenv func(string) string, open fa
 }
 
 type sqlBackend struct {
-	db         *sql.DB
-	generation string
-	settings   apifysettings.Repository
+	db            *sql.DB
+	generation    string
+	settings      apifysettings.Repository
+	externalToken string
 }
 
 func openBackend(ctx context.Context, getenv func(string) string) (recoveryBackend, error) {
@@ -114,7 +115,7 @@ func openBackend(ctx context.Context, getenv func(string) string) (recoveryBacke
 		db.Close()
 		return nil, errUnavailable
 	}
-	return &sqlBackend{db: db, generation: generation, settings: settings}, nil
+	return &sqlBackend{db: db, generation: generation, settings: settings, externalToken: getenv("ITMAP_RECOVERY_EXTERNAL_TOKEN")}, nil
 }
 func (b *sqlBackend) Close() error { return b.db.Close() }
 func (b *sqlBackend) current(ctx context.Context) bool {
@@ -151,7 +152,11 @@ func (b *sqlBackend) Inspect(ctx context.Context, c candidate) error {
 	if c.charged.Valid || !b.current(ctx) {
 		return errUnavailable
 	}
-	reader := apifyruns.RecoveryReader{Resolve: b.settings.Resolve}
+	resolve := b.settings.Resolve
+	if b.externalToken != "" {
+		resolve = func(context.Context, string) (string, error) { return b.externalToken, nil }
+	}
+	reader := apifyruns.RecoveryReader{Resolve: resolve}
 	_, err := reader.Verify(ctx, c.record, c.profile)
 	if err == nil && !b.current(ctx) {
 		return errUnavailable
@@ -160,6 +165,9 @@ func (b *sqlBackend) Inspect(ctx context.Context, c candidate) error {
 }
 func (b *sqlBackend) Apply(ctx context.Context, c candidate) error {
 	service := apifyruns.Service{Repository: apifyruns.Repository{DB: b.db, Settings: b.settings}}
+	if b.externalToken != "" {
+		return service.ReconcileKnownRecoveryWithToken(ctx, b.generation, c.id, b.externalToken)
+	}
 	return service.ReconcileKnownRecovery(ctx, b.generation, c.id)
 }
 func main() {

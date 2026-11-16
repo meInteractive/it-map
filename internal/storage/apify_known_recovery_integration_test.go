@@ -23,7 +23,7 @@ func TestMariaDBApifyKnownRecoveryDisposable(t *testing.T) {
 		name string
 		mode string
 	}{
-		{"rotated_token", "success"}, {"invalid_hash", "hash"}, {"invalid_operation", "operation"}, {"other_account", "account"}, {"nil_client", "nil_client"}, {"changed_row", "row"}, {"changed_settings", "settings"}, {"changed_generation", "generation"}, {"lost_ack", "lost_ack"}, {"before_commit", "before_commit"},
+		{"rotated_token", "success"}, {"external_token", "external_success"}, {"external_other_account", "external_account"}, {"invalid_hash", "hash"}, {"invalid_operation", "operation"}, {"other_account", "account"}, {"nil_client", "nil_client"}, {"changed_row", "row"}, {"changed_settings", "settings"}, {"changed_generation", "generation"}, {"lost_ack", "lost_ack"}, {"before_commit", "before_commit"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := openApifyRuntimeFixture(t)
@@ -51,7 +51,7 @@ func TestMariaDBApifyKnownRecoveryDisposable(t *testing.T) {
 				}()
 			}
 			provider := &runtimeProvider{}
-			if tc.mode == "account" {
+			if tc.mode == "account" || tc.mode == "external_account" {
 				provider.account = func(context.Context) (apify.BillingAccount, error) {
 					return apify.BillingAccount{AccountID: "CIOther"}, nil
 				}
@@ -92,7 +92,17 @@ func TestMariaDBApifyKnownRecoveryDisposable(t *testing.T) {
 					}
 				}()
 			}
-			err = service.ReconcileKnownRecovery(f.ctx, f.v.Generation, id)
+			if tc.mode == "external_success" || tc.mode == "external_account" {
+				service.NewClient = func(token string) (apifyruns.Provider, error) {
+					if token != "external-test-credential" {
+						t.Error("external credential was not used")
+					}
+					return provider, nil
+				}
+				err = service.ReconcileKnownRecoveryWithToken(f.ctx, f.v.Generation, id, "external-test-credential")
+			} else {
+				err = service.ReconcileKnownRecovery(f.ctx, f.v.Generation, id)
+			}
 			var state string
 			var cost sql.NullFloat64
 			var keyhash string
@@ -103,7 +113,7 @@ func TestMariaDBApifyKnownRecoveryDisposable(t *testing.T) {
 				t.Fatal("recovery changed credential identity or started Actor")
 			}
 			switch tc.mode {
-			case "success":
+			case "success", "external_success":
 				if err != nil || state != "succeeded" || !cost.Valid || cost.Float64 != 0.08 || provider.runs.Load() != 1 {
 					t.Fatal("verified recovery failed", err)
 				}
@@ -111,7 +121,7 @@ func TestMariaDBApifyKnownRecoveryDisposable(t *testing.T) {
 				if !errors.Is(err, apifyruns.ErrRecoveryEvidence) || cost.Valid || provider.runs.Load() != 0 {
 					t.Fatal("corrupt ledger accepted", err)
 				}
-			case "account":
+			case "account", "external_account":
 				if !errors.Is(err, apifyruns.ErrRecoveryEvidence) || cost.Valid || provider.runs.Load() != 0 {
 					t.Fatal("different account accepted", err)
 				}
