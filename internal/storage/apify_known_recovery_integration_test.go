@@ -17,17 +17,31 @@ import (
 
 func TestMariaDBApifyKnownRecoveryDisposable(t *testing.T) {
 	const id = "00000000000000000000000000000001"
+	const oldHash = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	const oldOperation = "go398:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
 	for _, tc := range []struct {
 		name string
 		mode string
 	}{
-		{"rotated_token", "success"}, {"other_account", "account"}, {"changed_row", "row"}, {"changed_settings", "settings"}, {"changed_generation", "generation"}, {"lost_ack", "lost_ack"}, {"before_commit", "before_commit"},
+		{"rotated_token", "success"}, {"invalid_hash", "hash"}, {"invalid_operation", "operation"}, {"other_account", "account"}, {"changed_row", "row"}, {"changed_settings", "settings"}, {"changed_generation", "generation"}, {"lost_ack", "lost_ack"}, {"before_commit", "before_commit"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := openApifyRuntimeFixture(t)
-			_, err := f.db.ExecContext(f.ctx, `INSERT INTO apify_runs(id,generation,operation_key,profile,account_id,key_hash,period_start,period_end,reserved_usd,state,run_id,dataset_id,created_at,updated_at) VALUES(?,?,'CI_recovery_key','free','CIRuntime','CI_old_key_hash','CIstart','CIend',0.25,'running','CIRun123','CIData123',1,1)`, id, f.v.Generation)
+			_, err := f.db.ExecContext(f.ctx, `INSERT INTO apify_runs(id,generation,operation_key,profile,account_id,key_hash,period_start,period_end,reserved_usd,state,run_id,dataset_id,created_at,updated_at) VALUES(?,?,?,'free','CIRuntime',?,'CIstart','CIend',0.25,'running','CIRun123','CIData123',1,1)`, id, f.v.Generation, oldOperation, oldHash)
 			if err != nil {
 				t.Fatal("synthetic ledger fixture", err)
+			}
+			expectedHash := oldHash
+			if tc.mode == "hash" {
+				expectedHash = "invalid"
+				if _, e := f.db.ExecContext(f.ctx, "UPDATE apify_runs SET key_hash=? WHERE id=?", expectedHash, id); e != nil {
+					t.Fatal(e)
+				}
+			}
+			if tc.mode == "operation" {
+				if _, e := f.db.ExecContext(f.ctx, "UPDATE apify_runs SET operation_key='invalid' WHERE id=?", id); e != nil {
+					t.Fatal(e)
+				}
 			}
 			if tc.mode == "generation" {
 				defer func() {
@@ -82,13 +96,17 @@ func TestMariaDBApifyKnownRecoveryDisposable(t *testing.T) {
 			if e := f.db.QueryRowContext(f.ctx, "SELECT state,charged_usd,key_hash FROM apify_runs WHERE id=?", id).Scan(&state, &cost, &keyhash); e != nil {
 				t.Fatal(e)
 			}
-			if provider.starts.Load() != 0 || keyhash != "CI_old_key_hash" {
+			if provider.starts.Load() != 0 || keyhash != expectedHash {
 				t.Fatal("recovery changed credential identity or started Actor")
 			}
 			switch tc.mode {
 			case "success":
 				if err != nil || state != "succeeded" || !cost.Valid || cost.Float64 != 0.08 || provider.runs.Load() != 1 {
 					t.Fatal("verified recovery failed", err)
+				}
+			case "hash", "operation":
+				if !errors.Is(err, apifyruns.ErrRecoveryEvidence) || cost.Valid || provider.runs.Load() != 0 {
+					t.Fatal("corrupt ledger accepted", err)
 				}
 			case "account":
 				if !errors.Is(err, apifyruns.ErrRecoveryEvidence) || cost.Valid || provider.runs.Load() != 0 {

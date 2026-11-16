@@ -14,6 +14,8 @@ import (
 var ErrRecoveryChanged = errors.New("apify recovery state changed")
 var ErrRecoveryCommitUnknown = errors.New("apify recovery commit outcome unknown")
 var recoveryID = regexp.MustCompile(`^[0-9a-f]{32}$`)
+var recoveryKeyHash = regexp.MustCompile(`^[0-9a-f]{64}$`)
+var recoveryOperationKey = regexp.MustCompile(`^go398:[0-9a-f]{64}$`)
 
 type recoverySnapshot struct {
 	id, generation, operationKey, profile, accountID, keyHash, periodStart, periodEnd string
@@ -56,7 +58,7 @@ func (r Repository) lockRecovery(ctx context.Context, generation, id string) (*s
 	if err != nil {
 		return fail(ErrStorage)
 	}
-	if s.id != id || s.generation != generation || (s.profile != "free" && s.profile != "starter") || s.charged.Valid || s.operationKey == "" || s.keyHash == "" || s.periodStart == "" || s.periodEnd == "" || s.created <= 0 || s.updated <= 0 || s.reserved <= 0 || math.IsNaN(s.reserved) || math.IsInf(s.reserved, 0) || s.datasetID == "" || validateStoredIdentity(s.record()) != nil {
+	if s.id != id || s.generation != generation || (s.profile != "free" && s.profile != "starter") || s.charged.Valid || !recoveryOperationKey.MatchString(s.operationKey) || !recoveryKeyHash.MatchString(s.keyHash) || s.revision < 0 || s.periodStart == "" || s.periodEnd == "" || s.created <= 0 || s.updated <= 0 || s.reserved <= 0 || math.IsNaN(s.reserved) || math.IsInf(s.reserved, 0) || s.datasetID == "" || validateStoredIdentity(s.record()) != nil {
 		return fail(ErrRecoveryEvidence)
 	}
 	return tx, s, nil
