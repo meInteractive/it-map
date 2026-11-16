@@ -86,7 +86,10 @@ func (s Service) ReconcileKnownRecovery(ctx context.Context, generation, id stri
 		return ErrStorage
 	}
 	token, err := s.Repository.Settings.Resolve(ctx, original.profile)
-	if err != nil {
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+	if err != nil || token == "" {
 		return ErrRecoveryEvidence
 	}
 	// Confirm the credential and ledger remained unchanged while it was resolved.
@@ -108,7 +111,7 @@ func (s Service) ReconcileKnownRecovery(ctx context.Context, generation, id stri
 		return err
 	}
 	client, err := s.client(token)
-	if err != nil {
+	if err != nil || client == nil {
 		return ErrRecoveryEvidence
 	}
 	account, err := client.Account(ctx)
