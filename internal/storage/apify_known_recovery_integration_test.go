@@ -23,7 +23,7 @@ func TestMariaDBApifyKnownRecoveryDisposable(t *testing.T) {
 		name string
 		mode string
 	}{
-		{"rotated_token", "success"}, {"invalid_hash", "hash"}, {"invalid_operation", "operation"}, {"other_account", "account"}, {"changed_row", "row"}, {"changed_settings", "settings"}, {"changed_generation", "generation"}, {"lost_ack", "lost_ack"}, {"before_commit", "before_commit"},
+		{"rotated_token", "success"}, {"invalid_hash", "hash"}, {"invalid_operation", "operation"}, {"other_account", "account"}, {"nil_client", "nil_client"}, {"changed_row", "row"}, {"changed_settings", "settings"}, {"changed_generation", "generation"}, {"lost_ack", "lost_ack"}, {"before_commit", "before_commit"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := openApifyRuntimeFixture(t)
@@ -80,6 +80,9 @@ func TestMariaDBApifyKnownRecoveryDisposable(t *testing.T) {
 				return apify.ActorRun{ID: "CIRun123", DefaultDatasetID: "CIData123", Status: "SUCCEEDED", Raw: raw}, nil
 			}
 			service := runtimeService(f, provider)
+			if tc.mode == "nil_client" {
+				service.NewClient = func(string) (apifyruns.Provider, error) { return nil, nil }
+			}
 			if tc.mode == "lost_ack" || tc.mode == "before_commit" {
 				repo, flag := billingCommitRepositoryMode(t, f.v.Generation, "UPDATE apify_runs SET state=?,charged_usd=?", tc.mode == "before_commit")
 				service.Repository = apifyruns.Repository{DB: repo.DB, Settings: apifysettings.NewRepository(repo.DB, "CI_SECRET")}
@@ -104,7 +107,7 @@ func TestMariaDBApifyKnownRecoveryDisposable(t *testing.T) {
 				if err != nil || state != "succeeded" || !cost.Valid || cost.Float64 != 0.08 || provider.runs.Load() != 1 {
 					t.Fatal("verified recovery failed", err)
 				}
-			case "hash", "operation":
+			case "hash", "operation", "nil_client":
 				if !errors.Is(err, apifyruns.ErrRecoveryEvidence) || cost.Valid || provider.runs.Load() != 0 {
 					t.Fatal("corrupt ledger accepted", err)
 				}
