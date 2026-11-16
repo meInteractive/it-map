@@ -10,6 +10,10 @@ permissions:
 jobs:
   worker-artifact:
     runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [amd64, arm64]
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -23,7 +27,7 @@ jobs:
         env:
           CGO_ENABLED: '0'
           GOOS: linux
-          GOARCH: amd64
+          GOARCH: ${{ matrix.arch }}
         run: |
           set -euo pipefail
           go mod download
@@ -37,7 +41,7 @@ jobs:
           (cd "$RUNNER_TEMP/worker-artifact" && sha256sum itmap-worker > SHA256SUMS)
       - uses: actions/upload-artifact@v4
         with:
-          name: worker-linux-amd64-${{ github.run_id }}-${{ github.run_attempt }}
+          name: worker-linux-${{ matrix.arch }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/worker-artifact/
           if-no-files-found: error
           retention-days: 7
