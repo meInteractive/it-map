@@ -59,6 +59,28 @@ wait_live() {
 start_worker "$tmp_dir/term.log"
 wait_live || { echo 'worker did not become live' >&2; cat "$tmp_dir/term.log" >&2; exit 1; }
 http_get /readyz | grep -q 'HTTP/1.1 503' || { echo 'disabled scheduler reported ready' >&2; exit 1; }
+# A second instance cannot bind the diagnostic socket. It must exit before
+# entering the engine, without disturbing the first process or leaking secrets.
+if timeout 30s docker exec --user mysql \
+    -e APP_ENV=staging -e DB_HOST=127.0.0.1 -e DB_PORT=3306 \
+    -e DB_NAME=itmap_worker_staging -e DB_USER=itmap_worker_app \
+    -e DB_PASSWORD=ci_only_disposable_worker \
+    -e SESSION_SECRET=ci_only_synthetic_session_secret_32_characters \
+    -e ITMAP_WORKER_ENABLED=1 -e ITMAP_PARSER_EXECUTION_ENABLED=1 \
+    -e ITMAP_WORKER_STAGING_REAL_PROVIDERS=1 -e ITMAP_WORKER_HEALTH_ENABLED=1 \
+    "$container" /tmp/itmap-worker >"$tmp_dir/collision.log" 2>&1; then
+  echo 'second worker unexpectedly started on occupied diagnostics port' >&2; exit 1
+else
+  collision_status=$?
+  [[ "$collision_status" != 124 ]] || { echo 'second worker did not exit' >&2; exit 1; }
+fi
+grep -q 'startup_or_runtime_failure' "$tmp_dir/collision.log" || { echo 'collision exit reason missing' >&2; exit 1; }
+if grep -E 'ci_only_disposable_worker|ci_only_synthetic_session_secret' "$tmp_dir/collision.log" >/dev/null; then
+  echo 'collision log exposed credentials' >&2; exit 1
+fi
+http_get /healthz | grep -q '"live":true' || { echo 'first worker stopped after collision' >&2; exit 1; }
+counts="$(docker exec "$container" mariadb -u root -pci_only_disposable_root --skip-column-names --batch itmap_worker_staging -e 'SELECT (SELECT COUNT(*) FROM apify_runs)+(SELECT COUNT(*) FROM scheduler_attempts)+(SELECT COUNT(*) FROM scheduler_jobs)')"
+[[ "$counts" == 0 ]] || { echo 'bind collision unexpectedly created work' >&2; exit 1; }
 docker exec "$container" sh -c 'kill -TERM "$(cat /tmp/itmap-worker-smoke.pid)"'
 for _ in $(seq 1 30); do
   if ! kill -0 "$worker_pid" 2>/dev/null; then break; fi
