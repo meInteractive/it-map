@@ -23,7 +23,9 @@ docker run -d --name "$container" --network none \
 [[ "$(docker inspect -f '{{.HostConfig.NetworkMode}}' "$container")" == none ]]
 ready=0
 for _ in $(seq 1 60); do
-  if docker exec "$container" mariadb -u root -pci_only_disposable_root --skip-column-names -e "SELECT 1" >/dev/null 2>&1; then ready=1; break; fi
+  # Entrypoint starts a temporary socket-only server during initialization.
+  # Wait for the final TCP listener and the application account instead.
+  if docker exec "$container" mariadb --protocol=tcp -h 127.0.0.1 -u itmap_worker_app -pci_only_disposable_worker itmap_worker_staging --skip-column-names -e "SELECT 1" >/dev/null 2>&1; then ready=1; break; fi
   sleep 1
 done
 [[ "$ready" == 1 ]] || { echo 'synthetic MariaDB did not start' >&2; exit 1; }
