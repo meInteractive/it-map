@@ -155,10 +155,15 @@ func (m *Monitor) HandlerWithDiagnostics(reader QueueReader, recovery RecoveryRe
 
 // HandlerWithHHSchedule shares the same bound across all diagnostic queries.
 func (m *Monitor) HandlerWithHHSchedule(reader QueueReader, recovery RecoveryReader, schedule HHScheduleReader) http.Handler {
+	return m.HandlerWithActivity(reader, recovery, schedule, nil)
+}
+
+// HandlerWithActivity keeps all diagnostic database reads under one limit.
+func (m *Monitor) HandlerWithActivity(reader QueueReader, recovery RecoveryReader, schedule HHScheduleReader, activity ActivityReader) http.Handler {
 	base := m.Handler()
 	semaphore := make(chan struct{}, 1)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/queuez" && r.URL.Path != "/recoveryz" && r.URL.Path != "/hh-schedulez" {
+		if r.URL.Path != "/queuez" && r.URL.Path != "/recoveryz" && r.URL.Path != "/hh-schedulez" && r.URL.Path != "/activityz" {
 			base.ServeHTTP(w, r)
 			return
 		}
@@ -166,7 +171,7 @@ func (m *Monitor) HandlerWithHHSchedule(reader QueueReader, recovery RecoveryRea
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			return
 		}
-		if (r.URL.Path == "/queuez" && reader == nil) || (r.URL.Path == "/recoveryz" && recovery == nil) || (r.URL.Path == "/hh-schedulez" && schedule == nil) {
+		if (r.URL.Path == "/queuez" && reader == nil) || (r.URL.Path == "/recoveryz" && recovery == nil) || (r.URL.Path == "/hh-schedulez" && schedule == nil) || (r.URL.Path == "/activityz" && activity == nil) {
 			http.NotFound(w, r)
 			return
 		}
@@ -177,6 +182,8 @@ func (m *Monitor) HandlerWithHHSchedule(reader QueueReader, recovery RecoveryRea
 			errorBody = "{\"error\":\"recovery_unavailable\"}\n"
 		} else if r.URL.Path == "/hh-schedulez" {
 			errorBody = "{\"error\":\"hh_schedule_unavailable\"}\n"
+		} else if r.URL.Path == "/activityz" {
+			errorBody = "{\"error\":\"activity_unavailable\"}\n"
 		}
 		select {
 		case semaphore <- struct{}{}:
@@ -194,8 +201,10 @@ func (m *Monitor) HandlerWithHHSchedule(reader QueueReader, recovery RecoveryRea
 			result, err = reader.ReadQueue(ctx)
 		} else if r.URL.Path == "/recoveryz" {
 			result, err = recovery.ReadRecovery(ctx)
-		} else {
+		} else if r.URL.Path == "/hh-schedulez" {
 			result, err = schedule.ReadHHSchedule(ctx)
+		} else {
+			result, err = activity.ReadActivity(ctx)
 		}
 		if err != nil || ctx.Err() != nil {
 			w.WriteHeader(http.StatusServiceUnavailable)
