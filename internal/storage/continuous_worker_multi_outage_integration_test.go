@@ -11,6 +11,7 @@ import (
 	"itmap/internal/integrations/apify"
 	"itmap/internal/integrations/hhpublic"
 	"itmap/internal/workerengine"
+	"itmap/internal/workerloop"
 )
 
 // A single synthetic job crosses several outages and still reaches import with
@@ -22,33 +23,37 @@ func TestMariaDBContinuousWorkerMultiOutageDisposable(t *testing.T) {
 	runUntil := func(ready func() bool) {
 		t.Helper()
 		ctx, cancel := context.WithCancel(s.ctx)
+		defer cancel()
 		done := make(chan error, 1)
-		go func() { done <- (workerengine.Engine{Worker: w}).Run(ctx) }()
-		timer := time.NewTimer(20 * time.Second)
-		tick := time.NewTicker(100 * time.Millisecond)
-		reached := false
-	wait:
-		for {
-			select {
-			case <-tick.C:
+		reached := make(chan struct{}, 1)
+		go func() {
+			done <- (workerengine.Engine{Worker: w, OnResult: func(_ workerloop.ProfileName, _ workerloop.ProfileOutcome) {
+				// Check after the whole cycle has finished, then cancel before
+				// the loop can claim another job. Polling DB from another
+				// goroutine could cancel an unrelated in-flight stage.
 				if ready() {
-					reached = true
-					break wait
+					select {
+					case reached <- struct{}{}:
+					default:
+					}
+					cancel()
 				}
-			case err := <-done:
-				cancel()
-				timer.Stop()
-				tick.Stop()
+			}}).Run(ctx)
+		}()
+		select {
+		case err := <-done:
+			select {
+			case <-reached:
+				if !errors.Is(err, context.Canceled) {
+					t.Fatal("worker milestone failed", err)
+				}
+			default:
 				t.Fatal("worker stopped before milestone", err)
-			case <-timer.C:
-				break wait
 			}
-		}
-		timer.Stop()
-		tick.Stop()
-		cancel()
-		if err := <-done; !errors.Is(err, context.Canceled) || !reached {
-			t.Fatal("worker milestone failed", err)
+		case <-time.After(20 * time.Second):
+			cancel()
+			<-done
+			t.Fatal("worker milestone timed out")
 		}
 	}
 	pendingScan := func() bool {
@@ -94,7 +99,10 @@ func TestMariaDBContinuousWorkerMultiOutageDisposable(t *testing.T) {
 	runUntil(func() bool {
 		return s.count("SELECT COUNT(*) FROM company_vacancy_user_state WHERE user_name='CI_OWNER' AND relevance=67") == 1
 	})
-	if p.Starts() != 1 || s.count("SELECT COUNT(*) FROM apify_runs") != 1 || s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE status='failed'") != 0 {
-		t.Fatal("recovery did not finish with one Actor")
+	starts := p.Starts()
+	runs := s.count("SELECT COUNT(*) FROM apify_runs")
+	failed := s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE status='failed'")
+	if starts != 1 || runs != 1 || failed != 0 {
+		t.Fatalf("recovery: starts=%d runs=%d failed jobs=%d", starts, runs, failed)
 	}
 }
