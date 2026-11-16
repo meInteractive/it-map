@@ -1,4 +1,4 @@
-// Команда запускает экспериментальный worker только в отдельной staging БД.
+// Команда запускает worker только при явно включённой конфигурации.
 package main
 
 import (
@@ -22,8 +22,8 @@ import (
 	"itmap/internal/workerloop"
 )
 
-var errConfig = errors.New("worker staging configuration invalid")
-var errStartup = errors.New("worker staging startup failed")
+var errConfig = errors.New("worker configuration invalid")
+var errStartup = errors.New("worker startup failed")
 var errGeneration = errors.New("worker generation changed")
 
 type settings struct {
@@ -40,17 +40,36 @@ func load(getenv func(string) string) (settings, error) {
 	if err != nil {
 		return settings{}, errConfig
 	}
-	if getenv("APP_ENV") != "staging" || getenv("ITMAP_WORKER_STAGING_REAL_PROVIDERS") != "1" ||
-		getenv("DB_HOST") != "127.0.0.1" || getenv("DB_PORT") != "3306" ||
-		getenv("DB_NAME") != "itmap_worker_staging" || getenv("DB_USER") != "itmap_worker_app" ||
-		getenv("DB_PASSWORD") == "" || len(getenv("SESSION_SECRET")) < 32 {
+	database := storage.Settings{Host: getenv("DB_HOST"), Port: getenv("DB_PORT"), Database: getenv("DB_NAME"), User: getenv("DB_USER")}
+	password := getenv("DB_PASSWORD")
+	if password == "" || len(getenv("SESSION_SECRET")) < 32 {
 		return settings{}, errConfig
 	}
-	if value := getenv("ITMAP_WORKER_HEALTH_ENABLED"); value != "" && value != "0" && value != "1" {
+	health := getenv("ITMAP_WORKER_HEALTH_ENABLED")
+	if health != "" && health != "0" && health != "1" {
 		return settings{}, errConfig
 	}
-	return settings{runtime: runtime, database: storage.Settings{Host: "127.0.0.1", Port: "3306", Database: "itmap_worker_staging", User: "itmap_worker_app"},
-		password: getenv("DB_PASSWORD"), secret: getenv("SESSION_SECRET"), openAIKey: getenv("OPENAI_API_KEY"), health: getenv("ITMAP_WORKER_HEALTH_ENABLED") == "1"}, nil
+	switch getenv("APP_ENV") {
+	case "staging":
+		if getenv("ITMAP_WORKER_STAGING_REAL_PROVIDERS") != "1" || database.Host != "127.0.0.1" || database.Port != "3306" || database.Database != "itmap_worker_staging" || database.User != "itmap_worker_app" {
+			return settings{}, errConfig
+		}
+	case "production":
+		// Explicit opt-in is separate from the worker and parser enable flags.
+		// A local, least-privileged database account and health endpoint are required.
+		if getenv("ITMAP_WORKER_PRODUCTION_ENABLED") != "1" || health != "1" || database.User == "root" {
+			return settings{}, errConfig
+		}
+	default:
+		return settings{}, errConfig
+	}
+	// Validate exactly as storage.Open will, without opening a connection or
+	// returning a DSN (which contains credentials) in any error or log.
+	if _, err := storage.MakeDSN(database, password); err != nil {
+		return settings{}, errConfig
+	}
+	return settings{runtime: runtime, database: database, password: password,
+		secret: getenv("SESSION_SECRET"), openAIKey: getenv("OPENAI_API_KEY"), health: health == "1"}, nil
 }
 
 type opener func(context.Context, storage.Settings, string) (*sql.DB, error)

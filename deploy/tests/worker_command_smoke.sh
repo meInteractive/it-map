@@ -106,4 +106,27 @@ worker_pid=""
 grep -q 'generation_changed' "$tmp_dir/generation.log" || { echo 'generation exit reason missing' >&2; exit 1; }
 counts="$(docker exec "$container" mariadb -u root -pci_only_disposable_root --skip-column-names --batch itmap_worker_staging -e 'SELECT (SELECT COUNT(*) FROM apify_runs)+(SELECT COUNT(*) FROM scheduler_attempts)+(SELECT COUNT(*) FROM scheduler_jobs)')"
 [[ "$counts" == 0 ]] || { echo 'isolated smoke unexpectedly created work' >&2; exit 1; }
+# Exercise production configuration against the same isolated, empty DB only.
+# Scheduler remains disabled, so the process must not create paid work.
+docker exec --user mysql \
+  -e APP_ENV=production -e DB_HOST=127.0.0.1 -e DB_PORT=3306 \
+  -e DB_NAME=itmap_worker_staging -e DB_USER=itmap_worker_app \
+  -e DB_PASSWORD=ci_only_disposable_worker \
+  -e SESSION_SECRET=ci_only_synthetic_session_secret_32_characters \
+  -e ITMAP_WORKER_ENABLED=1 -e ITMAP_PARSER_EXECUTION_ENABLED=1 \
+  -e ITMAP_WORKER_PRODUCTION_ENABLED=1 -e ITMAP_WORKER_HEALTH_ENABLED=1 \
+  "$container" sh -c 'echo $$ > /tmp/itmap-worker-smoke.pid; exec /tmp/itmap-worker' >"$tmp_dir/production.log" 2>&1 &
+worker_pid=$!
+wait_live || { echo 'production configuration did not become live on disposable DB' >&2; cat "$tmp_dir/production.log" >&2; exit 1; }
+http_get /readyz | grep -q 'HTTP/1.1 503' || { echo 'disabled scheduler reported ready in production configuration' >&2; exit 1; }
+docker exec "$container" sh -c 'kill -TERM "$(cat /tmp/itmap-worker-smoke.pid)"'
+for _ in $(seq 1 30); do
+  if ! kill -0 "$worker_pid" 2>/dev/null; then break; fi
+  sleep 1
+done
+if kill -0 "$worker_pid" 2>/dev/null; then echo 'production configuration did not stop' >&2; exit 1; fi
+if ! wait "$worker_pid"; then echo 'production configuration did not stop cleanly' >&2; exit 1; fi
+worker_pid=""
+counts="$(docker exec "$container" mariadb -u root -pci_only_disposable_root --skip-column-names --batch itmap_worker_staging -e 'SELECT (SELECT COUNT(*) FROM apify_runs)+(SELECT COUNT(*) FROM scheduler_attempts)+(SELECT COUNT(*) FROM scheduler_jobs)')"
+[[ "$counts" == 0 ]] || { echo 'production configuration unexpectedly created work' >&2; exit 1; }
 echo 'PASS: isolated worker lifecycle; no network or paid operations'
