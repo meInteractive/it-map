@@ -14,6 +14,7 @@ trap cleanup EXIT
 
 cd "$repo_dir"
 CGO_ENABLED=0 go build -tags mariadb -o "$tmp_dir/itmap-worker" ./cmd/itmap-worker
+CGO_ENABLED=0 go build -tags mariadb -o "$tmp_dir/itmap-schema-audit" ./cmd/itmap-schema-audit
 chmod 755 "$tmp_dir/itmap-worker"
 docker run -d --name "$container" --network none \
   -e MARIADB_ROOT_PASSWORD=ci_only_disposable_root \
@@ -33,6 +34,19 @@ docker exec -i "$container" mariadb -u root -pci_only_disposable_root itmap_work
 docker exec "$container" mariadb -u root -pci_only_disposable_root itmap_worker_staging -e \
   "INSERT INTO app_runtime_generation(id,generation) VALUES(1,'11111111-2222-4333-8444-555555555555'); INSERT INTO firecrawl_settings(id,scheduler_json) VALUES(1,'{\"enabled\":false}');"
 docker cp "$tmp_dir/itmap-worker" "$container:/tmp/itmap-worker"
+docker cp "$tmp_dir/itmap-schema-audit" "$container:/tmp/itmap-schema-audit"
+run_schema_audit() {
+  docker exec --user mysql -e ITMAP_SCHEMA_AUDIT=1 \
+    -e DB_HOST=127.0.0.1 -e DB_PORT=3306 -e DB_NAME=itmap_worker_staging \
+    -e DB_USER=itmap_worker_app -e DB_PASSWORD=ci_only_disposable_worker \
+    "$container" /tmp/itmap-schema-audit
+}
+[[ "$(run_schema_audit)" == schema_audit_compatible ]] || { echo 'baseline audit failed' >&2; exit 1; }
+docker exec "$container" mariadb -u root -pci_only_disposable_root itmap_worker_staging -e 'CREATE TABLE ci_unexpected_schema_object (id INT PRIMARY KEY)'
+if run_schema_audit >"$tmp_dir/audit-result"; then echo 'audit accepted extra table' >&2; exit 1; fi
+[[ "$(cat "$tmp_dir/audit-result")" == schema_audit_mismatch_or_incomplete ]] || { echo 'audit failure not classified' >&2; exit 1; }
+docker exec "$container" mariadb -u root -pci_only_disposable_root itmap_worker_staging -e 'DROP TABLE ci_unexpected_schema_object'
+[[ "$(run_schema_audit)" == schema_audit_compatible ]] || { echo 'audit did not recover after fixture removal' >&2; exit 1; }
 
 start_worker() {
   local log_file="$1"
