@@ -150,10 +150,15 @@ func (m *Monitor) HandlerWithQueue(reader QueueReader) http.Handler {
 
 // HandlerWithDiagnostics ограничивает общую конкуренцию обоих снимков.
 func (m *Monitor) HandlerWithDiagnostics(reader QueueReader, recovery RecoveryReader) http.Handler {
+	return m.HandlerWithHHSchedule(reader, recovery, nil)
+}
+
+// HandlerWithHHSchedule shares the same bound across all diagnostic queries.
+func (m *Monitor) HandlerWithHHSchedule(reader QueueReader, recovery RecoveryReader, schedule HHScheduleReader) http.Handler {
 	base := m.Handler()
 	semaphore := make(chan struct{}, 1)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/queuez" && r.URL.Path != "/recoveryz" {
+		if r.URL.Path != "/queuez" && r.URL.Path != "/recoveryz" && r.URL.Path != "/hh-schedulez" {
 			base.ServeHTTP(w, r)
 			return
 		}
@@ -161,7 +166,7 @@ func (m *Monitor) HandlerWithDiagnostics(reader QueueReader, recovery RecoveryRe
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			return
 		}
-		if (r.URL.Path == "/queuez" && reader == nil) || (r.URL.Path == "/recoveryz" && recovery == nil) {
+		if (r.URL.Path == "/queuez" && reader == nil) || (r.URL.Path == "/recoveryz" && recovery == nil) || (r.URL.Path == "/hh-schedulez" && schedule == nil) {
 			http.NotFound(w, r)
 			return
 		}
@@ -170,6 +175,8 @@ func (m *Monitor) HandlerWithDiagnostics(reader QueueReader, recovery RecoveryRe
 		errorBody := "{\"error\":\"queue_unavailable\"}\n"
 		if r.URL.Path == "/recoveryz" {
 			errorBody = "{\"error\":\"recovery_unavailable\"}\n"
+		} else if r.URL.Path == "/hh-schedulez" {
+			errorBody = "{\"error\":\"hh_schedule_unavailable\"}\n"
 		}
 		select {
 		case semaphore <- struct{}{}:
@@ -185,8 +192,10 @@ func (m *Monitor) HandlerWithDiagnostics(reader QueueReader, recovery RecoveryRe
 		var err error
 		if r.URL.Path == "/queuez" {
 			result, err = reader.ReadQueue(ctx)
-		} else {
+		} else if r.URL.Path == "/recoveryz" {
 			result, err = recovery.ReadRecovery(ctx)
+		} else {
+			result, err = schedule.ReadHHSchedule(ctx)
 		}
 		if err != nil || ctx.Err() != nil {
 			w.WriteHeader(http.StatusServiceUnavailable)
