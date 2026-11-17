@@ -2,12 +2,15 @@ package workerengine
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
+
+	"itmap/internal/workerloop"
 )
 
 type activityFunc func(context.Context) (ActivitySnapshot, error)
@@ -70,5 +73,55 @@ func TestActivityReaderRejectsMissingConfiguration(t *testing.T) {
 	}
 	if _, err := NewActivityReader(nil, "").ReadActivity(nil); err == nil {
 		t.Fatal("nil context accepted")
+	}
+}
+
+// Готовность всех профилей при пустой очереди не означает публикацию вакансий.
+// В частности /activityz не выдаёт счётчики import операций за newVacancies.
+func TestReadyAndEmptyQueueDoNotClaimNewVacancies(t *testing.T) {
+	m := NewMonitor(time.Minute)
+	for _, name := range []workerloop.ProfileName{workerloop.Launch, workerloop.Reconcile, workerloop.Pipeline} {
+		m.Record(name, workerloop.ProfileIdle)
+	}
+	h := m.HandlerWithActivity(
+		queueFunc(func(context.Context) (QueueSnapshot, error) { return QueueSnapshot{}, nil }),
+		nil, nil,
+		activityFunc(func(context.Context) (ActivitySnapshot, error) { return ActivitySnapshot{}, nil }),
+	)
+	read := func(path string) map[string]any {
+		t.Helper()
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, httptest.NewRequest(http.MethodGet, path, nil))
+		if w.Code != http.StatusOK {
+			t.Fatal("unexpected diagnostic status", path, w.Code)
+		}
+		var got map[string]any
+		if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
+			t.Fatal("invalid diagnostic response", path, err)
+		}
+		return got
+	}
+	health := read("/readyz")
+	if health["ready"] != true || health["reason"] != "ready" {
+		t.Fatal("idle worker was not ready", health)
+	}
+	queue := read("/queuez")
+	scan, okScan := queue["scan"].(map[string]any)
+	pipe, okPipe := queue["pipeline"].(map[string]any)
+	if !okScan || !okPipe || scan["due"] != float64(0) || pipe["running"] != float64(0) {
+		t.Fatal("empty queue changed readiness semantics", queue)
+	}
+	activity := read("/activityz")
+	if activity["pipelineCompleted"] != float64(0) ||
+		activity["importCreateOperations"] != float64(0) ||
+		activity["importUpdateOperations"] != float64(0) ||
+		activity["importUnchangedOperations"] != float64(0) {
+		t.Fatal("idle worker invented import or pipeline success", activity)
+	}
+	if _, ok := activity["newVacancies"]; ok {
+		t.Fatal("activity falsely claims unique published vacancies")
+	}
+	if _, ok := activity["published"]; ok {
+		t.Fatal("completed jobs must not be labelled publications")
 	}
 }
