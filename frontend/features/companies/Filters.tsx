@@ -197,6 +197,7 @@ export function FilterMenu({
       <button
         type="button"
         className={prefix + '-filter-button'}
+        aria-label={label}
         aria-expanded={open}
         onClick={() => setOpen(!open)}
       >
