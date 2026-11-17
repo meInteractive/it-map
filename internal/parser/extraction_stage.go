@@ -387,7 +387,7 @@ func (s ExtractionStageStore) SaveFailure(ctx context.Context, tx *sql.Tx, j Job
 	if e != nil {
 		return ErrSettingsStorage
 	}
-	diag, _ := json.Marshal(map[string]any{"message": extractionFailureMessage(failure), "costEstimated": false})
+	diag := extractionFailureDiagnostic(failure)
 	_, e = tx.ExecContext(ctx, `INSERT INTO vacancy_extractions(id,candidate_id,snapshot_id,provider,model_id,config_hash,prompt_version,schema_version,processed_at,duration_ms,status,error_code,diagnostics) VALUES(?,?,?,?,NULL,?,?,?,?,?,'error',?,?)`, id, x.Title.CandidateID, x.Snapshot.ID, x.Config.Provider, x.ConfigHash, x.PromptHash, ExtractionSchemaVersion, time.Now().UTC().Format("2006-01-02T15:04:05.000Z"), now-x.Started, code, string(diag))
 	if e != nil {
 		return ErrSettingsStorage

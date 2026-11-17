@@ -277,6 +277,32 @@ func TestMariaDBExtractionStageSourceDisposable(t *testing.T) {
 			t.Fatal("budget deny failed", e)
 		}
 	})
+	t.Run("description_diagnostic_no_private_content", func(t *testing.T) {
+		f := f.sub(t)
+		seed(0)
+		lease := extractionStageLease(t, f)
+		var content map[string]any
+		if err := json.Unmarshal(frames[0].Value, &content); err != nil {
+			t.Fatal(err)
+		}
+		content["description_md"] = "CI_PRIVATE\x00CONTENT"
+		invalid, err := json.Marshal(content)
+		if err != nil {
+			t.Fatal(err)
+		}
+		runner := &extractionRunner{content: invalid}
+		_, err = (&parser.AIStageExecutor{Store: parser.ExtractionStageStore{Owner: "CI_USER"}, Generator: runner}).Execute(f.ctx, lease)
+		var typed *aiproviders.ServiceError
+		if !errors.As(err, &typed) || typed.Code != "invalid_output" || runner.calls != 1 {
+			t.Fatal("invalid description accepted or retried", err)
+		}
+		if f.count("SELECT COUNT(*) FROM vacancy_extractions WHERE status='error' AND error_code='invalid_output' AND JSON_UNQUOTE(JSON_EXTRACT(diagnostics,'$.descriptionIssue'))='null_byte' AND diagnostics NOT LIKE '%CI_PRIVATE%'") != 1 {
+			t.Fatal("bounded diagnostic not persisted")
+		}
+		if f.count("SELECT COUNT(*) FROM scheduler_attempts WHERE status='failed' AND cost_usd IS NOT NULL") != 1 {
+			t.Fatal("provider receipt not preserved")
+		}
+	})
 	t.Run("unknown_outcome", func(t *testing.T) {
 		seed(0)
 		lease := extractionStageLease(t, f)

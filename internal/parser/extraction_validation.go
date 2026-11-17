@@ -120,7 +120,11 @@ func normalizeExtraction(content, raw string, strict bool) (ExtractionNormalizat
 			valid = valid && found
 		}
 		if !permitted || !valid {
-			return ExtractionNormalization{}, extractionInvalid("Некорректное поле " + key + ".")
+			failure := extractionInvalid("Некорректное поле " + key + ".")
+			if key == "description_md" {
+				failure = &descriptionValidationError{cause: failure, reason: descriptionInvalidReason(x)}
+			}
+			return ExtractionNormalization{}, failure
 		}
 	}
 	if utf16Length(v["title"].(string)) > 500 || utf16Length(jsStageTrim(v["description_md"].(string))) < 100 {
