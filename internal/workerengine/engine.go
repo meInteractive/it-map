@@ -123,9 +123,15 @@ func (e Engine) cycle(ctx context.Context, stopClaims <-chan struct{}, profile w
 	}
 	id := "worker:" + hex.EncodeToString(raw[:])
 	worker := e.workerForProfile(profile)
+	// Keep at least a minute for another pipeline job. Long AI calls can still
+	// time out; this only prevents starting them near the end of a busy cycle.
+	var minRemaining time.Duration
+	if profile == workerloop.Pipeline {
+		minRemaining = 60 * time.Second
+	}
 	result, err := worker.Cycle(ctx, parser.WorkerOptions{
 		Run:     parser.RunOptions{RequestID: id, Trigger: "automatic", Duration: 100 * time.Second},
-		MaxJobs: maxJobs, QueueProfile: string(profile), StopClaims: stopClaims,
+		MaxJobs: maxJobs, QueueProfile: string(profile), StopClaims: stopClaims, MinRemaining: minRemaining,
 	})
 	if err == parser.ErrRunBusy {
 		return false, workerloop.ErrRunContended
