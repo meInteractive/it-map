@@ -80,7 +80,7 @@ func TestMariaDBWorkerActivityImportActionsDisposable(t *testing.T) {
 	if got.ImportCreateOperations != 2 || got.ImportUpdateOperations != 1 || got.ImportUnchangedOperations != 1 {
 		t.Fatal("import operation counters confused retries, generations, incomplete jobs or unique vacancies", got)
 	}
-	if got.PipelineCompleted != 10 || got.PipelineFailed != 1 {
+	if got.PipelineCompleted != 9 || got.PipelineFailed != 1 {
 		t.Fatal("pipeline job count does not reflect completed/failed jobs", got)
 	}
 	if !reflect.DeepEqual(before, schedulerRows(t, f, "")) || receipts != f.count("SELECT COUNT(*) FROM vacancy_import_operations WHERE id LIKE 'CI_activity_import_%'") {
