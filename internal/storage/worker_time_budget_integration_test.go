@@ -51,7 +51,6 @@ func TestMariaDBHHWorkerTimeBudgetDisposable(t *testing.T) {
 	}
 }
 
- 
 // Короткий внешний deadline не допускает даже первый pipeline claim,
 // хотя MinRemaining здесь не установлен: интервал нужен для bounded cleanup.
 func TestMariaDBHHWorkerPipelineCleanupAdmissionDisposable(t *testing.T) {
