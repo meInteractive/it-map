@@ -25,14 +25,27 @@ func TestMariaDBHHWorkerTimeBudgetDisposable(t *testing.T) {
 		t.Fatal(err)
 	}
 	w := parser.Worker{Runs: s.repo, Settings: apifysettings.NewRepository(s.db, "CI_SECRET"), ListingRuntime: listing.Runtime}
-	result, err := w.Cycle(s.ctx, parser.WorkerOptions{Run: parser.RunOptions{RequestID: "CI_TIME_BUDGET", Duration: 110 * time.Second}, MaxJobs: 20, MinRemaining: 110 * time.Second})
+	// Заведомо недостаточное время не должно позволять даже первый claim.
+	// Duration уже начал отсчитываться до проверки: remaining строго меньше minimum.
+	late, err := w.Cycle(s.ctx, parser.WorkerOptions{Run: parser.RunOptions{RequestID: "CI_TIME_BUDGET_LATE", Duration: 110 * time.Second}, MaxJobs: 20, MinRemaining: 110 * time.Second})
+	if err != nil || late.Processed != 0 || provider.starts != 0 {
+		t.Fatal("late first claim started work", late, err, provider.starts)
+	}
+	if s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='scan_source' AND status='pending'") == 0 {
+		t.Fatal("job was not preserved for the next cycle")
+	}
+	if s.count("SELECT COUNT(*) FROM scheduler_attempts WHERE type='classify_title'") != 0 {
+		t.Fatal("late cycle created AI attempt")
+	}
+	// Следующий цикл с достаточным бюджетом продолжает работу без потери задания.
+	result, err := w.Cycle(s.ctx, parser.WorkerOptions{Run: parser.RunOptions{RequestID: "CI_TIME_BUDGET_FRESH", Duration: 110 * time.Second}, MaxJobs: 1, MinRemaining: 60 * time.Second})
 	if err != nil || result.Processed != 1 || provider.starts != 1 {
-		t.Fatal("cycle did not stop after first bounded job", result, err, provider.starts)
+		t.Fatal("fresh cycle did not resume the first job", result, err, provider.starts)
 	}
 	if s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='classify_title' AND status='pending' AND attempts=0") != 1 {
 		t.Fatal("next AI job was claimed or not planned")
 	}
 	if s.count("SELECT COUNT(*) FROM scheduler_attempts WHERE type='classify_title'") != 0 {
-		t.Fatal("attempt created before sufficient time")
+		t.Fatal("AI attempt created before sufficient time")
 	}
 }
