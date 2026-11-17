@@ -52,8 +52,8 @@ type WorkerOptions struct {
 	MaxJobs      int
 	QueueProfile string          // "" = прежний ручной цикл; balanced, launch, reconcile, pipeline
 	StopClaims   <-chan struct{} // необязательный сигнал остановки перед следующим claim
-	// MinRemaining preserves useful execution time for the next job in an
-	// already-progressing cycle; zero retains the existing behaviour.
+	// MinRemaining reserves time before any new claim, including the first.
+	// Zero retains the existing behaviour for manual cycles.
 	MinRemaining time.Duration
 }
 type WorkerResult struct {
