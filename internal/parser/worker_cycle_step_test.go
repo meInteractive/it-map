@@ -77,3 +77,39 @@ func TestCycleRejectsInvalidTimeBudgetBeforeDatabaseAccess(t *testing.T) {
 		}
 	}
 }
+
+
+func TestPipelineWorkDeadlineLeavesCleanupReserve(t *testing.T) {
+	now := time.Date(2026, time.November, 17, 12, 0, 0, 0, time.UTC)
+	for _, tc := range []struct {
+		name       string
+		remaining  time.Duration
+		admissible bool
+	}{
+		{"fresh_cycle", 100 * time.Second, true},
+		{"just_above_reserve", pipelineCleanupReserve + time.Nanosecond, true},
+		{"exact_reserve", pipelineCleanupReserve, false},
+		{"less_than_reserve", pipelineCleanupReserve - time.Nanosecond, false},
+		{"expired", -time.Second, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			deadline := now.Add(tc.remaining)
+			cutoff, ok := pipelineWorkDeadline(now, deadline)
+			if ok != tc.admissible || !cutoff.Equal(deadline.Add(-pipelineCleanupReserve)) {
+				t.Fatal("pipeline deadline did not preserve cleanup interval", cutoff, ok)
+			}
+		})
+	}
+	parent, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute))
+	defer cancel()
+	parentDeadline, _ := parent.Deadline()
+	cutoff, ok := pipelineWorkDeadline(time.Now(), parentDeadline)
+	if !ok {
+		t.Fatal("fresh cycle incorrectly rejected")
+	}
+	child, stopWork := context.WithDeadline(parent, cutoff)
+	stopWork()
+	if !errors.Is(child.Err(), context.Canceled) || parent.Err() != nil {
+		t.Fatal("worker execution cancellation leaked to parent context")
+	}
+}
