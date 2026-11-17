@@ -1372,11 +1372,11 @@ jobs:
           set -euo pipefail
           result_file="$(mktemp)"
           trap 'rm -f "$result_file"' EXIT
-          go test -race -tags mariadb,schedulerwrites ./internal/storage -run '^TestMariaDBWorker((Queue|Recovery)Snapshot|Activity(ImportActions)?)Disposable$' -count=1 -json | tee "$result_file"
+          go test -race -tags mariadb,schedulerwrites ./internal/storage -run '^TestMariaDBWorker((Queue|Recovery)Snapshot|RecoveryZeroReserveProviderUnknown|Activity(ImportActions)?)Disposable$' -count=1 -json | tee "$result_file"
           python3 - "$result_file" <<'PYCODE'
           import json,sys
           events=[json.loads(line) for line in open(sys.argv[1],encoding='utf8')]
-          assert all(any(e.get('Test')==name and e.get('Action')=='pass' for e in events) for name in ('TestMariaDBWorkerQueueSnapshotDisposable','TestMariaDBWorkerRecoverySnapshotDisposable','TestMariaDBWorkerActivityDisposable','TestMariaDBWorkerActivityImportActionsDisposable')), 'worker queue/recovery/activity gate did not pass'
+          assert all(any(e.get('Test')==name and e.get('Action')=='pass' for e in events) for name in ('TestMariaDBWorkerQueueSnapshotDisposable','TestMariaDBWorkerRecoverySnapshotDisposable','TestMariaDBWorkerRecoveryZeroReserveProviderUnknownDisposable','TestMariaDBWorkerActivityDisposable','TestMariaDBWorkerActivityImportActionsDisposable')), 'worker queue/recovery/activity gate did not pass'
           assert not any(e.get('Action')=='skip' for e in events), 'worker queue/recovery/activity gate skipped'
           PYCODE
       - name: Verify scheduler jobs against unchanged source and real ownership ONLY in disposable CI
