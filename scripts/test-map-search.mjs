@@ -4,7 +4,7 @@ import {act,create} from 'react-test-renderer';
 import {moduleFor} from './test-support.mjs';
 const {default:MapSection}=await moduleFor('frontend/features/map/Map.tsx');
 const companies=Array.from({length:15},(_,i)=>({name:'Company '+i,rank:i===3?null:i+1,offices:[{lat:55.75,lon:37.61,metro:'Metro '+i}],favorite:i===0,hidden:i===14}));
-const filters={rankTop:true,rankBottom:true,rank101to150:true,rank151to200:true,rank201to250:true,rank251to300:true,rankBeyond300:true,rankUnranked:true,favoriteOnly:false,showHidden:false,vacanciesOnly:false,applicationsOnly:false};
+const filters={rankTop:true,rankBottom:true,rank101to150:true,rank151to200:true,rank201to250:true,rank251to300:true,rankBeyond300:true,rankUnranked:true,favorites:'all',showHidden:false,vacanciesOnly:false,applicationsOnly:false};
 const old=fetch,calls=[],pending=new Map();let root,count,opened;
 globalThis.IS_REACT_ACT_ENVIRONMENT=true;
 const clicks=new Set();
@@ -36,9 +36,12 @@ try{
  await update('none');assert.deepEqual(results(),[]);await debounce();await answer('none',[]);assert.match(label(root.root),/Ничего не найдено в выбранных фильтрах/);assert.equal(count,0,'нет результатов и маркеров');
  await update('fail');await debounce();await answer('fail',[],503);assert.match(label(root.root),/Search failed/);assert.doesNotMatch(label(root.root),/Ничего не найдено/);
  await act(async()=>root.root.findAllByType('button').find(b=>label(b)==='Повторить поиск').props.onClick());await answer('fail',companies.map(c=>({name:c.name,sector:'IT'})));assert.equal(results().length,12,'original suggestion limit');
- const before=calls.length;await update('fail',{filters:{...filters,favoriteOnly:true}});assert.equal(results().length,1);assert.equal(count,0,'несовпадающий запрос не оставляет старые маркеры');assert.equal(calls.length,before,'filters run locally');
+ const before=calls.length;await update('fail',{filters:{...filters,favorites:'favorites'}});assert.equal(results().length,1);assert.equal(count,0,'несовпадающий запрос не оставляет старые маркеры');assert.equal(calls.length,before,'filters run locally');
  await update('   ');assert.deepEqual(results(),[]);await debounce();assert.equal(calls.length,before,'empty search makes no API request');
  await update('quick');await update('final');await debounce();assert.ok(!pending.has('quick'));await update('');await answer('final',[{name:'Company 0',sector:'Late'}]);assert.deepEqual(results(),[],'clearing query rejects late display');
+ await update('',{filters:{...filters,favorites:'favorites'}});assert.equal(count,1,'карта: избранные');
+ await update('',{filters:{...filters,favorites:'notFavorites'}});assert.equal(count,13,'карта: не избранные');
+ await update('',{filters});assert.equal(count,14,'карта: все');
  assert.equal(calls.filter(u=>u==='/api/companies/map').length,1);
  console.log('Map search: matching office count, debounce, stale responses, clear, error/retry, 12 suggestions, filters and navigation passed.');
 }finally{if(root)await act(async()=>root.unmount());globalThis.fetch=old;assert.equal(clicks.size,0,'outside-click listener removed');}
