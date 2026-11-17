@@ -168,6 +168,26 @@ WHERE job_id=? AND id<>? AND
 		if unresolved != 0 {
 			return ErrMoneyUncertain
 		}
+		// Новый job ID для того же кандидата и AI-этапа не является
+		// доказательством нового платного входа. Проверяем неопределённые
+		// прежние attempts по устойчивому candidate_id + типу этапа.
+		// Без candidate_id нельзя безопасно сопоставлять произвольные
+		// тексты или URL: исходный same-job guard остаётся обязательным.
+		if lease.job.CandidateID != nil &&
+			(lease.job.Type == "classify_title" || lease.job.Type == "extract_vacancy" || lease.job.Type == "assign_roles" || lease.job.Type == "score_relevance") {
+			if e = tx.QueryRowContext(ctx, `SELECT EXISTS(
+SELECT 1 FROM scheduler_attempts a
+JOIN scheduler_jobs prior_job ON prior_job.id=a.job_id
+WHERE prior_job.candidate_id=? AND a.type=? AND a.job_id<>?
+AND ((a.cost_usd IS NULL AND (a.reserved_usd>0 OR COALESCE(a.provider,'')<>''))
+ OR (a.status IN ('running','pending','interrupted') AND COALESCE(a.provider,'')<>'')))`,
+				*lease.job.CandidateID, lease.job.Type, lease.jobID).Scan(&unresolved); e != nil {
+				return storageError(ctx)
+			}
+			if unresolved != 0 {
+				return ErrMoneyUncertain
+			}
+		}
 		// Разные ключи оценки одной вакансии не обходят неизвестный исход
 		// предыдущего платного запроса после изменения входных данных.
 		if lease.job.Type == "score_relevance" {
