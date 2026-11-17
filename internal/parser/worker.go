@@ -325,6 +325,17 @@ func claimsStopped(stop <-chan struct{}) bool {
 	}
 }
 
+// pipelineCleanupReserve даёт bounded cleanup (до 10 секунд) шанс
+// завершиться до срока job lease при дедлайне обработки.
+const pipelineCleanupReserve = 12 * time.Second
+
+// Отсеиваем поздний claim до создания lease и attempt; внешний цикл
+// остаётся владельцем оригинального дедлайна для recovery/reportCycle.
+func pipelineWorkDeadline(now, cycleDeadline time.Time) (time.Time, bool) {
+	cutoff := cycleDeadline.Add(-pipelineCleanupReserve)
+	return cutoff, now.Before(cutoff)
+}
+
 // cycleStep выполняет один claim и обработку с прежними ограничениями run.
 func (w Worker) cycleStep(ctx, bounded context.Context, runID, phase string, d workerDispatch, owner string, result *WorkerResult, phaseProcessed, hhStages *int, status *string, releaseRun *bool) (bool, error) {
 	if err := bounded.Err(); err != nil {
@@ -337,6 +348,17 @@ func (w Worker) cycleStep(ctx, bounded context.Context, runID, phase string, d w
 	if jobDuration < time.Millisecond {
 		*status = "interrupted"
 		return false, context.DeadlineExceeded
+	}
+	// У AI-стадии должен остаться отдельный интервал на запись результата
+	// или безопасное завершение attempt/job при отмене контекста провайдера.
+	// Run и job lease продолжают жить до исходной границы bounded.
+	workDeadline := deadline
+	if phase == "pipeline" {
+		var admissible bool
+		workDeadline, admissible = pipelineWorkDeadline(time.Now(), deadline)
+		if !admissible {
+			return false, nil
+		}
 	}
 	allowHH := *hhStages < 5
 	claim := ClaimOptions{Types: workerTypes, SourceID: &source, Lease: jobDuration, AllowApify: &allowHH, VerifiedHHOnly: w.ScheduleSources || w.VerifiedHHOnly}
@@ -380,7 +402,11 @@ func (w Worker) cycleStep(ctx, bounded context.Context, runID, phase string, d w
 	if kind := lease.Job().Type; kind == "scan_source" || kind == "fetch_full_text" {
 		(*hhStages)++
 	}
-	executeErr := workerExecute(bounded, d, lease, owner, w.DenyActorStarts, w.DeferUnspentBudget && w.EnforceActorCooldown)
+	// Провайдер и AI-этап ограничены ранним дедлайном; cleanup в
+	// workerExecute имеет собственный контекст и проверяет действующую lease.
+	workCtx, stopWork := context.WithDeadline(bounded, workDeadline)
+	executeErr := workerExecute(workCtx, d, lease, owner, w.DenyActorStarts, w.DeferUnspentBudget && w.EnforceActorCooldown)
+	stopWork()
 	reportCtx, reportCancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
 	reportErr := w.Runs.reportCycle(reportCtx, runID, result.Processed, false)
 	reportCancel()
