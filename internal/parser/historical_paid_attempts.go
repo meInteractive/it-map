@@ -20,11 +20,14 @@ type HistoricalPaidAttempts struct {
 	HistoricalCostRecorded int
 	OrphanUnknown          int
 	OrphanCostRecorded     int
+	HistoricalZeroReserveProviderUnknown int
+	OrphanZeroReserveProviderUnknown int
 }
 
 // InspectHistoricalPaidAttempts кратковременно удерживает generation lock и
 // читает ограниченный набор старых и осиротевших attempts с резервом,
-// записанной стоимостью или pending receipt. Текущее поколение не проверяется.
+// записанной стоимостью, pending receipt или выбранным AI-провайдером при
+// нулевом резерве и неизвестной стоимости. Текущее поколение не проверяется.
 // Непривязанные к run строки считаются отдельно и никогда не игнорируются.
 // Это не снимок apify_runs/архивов, не проверка оплаты и не разрешение POST,
 // settlement, освобождения резерва или снятия draining. Runtime его не вызывает.
@@ -62,7 +65,7 @@ func InspectHistoricalPaidAttemptsTx(ctx context.Context, tx *sql.Tx, generation
 	if current != generation {
 		return HistoricalPaidAttempts{}, ErrRunGeneration
 	}
-	rows, err := tx.QueryContext(ctx, `SELECT a.status,a.reason_code,a.reserved_usd,a.cost_usd,r.generation FROM scheduler_attempts a LEFT JOIN scheduler_runs r ON r.id=a.run_id WHERE (a.reserved_usd>0 OR a.cost_usd IS NOT NULL OR a.status='pending') AND (r.id IS NULL OR r.generation IS NULL OR BINARY r.generation<>BINARY ?) ORDER BY a.id LIMIT 1025 FOR UPDATE`, current)
+	rows, err := tx.QueryContext(ctx, `SELECT a.status,a.reason_code,a.reserved_usd,a.cost_usd,r.generation,a.type,a.provider FROM scheduler_attempts a LEFT JOIN scheduler_runs r ON r.id=a.run_id WHERE (a.reserved_usd>0 OR a.cost_usd IS NOT NULL OR a.status='pending' OR (a.type IN ('classify_title','extract_vacancy','assign_roles','score_relevance') AND COALESCE(a.provider,'')<>'' AND a.reserved_usd=0 AND a.cost_usd IS NULL)) AND (r.id IS NULL OR r.generation IS NULL OR BINARY r.generation<>BINARY ?) ORDER BY a.id LIMIT 1025 FOR UPDATE`, current)
 	if err != nil {
 		return HistoricalPaidAttempts{}, storageError(ctx)
 	}
@@ -76,8 +79,9 @@ func InspectHistoricalPaidAttemptsTx(ctx context.Context, tx *sql.Tx, generation
 		var status, reason string
 		var reserved float64
 		var cost sql.NullFloat64
-		var generation sql.NullString
-		if err = rows.Scan(&status, &reason, &reserved, &cost, &generation); err != nil {
+		var generation, provider sql.NullString
+		var attemptType string
+		if err = rows.Scan(&status, &reason, &reserved, &cost, &generation, &attemptType, &provider); err != nil {
 			return HistoricalPaidAttempts{}, storageError(ctx)
 		}
 		if !finiteMoney(reserved) || (cost.Valid && !finiteMoney(cost.Float64)) {
@@ -103,7 +107,14 @@ func InspectHistoricalPaidAttemptsTx(ctx context.Context, tx *sql.Tx, generation
 		if generation.Valid && !generationPattern.MatchString(generation.String) {
 			return HistoricalPaidAttempts{}, ErrHistoricalAttemptsIncompatible
 		}
+		// Положительный резерв не обязателен для возможного оплаченного
+		// POST: утеря ACK допускает нулевой остаток, но provider уже выбран.
+		zeroReserveProviderUnknown := reserved == 0 && !cost.Valid && provider.Valid && provider.String != "" &&
+			(attemptType == "classify_title" || attemptType == "extract_vacancy" || attemptType == "assign_roles" || attemptType == "score_relevance")
 		if !generation.Valid {
+			if zeroReserveProviderUnknown {
+				summary.OrphanZeroReserveProviderUnknown++
+			}
 			if cost.Valid {
 				summary.OrphanCostRecorded++
 			} else {
@@ -113,6 +124,9 @@ func InspectHistoricalPaidAttemptsTx(ctx context.Context, tx *sql.Tx, generation
 			summary.HistoricalCostRecorded++
 		} else {
 			summary.HistoricalUnknown++
+			if zeroReserveProviderUnknown {
+				summary.HistoricalZeroReserveProviderUnknown++
+			}
 		}
 	}
 	if rows.Err() != nil {
