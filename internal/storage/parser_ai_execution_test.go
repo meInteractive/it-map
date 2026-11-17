@@ -48,10 +48,11 @@ func (s *aiStageFixtureStore) Save(ctx context.Context, tx *sql.Tx, j parser.Job
 }
 
 type aiStageFixtureRunner struct {
-	calls   int
-	unknown bool
-	store   *aiStageFixtureStore
-	after   func()
+	calls        int
+	unknown      bool
+	store        *aiStageFixtureStore
+	after        func()
+	afterBilling func()
 }
 
 func (r *aiStageFixtureRunner) invoke(ctx context.Context, b aiproviders.Billing, check func(context.Context) error) error {
@@ -70,6 +71,10 @@ func (r *aiStageFixtureRunner) invoke(ctx context.Context, b aiproviders.Billing
 		}
 		return json.RawMessage(`{"usage":{"cost":0.001}}`), nil
 	})
+	if e == nil && r.afterBilling != nil {
+		// После durable settlement, но до сохранения результата AI-этапа.
+		r.afterBilling()
+	}
 	return e
 }
 func (r *aiStageFixtureRunner) Automatic(ctx context.Context, p aiproviders.GenerationRequest, _ profiles.ModelInput, b aiproviders.Billing) (aiproviders.AIResult, error) {
