@@ -21,6 +21,7 @@ type Snapshot struct {
 	CurrentActorUnresolved   int
 	CurrentAIReservedRunning int
 	CurrentAIReservedOther   int
+	CurrentAIZeroReserveProviderUnknown int
 }
 
 // Inspect блокирует generation и читает оба журнала в одной транзакции без
@@ -57,14 +58,14 @@ func Inspect(ctx context.Context, db *sql.DB, generation string) (snapshot Snaps
 	if err != nil {
 		return Snapshot{}, err
 	}
-	var aiRunning, aiOther int
-	if err = tx.QueryRowContext(ctx, `SELECT COALESCE(SUM(CASE WHEN a.status='running' THEN 1 ELSE 0 END),0), COALESCE(SUM(CASE WHEN a.status<>'running' THEN 1 ELSE 0 END),0) FROM scheduler_attempts a JOIN scheduler_runs r ON r.id=a.run_id WHERE BINARY r.generation=BINARY ? AND a.provider IN ('openai','openrouter') AND a.reserved_usd>0 AND a.cost_usd IS NULL`, generation).Scan(&aiRunning, &aiOther); err != nil {
+	var aiRunning, aiOther, aiZeroReserve int
+	if err = tx.QueryRowContext(ctx, `SELECT COALESCE(SUM(CASE WHEN a.reserved_usd>0 AND a.cost_usd IS NULL AND a.status='running' THEN 1 ELSE 0 END),0), COALESCE(SUM(CASE WHEN a.reserved_usd>0 AND a.cost_usd IS NULL AND a.status<>'running' THEN 1 ELSE 0 END),0), COALESCE(SUM(CASE WHEN a.reserved_usd=0 AND a.cost_usd IS NULL AND a.type IN ('classify_title','extract_vacancy','assign_roles','score_relevance') THEN 1 ELSE 0 END),0) FROM scheduler_attempts a JOIN scheduler_runs r ON r.id=a.run_id WHERE BINARY r.generation=BINARY ? AND a.provider IN ('openai','openrouter')`, generation).Scan(&aiRunning, &aiOther, &aiZeroReserve); err != nil {
 		return Snapshot{}, snapshotStorageError(ctx)
 	}
 	if err = ctx.Err(); err != nil {
 		return Snapshot{}, err
 	}
-	return Snapshot{Apify: apify, Scheduler: scheduler, CurrentActorUnresolved: current, CurrentAIReservedRunning: aiRunning, CurrentAIReservedOther: aiOther}, nil
+	return Snapshot{Apify: apify, Scheduler: scheduler, CurrentActorUnresolved: current, CurrentAIReservedRunning: aiRunning, CurrentAIReservedOther: aiOther, CurrentAIZeroReserveProviderUnknown: aiZeroReserve}, nil
 }
 
 func snapshotStorageError(ctx context.Context) error {
