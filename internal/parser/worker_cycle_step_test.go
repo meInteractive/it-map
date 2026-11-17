@@ -47,21 +47,20 @@ func TestStoppedCycleDoesNotOpenRun(t *testing.T) {
 	}
 }
 
-func TestTimeBudgetKeepsFirstJobAndProtectsSubsequentClaim(t *testing.T) {
+func TestTimeBudgetProtectsEveryClaim(t *testing.T) {
 	for _, tc := range []struct {
 		name               string
-		processed          int
 		remaining, minimum time.Duration
 		want               bool
 	}{
-		{"first job even on short cycle", 0, time.Second, time.Minute, true},
-		{"legacy disabled", 1, time.Second, 0, true},
-		{"enough time", 1, time.Minute, time.Minute, true},
-		{"just below budget", 1, time.Minute - time.Nanosecond, time.Minute, false},
-		{"negative remaining", 1, -time.Second, time.Minute, false},
+		{"first claim without budget", time.Second, time.Minute, false},
+		{"manual profile without budget rule", time.Second, 0, true},
+		{"enough time for first claim", time.Minute, time.Minute, true},
+		{"subsequent claim just below budget", time.Minute - time.Nanosecond, time.Minute, false},
+		{"expired cycle does not claim", -time.Second, time.Minute, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := enoughTimeForNextJob(tc.processed, tc.remaining, tc.minimum); got != tc.want {
+			if got := enoughTimeForNextJob(tc.remaining, tc.minimum); got != tc.want {
 				t.Fatalf("got %v want %v", got, tc.want)
 			}
 		})
