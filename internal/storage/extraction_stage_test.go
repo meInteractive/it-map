@@ -164,10 +164,27 @@ func TestMariaDBExtractionStageSourceDisposable(t *testing.T) {
 				if e2 := f.db.QueryRowContext(f.ctx, "SELECT diagnostics,status,error_code FROM vacancy_extractions WHERE candidate_id=990001").Scan(&diag, &status, &code); e2 != nil {
 					t.Fatal(e2)
 				}
-				var diagnostic any
-				_ = json.Unmarshal([]byte(diag), &diagnostic)
-				if status != stored["status"] || !code.Valid || code.String != stored["error_code"] || !reflect.DeepEqual(diagnostic, stored["diagnostics"]) {
+				var diagnostic map[string]any
+				if err := json.Unmarshal([]byte(diag), &diagnostic); err != nil {
+					t.Fatal("invalid stored extraction diagnostics", err)
+				}
+				// outputIssue — безопасное расширение Go-контракта: исторический
+				// JS-эталон сверяется побайтно по смыслу всех прежних полей,
+				// а дополнительная категория проверяется отдельно.
+				outputIssue, hasOutputIssue := diagnostic["outputIssue"]
+				delete(diagnostic, "outputIssue")
+				if status != stored["status"] || !code.Valid || code.String != stored["error_code"] || !reflect.DeepEqual(any(diagnostic), stored["diagnostics"]) {
 					t.Fatal("source error receipt differs")
+				}
+				switch frame.Name {
+				case "invalid_salary":
+					if !hasOutputIssue || outputIssue != "salary_unverified" {
+						t.Fatal("salary validation category not stored", outputIssue)
+					}
+				default:
+					if hasOutputIssue {
+						t.Fatal("unexpected extraction output diagnostic", frame.Name, outputIssue)
+					}
 				}
 			}
 			if frame.Calls == 0 {
