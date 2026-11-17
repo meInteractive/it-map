@@ -52,6 +52,9 @@ type WorkerOptions struct {
 	MaxJobs      int
 	QueueProfile string          // "" = прежний ручной цикл; balanced, launch, reconcile, pipeline
 	StopClaims   <-chan struct{} // необязательный сигнал остановки перед следующим claim
+	// MinRemaining preserves useful execution time for the next job in an
+	// already-progressing cycle; zero retains the existing behaviour.
+	MinRemaining time.Duration
 }
 type WorkerResult struct {
 	Run       Run
@@ -116,7 +119,7 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 	if duration == 0 {
 		duration = 110 * time.Second
 	}
-	if duration < time.Millisecond || duration > 110*time.Second {
+	if duration < time.Millisecond || duration > 110*time.Second || options.MinRemaining < 0 || options.MinRemaining > duration {
 		return result, ErrRunInput
 	}
 	start, err := w.Runs.Begin(ctx, options.Run)
@@ -290,6 +293,10 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 			if claimsStopped(options.StopClaims) {
 				return result, nil
 			}
+			deadline, _ := bounded.Deadline()
+			if !enoughTimeForNextJob(result.Processed, time.Until(deadline), options.MinRemaining) {
+				return result, nil
+			}
 			processed, stepErr := w.cycleStep(ctx, bounded, start.Run.ID, phase, d, owner, &result, &phaseProcessed, &hhStages, &status, &releaseRun)
 			if stepErr != nil {
 				return result, stepErr
@@ -300,6 +307,12 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 		}
 	}
 	return result, nil
+}
+
+// The first job is always allowed to avoid starving short cycles. The check is
+// before the claim: no lease, attempt, reservation or provider I/O is created.
+func enoughTimeForNextJob(processed int, remaining, minimum time.Duration) bool {
+	return processed == 0 || minimum == 0 || remaining >= minimum
 }
 
 func claimsStopped(stop <-chan struct{}) bool {
