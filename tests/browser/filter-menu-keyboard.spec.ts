@@ -7,13 +7,16 @@ const fixture = await build({
     contents: [
       "import React, { useState } from 'react';",
       "import { createRoot } from 'react-dom/client';",
-      "import { RankFilter, defaultFilters } from './frontend/features/companies/Filters';",
+      "import { RankFilter, FavoriteFilter, defaultFilters } from './frontend/features/companies/Filters';",
       "function Demo() {",
       "  const [filters, setFilters] = useState(defaultFilters);",
       "  return <><button id='outside'>Вне фильтра</button>",
       "    <RankFilter count={42} value={filters} onChange={next => {",
       "      window.__filterChanges.push({ ...next }); setFilters(next);",
-      "    }} /></>;",
+      "    }} />",
+       "    <FavoriteFilter value={filters} onChange={next => {",
+       "      window.__filterChanges.push({ ...next }); setFilters(next);",
+       "    }} /></>;",
       "}",
       "window.__filterChanges = [];",
       "const root = createRoot(document.getElementById('root'));",
@@ -74,15 +77,15 @@ test('16, 17: FilterMenu открывается, Escape закрывает и с
 test('19: выбор нескольких фильтров не теряет предыдущие флажки', async ({page}) => {
   await page.getByRole('button', {name: /Места/}).click();
   const menu = page.locator('.rank-filter-menu');
-  await page.getByRole('checkbox', {name: 'Избранные'}).check();
   await page.getByRole('checkbox', {name: 'Показать скрытые'}).check();
   await page.getByRole('checkbox', {name: 'С вакансиями'}).check();
+  await page.getByRole('checkbox', {name: 'С откликами'}).check();
   await expect(menu).toBeVisible();
   const changes = await page.evaluate(() => (window as any).__filterChanges as Record<string, boolean>[]);
   expect(changes).toHaveLength(3);
-  expect(changes[0]).toMatchObject({favoriteOnly: true, showHidden: false, vacanciesOnly: false});
-  expect(changes[1]).toMatchObject({favoriteOnly: true, showHidden: true, vacanciesOnly: false});
-  expect(changes[2]).toMatchObject({favoriteOnly: true, showHidden: true, vacanciesOnly: true});
+  expect(changes[0]).toMatchObject({favorites: 'all', showHidden: true, vacanciesOnly: false});
+  expect(changes[1]).toMatchObject({favorites: 'all', showHidden: true, vacanciesOnly: true});
+  expect(changes[2]).toMatchObject({favorites: 'all', showHidden: true, vacanciesOnly: true, applicationsOnly: true});
   expect(changes[2].rankTop).toBe(true);
 });
 
@@ -90,13 +93,13 @@ test('17, 18: повторное открытие сохраняет выбор,
   const trigger = page.getByRole('button', {name: /Места/});
   const menu = page.locator('.rank-filter-menu');
   await trigger.click();
-  await page.getByRole('checkbox', {name: 'Избранные'}).check();
   await page.getByRole('checkbox', {name: 'Показать скрытые'}).check();
   await page.getByRole('checkbox', {name: 'С вакансиями'}).check();
+  await page.getByRole('checkbox', {name: 'С откликами'}).check();
   await page.keyboard.press('Escape');
   await expect(menu).toBeHidden();
   await trigger.click();
-  await expect(page.getByRole('checkbox', {name: 'Избранные'})).toBeChecked();
+  await expect(page.getByRole('checkbox', {name: 'С откликами'})).toBeChecked();
   await expect(page.getByRole('checkbox', {name: 'Показать скрытые'})).toBeChecked();
   await expect(page.getByRole('checkbox', {name: 'С вакансиями'})).toBeChecked();
   await page.getByRole('checkbox', {name: 'С вакансиями'}).uncheck();
@@ -104,6 +107,29 @@ test('17, 18: повторное открытие сохраняет выбор,
   await page.getByRole('button', {name: 'Вне фильтра'}).click();
   await expect(menu).toBeHidden();
   await expect.poll(() => listenerSizes(page)).toEqual({pointerdown: 0, focusin: 0});
+});
+
+test('GO-448: отдельное меню избранного выбирает один из трёх режимов', async ({page}) => {
+  const trigger = page.getByRole('button', {name: /Избранное · Все/});
+  const menu = page.locator('.favorite-filter-menu');
+  await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+  await trigger.click();
+  await expect(menu).toBeVisible();
+  await expect(page.getByRole('radio', {name: 'Все'})).toBeChecked();
+  await expect(page.getByRole('radio', {name: 'Избранные', exact: true})).not.toBeChecked();
+  await expect(page.getByRole('radio', {name: 'Не избранные'})).not.toBeChecked();
+  await page.getByRole('radio', {name: 'Не избранные'}).check();
+  await expect(page.getByRole('radio', {name: 'Не избранные'})).toBeChecked();
+  await expect(page.getByRole('button', {name: /Избранное · Не избранные/})).toBeVisible();
+  await page.getByRole('radio', {name: 'Избранные', exact: true}).check();
+  await expect(page.getByRole('radio', {name: 'Избранные', exact: true})).toBeChecked();
+  await page.getByRole('radio', {name: 'Все'}).check();
+  await expect(page.getByRole('radio', {name: 'Все'})).toBeChecked();
+  await page.keyboard.press('Escape');
+  await expect(menu).toBeHidden();
+  await expect.poll(() => listenerSizes(page)).toEqual({pointerdown: 0, focusin: 0});
+  const changes = await page.evaluate(() => (window as any).__filterChanges);
+  expect(changes.map((v: any) => v.favorites)).toEqual(['notFavorites', 'favorites', 'all']);
 });
 
 test('20: повторное открытие и размонтирование не оставляют обработчиков', async ({page}) => {
