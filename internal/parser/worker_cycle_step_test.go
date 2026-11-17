@@ -78,7 +78,6 @@ func TestCycleRejectsInvalidTimeBudgetBeforeDatabaseAccess(t *testing.T) {
 	}
 }
 
-
 func TestPipelineWorkDeadlineLeavesCleanupReserve(t *testing.T) {
 	now := time.Date(2026, time.November, 17, 12, 0, 0, 0, time.UTC)
 	for _, tc := range []struct {
