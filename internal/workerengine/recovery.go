@@ -19,6 +19,9 @@ type RecoverySnapshot struct {
 	SchedulerHistoricalCostRecorded int `json:"schedulerHistoricalCostRecorded"`
 	SchedulerOrphanUnknown          int `json:"schedulerOrphanUnknown"`
 	SchedulerOrphanCostRecorded     int `json:"schedulerOrphanCostRecorded"`
+	CurrentAIZeroReserveProviderUnknown int `json:"currentAIZeroReserveProviderUnknown"`
+	SchedulerHistoricalZeroReserveProviderUnknown int `json:"schedulerHistoricalZeroReserveProviderUnknown"`
+	SchedulerOrphanZeroReserveProviderUnknown int `json:"schedulerOrphanZeroReserveProviderUnknown"`
 }
 type RecoveryReader interface {
 	ReadRecovery(context.Context) (RecoverySnapshot, error)
@@ -40,5 +43,6 @@ func (r *sqlRecoveryReader) ReadRecovery(ctx context.Context) (RecoverySnapshot,
 		return RecoverySnapshot{}, errQueue
 	}
 	return RecoverySnapshot{CurrentAIReservedRunning: snap.CurrentAIReservedRunning, CurrentAIReservedOther: snap.CurrentAIReservedOther, ActorCurrentUnresolved: snap.CurrentActorUnresolved, ActorUnknown: snap.Apify.Unknown, ActorReconcile: snap.Apify.Reconcile, ActorCostRecorded: snap.Apify.TerminalCostRecorded,
-		SchedulerHistoricalUnknown: snap.Scheduler.HistoricalUnknown, SchedulerHistoricalCostRecorded: snap.Scheduler.HistoricalCostRecorded, SchedulerOrphanUnknown: snap.Scheduler.OrphanUnknown, SchedulerOrphanCostRecorded: snap.Scheduler.OrphanCostRecorded}, nil
+		SchedulerHistoricalUnknown: snap.Scheduler.HistoricalUnknown, SchedulerHistoricalCostRecorded: snap.Scheduler.HistoricalCostRecorded, SchedulerOrphanUnknown: snap.Scheduler.OrphanUnknown, SchedulerOrphanCostRecorded: snap.Scheduler.OrphanCostRecorded,
+		CurrentAIZeroReserveProviderUnknown: snap.CurrentAIZeroReserveProviderUnknown, SchedulerHistoricalZeroReserveProviderUnknown: snap.Scheduler.HistoricalZeroReserveProviderUnknown, SchedulerOrphanZeroReserveProviderUnknown: snap.Scheduler.OrphanZeroReserveProviderUnknown}, nil
 }
