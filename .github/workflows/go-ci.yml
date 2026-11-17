@@ -242,6 +242,7 @@ jobs:
             node scripts/test-map-search.mjs
             node scripts/test-map-selection.mjs
             node scripts/test-filter-storage-recovery.mjs
+            node scripts/test-company-favorite-modes.mjs
             node scripts/test-map-office-features.mjs
             node scripts/test-map-office-grouping.mjs
           fi
