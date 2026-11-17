@@ -123,8 +123,8 @@ func (e Engine) cycle(ctx context.Context, stopClaims <-chan struct{}, profile w
 	}
 	id := "worker:" + hex.EncodeToString(raw[:])
 	worker := e.workerForProfile(profile)
-	// Keep at least a minute for another pipeline job. Long AI calls can still
-	// time out; this only prevents starting them near the end of a busy cycle.
+	// Резервируем минуту перед любым новым pipeline job, включая первый.
+	// Долгие AI-вызовы всё ещё могут превысить дедлайн.
 	var minRemaining time.Duration
 	if profile == workerloop.Pipeline {
 		minRemaining = 60 * time.Second
