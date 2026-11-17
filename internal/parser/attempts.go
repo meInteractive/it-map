@@ -156,10 +156,13 @@ func reserveAttemptLocked(ctx context.Context, tx *sql.Tx, lease *JobLease, id s
 	var relevanceScope string
 	if upper > 0 {
 		var unresolved int
-		// A provider is recorded before the external call, even when the
-		// calculated upper bound is zero. If the receipt is missing, zero is
-		// not proof that the provider was never called or that its cost is known.
-		if e = tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM scheduler_attempts WHERE job_id=? AND id<>? AND cost_usd IS NULL AND (reserved_usd>0 OR COALESCE(provider,'')<>'')", lease.jobID, id).Scan(&unresolved); e != nil {
+		// При прерывании результат AI-этапа мог не сохраниться даже после
+		// успешной фиксации стоимости провайдера. Ни нулевой резерв, ни известная
+		// стоимость не разрешают ещё один платный POST у незавершённого этапа.
+		if e = tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM scheduler_attempts
+WHERE job_id=? AND id<>? AND
+((cost_usd IS NULL AND (reserved_usd>0 OR COALESCE(provider,'')<>''))
+ OR (status IN ('running','pending','interrupted') AND COALESCE(provider,'')<>''))`, lease.jobID, id).Scan(&unresolved); e != nil {
 			return storageError(ctx)
 		}
 		if unresolved != 0 {
