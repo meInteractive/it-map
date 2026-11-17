@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"math"
 	"testing"
 
 	"itmap/internal/parser"
@@ -69,8 +70,8 @@ func TestMariaDBAIStageFaultRecoveryNoPaidReplayDisposable(t *testing.T) {
 				if originalReserve <= 0 || costValue != nil {
 					t.Fatal("incomplete AI stage must retain uncertain cost", originalReserve, costValue)
 				}
-				if tc.ackReceived && runner.unknown {
-					t.Fatal("acknowledged response was misclassified as lost ACK")
+				if tc.ackReceived && math.Abs(originalReserve-0.001) > 0.000000001 {
+					t.Fatal("acknowledged usage was not reflected in the durable reserve", originalReserve)
 				}
 			}
 			// Только тестовая БД: имитируем истечение lease и штатную recovery.
