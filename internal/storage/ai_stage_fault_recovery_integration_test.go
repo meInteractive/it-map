@@ -18,7 +18,7 @@ func TestMariaDBAIStageFaultRecoveryNoPaidReplayDisposable(t *testing.T) {
 		name        string
 		beforePOST  bool
 		lostACK     bool
-		knownCost   bool
+		ackReceived bool
 	}{
 		{"cancel_before_post", true, false, false},
 		{"cancel_after_settlement_before_stage_save", false, false, true},
@@ -64,8 +64,13 @@ func TestMariaDBAIStageFaultRecoveryNoPaidReplayDisposable(t *testing.T) {
 					t.Fatal("accepted synthetic POST lost running receipt", err)
 				}
 				originalCost = costValue
-				if originalReserve <= 0 || (tc.knownCost && costValue == nil) || (!tc.knownCost && costValue != nil) {
-					t.Fatal("payment evidence before recovery is wrong", originalReserve, costValue)
+				// Settlement корректирует reserved_usd. cost_usd пишется лишь
+				// вместе с финальным attempt/job receipt: до него NULL безопасен.
+				if originalReserve <= 0 || costValue != nil {
+					t.Fatal("incomplete AI stage must retain uncertain cost", originalReserve, costValue)
+				}
+				if tc.ackReceived && runner.unknown {
+					t.Fatal("acknowledged response was misclassified as lost ACK")
 				}
 			}
 			// Только тестовая БД: имитируем истечение lease и штатную recovery.
