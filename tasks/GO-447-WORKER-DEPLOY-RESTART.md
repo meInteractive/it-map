@@ -2,7 +2,7 @@
 
 - **Спринт:** 1.1.
 - **Приоритет:** высокий операционный; реализация — после стабилизации критических инвариантов GO-431. Подготовку кода и синтетических тестов можно вести независимо.
-- **Исполнитель:** Codex Cloud, отдельные PR, без автоматического merge.
+- **Исполнитель:** Codex Cloud, отдельные PR, без автоматического merge. [GitHub Issue #472](https://github.com/meInteractive/it-map/issues/472).
 - **Статус:** [ ] задача поставлена 17.11.2026; реализация и server rollout НЕ выполнялись в рамках постановки.
 - **Связи:** GO-431 (единственный consumer, leases, платные POST, graceful shutdown), GO-345/GO-056/GO-057 (main-only native publish, receiver, atomic current/previous, rollback), GO-007 (реальный deployment gate).
 - **Контекст:** на момент постановки `.github/workflows/publish.yml` собирает `./cmd/itmap` и web, а `deploy/receive_release.py` перезапускает лишь `itmap@main.service`. Воркер — отдельный `cmd/itmap-worker`, шаблон `deploy/itmap-worker.service.example` (`ExecStart=/opt/itmap/worker/current/itmap-worker`). Поэтому обычный деплой main и restart API **не доставляют новый воркер**; отдельный `systemctl restart itmap-worker.service` без замены бинарника также не применяет код.
