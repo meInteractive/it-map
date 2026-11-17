@@ -255,3 +255,114 @@ h1{font-size:24px;margin:11px 0 6px;line-height:1.15}.sector{font-size:13px;colo
 .fulltext-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:18px 0}.fulltext-stats>div{border:1px solid var(--line);border-radius:10px;padding:12px;background:#f8fafc}.fulltext-stats dt{font-size:12px;color:var(--muted)}.fulltext-stats dd{margin:6px 0 0;font-size:24px;font-weight:700}.vacancy-details pre{max-height:480px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;padding:12px;background:#f8fafc;border-radius:8px}.vacancy-details details{margin:12px 0}.vacancy-details summary{cursor:pointer}.vacancy-details .rendered-md{max-height:600px;overflow:auto;padding:12px}.vacancy-details .resume-hint{overflow-wrap:anywhere}
 
 .vacancy-import .import-candidate{display:flex;align-items:flex-start;gap:8px;margin:10px 0}.vacancy-import pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:240px;overflow:auto;font-size:12px}.vacancy-import table{width:100%;border-collapse:collapse}.vacancy-import td,.vacancy-import th{padding:8px;vertical-align:top;text-align:left;border:1px solid var(--line);min-width:140px}.vacancy-import td pre{margin:0}.vacancy-import details{margin:12px 0}.vacancy-import summary{cursor:pointer}.vacancy-import{overflow-wrap:anywhere}
+
+/* GO-448: самостоятельный фильтр избранного, общий для списка и карты. */
+.favorite-filter {
+  position: relative;
+  flex: 0 0 auto;
+}
+.favorite-filter-button {
+  height: 42px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  color: #495569;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 680;
+  white-space: nowrap;
+}
+.favorite-filter-button:hover,
+.favorite-filter-button[aria-expanded="true"] {
+  background: #f6f8fb;
+  border-color: #b8c6dc;
+}
+.favorite-filter-button:focus-visible {
+  outline: 2px solid #8bb1ff;
+  outline-offset: 2px;
+}
+.favorite-filter-button .filter-icon {
+  width: 18px;
+  height: 18px;
+  color: #2563eb;
+}
+.favorite-filter-button .chevron {
+  width: 14px;
+  height: 14px;
+  color: #8993a2;
+}
+.favorite-filter-menu {
+  position: absolute;
+  left: 0;
+  top: 49px;
+  width: 208px;
+  display: none;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: #fff;
+  box-shadow: var(--shadow);
+  z-index: 60;
+}
+.favorite-filter-menu.open {
+  display: block;
+}
+.favorite-filter-options {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.favorite-filter-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 9px;
+  border-radius: 9px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.favorite-filter-option:hover {
+  background: #f4f7fb;
+}
+.favorite-filter-option input {
+  width: 17px;
+  height: 17px;
+  margin: 0;
+  accent-color: #2563eb;
+}
+@media (max-width: 760px) {
+  .favorite-filter-button {
+    width: 42px;
+    padding: 0;
+    justify-content: center;
+  }
+  .favorite-filter-button .filter-text,
+  .favorite-filter-button .chevron {
+    display: none;
+  }
+  .app[data-section="vacancies"] .favorite-filter-menu {
+    position: fixed;
+    top: calc(var(--safe-area-top) + 56px);
+    left: max(10px, env(safe-area-inset-left));
+    right: max(10px, env(safe-area-inset-right));
+    width: auto;
+    max-width: none;
+    max-height: calc(100dvh - var(--safe-area-top) - 136px);
+    overflow-y: auto;
+    z-index: 85;
+  }
+  .app[data-section="map"] .favorite-filter-menu,
+  .app[data-section="list"] .favorite-filter-menu {
+    left: auto;
+    right: 0;
+    width: min(250px, calc(100vw - 20px));
+  }
+  .app[data-section="vacancies"] header:has(.vacancy-search-wrap:focus-within) .favorite-filter {
+    display: none;
+  }
+}
