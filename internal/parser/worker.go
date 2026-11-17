@@ -294,7 +294,7 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 				return result, nil
 			}
 			deadline, _ := bounded.Deadline()
-			if !enoughTimeForNextJob(result.Processed, time.Until(deadline), options.MinRemaining) {
+			if !enoughTimeForNextJob(time.Until(deadline), options.MinRemaining) {
 				return result, nil
 			}
 			processed, stepErr := w.cycleStep(ctx, bounded, start.Run.ID, phase, d, owner, &result, &phaseProcessed, &hhStages, &status, &releaseRun)
@@ -309,10 +309,11 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 	return result, nil
 }
 
-// The first job is always allowed to avoid starving short cycles. The check is
-// before the claim: no lease, attempt, reservation or provider I/O is created.
-func enoughTimeForNextJob(processed int, remaining, minimum time.Duration) bool {
-	return processed == 0 || minimum == 0 || remaining >= minimum
+// Бюджет проверяется перед любым claim, включая первый: при нехватке
+// времени новый цикл сможет взять задание без близкой отмены контекста.
+// Нулевой minimum сохраняет поведение ручных запусков.
+func enoughTimeForNextJob(remaining, minimum time.Duration) bool {
+	return minimum == 0 || remaining >= minimum
 }
 
 func claimsStopped(stop <-chan struct{}) bool {
