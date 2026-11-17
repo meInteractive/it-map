@@ -27,7 +27,7 @@ async function scenario(name, input, expected) {
     assert.deepEqual(observed, expected, name);
     assert.ok(writes.length > 0, name + ': настройки сохраняются после инициализации');
     const persisted = JSON.parse(storage.get(rankStorageKey));
-    assert.deepEqual(persisted, { version: 1, ...expected }, name + ': допустимый формат сохранён');
+    assert.deepEqual(persisted, { version: 2, ...expected }, name + ': допустимый формат сохранён');
   } finally {
     if (root) await act(async () => root.unmount());
     globalThis.localStorage = previous;
@@ -36,6 +36,18 @@ async function scenario(name, input, expected) {
 await scenario('отсутствуют настройки', null, defaultFilters);
 await scenario('повреждённый JSON', '{invalid', defaultFilters);
 await scenario('неизвестная версия', JSON.stringify({ version: 5, favoriteOnly: true }), defaultFilters);
+await scenario('миграция прежнего избранного',
+  JSON.stringify({ version: 1, favoriteOnly: true, rankTop: false }),
+  { ...defaultFilters, favorites: 'favorites', rankTop: false });
+await scenario('миграция прежнего выключенного избранного',
+  JSON.stringify({ version: 1, favoriteOnly: false }),
+  defaultFilters);
+await scenario('три режима: не избранные',
+  JSON.stringify({ version: 2, favorites: 'notFavorites', vacanciesOnly: true }),
+  { ...defaultFilters, favorites: 'notFavorites', vacanciesOnly: true });
+await scenario('неизвестный вариант избранного',
+  JSON.stringify({ version: 2, favorites: 'broken', rankBottom: false }),
+  { ...defaultFilters, rankBottom: false });
 await scenario('недопустимый тип одного значения',
   JSON.stringify({ version: 1, rankTop: false, favoriteOnly: 'true', showHidden: true }),
   { ...defaultFilters, rankTop: false, showHidden: true });
@@ -62,18 +74,18 @@ await scenario('частично сохранённые допустимые п�
   const output = () => root.root.findByType('output').props;
   try {
     await act(async () => { root = create(h(Interactive)); });
-    await act(async () => output().toggle('favoriteOnly', true));
+    await act(async () => output().toggle('favorites', 'notFavorites'));
     await act(async () => output().toggle('rankTop', false));
     await act(async () => output().toggle('showHidden', true));
-    assert.equal(output()['data-filters'].favoriteOnly, true);
+    assert.equal(output()['data-filters'].favorites, 'notFavorites');
     assert.equal(output()['data-filters'].rankTop, false);
     assert.equal(output()['data-filters'].showHidden, true);
     await act(async () => output().toggle('rankTop', true));
-    assert.equal(output()['data-filters'].favoriteOnly, true, 'Очистка одного фильтра не снимает избранное');
+    assert.equal(output()['data-filters'].favorites, 'notFavorites', 'Очистка одного фильтра не снимает режим избранного');
     assert.equal(output()['data-filters'].showHidden, true, 'Очистка одного фильтра не снимает скрытые');
     await act(async () => root.unmount()); root = null;
     await act(async () => { root = create(h(Interactive)); });
-    assert.equal(output()['data-filters'].favoriteOnly, true, 'Возврат к разделу сохраняет активный фильтр');
+    assert.equal(output()['data-filters'].favorites, 'notFavorites', 'Возврат к разделу сохраняет активный фильтр');
     assert.equal(output()['data-filters'].rankTop, true);
     assert.equal(output()['data-filters'].showHidden, true);
   } finally {
@@ -81,4 +93,4 @@ await scenario('частично сохранённые допустимые п�
     globalThis.localStorage = previous;
   }
 }
-console.log('PASS: восстановление, независимые переключения и сохранение нескольких фильтров');
+console.log('PASS: v1→v2, три режима избранного, восстановление и независимость фильтров');
