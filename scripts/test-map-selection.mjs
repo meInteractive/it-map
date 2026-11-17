@@ -24,7 +24,7 @@ Object.defineProperty(globalThis,'navigator',{configurable:true,value:{onLine:tr
 maplibregl.Map=FakeMap;
 const ui=await moduleFor('scripts/react-test-entry.tsx');
 const geometry=await moduleFor('frontend/features/map/geometry.ts');
-const companies=[{name:'Alpha',entityType:'company',rank:1,offices:[{lat:55.75,lon:37.61},{lat:55.76,lon:37.62}]},{name:'Beta',entityType:'company',rank:2,offices:[{lat:55.75,lon:37.61}]}];
+const companies=[{name:'Alpha',entityType:'company',rank:1,favorite:true,offices:[{lat:55.75,lon:37.61},{lat:55.76,lon:37.62}]},{name:'Beta',entityType:'company',rank:2,favorite:false,offices:[{lat:55.75,lon:37.61}]}];
 assert.deepEqual(geometry.officeFeatures(companies,'Alpha').features.map(f=>f.properties.selected),[true,true,false]);
 assert.deepEqual(geometry.officeFeatures(companies).features.map(f=>f.properties.label),['№ 1 Alpha','№ 1 Alpha','№ 2 Beta']);
 const unranked=[null,0,-1,1.5,Infinity,undefined].map((rank,i)=>({name:'Unranked '+i,rank,offices:[{lat:55.75,lon:37.61}]}));
@@ -89,21 +89,23 @@ try{
  assert.equal(maps[0].getSource('companies').data.features.length,3,'Очистка возвращает исходные офисы');
  assert.equal(calls.filter(url=>url==='/api/companies/map').length,1,'Поиск не вызывает новый GET карты');
  assert.ok(maps[0].getSource('metro').updates>metroUpdatesBeforeSearch,'Поиск действительно обновляет GeoJSON метро');
- // Фильтры управляют реальными GeoJSON-маркерами без нового запроса карты.
- await click(buttons().find(b=>b.props.className==='rank-filter-button'));
- const favoriteLabel=root.root.findAllByType('label').find(node=>label(node)==='Избранные');
- assert.ok(favoriteLabel,'Фильтр избранного должен быть в действующем интерфейсе');
- const favoriteInput=()=>root.root.findAllByType('label').find(node=>label(node)==='Избранные').findByType('input');
- await act(async()=>favoriteInput().props.onChange({target:{checked:true}}));await flush();
- assert.deepEqual(maps[0].getSource('companies').data.features,[],'Пустое пересечение немедленно удаляет старые маркеры');
- assert.equal(calls.filter(url=>url==='/api/companies/map').length,1,'Фильтрация не делает новый запрос');
- await act(async()=>favoriteInput().props.onChange({target:{checked:false}}));await flush();
- assert.equal(maps[0].getSource('companies').data.features.length,3,'Снятие только избранного возвращает маркеры');
+ // Три радиорежима обновляют реальные GeoJSON-маркеры без повторного GET.
+ await click(buttons().find(b=>b.props.className==='favorite-filter-button'));
+ const favoriteInput=name=>root.root.findAllByType('label').find(node=>label(node)===name)?.findByType('input');
+ const choose=async name=>{const input=favoriteInput(name);assert.ok(input,'radio '+name);await act(async()=>input.props.onChange({target:{checked:true}}));await flush()};
+ await choose('Избранные');
+ assert.deepEqual(maps[0].getSource('companies').data.features.map(f=>f.properties.companyName),['Alpha','Alpha'],'избранные маркеры');
+ assert.equal(calls.filter(url=>url==='/api/companies/map').length,1,'радиофильтр не вызывает новый GET');
+ await choose('Не избранные');
+ assert.deepEqual(maps[0].getSource('companies').data.features.map(f=>f.properties.companyName),['Beta'],'не избранные маркеры');
+ await choose('Все');
+ assert.equal(maps[0].getSource('companies').data.features.length,3,'все компании после сброса фильтра');
  const marker=async name=>{await act(async()=>maps[0].handlers.get('click:company-dots')({features:[{properties:{companyName:name}}]}));await flush()};
  await marker('Alpha');assert.deepEqual(selected(),['Alpha','Alpha']);
- await act(async()=>favoriteInput().props.onChange({target:{checked:true}}));await flush();
- assert.deepEqual(maps[0].getSource('companies').data.features,[],'Фильтр исключил выбранную компанию без подмены');
- await act(async()=>favoriteInput().props.onChange({target:{checked:false}}));await flush();
+ await choose('Не избранные');
+ assert.deepEqual(maps[0].getSource('companies').data.features.map(f=>f.properties.companyName),['Beta'],'Фильтр исключил выбранную избранную компанию');
+ assert.deepEqual(selected(),[],'Исключённая компания больше не выделена');
+ await choose('Все');
  assert.deepEqual(selected(),['Alpha','Alpha'],'Возврат фильтра выделяет прежнюю компанию, а не другую');
  assert.equal(calls.filter(url=>url==='/api/companies/map').length,1);
  await marker('Beta');assert.deepEqual(selected(),['Beta']);
@@ -119,7 +121,7 @@ try{
  await act(async()=>root.unmount());root=null;assert.equal(maps[0].removed,true);
  assert.equal(observers[0].disconnected,true);
  const component=await moduleFor('frontend/features/map/Map.tsx');
- const filters={rankTop:true,rankBottom:true,rank101to150:true,rank151to200:true,rank201to250:true,rank251to300:true,rankBeyond300:true,rankUnranked:true,favoriteOnly:false,showHidden:false,vacanciesOnly:false,applicationsOnly:false};
+ const filters={rankTop:true,rankBottom:true,rank101to150:true,rank151to200:true,rank201to250:true,rank251to300:true,rankBeyond300:true,rankUnranked:true,favorites:'all',showHidden:false,vacanciesOnly:false,applicationsOnly:false};
  globalThis.fetch=url=>{calls.push(url);return new Promise(resolve=>{resolveMap=resolve;});};
  await act(async()=>{root=create(h(component.default,{nav:{openCompany(){}},filters,query:'',onCount(){} }),{createNodeMock:e=>e.props.id==='maplibreMap'?{}:null});});await flush();
  assert.match(label(root.toJSON()),/Загрузка карты…/);

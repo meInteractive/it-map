@@ -10,12 +10,17 @@ export const filterLabels = {
   rank251to300: '251–300',
   rankBeyond300: '301+',
   rankUnranked: 'Без рейтинга',
-  favoriteOnly: 'Избранные',
   showHidden: 'Показать скрытые',
   vacanciesOnly: 'С вакансиями',
   applicationsOnly: 'С откликами',
 };
-export type Filters = Record<keyof typeof filterLabels, boolean>;
+export const favoriteOptions = [
+  { value: 'favorites', label: 'Избранные' },
+  { value: 'notFavorites', label: 'Не избранные' },
+  { value: 'all', label: 'Все' },
+] as const;
+export type FavoriteMode = (typeof favoriteOptions)[number]['value'];
+export type Filters = Record<keyof typeof filterLabels, boolean> & { favorites: FavoriteMode };
 export const defaultFilters: Filters = {
   rankTop: true,
   rankBottom: true,
@@ -25,23 +30,38 @@ export const defaultFilters: Filters = {
   rank251to300: true,
   rankBeyond300: true,
   rankUnranked: true,
-  favoriteOnly: false,
+  favorites: 'all',
   showHidden: false,
   vacanciesOnly: false,
   applicationsOnly: false,
 };
 export const rankStorageKey = 'moscow-it-employers:rank-filter:v1';
+
+// Ключ localStorage сохраняется для чтения прежних настроек. Версия 2
+// переносит старый favoriteOnly в отдельный трёхпозиционный фильтр.
+export function restoreFilters(stored: unknown): Filters {
+  const next = { ...defaultFilters };
+  if (!stored || typeof stored !== 'object' || Array.isArray(stored)) return next;
+  const data = stored as Record<string, unknown>;
+  if (data.version !== 1 && data.version !== 2) return next;
+  for (const key of Object.keys(filterLabels) as (keyof typeof filterLabels)[])
+    if (typeof data[key] === 'boolean') next[key] = data[key];
+  if (data.version === 1) {
+    next.favorites = data.favoriteOnly === true ? 'favorites' : 'all';
+  } else if (favoriteOptions.some((option) => option.value === data.favorites)) {
+    next.favorites = data.favorites as FavoriteMode;
+  }
+  return next;
+}
+
 export function useFilters() {
   const [value, setValue] = useState(defaultFilters),
     [ready, setReady] = useState(false);
   useEffect(() => {
     try {
       const stored = JSON.parse(localStorage.getItem(rankStorageKey) || 'null');
-      if (stored?.version === 1) {
-        const next = { ...defaultFilters };
-        for (const key of Object.keys(next) as (keyof Filters)[])
-          if (typeof stored[key] === 'boolean') next[key] = stored[key];
-        setValue(next);
+      if (stored?.version === 1 || stored?.version === 2) {
+        setValue(restoreFilters(stored));
       }
     } catch {}
     setReady(true);
@@ -49,7 +69,7 @@ export function useFilters() {
   useEffect(() => {
     if (ready)
       try {
-        localStorage.setItem(rankStorageKey, JSON.stringify({ version: 1, ...value }));
+        localStorage.setItem(rankStorageKey, JSON.stringify({ version: 2, ...value }));
       } catch {}
   }, [ready, value]);
   return [value, setValue] as const;
@@ -75,7 +95,8 @@ export function matchesEntity(e: Entity, f: Filters) {
   return (
     f[key] &&
     (!e.hidden || f.showHidden) &&
-    (!f.favoriteOnly || !!e.favorite) &&
+    (f.favorites === 'all' ||
+      (f.favorites === 'favorites' ? !!e.favorite : !e.favorite)) &&
     (!f.vacanciesOnly || !!e.hasVacancies) &&
     (!f.applicationsOnly || !!e.hasApplications)
   );
@@ -95,7 +116,7 @@ export function RankFilter({
         <label className="rank-option" key={k}>
           <input
             type="checkbox"
-            checked={value[k as keyof Filters]}
+            checked={value[k as keyof typeof filterLabels]}
             onChange={(e) => onChange({ ...value, [k]: e.target.checked })}
           />
           <span>
@@ -103,6 +124,33 @@ export function RankFilter({
           </span>
         </label>
       ))}
+    </FilterMenu>
+  );
+}
+export function FavoriteFilter({
+  value,
+  onChange,
+}: {
+  value: Filters;
+  onChange: (v: Filters) => void;
+}) {
+  const label = favoriteOptions.find((option) => option.value === value.favorites)?.label || 'Все';
+  return (
+    <FilterMenu prefix="favorite" label={'Избранное · ' + label} title="Избранность компании">
+      <fieldset className="favorite-filter-options" aria-label="Избранное: компании">
+        {favoriteOptions.map((option) => (
+          <label className="favorite-filter-option" key={option.value}>
+            <input
+              type="radio"
+              name="company-favorite-mode"
+              value={option.value}
+              checked={value.favorites === option.value}
+              onChange={() => onChange({ ...value, favorites: option.value })}
+            />
+            <span>{option.label}</span>
+          </label>
+        ))}
+      </fieldset>
     </FilterMenu>
   );
 }
@@ -149,6 +197,7 @@ export function FilterMenu({
       <button
         type="button"
         className={prefix + '-filter-button'}
+        aria-label={label}
         aria-expanded={open}
         onClick={() => setOpen(!open)}
       >

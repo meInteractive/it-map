@@ -4,7 +4,7 @@ import { ApiError, useApi, clearCache, invalidate } from './api/client';
 import { Icon, State } from './components/Common';
 import type { EntityType, Navigation, Session, VacancyDetail } from '../shared/contracts';
 import { levels } from '../shared/contracts';
-import { RankFilter, FilterMenu, useFilters } from './features/companies/Filters';
+import { RankFilter, FavoriteFilter, FilterMenu, useFilters } from './features/companies/Filters';
 import { defaultVacancyFilters } from './features/vacancies/model';
 import { RoleTreeOptions } from './features/vacancies/RoleTree';
 import { confirmNavigation, allowSessionExit } from './hooks/useDirty';
@@ -325,6 +325,10 @@ function Workspace({ user }: { user: Session }) {
     } else fallback();
   }
   const showTools = ['map', 'list', 'vacancies'].includes(section);
+  const showFavoriteFilter =
+    section === 'map' ||
+    (section === 'list' && listType !== 'channel') ||
+    (section === 'vacancies' && vacanciesType !== 'channel');
   return (
     <div
       className={'app' + (company ? ' panel-open' : '') + (standalone ? ' pwa-standalone' : '')}
@@ -340,6 +344,7 @@ function Workspace({ user }: { user: Session }) {
               onChange={section === 'vacancies' ? setVacancyQuery : setQuery}
             />
             <RankFilter value={filters} onChange={setFilters} count={count} />
+            {showFavoriteFilter && <FavoriteFilter value={filters} onChange={setFilters} />}
             {section === 'vacancies' && (
               <>
                 <FilterMenu
