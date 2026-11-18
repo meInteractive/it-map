@@ -41,11 +41,12 @@ type Service struct {
 	ClientSecret string
 	Secret       string
 	Enabled      bool
+	RedirectURI  string
 	Client       *http.Client
 }
 
 func (s *Service) Configured() bool {
-	return s != nil && s.Enabled && s.DB != nil && s.ClientID != "" && s.ClientSecret != "" && len(s.Secret) >= 32
+	return s != nil && s.Enabled && s.DB != nil && s.ClientID != "" && s.ClientSecret != "" && len(s.Secret) >= 32 && ValidateRedirectURI(s.RedirectURI)
 }
 
 func (s *Service) client() *http.Client {
@@ -258,11 +259,11 @@ func (s *Service) Disconnect(ctx context.Context, user string) error {
 }
 
 // Используется тестами, чтобы не пропускать ошибку формата URL callback.
-func ValidateCallbackOrigin(origin string) bool {
+func ValidateRedirectURI(origin string) bool {
 	u, err := url.Parse(origin)
 	if err != nil || u.Host == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || u.Path != "" {
 		return false
 	}
-	return u.Scheme == "https" || u.Scheme == "http" && (u.Hostname() == "127.0.0.1" || u.Hostname() == "localhost")
+	return u.Path == "/api/google-calendar/callback" && (u.Scheme == "https" || u.Scheme == "http" && (u.Hostname() == "127.0.0.1" || u.Hostname() == "localhost"))
 }
 
