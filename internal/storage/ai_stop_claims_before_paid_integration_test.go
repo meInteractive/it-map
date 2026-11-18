@@ -86,7 +86,8 @@ func TestMariaDBAIStopClaimsBeforePaidDispatchDisposable(t *testing.T) {
 			if !errors.Is(err, parser.ErrWorkerDrainBeforePaid) || runner.calls != 0 || store.saves != 0 {
 				t.Fatal("drain allowed new POST or returned wrong error", err, runner.calls, store.saves)
 			}
-			var attempts, reserved int
+			var attempts int
+			var reserved float64
 			var cost sql.NullFloat64
 			var provider sql.NullString
 			if err := f.db.QueryRowContext(f.ctx, "SELECT COUNT(*),COALESCE(SUM(reserved_usd),0) FROM scheduler_attempts WHERE job_id='CI_AI_JOB'").Scan(&attempts, &reserved); err != nil {
@@ -101,7 +102,7 @@ func TestMariaDBAIStopClaimsBeforePaidDispatchDisposable(t *testing.T) {
 				t.Fatal("pre-dispatch drain wrote paid evidence or lost attempt", attempts, reserved)
 			}
 			if !tc.atStart {
-				if err := f.db.QueryRowContext(f.ctx, "SELECT cost_usd,provider FROM scheduler_attempts WHERE job_id='CI_AI_JOB'").Scan(&cost, &provider); err != nil || cost.Valid || provider.Valid {
+				if err := f.db.QueryRowContext(f.ctx, "SELECT cost_usd,provider FROM scheduler_attempts WHERE job_id='CI_AI_JOB'").Scan(&cost, &provider); err != nil || cost.Valid || provider.String != "" {
 					t.Fatal("unspent attempt has paid receipt", err, cost, provider)
 				}
 			}
