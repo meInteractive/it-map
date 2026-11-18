@@ -20,11 +20,13 @@ import (
 func testStageHash(s string) string { h := sha256.Sum256([]byte(s)); return hex.EncodeToString(h[:]) }
 
 type extractionRunner struct {
-	content json.RawMessage
-	calls   int
-	after   func()
-	fail    error
-	denied  bool
+	content        json.RawMessage
+	calls          int
+	after          func()
+	fail           error
+	denied         bool
+	skipValidation bool // synthetic adapter bypass: Save must still fail closed
+	unknownUsage   bool // synthetic provider ACK without cost/usage evidence
 }
 
 func (r *extractionRunner) Automatic(ctx context.Context, req aiproviders.GenerationRequest, _ profiles.ModelInput, b aiproviders.Billing) (aiproviders.AIResult, error) {
@@ -45,6 +47,9 @@ func (r *extractionRunner) Automatic(ctx context.Context, req aiproviders.Genera
 		if r.fail != nil {
 			return nil, r.fail
 		}
+		if r.unknownUsage {
+			return json.RawMessage(`{"model":"gpt-6-luna","usage":{}}`), nil
+		}
 		return json.RawMessage(`{"model":"gpt-6-luna","usage":{"input_tokens":10,"output_tokens":2}}`), nil
 	})
 	if e != nil {
@@ -55,7 +60,7 @@ func (r *extractionRunner) Automatic(ctx context.Context, req aiproviders.Genera
 			return aiproviders.AIResult{}, e
 		}
 	}
-	if req.ValidateContent != nil {
+	if req.ValidateContent != nil && !r.skipValidation {
 		if e = req.ValidateContent(string(r.content)); e != nil {
 			return aiproviders.AIResult{}, e
 		}
@@ -318,6 +323,70 @@ func TestMariaDBExtractionStageSourceDisposable(t *testing.T) {
 		}
 		if f.count("SELECT COUNT(*) FROM scheduler_attempts WHERE status='failed' AND cost_usd IS NOT NULL") != 1 {
 			t.Fatal("provider receipt not preserved")
+		}
+	})
+	t.Run("late_save_invalid_output_receipt", func(t *testing.T) {
+		// A deliberately nonconforming synthetic adapter skips its ordinary
+		// ValidateContent check. The real Store.Save must reject the answer
+		// after billing, and the SAME attempt must be finalized without POST.
+		for _, tc := range []struct {
+			name         string
+			unknownUsage bool
+		}{
+			{"known_cost", false},
+			{"unknown_cost", true},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				f := f.sub(t)
+				seed(0)
+				lease := extractionStageLease(t, f)
+				var payload map[string]any
+				if err := json.Unmarshal(frames[0].Value, &payload); err != nil {
+					t.Fatal(err)
+				}
+				payload["description_md"] = "CI_PRIVATE\x00VALIDATION"
+				invalid, err := json.Marshal(payload)
+				if err != nil {
+					t.Fatal(err)
+				}
+				runner := &extractionRunner{
+					content: invalid, skipValidation: true, unknownUsage: tc.unknownUsage,
+				}
+				stage := &parser.AIStageExecutor{Store: parser.ExtractionStageStore{Owner: "CI_USER"}, Generator: runner}
+				_, err = stage.Execute(f.ctx, lease)
+				var service *aiproviders.ServiceError
+				if !errors.As(err, &service) || service.Code != "invalid_output" ||
+					service.Status != 422 || runner.calls != 1 {
+					t.Fatal("late validation was not rejected after exactly one synthetic provider call", err, runner.calls)
+				}
+				if f.count("SELECT COUNT(*) FROM vacancy_extractions WHERE candidate_id=990001 AND status='success'") != 0 ||
+					f.count("SELECT COUNT(*) FROM vacancy_extractions WHERE candidate_id=990001 AND status='error' AND error_code='invalid_output' AND JSON_UNQUOTE(JSON_EXTRACT(diagnostics,'$.descriptionIssue'))='null_byte' AND diagnostics NOT LIKE '%CI_PRIVATE%'") != 1 ||
+					f.count("SELECT COUNT(*) FROM scheduler_jobs WHERE id='CI_EXTRACTION_JOB' AND status='failed' AND reason_code='invalid_output'") != 1 ||
+					f.count("SELECT COUNT(*) FROM vacancy_detail_leases") != 0 {
+					t.Fatal("failed late validation was not finalized atomically", tc.name)
+				}
+				if f.count("SELECT COUNT(*) FROM scheduler_jobs WHERE candidate_id=990001 AND type='assign_roles'") != 0 {
+					t.Fatal("invalid extraction enqueued a downstream job")
+				}
+				var reserve float64
+				var cost sql.NullFloat64
+				var status, reason string
+				if err := f.db.QueryRowContext(f.ctx,
+					"SELECT reserved_usd,cost_usd,status,reason_code FROM scheduler_attempts WHERE job_id='CI_EXTRACTION_JOB'",
+				).Scan(&reserve, &cost, &status, &reason); err != nil {
+					t.Fatal("paid evidence lost", err)
+				}
+				if status != "failed" || reason != "invalid_output" || reserve <= 0 ||
+					cost.Valid == tc.unknownUsage {
+					t.Fatal("known/unknown cost was mislabeled after late invalid output", status, reserve, cost)
+				}
+				// StartAttempt uses the durable job+owner identity: a previously
+				// used attempt cannot be reconstructed into another provider call.
+				if f.count("SELECT COUNT(*) FROM scheduler_attempts WHERE job_id='CI_EXTRACTION_JOB'") != 1 ||
+					runner.calls != 1 {
+					t.Fatal("late validation replayed a paid operation")
+				}
+			})
 		}
 	})
 	t.Run("unknown_outcome", func(t *testing.T) {

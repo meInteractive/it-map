@@ -162,16 +162,7 @@ func (e *AIStageExecutor) Execute(ctx context.Context, lease *JobLease) (AIStage
 			}
 		}
 		// Неизвестный платный исход остаётся зарезервированным; автоматического POST retry нет.
-		code := aiStageErrorCode(err)
-		finish := attempt.FinishWithin(ctx, AttemptFinish{Job: FinishOptions{Status: "failed", Code: code, Message: "Не удалось выполнить AI-этап. Проверьте причину перед повторным запуском."}, Result: json.RawMessage(`{}`)}, func(tx *sql.Tx) error {
-			if err := e.Store.Revalidate(ctx, tx, job, plan); err != nil {
-				return err
-			}
-			if store, ok := e.Store.(AIStageFailureStore); ok {
-				return store.SaveFailure(ctx, tx, job, plan, err)
-			}
-			return nil
-		})
+		finish := e.finishFailed(ctx, attempt, job, plan, err)
 		if finish != nil {
 			return AIStageOutput{}, finish
 		}
@@ -198,13 +189,25 @@ func (e *AIStageExecutor) Execute(ctx context.Context, lease *JobLease) (AIStage
 	if output.Classification != nil {
 		receipt, _ = json.Marshal(map[string]any{"model": output.Classification.Model, "reused": output.Reused})
 	}
+	// Save may perform a second, deterministic extraction validation inside
+	// the owned transaction. If it rejects model output, FinishWithin rolls
+	// back without attempting a COMMIT. Only in this precisely identified case
+	// may we finalize the SAME paid attempt with a failure receipt. SQL/storage
+	// errors, provenance errors, and unknown COMMIT outcomes must NOT be retried.
+	var rejectedOutput error
 	err = attempt.FinishWithin(ctx, AttemptFinish{Job: finish, Result: receipt}, func(tx *sql.Tx) error {
 		if err := e.Store.Revalidate(ctx, tx, job, plan); err != nil {
 			return err
 		}
 		if !output.Reused {
-			if err := e.Store.Save(ctx, tx, job, plan, output); err != nil {
-				return err
+			if saveErr := e.Store.Save(ctx, tx, job, plan, output); saveErr != nil {
+				var service *aiproviders.ServiceError
+				if job.Type == "extract_vacancy" && errors.As(saveErr, &service) &&
+					service.Code == "invalid_output" && service.Status == 422 &&
+					extractionOutputIssue(saveErr) != "" {
+					rejectedOutput = saveErr
+				}
+				return saveErr
 			}
 		}
 		if stageError == nil && e.Handoff != nil {
@@ -212,10 +215,37 @@ func (e *AIStageExecutor) Execute(ctx context.Context, lease *JobLease) (AIStage
 		}
 		return nil
 	})
+	if rejectedOutput != nil && errors.Is(err, rejectedOutput) {
+		// There was no successful FinishWithin COMMIT: the callback itself
+		// rejected the value. Record a bounded extraction failure and preserve
+		// the already-settled or still-unknown paid reserve atomically.
+		if finishErr := e.finishFailed(ctx, attempt, job, plan, rejectedOutput); finishErr != nil {
+			return AIStageOutput{}, finishErr
+		}
+		return AIStageOutput{}, rejectedOutput
+	}
 	if err != nil {
 		return AIStageOutput{}, err
 	}
 	return output, stageError
+}
+
+// finishFailed commits a failure receipt and the job transition together.
+// It does not run a provider request or reconcile unknown monetary outcomes.
+func (e *AIStageExecutor) finishFailed(ctx context.Context, attempt *Attempt, job Job, plan AIStagePlan, cause error) error {
+	code := aiStageErrorCode(cause)
+	return attempt.FinishWithin(ctx, AttemptFinish{
+		Job:    FinishOptions{Status: "failed", Code: code, Message: "Не удалось выполнить AI-этап. Проверьте причину перед повторным запуском."},
+		Result: json.RawMessage(`{}`),
+	}, func(tx *sql.Tx) error {
+		if err := e.Store.Revalidate(ctx, tx, job, plan); err != nil {
+			return err
+		}
+		if store, ok := e.Store.(AIStageFailureStore); ok {
+			return store.SaveFailure(ctx, tx, job, plan, cause)
+		}
+		return nil
+	})
 }
 
 var aiStageCode = regexp.MustCompile(`^[a-z0-9_-]{1,80}$`)
