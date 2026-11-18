@@ -54,6 +54,11 @@ func(g *letterMockGenerator)Automatic(ctx context.Context,request aiproviders.Ge
 func TestMariaDBCoverLetterGenerationDisposable(t *testing.T){
 	requireSettingsCI(t)
 	f:=openSettingsSQL(t)
+	count:=func(query string,args ...any)int{
+		var n int
+		if err:=f.db.QueryRowContext(f.ctx,query,args...).Scan(&n);err!=nil{t.Fatal("CI count query failed",err)}
+		return n
+	}
 	const vacancyID=190018
 	const user="ci-letter-candidate"
 	// Проверяем пустой namespace до операций с тестовыми user/vacancy IDs.
@@ -144,7 +149,7 @@ func TestMariaDBCoverLetterGenerationDisposable(t *testing.T){
 		paidLetter.CoverLetterMD==""||paidLetter.Source!="personal"{
 		t.Fatal("paid OpenAI mock was not saved exactly once",err,mock.Calls,mock.Sends)
 	}
-	if f.count("SELECT COUNT(*) FROM openrouter_ai_logs WHERE task='openai_cover_letter' AND requested_primary_model='gpt-6-luna' AND success=1 AND error_code LIKE 'paid_response:%'")!=1{
+	if count("SELECT COUNT(*) FROM openrouter_ai_logs WHERE task='openai_cover_letter' AND requested_primary_model='gpt-6-luna' AND success=1 AND error_code LIKE 'paid_response:%'")!=1{
 		t.Fatal("paid OpenAI invocation missing durable response evidence")
 	}
 	cached,err:=svc.Generate(f.ctx,user,vacancyID,false,nil)
