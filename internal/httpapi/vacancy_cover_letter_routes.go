@@ -38,8 +38,10 @@ func letterFailure(err error)(int,string){
 		return 409,"Данные для письма изменились. Обновите карточку и повторите генерацию."
 	case errors.Is(err,coverletters.ErrBusy):
 		return 503,"Генерация письма занята. Повторите запрос после завершения."
+	case errors.Is(err,coverletters.ErrPaidUncertain):
+		return 409,"Для этих данных уже зарегистрирована платная попытка OpenAI. Повторный запрос заблокирован до проверки результата и расходов."
 	case errors.Is(err,coverletters.ErrPaidBilling):
-		return 503,"Учёт платных запросов для писем ещё не подключён. Выберите бесплатную модель OpenRouter."
+		return 503,"Платный OpenAI недоступен без безопасного учёта попыток. Проверьте модель и настройки."
 	case errors.Is(err,coverletters.ErrInvalid):
 		return 502,"Модель не вернула письмо в корректном формате."
 	}

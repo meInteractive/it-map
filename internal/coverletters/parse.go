@@ -26,6 +26,7 @@ var (
 	ErrNoVacancyText = errors.New("vacancy title or description is empty")
 	ErrNotRegenerable = errors.New("cannot regenerate empty cover letter")
 	ErrPaidBilling = errors.New("paid manual AI billing not configured")
+	ErrPaidUncertain = errors.New("paid cover letter operation already recorded; replay denied")
 )
 
 type Letter struct {

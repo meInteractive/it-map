@@ -17,19 +17,31 @@ import (
 
 type letterMockGenerator struct{
 	Calls int
+	Sends int
+	Fail bool
 	Output string
 	Before func()
 	After func()
 }
 func(g *letterMockGenerator)Automatic(ctx context.Context,request aiproviders.GenerationRequest,config profiles.ModelInput,billing aiproviders.Billing)(aiproviders.AIResult,error){
 	g.Calls++
-	if request.Task!="cover_letter"||config.Provider!="openrouter"||config.OpenRouterModel!="best_free"||len(request.Messages)!=2{
+	if request.Task!="cover_letter"||len(request.Messages)!=2{
 		return aiproviders.AIResult{},errors.New("invalid generated configuration")
+	}
+	if config.Provider!="openai"&&(config.Provider!="openrouter"||config.OpenRouterModel!="best_free"){
+		return aiproviders.AIResult{},errors.New("invalid provider configuration")
 	}
 	if request.CheckActive==nil||request.CheckActive(ctx)!=nil{return aiproviders.AIResult{},errors.New("stale snapshot before request")}
 	if g.Before!=nil{g.Before()}
 	payload:=json.RawMessage(`{"provider":"openrouter","model":"ci/mock:free","free":true,"payload":{"provider":{"max_price":{"prompt":0,"completion":0,"request":0}}}}`)
-	_,err:=billing.Run(ctx,payload,func(context.Context)(json.RawMessage,error){return json.RawMessage(`{"mock":true}`),nil})
+	if config.Provider=="openai" {
+		payload=json.RawMessage(`{"provider":"openai","model":"gpt-6-luna","payload":{"model":"gpt-6-luna","input":[]}}`)
+	}
+	_,err:=billing.Run(ctx,payload,func(context.Context)(json.RawMessage,error){
+		g.Sends++
+		if g.Fail{return nil,errors.New("CI_LOST_PROVIDER_ACK")}
+		return json.RawMessage(`{"mock":true}`),nil
+	})
 	if err!=nil{return aiproviders.AIResult{},err}
 	if request.ValidateContent!=nil{
 		if err=request.ValidateContent(g.Output);err!=nil{return aiproviders.AIResult{},err}
@@ -42,6 +54,11 @@ func(g *letterMockGenerator)Automatic(ctx context.Context,request aiproviders.Ge
 func TestMariaDBCoverLetterGenerationDisposable(t *testing.T){
 	requireSettingsCI(t)
 	f:=openSettingsSQL(t)
+	count:=func(query string,args ...any)int{
+		var n int
+		if err:=f.db.QueryRowContext(f.ctx,query,args...).Scan(&n);err!=nil{t.Fatal("CI count query failed",err)}
+		return n
+	}
 	const vacancyID=190018
 	const user="ci-letter-candidate"
 	// Проверяем пустой namespace до операций с тестовыми user/vacancy IDs.
@@ -52,6 +69,7 @@ func TestMariaDBCoverLetterGenerationDisposable(t *testing.T){
 			"DELETE FROM cover_letter_generation_leases WHERE user_name='ci-letter-candidate'",
 			"DELETE FROM vacancy_cover_letters WHERE user_name='ci-letter-candidate'",
 			"DELETE FROM openrouter_ai_logs WHERE task='cover_letter' AND requested_primary_model='ci/mock:free'",
+			"DELETE FROM openrouter_ai_logs WHERE task='openai_cover_letter' AND requested_primary_model='gpt-6-luna'",
 			"DELETE FROM user_profiles WHERE user_name='ci-letter-candidate'",
 			"DELETE FROM system_prompts WHERE kind='cover_letter'",
 			"DELETE FROM prompt_model_settings WHERE kind='cover_letter'",
@@ -122,21 +140,22 @@ func TestMariaDBCoverLetterGenerationDisposable(t *testing.T){
 		t.Fatal("newer personal letter not returned after concurrent update",winner,err)
 	}
 	mock.After=nil
-	// Включение платной модели блокирует POST ДО модели, а старое письмо читается.
-	callsBeforePaid:=mock.Calls
-	var receiptsBeforePaid int
-	if err=f.db.QueryRowContext(f.ctx,"SELECT COUNT(*) FROM openrouter_ai_logs WHERE task='cover_letter' AND requested_primary_model='ci/mock:free'").Scan(&receiptsBeforePaid);err!=nil{t.Fatal("missing technical receipts before paid check",err)}
+	// Платная модель должна сохранить durable receipt перед mock POST,
+	// не подменяться бесплатной и не запускаться при чтении готового письма.
+	callsBeforePaid,sendsBeforePaid:=mock.Calls,mock.Sends
 	f.exec("UPDATE prompt_model_settings SET provider='openai',openai_model='gpt-6-luna',revision=revision+1 WHERE kind='cover_letter'")
-	_,err=svc.Generate(f.ctx,user,vacancyID,true,nil)
-	if !errors.Is(err,coverletters.ErrPaidBilling)||mock.Calls!=callsBeforePaid{
-		t.Fatal("paid OpenAI call was not blocked",err,mock.Calls,callsBeforePaid)
+	paidLetter,err:=svc.Generate(f.ctx,user,vacancyID,true,nil)
+	if err!=nil||mock.Calls!=callsBeforePaid+1||mock.Sends!=sendsBeforePaid+1||
+		paidLetter.CoverLetterMD==""||paidLetter.Source!="personal"{
+		t.Fatal("paid OpenAI mock was not saved exactly once",err,mock.Calls,mock.Sends)
 	}
-	var receiptsAfterPaid int
-	if err=f.db.QueryRowContext(f.ctx,"SELECT COUNT(*) FROM openrouter_ai_logs WHERE task='cover_letter' AND requested_primary_model='ci/mock:free'").Scan(&receiptsAfterPaid);err!=nil||receiptsAfterPaid!=receiptsBeforePaid{
-		t.Fatal("paid model selection unexpectedly logged a provider attempt",err,receiptsBeforePaid,receiptsAfterPaid)
+	if count("SELECT COUNT(*) FROM openrouter_ai_logs WHERE task='openai_cover_letter' AND requested_primary_model='gpt-6-luna' AND success=1 AND error_code LIKE 'paid_response:%'")!=1{
+		t.Fatal("paid OpenAI invocation missing durable response evidence")
 	}
 	cached,err:=svc.Generate(f.ctx,user,vacancyID,false,nil)
-	if err!=nil||cached!=winner{t.Fatal("winning personal letter lost after paid model selection",cached,winner,err)}
+	if err!=nil||cached!=paidLetter||mock.Sends!=sendsBeforePaid+1{
+		t.Fatal("saved paid letter was regenerated without explicit request",cached,err)
+	}
 
 	// CI-only: Claim may lose a race after Read but before acquiring the
 	// vacancy lock. An updated prompt must yield a conflict, not the old letter.
@@ -206,5 +225,5 @@ func TestMariaDBCoverLetterGenerationDisposable(t *testing.T){
 		t.Fatal("cancelled waiting request called provider or lost cancellation",err,mock.Calls,callsBeforeRace)
 	}
 	if strings.Contains(mock.Output,"PRIVATE"){t.Fatal("invalid mock fixture")}
-	t.Log("PASS: saved/personal/regenerate, CAS input and provider, free-only billing, no OpenAI calls, read-only GET, one row, no PII in ledger")
+	t.Log("PASS: saved/personal/regenerate, CAS input, durable paid OpenAI admission, no automatic repeats, read-only GET")
 }

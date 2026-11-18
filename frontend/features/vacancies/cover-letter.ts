@@ -1,4 +1,4 @@
-import { useEffect, useSyncExternalStore } from 'react';
+import { useSyncExternalStore } from 'react';
 import { invalidateMutation, onCacheEvent, ApiError } from '../../api/client';
 interface LetterState {
   running: boolean;
@@ -125,7 +125,7 @@ export function generateLetter(id: number, { regenerate = false } = {}) {
   })();
   return e.promise;
 }
-export function useCoverLetter(id: number, existing: string, ready = true) {
+export function useCoverLetter(id: number) {
   const e = entry(id);
   const state = useSyncExternalStore(
     (fn) => {
@@ -137,8 +137,6 @@ export function useCoverLetter(id: number, existing: string, ready = true) {
     () => e.value,
     () => empty,
   );
-  useEffect(() => {
-    if (ready && !existing && !e.completed && !e.value.error && !e.promise) void generateLetter(id);
-  }, [id, existing, ready, e, state]);
+  // Генерация всегда требует явного действия: выбранный OpenAI может быть платным.
   return state;
 }
