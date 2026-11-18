@@ -13,11 +13,17 @@ import (
 // Вся проверка на одноразовой CI MariaDB; OpenAI заменён mock провайдером.
 // Ни ключей, ни HTTP-запросов, ни реальных расходов.
 func TestMariaDBCoverLetterPaidAdmissionDisposable(t *testing.T) {
-	requireSettingsCI(t)
-	f := openSettingsSQL(t)
+	requireSettingsCI(t)	f := openSettingsSQL(t)
+	count := func(query string, args ...any) int {
+		var n int
+		if err := f.db.QueryRowContext(f.ctx, query, args...).Scan(&n); err != nil {
+			t.Fatal("paid CI count query failed", err)
+		}
+		return n
+	}
 	const vacancyID = 190019
 	const user = "ci-letter-paid"
-	if f.count("SELECT COUNT(*) FROM company_vacancies WHERE id=?", vacancyID) != 0 {
+	if count("SELECT COUNT(*) FROM company_vacancies WHERE id=?", vacancyID) != 0 {
 		t.Fatal("paid letter CI namespace is not empty")
 	}
 	t.Cleanup(func() {
@@ -50,14 +56,14 @@ func TestMariaDBCoverLetterPaidAdmissionDisposable(t *testing.T) {
 	if err == nil || mock.Sends != 1 || mock.Calls != 1 {
 		t.Fatal("lost provider ACK not reproduced", err, mock.Sends, mock.Calls)
 	}
-	if f.count("SELECT COUNT(*) FROM openrouter_ai_logs WHERE task='openai_cover_letter' AND requested_primary_model='gpt-6-luna' AND success=0 AND error_code LIKE 'paid_unknown:%'") != 1 {
+	if count("SELECT COUNT(*) FROM openrouter_ai_logs WHERE task='openai_cover_letter' AND requested_primary_model='gpt-6-luna' AND success=0 AND error_code LIKE 'paid_unknown:%'") != 1 {
 		t.Fatal("unknown paid response was not durably retained")
 	}
 	// Ни исчезнувшая lease, ни новый запрос браузера не разрешают replay.
 	mock.Fail = false
 	_, err = svc.Generate(f.ctx, user, vacancyID, false, nil)
 	if !errors.Is(err, coverletters.ErrPaidUncertain) || mock.Sends != 1 ||
-		f.count("SELECT COUNT(*) FROM openrouter_ai_logs WHERE task='openai_cover_letter'") != 1 {
+		count("SELECT COUNT(*) FROM openrouter_ai_logs WHERE task='openai_cover_letter'") != 1 {
 		t.Fatal("identical paid input was replayed", err, mock.Sends)
 	}
 	// Явное изменение входа создаёт новую операцию, старый unknown остаётся.
@@ -66,8 +72,8 @@ func TestMariaDBCoverLetterPaidAdmissionDisposable(t *testing.T) {
 	if err != nil || letter.CoverLetterMD != "CI Paid body." || mock.Sends != 2 {
 		t.Fatal("new input failed independent paid operation", err, mock.Sends)
 	}
-	if f.count("SELECT COUNT(*) FROM openrouter_ai_logs WHERE task='openai_cover_letter' AND error_code LIKE 'paid_unknown:%'") != 1 ||
-		f.count("SELECT COUNT(*) FROM openrouter_ai_logs WHERE task='openai_cover_letter' AND success=1 AND error_code LIKE 'paid_response:%'") != 1 {
+	if count("SELECT COUNT(*) FROM openrouter_ai_logs WHERE task='openai_cover_letter' AND error_code LIKE 'paid_unknown:%'") != 1 ||
+		count("SELECT COUNT(*) FROM openrouter_ai_logs WHERE task='openai_cover_letter' AND success=1 AND error_code LIKE 'paid_response:%'") != 1 {
 		t.Fatal("unknown and acknowledged records were not preserved separately")
 	}
 	// Простое повторное открытие готового письма не отправляет оплачиваемый POST.
