@@ -13,7 +13,8 @@ import (
 // Вся проверка на одноразовой CI MariaDB; OpenAI заменён mock провайдером.
 // Ни ключей, ни HTTP-запросов, ни реальных расходов.
 func TestMariaDBCoverLetterPaidAdmissionDisposable(t *testing.T) {
-	requireSettingsCI(t)	f := openSettingsSQL(t)
+	requireSettingsCI(t)
+	f := openSettingsSQL(t)
 	count := func(query string, args ...any) int {
 		var n int
 		if err := f.db.QueryRowContext(f.ctx, query, args...).Scan(&n); err != nil {
