@@ -67,7 +67,11 @@ export default function CoverLetter({ v, ready = true }: { v: VacancyDetail; rea
         <button
           className="vacancy-source-button"
           type="button"
-          aria-label={letter.coverLetterMd ? 'Создать сопроводительное письмо заново' : 'Создать сопроводительное письмо'}
+          aria-label={
+            letter.coverLetterMd
+              ? 'Создать сопроводительное письмо заново'
+              : 'Создать сопроводительное письмо'
+          }
           title="Создать письмо по текущим настройкам. При выборе OpenAI API-запрос может быть платным."
           disabled={!ready || state.running}
           onClick={() =>
