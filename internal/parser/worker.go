@@ -297,7 +297,7 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 			if !enoughTimeForNextJob(time.Until(deadline), options.MinRemaining) {
 				return result, nil
 			}
-			processed, stepErr := w.cycleStep(ctx, bounded, start.Run.ID, phase, d, owner, &result, &phaseProcessed, &hhStages, &status, &releaseRun)
+			processed, stepErr := w.cycleStep(ctx, bounded, options.StopClaims, options.MinRemaining, start.Run.ID, phase, d, owner, &result, &phaseProcessed, &hhStages, &status, &releaseRun)
 			if stepErr != nil {
 				return result, stepErr
 			}
@@ -325,6 +325,14 @@ func claimsStopped(stop <-chan struct{}) bool {
 	}
 }
 
+// ClaimJob may spend most of the remaining budget selecting and locking a job.
+// A pre-claim check cannot authorize the subsequent external work, and
+// SIGTERM may close StopClaims while ClaimJob is in flight.
+func admittedAfterClaim(now, cycleDeadline, workDeadline time.Time, minRemaining time.Duration, stopClaims <-chan struct{}) bool {
+	return !claimsStopped(stopClaims) && now.Before(workDeadline) &&
+		enoughTimeForNextJob(cycleDeadline.Sub(now), minRemaining)
+}
+
 // pipelineCleanupReserve даёт bounded cleanup (до 10 секунд) шанс
 // завершиться до срока job lease при дедлайне обработки.
 const pipelineCleanupReserve = 12 * time.Second
@@ -337,7 +345,7 @@ func pipelineWorkDeadline(now, cycleDeadline time.Time) (time.Time, bool) {
 }
 
 // cycleStep выполняет один claim и обработку с прежними ограничениями run.
-func (w Worker) cycleStep(ctx, bounded context.Context, runID, phase string, d workerDispatch, owner string, result *WorkerResult, phaseProcessed, hhStages *int, status *string, releaseRun *bool) (bool, error) {
+func (w Worker) cycleStep(ctx, bounded context.Context, stopClaims <-chan struct{}, minRemaining time.Duration, runID, phase string, d workerDispatch, owner string, result *WorkerResult, phaseProcessed, hhStages *int, status *string, releaseRun *bool) (bool, error) {
 	if err := bounded.Err(); err != nil {
 		*status = "interrupted"
 		return false, err
@@ -395,6 +403,25 @@ func (w Worker) cycleStep(ctx, bounded context.Context, runID, phase string, d w
 		return false, err
 	}
 	if lease == nil {
+		return false, nil
+	}
+	// A claim is not permission for a paid provider operation. Recheck both
+	// the time budget and shutdown before creating even the first attempt:
+	// DB contention can consume the pre-claim minimum, and the worker's grace
+	// context can remain active after StopClaims closes. Return a verified
+	// lease to pending without consuming an attempt or running provider I/O.
+	if bounded.Err() != nil || !admittedAfterClaim(time.Now(), deadline, workDeadline, minRemaining, stopClaims) {
+		cleanup, stopCleanup := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+		defer stopCleanup()
+		if err := interruptWorkerJob(cleanup, lease, FinishOptions{
+			Status: "pending", Code: "deferred", Delay: 10 * time.Second, Deferred: true,
+		}); err != nil {
+			// Never publish a completed run after a failed ownership-checked
+			// rollback. Normal lease recovery must reconcile this claim.
+			*releaseRun = false
+			*status = "partial"
+			return false, err
+		}
 		return false, nil
 	}
 	result.Processed++

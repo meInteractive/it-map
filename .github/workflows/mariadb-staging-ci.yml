@@ -1558,11 +1558,11 @@ jobs:
           set -euo pipefail
           result_file="$(mktemp)"
           trap 'rm -f "$result_file"' EXIT
-          go test -race -tags mariadb,schedulerwrites,schedulerbilling ./internal/storage -run '^TestMariaDBHHWorker(Disposable|UncertainDisposable|CrashDisposable|GenerationDisposable|CancelDisposable|ActorLimitDisposable|TimeBudgetDisposable|PipelineCleanupAdmissionDisposable)$' -count=1 -json | tee "$result_file"
+          go test -race -tags mariadb,schedulerwrites,schedulerbilling ./internal/storage -run '^TestMariaDBHHWorker(Disposable|UncertainDisposable|CrashDisposable|GenerationDisposable|CancelDisposable|ActorLimitDisposable|TimeBudgetDisposable|PipelineCleanupAdmissionDisposable|PostClaimFenceDisposable)$' -count=1 -json | tee "$result_file"
           python3 - "$result_file" <<'PYCODE'
           import json,sys
           events=[json.loads(line) for line in open(sys.argv[1],encoding='utf8')]
-          assert all(any(e.get('Test')==name and e.get('Action')=='pass' for e in events) for name in ('TestMariaDBHHWorkerDisposable','TestMariaDBHHWorkerDisposable/engine_paid_fallback','TestMariaDBHHWorkerDisposable/engine_near_expiry','TestMariaDBHHWorkerDisposable/engine_public_transient','TestMariaDBHHWorkerUncertainDisposable','TestMariaDBHHWorkerCrashDisposable','TestMariaDBHHWorkerGenerationDisposable','TestMariaDBHHWorkerCancelDisposable','TestMariaDBHHWorkerActorLimitDisposable','TestMariaDBHHWorkerTimeBudgetDisposable','TestMariaDBHHWorkerPipelineCleanupAdmissionDisposable')), 'HH worker gate did not pass'
+          assert all(any(e.get('Test')==name and e.get('Action')=='pass' for e in events) for name in ('TestMariaDBHHWorkerDisposable','TestMariaDBHHWorkerDisposable/engine_paid_fallback','TestMariaDBHHWorkerDisposable/engine_near_expiry','TestMariaDBHHWorkerDisposable/engine_public_transient','TestMariaDBHHWorkerUncertainDisposable','TestMariaDBHHWorkerCrashDisposable','TestMariaDBHHWorkerGenerationDisposable','TestMariaDBHHWorkerCancelDisposable','TestMariaDBHHWorkerActorLimitDisposable','TestMariaDBHHWorkerTimeBudgetDisposable','TestMariaDBHHWorkerPipelineCleanupAdmissionDisposable','TestMariaDBHHWorkerPostClaimFenceDisposable')), 'HH worker gate did not pass'
           assert not any(e.get('Action')=='skip' for e in events), 'HH worker gate skipped'
           PYCODE
       - name: Проверить ручное управление циклом только в одноразовой CI БД
