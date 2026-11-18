@@ -68,6 +68,16 @@ func extractionOutputIssue(failure error) string {
 		return "salary_unverified"
 	case "Дата публикации должна быть действительной датой YYYY-MM-DD.":
 		return "publication_date"
+	case "Значение work_format не подтверждается исходным текстом.",
+		"Значение salary_currency не подтверждается исходным текстом.",
+		"Значение salary_tax_type не подтверждается исходным текстом.",
+		"Значение salary_period не подтверждается исходным текстом.",
+		"Валюта не подтверждена.",
+		"Дата публикации не подтверждается источником.":
+		// Ошибка проверки происхождения извлечённого значения — не ошибка
+		// структуры JSON. Не включать в receipt нераспознанный текст ошибки
+		// или данные источника: только фиксированная безопасная категория.
+		return "source_unverified"
 	}
 	var schema struct{ Required []string }
 	if json.Unmarshal(ExtractionSchema(), &schema) == nil {
