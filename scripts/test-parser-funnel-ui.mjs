@@ -25,7 +25,11 @@ assert.equal(copied.summary.publicationWindow.days.at(-1).total,1);
 const brokenWindow={...withWindow,publicationWindow:{...publicationWindow,
  days:publicationWindow.days.map((day,i)=>i===6?{...day,older:2}:day)}};
 assert.doesNotMatch(render(FunnelView,{report:brokenWindow}),/Почему количество новых карточек отличается/);
+assert.match(render(FunnelView,{report:brokenWindow}),/Полученная разбивка по датам публикации не согласуется/);
 assert.doesNotMatch(render(FunnelView,{report}),/Почему количество новых карточек отличается/);
+assert.match(render(FunnelView,{report}),/Разбивка новых карточек по датам публикации не получена из API/);
+assert.doesNotMatch(windowHtml,/Разбивка новых карточек по датам публикации не получена из API/);
+assert.equal(parserFunnelSnapshot(report).summary.publicationWindow,null,'missing breakdown is unknown, not zero');
 const empty={...report,totals:Object.fromEntries([...Object.keys(counts),'newVacancies'].map(k=>[k,0])),averages:Object.fromEntries([...Object.keys(counts),'newVacancies'].map(k=>[k,0])),cohort:Object.fromEntries(Object.keys(report.cohort).map(k=>[k,0])),daily:report.daily.map(p=>({...p,...Object.fromEntries([...Object.keys(counts),'newVacancies'].map(k=>[k,0]))}))};assert.ok(!render(FunnelView,{report:empty}).includes('NaN'));
 let root;const requests=[];
 globalThis.window={addEventListener(){},removeEventListener(){}};globalThis.IS_REACT_ACT_ENVIRONMENT=true;
