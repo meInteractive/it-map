@@ -53,6 +53,7 @@ type AIStageExecutor struct {
 	Classifier         AIStageClassifier
 	Handoff            *CandidateHandoff
 	DeferUnspentBudget bool
+	StopClaims         <-chan struct{} // nil сохраняет работу вне непрерывного worker
 }
 
 var errBudgetPriorEvidence = errors.New("budget deferral requires untouched job")
@@ -76,6 +77,9 @@ func (e *AIStageExecutor) Execute(ctx context.Context, lease *JobLease) (AIStage
 	if e == nil || e.Store == nil || lease == nil {
 		return AIStageOutput{}, ErrAIStageUnavailable
 	}
+	if claimsStopped(e.StopClaims) {
+		return AIStageOutput{}, ErrWorkerDrainBeforePaid
+	}
 	job := lease.Job()
 	task := aiStageTask(job.Type)
 	if task == "" {
@@ -95,12 +99,22 @@ func (e *AIStageExecutor) Execute(ctx context.Context, lease *JobLease) (AIStage
 		}
 		return nil
 	}
+	// Пока шёл Prepare, корневой worker мог получить SIGTERM, но grace
+	// сохраняет step context активным. Без нового платного допуска вернём job.
+	if claimsStopped(e.StopClaims) {
+		return AIStageOutput{}, errors.Join(ErrWorkerDrainBeforePaid, abort())
+	}
 	if plan.Cached == nil && plan.PreflightError == nil && ((job.Type == "classify_title" && e.Classifier == nil) || (job.Type != "classify_title" && e.Generator == nil)) {
 		return AIStageOutput{}, errors.Join(ErrAIStageUnavailable, abort())
 	}
 	attempt, err := lease.StartAttempt(ctx)
 	if err != nil {
 		return AIStageOutput{}, errors.Join(err, abort())
+	}
+	// StartAttempt мог завершить COMMIT уже после сигнала остановки.
+	// Здесь ещё нет платного резерва и провайдер не вызывался.
+	if claimsStopped(e.StopClaims) {
+		return AIStageOutput{}, ErrWorkerDrainBeforePaid
 	}
 	check := func(ctx context.Context) error {
 		if err := ctx.Err(); err != nil {
@@ -116,6 +130,13 @@ func (e *AIStageExecutor) Execute(ctx context.Context, lease *JobLease) (AIStage
 	if err = check(ctx); err != nil {
 		return AIStageOutput{}, err
 	}
+	// Проверяем StopClaims непосредственно перед каждым платным Billing.Run,
+	// а не внутри CheckActive: после начатого вызова graceful shutdown
+	// должен дать записать ответ, стоимость и результат до истечения grace.
+	var billing aiproviders.Billing = attempt
+	if e.StopClaims != nil {
+		billing = workerStopBilling{delegate: attempt, stop: e.StopClaims}
+	}
 	output := AIStageOutput{}
 	if plan.PreflightError != nil {
 		err = plan.PreflightError
@@ -125,15 +146,20 @@ func (e *AIStageExecutor) Execute(ctx context.Context, lease *JobLease) (AIStage
 	} else {
 		if job.Type == "classify_title" {
 			var result aiproviders.TitleResult
-			result, err = e.Classifier.ClassifyTitles(ctx, plan.Title, plan.TitleRoles, attempt, check)
+			result, err = e.Classifier.ClassifyTitles(ctx, plan.Title, plan.TitleRoles, billing, check)
 			output.Classification = &result
 		} else {
 			request := plan.Request
 			request.CheckActive = check
-			output.Generation, err = e.Generator.Automatic(ctx, request, plan.Config, attempt)
+			output.Generation, err = e.Generator.Automatic(ctx, request, plan.Config, billing)
 		}
 	}
 	if err != nil {
+		// Штатная остановка до первого платного Billing.Run не является
+		// неуспешным AI-результатом. Worker вернёт lease в pending без POST.
+		if errors.Is(err, ErrWorkerDrainBeforePaid) && attempt.Requests() == 0 && !attempt.Unknown() {
+			return AIStageOutput{}, err
+		}
 		if e.DeferUnspentBudget && (errors.Is(err, ErrBudgetLimit) || errors.Is(err, ErrHistoricalAIUnresolved)) && attempt.Requests() == 0 && !attempt.Unknown() {
 			if store, ok := e.Store.(AIStageAbortStore); ok {
 				code, message := "budget", "Ожидание доступного AI-бюджета."
