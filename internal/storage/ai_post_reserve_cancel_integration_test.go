@@ -20,7 +20,7 @@ func TestMariaDBAIReserveCommittedCancellationNoReplayDisposable(t *testing.T) {
 	f := billingFixture(t)
 	billingReset(f)
 	run := f.begin("CI_POST_RESERVE_CANCEL")
-	const jobID = "CI_money_job"
+	jobID := "CI_money_job"
 	schedulerSeedJob(f, jobID, nil)
 	f.exec("UPDATE scheduler_jobs SET type='extract_vacancy' WHERE id=?", jobID)
 
