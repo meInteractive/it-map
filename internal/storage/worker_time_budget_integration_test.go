@@ -86,3 +86,72 @@ func TestMariaDBHHWorkerPipelineCleanupAdmissionDisposable(t *testing.T) {
 		t.Fatal("short pipeline cycle created an attempt, lost a job, or repeated POST")
 	}
 }
+
+// GO-431 P0: the 60-second rule must be checked AFTER the SQL claim.
+// We hold the synthetic job row only in disposable CI long enough for a
+// pre-claim minimum to expire. No AI attempt or provider call is permitted.
+func TestMariaDBHHWorkerPostClaimFenceDisposable(t *testing.T) {
+	f := billingFixture(t)
+	billingReset(f)
+	f.exec(`UPDATE firecrawl_settings SET scheduler_json='{"enabled":true,"sourceIds":["hh"],"ownerName":"CI_USER","dayBudgetUsd":0.3,"monthBudgetUsd":0.3}' WHERE id=1`)
+	const id = "CI_POST_CLAIM_AI"
+	schedulerSeedJob(f, id, nil)
+	f.exec("UPDATE scheduler_jobs SET type='classify_title',source_id='hh',payload='{}' WHERE id=?", id)
+	tx, err := f.db.BeginTx(f.ctx, nil)
+	if err != nil {
+		t.Fatal("cannot hold synthetic pending AI row", err)
+	}
+	defer tx.Rollback()
+	var held string
+	if err := tx.QueryRowContext(f.ctx, "SELECT id FROM scheduler_jobs WHERE id=? FOR UPDATE", id).Scan(&held); err != nil || held != id {
+		t.Fatal("synthetic claim row lock failed", err)
+	}
+	worker := parser.Worker{Runs: f.repo, Settings: apifysettings.NewRepository(f.db, "CI_SECRET")}
+	type cycleResult struct {
+		result parser.WorkerResult
+		err    error
+	}
+	done := make(chan cycleResult, 1)
+	go func() {
+		result, err := worker.Cycle(f.ctx, parser.WorkerOptions{
+			Run: parser.RunOptions{RequestID: "CI_POST_CLAIM_FENCE_RUN", Duration: 30 * time.Second},
+			MaxJobs: 1, QueueProfile: "pipeline", MinRemaining: 29 * time.Second,
+		})
+		done <- cycleResult{result, err}
+	}()
+	// Wait for the owned scheduler run before releasing the job-row lock;
+	// a failed run or stalled initialization must never hang the test.
+	owned := false
+	for i := 0; i < 30; i++ {
+		if f.count("SELECT COUNT(*) FROM scheduler_runs WHERE status='running'") == 1 {
+			owned = true
+			break
+		}
+		select {
+		case <-done:
+			t.Fatal("worker finished before synthetic claim contention")
+		case <-time.After(50 * time.Millisecond):
+		}
+	}
+	if !owned {
+		t.Fatal("synthetic owned run did not begin")
+	}
+	// This leaves <29 s from the 30-second cycle at the moment the held
+	// job can be claimed, while the pre-claim check has already passed.
+	time.Sleep(2 * time.Second)
+	if err := tx.Commit(); err != nil {
+		t.Fatal("cannot release synthetic lock", err)
+	}
+	select {
+	case outcome := <-done:
+		if outcome.err != nil || outcome.result.Processed != 0 || outcome.result.Run.Status != "completed" {
+			t.Fatal("late claimed job was executed or run left open", outcome)
+		}
+	case <-time.After(12 * time.Second):
+		t.Fatal("worker did not release late claimed job after SQL contention")
+	}
+	if f.count("SELECT COUNT(*) FROM scheduler_jobs WHERE id=? AND status='pending' AND attempts=0 AND reason_code='deferred' AND locked_by='' AND locked_until=0", id) != 1 ||
+		f.count("SELECT COUNT(*) FROM scheduler_attempts WHERE job_id=?", id) != 0 {
+		t.Fatal("post-claim budget did not defer job without AI attempt")
+	}
+}
