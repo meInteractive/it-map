@@ -209,10 +209,28 @@ func TestMariaDBTaskHTTPDisposable(t *testing.T) {
 			t.Fatal("cannot seed synthetic Calendar marker")
 		}
 		guarded := f.row(created.TaskID)
-		h.error(h.call("demo", "POST", "/api/tasks", input, 409))
-		h.error(h.call("demo", "PUT", path, map[string]any{"dueAt": "2026-11-01T12:00:00Z"}, 409))
-		if !reflect.DeepEqual(guarded, f.row(created.TaskID)) || f.count("SELECT COUNT(*) FROM company_tasks WHERE user_name=?", taskUser) != 1 {
-			t.Fatal("Calendar HTTP refusal changed task data")
+		pending := taskJSON[taskCreateReply](t, h.call("demo", "POST", "/api/tasks", input, 201))
+		if !pending.OK || pending.TaskID == created.TaskID || pending.CalendarSync.Status != "pending" {
+			t.Fatal("connected Calendar HTTP create must persist a separate pending task")
+		}
+		movedPending := taskJSON[struct {
+			OK           bool   `json:"ok"`
+			DueAt        string `json:"dueAt"`
+			CalendarSync struct {
+				Status string `json:"status"`
+			} `json:"calendarSync"`
+		}](t, h.call("demo", "PUT", path, map[string]any{"dueAt": "2026-11-01T12:00:00Z"}, 200))
+		if !movedPending.OK || movedPending.DueAt != "2026-11-01T12:00:00.000Z" || movedPending.CalendarSync.Status != "pending" {
+			t.Fatal("connected Calendar HTTP reschedule must queue a pending update")
+		}
+		expectedPending := guarded
+		expectedPending.DueAt = movedPending.DueAt
+		expectedPending.GoogleSyncStatus = "pending"
+		newTask := f.row(pending.TaskID)
+		if !reflect.DeepEqual(expectedPending, f.row(created.TaskID)) ||
+			newTask.GoogleSyncStatus != "pending" || newTask.GoogleEventID != "" ||
+			f.count("SELECT COUNT(*) FROM company_tasks WHERE user_name=?", taskUser) != 2 {
+			t.Fatal("connected Calendar HTTP calls changed unrelated data or did not persist pending tasks")
 		}
 	})
 	t.Run("SQL write failures map to 503 without data loss", func(t *testing.T) {
