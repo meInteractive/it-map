@@ -117,7 +117,8 @@ func TaskMutationHandler(m *auth.Manager, completion TaskCompletionWriter, resch
 		case err != nil:
 			jsonReply(w, http.StatusServiceUnavailable, map[string]string{"error": "Не удалось обновить задачу."})
 		case key == "dueAt":
-			jsonReply(w, http.StatusOK, map[string]any{"ok": true, "dueAt": dueAt, "calendarSync": map[string]string{"status": "not_connected"}})
+			status := taskCalendarSyncStatus(ctx, reschedule, user.Name, id)
+			jsonReply(w, http.StatusOK, map[string]any{"ok": true, "dueAt": dueAt, "calendarSync": map[string]string{"status": status}})
 		default:
 			jsonReply(w, http.StatusOK, map[string]bool{"ok": true})
 		}
