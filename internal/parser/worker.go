@@ -266,7 +266,7 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 		listing:  HHListingExecutor{Settings: w.Settings, Runtime: listingRuntime, Owner: owner, ResumePrevious: w.ResumePreviousDataset},
 		detail:   HHFullTextExecutor{Settings: w.Settings, Runtime: detailRuntime, Public: w.Public, Owner: owner},
 		importer: HHImportExecutor{Settings: w.Settings, Owner: owner},
-		ai:       AIStageDispatcher{Owner: owner, Generator: w.Generator, Classifier: w.Classifier, DeferUnspentBudget: w.DeferUnspentBudget},
+		ai:       AIStageDispatcher{Owner: owner, Generator: w.Generator, Classifier: w.Classifier, DeferUnspentBudget: w.DeferUnspentBudget, StopClaims: options.StopClaims},
 	}
 	if err := w.Runs.reportCycle(bounded, start.Run.ID, 0, true); err != nil {
 		status = "partial"
@@ -493,7 +493,7 @@ func workerExecute(ctx context.Context, d workerDispatch, lease *JobLease, owner
 		if errors.Is(executeErr, ErrHHRoleFilter) {
 			finish = FinishOptions{Status: "failed", Code: "hh_roles_missing", Message: "Выберите профессиональные роли HH для каждого активного направления и повторите запуск."}
 		}
-		if onlyAdmissionCause(executeErr, ErrHHDetailPending) || onlyAdmissionCause(executeErr, ErrDetailBusy) || onlyAdmissionCause(executeErr, ErrHHCycleLimit) || onlyAdmissionCause(executeErr, context.Canceled) || onlyAdmissionCause(executeErr, context.DeadlineExceeded) {
+		if onlyAdmissionCause(executeErr, ErrHHDetailPending) || onlyAdmissionCause(executeErr, ErrDetailBusy) || onlyAdmissionCause(executeErr, ErrHHCycleLimit) || onlyAdmissionCause(executeErr, ErrWorkerDrainBeforePaid) || onlyAdmissionCause(executeErr, context.Canceled) || onlyAdmissionCause(executeErr, context.DeadlineExceeded) {
 			finish = FinishOptions{Status: "pending", Code: "deferred", Delay: 10 * time.Second, Deferred: true}
 		}
 		if denyActorStarts && onlyAdmissionCause(executeErr, ErrHHCycleLimit) {
