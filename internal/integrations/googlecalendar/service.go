@@ -119,6 +119,34 @@ func (s Service) accountEmail(ctx context.Context, accessToken string) (string,e
 	return data.Email,nil
 }
 
+// verifyPriorLinks проверяет только уже привязанные события. При удалённом
+// локальном OAuth подключении старый email неизвестен, поэтому реальную
+// принадлежность события доказывает GET по детерминированному ID в новом
+// аккаунте и private provenance. Слишком большие/сомнительные группы
+// требуют операторского восстановления, а не автоматического перепривязывания.
+func (s Service) verifyPriorLinks(ctx context.Context, user, accessToken string) (int64,error) {
+	rows,e:=s.DB.QueryContext(ctx,"SELECT id,google_event_id FROM company_tasks WHERE user_name=? AND google_event_id IS NOT NULL ORDER BY id LIMIT 101",user)
+	if e!=nil{return 0,ErrStorage}
+	type link struct{id int64; event string}
+	var list []link
+	for rows.Next() {
+		var l link
+		if rows.Scan(&l.id,&l.event)!=nil {rows.Close();return 0,ErrStorage}
+		list=append(list,l)
+	}
+	e=rows.Err()
+	rows.Close()
+	if e!=nil{return 0,ErrStorage}
+	if len(list)>100{return 0,ErrLinkedTask}
+	for _,l:=range list{
+		expected:=EventID(user,l.id)
+		if l.event!=expected{return 0,ErrLinkedTask}
+		remote,_,err:=s.Tokens.eventCall(ctx,accessToken,"primary",http.MethodGet,expected,nil)
+		if err!=nil||!matchesEvent(remote,Event{ID:expected}) {return 0,ErrLinkedTask}
+	}
+	return int64(len(list)),nil
+}
+
 // Connect сохраняет refresh token лишь после успешного OAuth exchange.
 // Переподключение к другому Google account при старых task links запрещено.
 func (s Service) Connect(ctx context.Context, user,code,state string) error {
@@ -127,6 +155,12 @@ func (s Service) Connect(ctx context.Context, user,code,state string) error {
 	if e!=nil{return e}
 	email,e:=s.accountEmail(ctx,token.AccessToken)
 	if e!=nil{return e}
+	// После отключения локальный token исчезает, но ID созданных событий
+	// остаются. Проверим их в выбранном Google account ДО SQL-транзакции.
+	// Это позволяет безопасно переподключить тот же аккаунт и не объединять
+	// чужие календари. Ни одной внешней операции записи здесь нет.
+	verified, e := s.verifyPriorLinks(ctx, user, token.AccessToken)
+	if e != nil {return e}
 	codec,e:=s.codec()
 	if e!=nil{return ErrConfiguration}
 	encrypted,e:=codec.Encrypt(token.RefreshToken)
@@ -141,7 +175,7 @@ func (s Service) Connect(ctx context.Context, user,code,state string) error {
 	// автоматически переносить в другой аккаунт Google.
 	var linked int64
 	if tx.QueryRowContext(ctx,"SELECT COUNT(*) FROM company_tasks WHERE user_name=? AND google_event_id IS NOT NULL",user).Scan(&linked)!=nil{return ErrStorage}
-	if linked>0&&(previous==""||previous!=email){return ErrLinkedTask}
+	if linked != verified || (linked>0 && previous!="" && previous!=email){return ErrLinkedTask}
 	_,e=tx.ExecContext(ctx,`INSERT INTO google_calendar_user_connection(user_name,account_email,refresh_token_encrypted,calendar_id,connected_at,updated_at)
 	VALUES(?,?,?,'primary',UTC_TIMESTAMP(),UTC_TIMESTAMP())
 	ON DUPLICATE KEY UPDATE account_email=VALUES(account_email),refresh_token_encrypted=VALUES(refresh_token_encrypted),calendar_id=VALUES(calendar_id),updated_at=UTC_TIMESTAMP()`,user,email,encrypted)
