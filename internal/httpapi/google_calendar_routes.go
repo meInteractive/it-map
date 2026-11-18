@@ -52,10 +52,17 @@ func GoogleCalendarCallbackHandler(svc *googlecalendar.Service) http.HandlerFunc
 		cookie,e:=r.Cookie(calendarStateCookie)
 		calendarClearState(w)
 		w.Header().Set("Cache-Control","private, no-store")
-		if e!=nil || r.URL.Query().Get("error")!="" {
+		if e!=nil {
+			jsonReply(w,http.StatusForbidden,map[string]string{"error":"Недействительное подтверждение Google Calendar."});return
+		}
+		q:=r.URL.Query()
+		if q.Get("error")!="" {
 			jsonReply(w,http.StatusBadRequest,map[string]string{"error":"Подключение Google Calendar отменено или устарело."});return
 		}
-		state:=r.URL.Query().Get("state")
+		if len(q["state"])!=1 || len(q["code"])!=1 {
+			jsonReply(w,http.StatusForbidden,map[string]string{"error":"Недействительное подтверждение Google Calendar."});return
+		}
+		state:=q.Get("state")
 		user,e:=svc.OAuth.VerifyState(state,cookie.Value,time.Now())
 		if e!=nil {jsonReply(w,http.StatusForbidden,map[string]string{"error":"Недействительное подтверждение Google Calendar."});return}
 		code:=r.URL.Query().Get("code")
