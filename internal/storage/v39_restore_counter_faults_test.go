@@ -129,45 +129,58 @@ func testRestoreLostLockResponse(t *testing.T) {
 }
 
 func testRestoreContaminatedSession(t *testing.T) {
-	f := openProfileSettingsFixture(t)
-	body := counterFile(f, counterNext(f))
-	pool := counterFaultPool(f, &counterFault{prefix: "CI_UNUSED_FAULT"})
-	for _, poison := range []string{
-		"SET SESSION autocommit=0",
-		"START TRANSACTION",
-		"DO GET_LOCK(CONCAT('itmap.restore.v39:',LEFT(SHA2(DATABASE(),256),32)),0)",
-	} {
-		conn, err := pool.Conn(f.ctx)
-		if err != nil {
-			t.Fatal(err)
-		}
-		var old int64
-		if err = conn.QueryRowContext(f.ctx, "SELECT CONNECTION_ID()").Scan(&old); err != nil {
-			t.Fatal(err)
-		}
-		if _, err = conn.ExecContext(f.ctx, poison); err != nil {
-			t.Fatal(err)
-		}
-		if err = conn.Close(); err != nil {
-			t.Fatal(err)
-		}
-		if session, err := (backup.Repository{DB: pool}).OpenV39RestoreSession(f.ctx, body); err == nil {
-			session.Close()
-			t.Fatal("contaminated restore session accepted")
-		}
-		var next int64
-		var autocommit int
-		var owner sql.NullInt64
-		if err = pool.QueryRowContext(f.ctx, "SELECT CONNECTION_ID(),@@autocommit,IS_USED_LOCK(CONCAT('itmap.restore.v39:',LEFT(SHA2(DATABASE(),256),32)))").Scan(&next, &autocommit, &owner); err != nil || next == old || autocommit != 1 || owner.Valid {
-			t.Fatal("contaminated session was not discarded", err)
-		}
+	cases := []struct {
+		name   string
+		poison string
+	}{
+		{"autocommit_off", "SET SESSION autocommit=0"},
+		{"transaction_open", "START TRANSACTION"},
+		{"advisory_lock_held", "DO GET_LOCK(CONCAT('itmap.restore.v39:',LEFT(SHA2(DATABASE(),256),32)),0)"},
 	}
-	session, err := (backup.Repository{DB: pool}).OpenV39RestoreSession(f.ctx, body)
-	if err != nil {
-		t.Fatal("clean restore session rejected", err)
-	}
-	if err := session.Close(); err != nil {
-		t.Fatal(err)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Каждая причина загрязнения проверяется на собственной одноразовой
+			// SQL-фикстуре: предыдущая попытка не меняет состояние следующей.
+			f := openProfileSettingsFixture(t)
+			body := counterFile(f, counterNext(f))
+			pool := counterFaultPool(f, &counterFault{prefix: "CI_UNUSED_FAULT"})
+			conn, err := pool.Conn(f.ctx)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var old int64
+			if err = conn.QueryRowContext(f.ctx, "SELECT CONNECTION_ID()").Scan(&old); err != nil {
+				t.Fatal(err)
+			}
+			if _, err = conn.ExecContext(f.ctx, tc.poison); err != nil {
+				t.Fatalf("%s: cannot poison disposable session: %v", tc.name, err)
+			}
+			if err = conn.Close(); err != nil {
+				t.Fatal(err)
+			}
+			if session, err := (backup.Repository{DB: pool}).OpenV39RestoreSession(f.ctx, body); err == nil {
+				_ = session.Close()
+				t.Fatalf("%s: contaminated restore session accepted", tc.name)
+			}
+			var next int64
+			var autocommit int
+			var owner sql.NullInt64
+			err = pool.QueryRowContext(f.ctx, "SELECT CONNECTION_ID(),@@autocommit,IS_USED_LOCK(CONCAT('itmap.restore.v39:',LEFT(SHA2(DATABASE(),256),32)))").Scan(&next, &autocommit, &owner)
+			if err != nil {
+				t.Fatalf("%s: cannot inspect post-restore session: %v", tc.name, err)
+			}
+			if next == old || autocommit != 1 || owner.Valid {
+				t.Fatalf("%s: contaminated session was not discarded: previousConn=%d nextConn=%d autocommit=%d lockOwnerValid=%t lockOwnerConn=%d",
+					tc.name, old, next, autocommit, owner.Valid, owner.Int64)
+			}
+			session, err := (backup.Repository{DB: pool}).OpenV39RestoreSession(f.ctx, body)
+			if err != nil {
+				t.Fatalf("%s: clean restore session rejected: %v", tc.name, err)
+			}
+			if err := session.Close(); err != nil {
+				t.Fatalf("%s: clean restore session leaked resources: %v", tc.name, err)
+			}
+		})
 	}
 }
 func counterFaultPool(f *profileSettingsFixture, hook *counterFault) *sql.DB {
