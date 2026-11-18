@@ -659,6 +659,8 @@ func billingCrashChild(t *testing.T) {
 type billingCommitFault struct {
 	prefix       string
 	beforeCommit bool
+	// Только синтетическая проверка отмены сразу после реального COMMIT.
+	onCommitted  func()
 	armed, fired atomic.Bool
 }
 type billingCommitConnector struct {
@@ -736,6 +738,10 @@ func (tx billingCommitTx) Commit() error {
 	}
 	e := tx.Tx.Commit()
 	if e == nil && tx.fault.armed.Load() && tx.fault.fired.CompareAndSwap(false, true) {
+		if tx.fault.onCommitted != nil {
+			tx.fault.onCommitted()
+			return nil
+		}
 		return errors.New("CI synthetic error after actual COMMIT")
 	}
 	return e
@@ -744,6 +750,10 @@ func billingCommitRepository(t *testing.T, generation, prefix string) (parser.Ru
 	return billingCommitRepositoryMode(t, generation, prefix, false)
 }
 func billingCommitRepositoryMode(t *testing.T, generation, prefix string, beforeCommit bool) (parser.RunRepository, *atomic.Bool) {
+	return billingCommitRepositoryHook(t, generation, prefix, beforeCommit, nil)
+}
+
+func billingCommitRepositoryHook(t *testing.T, generation, prefix string, beforeCommit bool, onCommitted func()) (parser.RunRepository, *atomic.Bool) {
 	t.Helper()
 	_, guarded := schedulerDB(t)
 	_ = guarded
@@ -755,7 +765,7 @@ func billingCommitRepositoryMode(t *testing.T, generation, prefix string, before
 	if e != nil {
 		t.Fatal("cannot configure guarded billing connector")
 	}
-	fault := &billingCommitFault{prefix: prefix, beforeCommit: beforeCommit}
+	fault := &billingCommitFault{prefix: prefix, beforeCommit: beforeCommit, onCommitted: onCommitted}
 	db := sql.OpenDB(billingCommitConnector{base, fault})
 	t.Cleanup(func() { db.Close() })
 	return parser.RunRepository{DB: db, Generation: generation}, &fault.fired
