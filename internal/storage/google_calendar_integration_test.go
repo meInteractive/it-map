@@ -39,7 +39,7 @@ func TestMariaDBGoogleCalendarManualSyncDisposable(t *testing.T) {
 	t.Cleanup(func() {
 		f.exec("DELETE FROM google_calendar_user_connection WHERE user_name='CI_GOOGLE_USER'")
 		f.exec("DELETE FROM company_tasks WHERE id IN (990236,990237)")
-		f.exec("DELETE FROM company_crm WHERE company_name=\'CI GOOGLE COMPANY\'")
+		f.exec("DELETE FROM company_crm WHERE company_name='CI GOOGLE COMPANY'")
 	})
 	wantedID := googlecalendar.EventID("CI_GOOGLE_USER",990236)
 	events := map[string]googlecalendar.Event{}
