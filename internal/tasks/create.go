@@ -49,8 +49,11 @@ func (r Repository) Create(ctx context.Context, user string, input CreateInput) 
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return 0, err
 	}
+	// Запись сохраняется в MariaDB с явным статусом pending. Внешний
+	// Google HTTP вызывается только по ручной команде Sync, без двойного POST.
+	syncStatus := "not_connected"
 	if connected == 1 {
-		return 0, ErrCalendarSyncRequired
+		syncStatus = "pending"
 	}
 
 	if input.VacancyID != nil {
@@ -71,8 +74,8 @@ func (r Repository) Create(ctx context.Context, user string, input CreateInput) 
 		return 0, err
 	}
 	result, err := tx.ExecContext(ctx,
-		`INSERT INTO company_tasks (user_name,company_name,vacancy_id,type,note,due_at) VALUES (?,?,?,?,?,?)`,
-		user, input.CompanyName, input.VacancyID, input.Type, input.Note, input.DueAt)
+		`INSERT INTO company_tasks (user_name,company_name,vacancy_id,type,note,due_at,google_sync_status) VALUES (?,?,?,?,?,?,?)`,
+		user, input.CompanyName, input.VacancyID, input.Type, input.Note, input.DueAt, syncStatus)
 	if err != nil {
 		return 0, err
 	}
