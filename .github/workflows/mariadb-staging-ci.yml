@@ -156,6 +156,23 @@ jobs:
           assert not any(e.get('Action')=='skip' for e in events), 'required task write test skipped'
           print('PASS: task write gate ran with zero skips')
           PYCODE
+      - name: Verify Google Calendar manual sync on disposable MariaDB with mock HTTP
+        env:
+          ITMAP_REQUIRE_MARIADB_INTEGRATION: '1'
+          ITMAP_TEST_MARIADB_WRITE_DSN: 'itmap_ci:ci_only_disposable_writer@tcp(127.0.0.1:3306)/itmap_ci?parseTime=true&clientFoundRows=true&collation=utf8mb4_bin'
+        run: |
+          set -euo pipefail
+          result_file="$(mktemp)"
+          trap 'rm -f "$result_file"' EXIT
+          go test -race -tags mariadb,schedulerwrites ./internal/storage -run '^TestMariaDBGoogleCalendarManualSyncDisposable$' -count=1 -json | tee "$result_file"
+          python3 - "$result_file" <<'PYCODE'
+          import json,sys
+          events=[json.loads(line) for line in open(sys.argv[1],encoding='utf8')]
+          target='TestMariaDBGoogleCalendarManualSyncDisposable'
+          assert any(e.get('Test')==target and e.get('Action')=='pass' for e in events), 'Google Calendar test did not pass/run'
+          assert not any(e.get('Action')=='skip' for e in events), 'Google Calendar test skipped'
+          print('PASS: Google Calendar lost ACK, Event ID, PATCH, disconnect and user isolation')
+          PYCODE
       - name: Verify CRM flags ONLY in disposable CI
         env:
           ITMAP_REQUIRE_MARIADB_INTEGRATION: '1'
