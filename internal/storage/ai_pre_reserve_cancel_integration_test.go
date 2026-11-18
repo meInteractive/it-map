@@ -19,9 +19,9 @@ import (
 func TestMariaDBAIAlreadyCanceledBeforeReserveDisposable(t *testing.T) {
 	f := billingFixture(t)
 	for _, tc := range []struct {
-		name string
+		name        string
 		makeContext func(context.Context) (context.Context, context.CancelFunc)
-		want error
+		want        error
 	}{
 		{"cancelled", func(parent context.Context) (context.Context, context.CancelFunc) {
 			ctx, cancel := context.WithCancel(parent)
