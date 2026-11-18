@@ -39,10 +39,9 @@ func (s Service) Generate(ctx context.Context,user string,id int64,regenerate bo
 	}
 	instructions,state,err:=messages(in.Prompt,in.Resume,in.Title,in.Description)
 	if err!=nil{return Letter{},err}
-	// Пока нет отдельного durable ledger для ручных ПЛАТНЫХ вызовов,
-	// допускаем только OpenRouter с серверным max_price=0.
-	// Выбранную платную модель никогда не заменяем молча бесплатной.
-	if in.Config.Provider!="openrouter"||in.Config.OpenRouterModel!="best_free"{
+	// OpenRouter остаётся строго бесплатным. Платный OpenAI допускается
+	// только через отдельный durable admission; никакой тихой смены модели.
+	if in.Config.Provider!="openai" && (in.Config.Provider!="openrouter"||in.Config.OpenRouterModel!="best_free"){
 		return Letter{},ErrPaidBilling
 	}
 	if s.Generator==nil{return Letter{},ErrUnavailable}
@@ -90,7 +89,11 @@ func (s Service) Generate(ctx context.Context,user string,id int64,regenerate bo
 		CheckActive:func(check context.Context)error{return s.Repository.Check(check,lease)},
 	}
 	if progress!=nil{progress("model")}
-	result,err:=s.Generator.Automatic(ctx,request,in.Config,&freeBilling{repo:s.Repository,lease:lease})
+	var billing aiproviders.Billing=&freeBilling{repo:s.Repository,lease:lease}
+	if in.Config.Provider=="openai"{
+		billing=&paidBilling{repo:s.Repository,lease:lease,model:in.Config.OpenAIModel}
+	}
+	result,err:=s.Generator.Automatic(ctx,request,in.Config,billing)
 	if err!=nil{return Letter{},err}
 	answer,err:=ParseAnswer(result.Message.Content)
 	if err!=nil{return Letter{},err}
