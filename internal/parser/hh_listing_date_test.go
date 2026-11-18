@@ -57,7 +57,7 @@ func TestGO293SevenDayScheduleAndThreeDayWindowGaps(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	windowDays := func(at time.Time) map[string]bool {
+	windowDays := func(t *testing.T, at time.Time) map[string]bool {
 		t.Helper()
 		from, to := hhDateWindow(at.UTC(), 3)
 		if from == nil || to == nil {
@@ -92,7 +92,7 @@ func TestGO293SevenDayScheduleAndThreeDayWindowGaps(t *testing.T) {
 		} {
 			t.Run(start.Format("2006-01-02")+"/interval_"+strconv.Itoa(tc.interval), func(t *testing.T) {
 				next := start.AddDate(0, 0, tc.interval)
-				first, second := windowDays(start), windowDays(next)
+				first, second := windowDays(t, start), windowDays(t, next)
 				gaps := []string{}
 				for day := start; day.Before(next); day = day.AddDate(0, 0, 1) {
 					d := day.Format("2006-01-02")
