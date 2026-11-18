@@ -299,6 +299,12 @@ func (a *Attempt) Run(ctx context.Context, request json.RawMessage, work func(co
 	if json.Unmarshal(request, &fields) != nil || json.Unmarshal(fields["provider"], &meta.Provider) != nil || json.Unmarshal(fields["model"], &meta.Model) != nil || meta.Provider == "" || meta.Model == "" || !utf8.ValidString(meta.Provider) || !utf8.ValidString(meta.Model) {
 		return nil, ErrBudgetUnknown
 	}
+	// If the caller has already cancelled, no paid operation has been
+	// reserved or dispatched. Do not label this known pre-reserve outcome
+	// as monetary uncertainty: a later in-flight error is still fail-closed.
+	if e = ctx.Err(); e != nil {
+		return nil, e
+	}
 	if e = s.reserve(ctx, upper, meta.Provider, meta.Model); e != nil {
 		if !errors.Is(e, ErrBudgetLimit) && !errors.Is(e, ErrBudgetUnknown) && !errors.Is(e, ErrMoneyUncertain) && !errors.Is(e, ErrHistoricalAIUnresolved) {
 			s.unknown.Store(true)
