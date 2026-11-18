@@ -63,24 +63,22 @@ export default function CoverLetter({ v, ready = true }: { v: VacancyDetail; rea
     text = useRef<HTMLDivElement>(null);
   return (
     <section className="cover-letter">
-      {(
-        <div className="cover-letter-actions">
-          <button
-            className="vacancy-source-button"
-            type="button"
-            aria-label="Создать сопроводительное письмо заново"
-            title="Создать новый заголовок и текст по текущим настройкам, промту, резюме и данным вакансии"
-            disabled={!ready || state.running}
-            onClick={() =>
-              void generateLetter(v.id, {
-                regenerate: !!letter.coverLetterSubject?.trim() && !!letter.coverLetterMd?.trim(),
-              })
-            }
-          >
-            Создать
-          </button>
-        </div>
-      )}
+      <div className="cover-letter-actions">
+        <button
+          className="vacancy-source-button"
+          type="button"
+          aria-label={letter.coverLetterMd ? 'Создать сопроводительное письмо заново' : 'Создать сопроводительное письмо'}
+          title="Создать письмо по текущим настройкам. При выборе OpenAI API-запрос может быть платным."
+          disabled={!ready || state.running}
+          onClick={() =>
+            void generateLetter(v.id, {
+              regenerate: !!letter.coverLetterSubject?.trim() && !!letter.coverLetterMd?.trim(),
+            })
+          }
+        >
+          Создать
+        </button>
+      </div>
       <div
         className="vacancy-application-loading"
         role="status"
