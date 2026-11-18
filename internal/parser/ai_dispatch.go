@@ -10,6 +10,7 @@ type AIStageDispatcher struct {
 	Generator          AIStageGenerator
 	Classifier         AIStageClassifier
 	DeferUnspentBudget bool
+	StopClaims         <-chan struct{} // сигнал остановки допуска новых платных AI-вызовов
 }
 
 func (d AIStageDispatcher) executor(kind string) (*AIStageExecutor, error) {
@@ -30,7 +31,7 @@ func (d AIStageDispatcher) executor(kind string) (*AIStageExecutor, error) {
 		return nil, ErrAIStageUnavailable
 	}
 	executor := &AIStageExecutor{
-		Store: store, Generator: d.Generator, Classifier: d.Classifier, DeferUnspentBudget: d.DeferUnspentBudget,
+		Store: store, Generator: d.Generator, Classifier: d.Classifier, DeferUnspentBudget: d.DeferUnspentBudget, StopClaims: d.StopClaims,
 		Handoff: &CandidateHandoff{Planner: SQLCandidateHandoffPlanner{Owner: d.Owner}},
 	}
 	if kind == "score_relevance" {
