@@ -56,14 +56,14 @@ export function CopyLetterButton({
 }
 
 export default function CoverLetter({ v, ready = true }: { v: VacancyDetail; ready?: boolean }) {
-  const state = useCoverLetter(v.id, v.coverLetterMd, ready);
+  const state = useCoverLetter(v.id);
   // Saved text has one source: the current detail response, including empty text.
   const letter = v;
   const subject = useRef<HTMLDivElement>(null),
     text = useRef<HTMLDivElement>(null);
   return (
     <section className="cover-letter">
-      {!!letter.coverLetterSubject?.trim() && !!letter.coverLetterMd?.trim() && (
+      {(
         <div className="cover-letter-actions">
           <button
             className="vacancy-source-button"
@@ -71,7 +71,11 @@ export default function CoverLetter({ v, ready = true }: { v: VacancyDetail; rea
             aria-label="Создать сопроводительное письмо заново"
             title="Создать новый заголовок и текст по текущим настройкам, промту, резюме и данным вакансии"
             disabled={!ready || state.running}
-            onClick={() => void generateLetter(v.id, { regenerate: true })}
+            onClick={() =>
+              void generateLetter(v.id, {
+                regenerate: !!letter.coverLetterSubject?.trim() && !!letter.coverLetterMd?.trim(),
+              })
+            }
           >
             Создать
           </button>
