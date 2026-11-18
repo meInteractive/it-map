@@ -10,6 +10,7 @@ import (
 
 	"itmap/internal/auth"
 	"itmap/internal/catalog"
+	"itmap/internal/integrations/googlecalendar"
 )
 
 // DBChecker is only used to verify the active DB connection; the readiness gate
@@ -65,6 +66,7 @@ type Options struct {
 	TaskCreates          TaskCreator
 	TaskCompletion       TaskCompletionWriter
 	TaskReschedule       TaskRescheduler
+	Calendar             *googlecalendar.Service
 	Resumes              ResumeStore
 	ProfileSettings      ProfileSettingsStore
 	OpenAISettings       OpenAISettingsService
@@ -198,6 +200,13 @@ func NewHandlerWithOptions(logger *slog.Logger, opts Options) http.Handler {
 		mux.HandleFunc("/api/hiring-contacts/{id}", ContactItemHandler(opts.Auth, opts.Contacts))
 		mux.HandleFunc("/api/channels", ChannelCollectionHandler(opts.Auth, opts.Channels, opts.ChannelWrites))
 		mux.HandleFunc("/api/channels/{id}", ChannelItemHandler(opts.Auth, opts.ChannelWrites))
+		if opts.Calendar != nil {
+			mux.HandleFunc("GET /api/google-calendar/status", GoogleCalendarStatusHandler(opts.Auth, opts.Calendar))
+			mux.HandleFunc("GET /api/google-calendar/connect", GoogleCalendarConnectHandler(opts.Auth, opts.Calendar))
+			mux.HandleFunc("GET /api/google-calendar/callback", GoogleCalendarCallbackHandler(opts.Calendar))
+			mux.HandleFunc("POST /api/google-calendar/sync", GoogleCalendarActionHandler(opts.Auth, opts.Calendar, "sync"))
+			mux.HandleFunc("POST /api/google-calendar/disconnect", GoogleCalendarActionHandler(opts.Auth, opts.Calendar, "disconnect"))
+		}
 		if opts.Tasks != nil {
 			mux.HandleFunc("GET /api/tasks", TaskListHandler(opts.Auth, opts.Tasks))
 		}
