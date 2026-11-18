@@ -13,7 +13,7 @@ import (
 )
 
 func TestGoogleCalendarOAuthHTTPStateAndPermissions(t *testing.T) {
-	m, err := auth.NewManager(strings.Repeat("S",64),map[string]string{"demo":"CI_PASSWORD"})
+	m, err := auth.NewManager(strings.Repeat("S",64),map[string]string{"eugene":"CI_ADMIN_PASS","demo":"CI_PASSWORD"})
 	if err!=nil {t.Fatal(err)}
 	user,_:=m.Authenticate("demo","CI_PASSWORD")
 	session,err:=m.Issue(user,time.Now())
