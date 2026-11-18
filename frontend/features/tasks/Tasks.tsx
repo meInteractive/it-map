@@ -149,7 +149,7 @@ export function TaskCard({
             <span className="task-calendar-badge error" title={task.googleSyncError}>
               Ошибка календаря
             </span>
-          ) : task.googleSyncStatus === 'pending' || task.googleSyncStatus?.startsWith('inflight:') ? (
+          ) : task.googleSyncStatus === 'pending' ? (
             <span className="task-calendar-badge">Ожидает синхронизации</span>
           ) : task.googleEventId ? (
             <span className="task-calendar-badge">Google Calendar</span>
