@@ -22,9 +22,11 @@ func (f calendarRoundTrip) RoundTrip(r *http.Request) (*http.Response, error) { 
 
 func TestMariaDBGoogleCalendarManualSyncDisposable(t *testing.T) {
 	f := openSchedulerFixture(t)
-	if f.count("SELECT COUNT(*) FROM company_tasks WHERE id IN (990236,990237)") != 0 {
-		t.Fatal("CI calendar task IDs already present")
+	if f.count("SELECT COUNT(*) FROM company_tasks WHERE id IN (990236,990237)") != 0 ||
+		f.count("SELECT COUNT(*) FROM company_crm WHERE company_name='CI GOOGLE COMPANY'") != 0 {
+		t.Fatal("CI calendar namespace already present")
 	}
+	f.exec("INSERT INTO company_crm(company_name) VALUES('CI GOOGLE COMPANY')")
 	f.exec(`INSERT INTO company_tasks(id,user_name,company_name,type,note,due_at,google_sync_status)
 	VALUES(990236,'CI_GOOGLE_USER','CI GOOGLE COMPANY','meeting','CI NOTES','2026-11-19T12:00:00.000Z','pending'),
 	(990237,'CI_OTHER','CI GOOGLE COMPANY','call','CI OTHER NOTES','2026-11-19T12:00:00.000Z','pending')`)
@@ -37,6 +39,7 @@ func TestMariaDBGoogleCalendarManualSyncDisposable(t *testing.T) {
 	t.Cleanup(func() {
 		f.exec("DELETE FROM google_calendar_user_connection WHERE user_name='CI_GOOGLE_USER'")
 		f.exec("DELETE FROM company_tasks WHERE id IN (990236,990237)")
+		f.exec("DELETE FROM company_crm WHERE company_name=\'CI GOOGLE COMPANY\'")
 	})
 	wantedID := googlecalendar.EventID("CI_GOOGLE_USER",990236)
 	events := map[string]googlecalendar.Event{}
