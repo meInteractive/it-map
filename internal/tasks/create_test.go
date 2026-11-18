@@ -14,7 +14,7 @@ type taskCreateState struct {
 	connected, invalidCompany, invalidVacancy, failInsert, failCRM bool
 	commits, rollbacks, writes                                     int
 	user                                                           string
-	taskDueAt                                                      string
+	taskDueAt, syncStatus                                          string
 }
 type taskCreateDriver struct{ state *taskCreateState }
 type taskCreateConn struct{ state *taskCreateState }
@@ -93,10 +93,11 @@ func (c *taskCreateConn) ExecContext(_ context.Context, q string, args []driver.
 		return taskCreateResult{id: 0}, nil
 	}
 	if strings.Contains(q, "INSERT INTO company_tasks") {
-		if len(args) != 6 || args[0].Value != s.user || args[1].Value != "Example" || args[2].Value != int64(7) || args[3].Value != "call" {
+		if len(args) != 7 || args[0].Value != s.user || args[1].Value != "Example" || args[2].Value != int64(7) || args[3].Value != "call" {
 			return nil, errors.New("wrong task data")
 		}
 		s.taskDueAt = args[5].Value.(string)
+		s.syncStatus = args[6].Value.(string)
 		if s.failInsert {
 			return nil, errors.New("task INSERT unavailable")
 		}
@@ -113,7 +114,7 @@ func TestTaskCreateTransaction(t *testing.T) {
 	}{
 		{"created", taskCreateState{}, nil, true},
 		{"unknown company", taskCreateState{invalidCompany: true}, ErrCompanyNotFound, false},
-		{"calendar connected", taskCreateState{connected: true}, ErrCalendarSyncRequired, false},
+		{"calendar connected", taskCreateState{connected: true}, nil, true},
 		{"unrelated vacancy", taskCreateState{invalidVacancy: true}, ErrVacancyNotInCompany, false},
 		{"CRM failure", taskCreateState{failCRM: true}, nil, false},
 		{"task INSERT failure", taskCreateState{failInsert: true}, nil, false},
@@ -127,7 +128,7 @@ func TestTaskCreateTransaction(t *testing.T) {
 			v := int64(7)
 			id, err := (Repository{DB: db}).Create(context.Background(), "Demo", CreateInput{CompanyName: "Example", VacancyID: &v, Type: "call", DueAt: "2026-10-24T14:45:00+03:00"})
 			if tc.success {
-				if err != nil || id != 42 || s.taskDueAt != "2026-10-24T11:45:00.000Z" || s.commits != 1 || s.writes != 2 || s.rollbacks != 0 {
+				if err != nil || id != 42 || s.taskDueAt != "2026-10-24T11:45:00.000Z" || s.commits != 1 || s.writes != 2 || s.rollbacks != 0 || (s.connected && s.syncStatus != "pending") || (!s.connected && s.syncStatus != "not_connected") {
 					t.Fatalf("id=%d err=%v state=%+v", id, err, s)
 				}
 				return
