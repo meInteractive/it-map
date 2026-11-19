@@ -48,11 +48,17 @@ func (r Repository) Reschedule(ctx context.Context, user string, id int64, dueAt
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return "", err
 	}
-	if connected == 1 || eventID != "" || (syncStatus != "" && syncStatus != "not_connected") {
+	// После отключения Google уже связанная задача не должна молча
+	// менять срок без возможности обновить внешний объект.
+	if connected == 0 && (eventID != "" || (syncStatus != "" && syncStatus != "not_connected")) {
 		return "", ErrCalendarSyncRequired
 	}
+	nextStatus := "not_connected"
+	if connected == 1 {
+		nextStatus = "pending"
+	}
 	_, err = tx.ExecContext(ctx,
-		`UPDATE company_tasks SET due_at=? WHERE user_name=? AND id=?`, normalized, user, id)
+		`UPDATE company_tasks SET due_at=?,google_sync_status=? WHERE user_name=? AND id=?`, normalized, nextStatus, user, id)
 	if err != nil {
 		return "", err
 	}

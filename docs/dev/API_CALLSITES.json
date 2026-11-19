@@ -2197,7 +2197,7 @@
     {
       "id": "aff37da3d6e96a34",
       "file": "frontend/features/tasks/Tasks.tsx",
-      "line": 166,
+      "line": 168,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
@@ -2213,7 +2213,7 @@
     {
       "id": "aff37da3d6e96a34-2",
       "file": "frontend/features/tasks/Tasks.tsx",
-      "line": 192,
+      "line": 194,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
@@ -2229,7 +2229,7 @@
     {
       "id": "187877f33d3628a7",
       "file": "frontend/features/tasks/Tasks.tsx",
-      "line": 249,
+      "line": 251,
       "call": "mutate",
       "method": "POST",
       "methodExpression": "'POST'",
@@ -2245,7 +2245,7 @@
     {
       "id": "6a60ae3105c61ce5",
       "file": "frontend/features/tasks/Tasks.tsx",
-      "line": 323,
+      "line": 325,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
