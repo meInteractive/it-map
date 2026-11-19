@@ -106,7 +106,8 @@ func TaskCreateHandler(m *auth.Manager, creator TaskCreator) http.HandlerFunc {
 		case err != nil:
 			jsonReply(w, http.StatusServiceUnavailable, map[string]string{"error": "Не удалось создать задачу."})
 		default:
-			jsonReply(w, http.StatusCreated, map[string]any{"ok": true, "taskId": id, "calendarSync": map[string]string{"status": "not_connected"}})
+			status := taskCalendarSyncStatus(ctx, creator, user.Name, id)
+			jsonReply(w, http.StatusCreated, map[string]any{"ok": true, "taskId": id, "calendarSync": map[string]string{"status": status}})
 		}
 	})
 }

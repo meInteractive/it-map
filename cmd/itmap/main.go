@@ -27,6 +27,7 @@ import (
 	"itmap/internal/crm"
 	"itmap/internal/httpapi"
 	"itmap/internal/integrations/hhpublic"
+	"itmap/internal/integrations/googlecalendar"
 	"itmap/internal/parser"
 	"itmap/internal/profiles"
 	"itmap/internal/roles"
@@ -82,6 +83,16 @@ func httpHandler(logger *slog.Logger, db *sql.DB, manager *auth.Manager) http.Ha
 		opts.VacancyDeletes = vacancies.Repository{DB: db}
 		opts.VacancyUpdates = vacancies.Repository{DB: db}
 		opts.VacancyFlags = vacancies.Repository{DB: db}
+		opts.Calendar = &googlecalendar.Service{
+			DB: db,
+			Secret: os.Getenv("SESSION_SECRET"),
+			OAuth: googlecalendar.Config{
+				ClientID: os.Getenv("GOOGLE_CALENDAR_CLIENT_ID"),
+				ClientSecret: os.Getenv("GOOGLE_CALENDAR_CLIENT_SECRET"),
+				RedirectURI: os.Getenv("GOOGLE_CALENDAR_REDIRECT_URI"),
+				StateSecret: os.Getenv("SESSION_SECRET"),
+			},
+		}
 		opts.Tasks = tasks.Repository{DB: db}
 		opts.TaskCreates = tasks.Repository{DB: db}
 		opts.Applications = applications.Repository{DB: db, CreationSecret: []byte(os.Getenv("SESSION_SECRET"))}

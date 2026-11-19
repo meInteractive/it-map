@@ -119,14 +119,20 @@ func TestMariaDBTaskWritesDisposable(t *testing.T) {
 		if _, err := f.db.ExecContext(f.ctx, "INSERT INTO google_calendar_user_connection(user_name,refresh_token_encrypted) VALUES(?,?)", taskUser, taskCalendarMarker); err != nil {
 			t.Fatal("cannot seed synthetic calendar presence marker")
 		}
-		if _, err := f.repo.Create(f.ctx, taskUser, f.input()); !errors.Is(err, tasks.ErrCalendarSyncRequired) {
-			t.Fatalf("connected Calendar task create must refuse: %T", err)
+		created, err := f.repo.Create(f.ctx, taskUser, f.input())
+		if err != nil || created == id {
+			t.Fatalf("connected Calendar task must be queued locally for explicit sync: %v", err)
 		}
-		if _, err := f.repo.Reschedule(f.ctx, taskUser, id, "2026-11-01T12:00:00Z"); !errors.Is(err, tasks.ErrCalendarSyncRequired) {
-			t.Fatalf("connected Calendar reschedule must refuse: %T", err)
+		if pending := f.row(created); pending.GoogleSyncStatus != "pending" || pending.GoogleEventID != "" {
+			t.Fatal("connected Calendar task was not marked pending without an event", pending.GoogleSyncStatus)
 		}
-		if !reflect.DeepEqual(before, f.row(id)) {
-			t.Fatal("Calendar guard changed task contents")
+		if _, err := f.repo.Reschedule(f.ctx, taskUser, id, "2026-11-01T12:00:00Z"); err != nil {
+			t.Fatalf("connected Calendar task reschedule must queue a pending update: %v", err)
+		}
+		updated := f.row(id)
+		if updated.GoogleSyncStatus != "pending" || updated.GoogleEventID != "" || updated.DueAt == before.DueAt ||
+			updated.Type != before.Type || updated.Note != before.Note || updated.CompanyName != before.CompanyName {
+			t.Fatal("connected Calendar reschedule changed other fields or did not queue sync")
 		}
 		if _, err := f.db.ExecContext(f.ctx, "DELETE FROM google_calendar_user_connection WHERE user_name=? AND refresh_token_encrypted=?", taskUser, taskCalendarMarker); err != nil {
 			t.Fatal("cannot remove synthetic calendar marker")
@@ -152,8 +158,8 @@ func TestMariaDBTaskWritesDisposable(t *testing.T) {
 		if !done.Completed || done.CompletedAt == nil || !reflect.DeepEqual(linked, done) {
 			t.Fatal("completion changed Calendar linkage or task fields")
 		}
-		if f.count("SELECT COUNT(*) FROM company_tasks WHERE user_name=?", taskUser) != 1 {
-			t.Fatal("Calendar refusals left extra tasks")
+		if f.count("SELECT COUNT(*) FROM company_tasks WHERE user_name=?", taskUser) != 2 {
+			t.Fatal("connected Calendar task create did not persist exactly one new pending task")
 		}
 	})
 	t.Run("real writes roll back on injected client error", testTaskWriteRollbacks)

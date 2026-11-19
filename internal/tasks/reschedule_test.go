@@ -14,7 +14,7 @@ import (
 type rescheduleState struct {
 	linked, connected, missing, failUpdate, failConnectionCheck bool
 	updates, commits, rollbacks                                 int
-	deadline, user                                              string
+	deadline, user, syncStatus                                  string
 }
 type rescheduleDriver struct{ state *rescheduleState }
 type rescheduleConn struct{ state *rescheduleState }
@@ -97,10 +97,10 @@ func (c *rescheduleConn) QueryContext(_ context.Context, query string, args []dr
 }
 func (c *rescheduleConn) ExecContext(_ context.Context, query string, args []driver.NamedValue) (driver.Result, error) {
 	s := c.state
-	if !strings.Contains(query, "UPDATE company_tasks SET due_at=? WHERE user_name=? AND id=?") {
+	if !strings.Contains(query, "UPDATE company_tasks SET due_at=?,google_sync_status=? WHERE user_name=? AND id=?") {
 		return nil, fmt.Errorf("unexpected update: %s", query)
 	}
-	if len(args) != 3 || args[1].Value != s.user || args[2].Value != int64(10) {
+	if len(args) != 4 || args[2].Value != s.user || args[3].Value != int64(10) {
 		return nil, errors.New("incorrect update scope")
 	}
 	s.updates++
@@ -108,6 +108,7 @@ func (c *rescheduleConn) ExecContext(_ context.Context, query string, args []dri
 		return nil, errors.New("write failed")
 	}
 	s.deadline = args[0].Value.(string)
+	s.syncStatus = args[1].Value.(string)
 	return rescheduleResult{}, nil
 }
 func TestRescheduleRejectsCalendarAndPreservesUserScope(t *testing.T) {
@@ -119,7 +120,7 @@ func TestRescheduleRejectsCalendarAndPreservesUserScope(t *testing.T) {
 	}{
 		{"unconnected", rescheduleState{}, nil, true},
 		{"linked event", rescheduleState{linked: true}, ErrCalendarSyncRequired, false},
-		{"connected user", rescheduleState{connected: true}, ErrCalendarSyncRequired, false},
+		{"connected user", rescheduleState{connected: true}, nil, true},
 		{"no task", rescheduleState{missing: true}, ErrTaskNotFound, false},
 		{"calendar check failure", rescheduleState{failConnectionCheck: true}, nil, false},
 		{"update failure", rescheduleState{failUpdate: true}, nil, false},
@@ -132,7 +133,7 @@ func TestRescheduleRejectsCalendarAndPreservesUserScope(t *testing.T) {
 			db.SetMaxOpenConns(1)
 			date, err := (Repository{DB: db}).Reschedule(context.Background(), "Demo", 10, "2026-10-24T14:45:00+03:00")
 			if tc.success {
-				if err != nil || date != "2026-10-24T11:45:00.000Z" || s.deadline != date || s.commits != 1 || s.updates != 1 || s.rollbacks != 0 {
+				if err != nil || date != "2026-10-24T11:45:00.000Z" || s.deadline != date || s.commits != 1 || s.updates != 1 || s.rollbacks != 0 || (s.connected && s.syncStatus != "pending") || (!s.connected && s.syncStatus != "not_connected") {
 					t.Fatalf("date=%s err=%v state=%+v", date, err, s)
 				}
 			} else {
