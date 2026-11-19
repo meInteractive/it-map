@@ -456,7 +456,9 @@ export default function CompanyDrawer({
     confirmedFlagsRef.current = flags;
     setConfirmedFlags(flags);
     setFlagUncertain(false);
-    invalidate((key) => /^\\/api\\/(companies|agencies)\\/(list|map|detail)/.test(key));
+    invalidate(
+      (key) => key.startsWith('/api/companies/') || key.startsWith('/api/agencies/'),
+    );
   }
 
   async function verifyFlags() {
