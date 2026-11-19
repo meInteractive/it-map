@@ -3,7 +3,7 @@ import { createElement as h } from 'react';
 import { act, create } from 'react-test-renderer';
 import { moduleFor, nav } from './test-support.mjs';
 
-// S11-B03-01…10: синтетические два пользователя, один реальный React drawer
+// Дополнительная React unit-регрессия к BATCH-03/A (#500): два пользователя, реальный drawer
 // и настоящий API cache client. Ни БД, ни provider/network здесь нет.
 const ui = await moduleFor('scripts/react-test-entry.tsx');
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
@@ -46,7 +46,7 @@ const settle = async (status = 200) => {
   await act(async () => {
     pending.resolve(
       status === 200
-        ? Response.json({ [pending.key]: pending.value })
+        ? Response.json({ ...flags[pending.user] })
         : Response.json({ error: 'Синтетический отказ записи' }, { status }),
     );
   });
@@ -92,6 +92,8 @@ try {
     calls.push({ url, method, user });
     if (method === 'GET' && url === detail)
       return Promise.resolve(Response.json({ company: { ...company, ...flags[user] } }));
+    if (method === 'GET' && url === '/api/crm?company=' + encodeURIComponent(company.name))
+      return Promise.resolve(Response.json({ status: '', comment: '', ...flags[user], history: [] }));
     if (method === 'PUT' && (url.startsWith('/api/crm/favorite?') || url.startsWith('/api/crm/hidden-company?'))) {
       const key = url.startsWith('/api/crm/favorite?') ? 'favorite' : 'hidden';
       const payload = JSON.parse(options.body);
@@ -135,7 +137,7 @@ try {
   await mount();
   assert.equal(current('Избранное').props['aria-pressed'], true);
 
-  // 06/07: серверная ошибка не меняет локальный флаг; retry берёт текущую запись.
+  // 06/07: отказ PUT сверяется read-only GET; retry берёт подтверждённые значения.
   await click('Скрыть компанию');
   assert.equal(current('Скрыть компанию').props.disabled, true);
   await settle(503);

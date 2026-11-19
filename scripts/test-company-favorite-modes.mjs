@@ -52,5 +52,5 @@ assert.equal(restoreFilters({ version: 2, favorites: 'other' }).favorites, 'all'
 assert.equal(restoreFilters({ version: 2, favorites: null }).favorites, 'all');
 console.log('PASS: избранные / не избранные / все одинаково для списка и карты, миграция и независимость фильтров');
 
-// Группа S11-B03/A: тот же required CI step проверяет реальные React flag writes.
+// Дополнительная React-регрессия BATCH-03/A поверх браузерного покрытия #500.
 await import('./test-company-personal-flags.mjs');

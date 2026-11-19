@@ -1,41 +1,71 @@
-# Расположение Go/React-кода (срез 09.11.2026)
+# Структура Go/React-кода IT Map (срез 19.11.2026)
 
-## Начать разработку
+**Точка сверки:** `main=2e670273`, после merge #496. Актуальное описание потоков и жизненного цикла — [ARCHITECTURE.md](ARCHITECTURE.md), проверка фактов по коду/CI — [GO-119](GO-119-ARCHITECTURE-EVIDENCE.md). Исторические handoff и план миграции не заменяют текущего `main`.
 
-Обязательные правила и ограничения находятся в [AGENTS.md](../../AGENTS.md), общий рабочий план — в [PLANS.md](../../PLANS.md). Задачу, её зависимости и критерии выбирают в [реестре](../../tasks/README.md); проверенные ветки, PR и результаты собраны в [STACK.md](../../tasks/STACK.md). Отметка MERGED у дочернего PR сама по себе не означает, что его код уже есть в main.
+## С чего начинать
 
-Перед изменениями сверяют [архитектуру](ARCHITECTURE.md), [историческую D1](../user/DATABASE.md), [целевую MariaDB](MARIADB.md) и [архитектурные решения](DECISIONS.md). Исходные API-контракты: [инвентарь](LEGACY_API_BASELINE.md) и [справочник](../user/API.md). Ограничения публикации исходников описаны в [границе публичного снимка](MIGRATION_PUBLIC_REPOSITORY.md).
+Обязательные инженерные правила и ограничения — [AGENTS.md](../../AGENTS.md), задачи и статусы — [tasks/](../../tasks/README.md), последний [handoff](handoff/README.md). Исторический GitHub `merged` у stacked PR может обозначать слияние в промежуточную ветку, не в `main`; проверяйте фактические файлы. Не изменяйте рабочую БД, платные операции и службы без отдельного разрешения владельца.
 
-## Расположение исходников
+## Точки входа
 
 ```text
-cmd/itmap/main.go                 точка входа Go и сборка зависимостей
-internal/auth/                    сессии и роли
-internal/config/                  конфигурация процесса
-internal/httpapi/                 net/http handlers, middleware и SPA
-internal/storage/                 MariaDB driver, baseline и SQL-проверки
-internal/storage/baseline.json    ожидаемая схема MariaDB
-internal/catalog/, crm/           каталог, CRM и пользовательские списки
-internal/vacancies/               вакансии, роли и пользовательское состояние
-internal/applications/            отклики, receipts, версии и история
-internal/tasks/, channels/, roles/ задачи, каналы и справочники
-internal/parser/                  действующий HH/Apify/ИИ-конвейер, цикл, расписание, очередь, бюджет и read-only диагностика
-internal/legacycrypto/            совместимость legacy AES-GCM
-internal/integrations/apify/      изолированный HTTP-адаптер на mocks
-frontend/                        React и TypeScript
-web/, vite.web.config.ts         клиентская Vite-сборка
-server/, build/                  очищенный исходный JavaScript для сверки
-app/                             историческая Next/Vinext-структура
-db/schema.ts                    историческая D1-схема
-docs/, tasks/                   документация и критерии задач
+cmd/itmap/main.go               Go HTTP API + раздача React SPA
+cmd/itmap-worker/main.go        отдельный постоянный Go Worker
+cmd/itmap-recovery/main.go      инспекция / ограниченная сверка известных Apify операций
+cmd/itmap-parser-staging/       изолированный тестовый запуск парсера
+cmd/itmap-schema-audit/         отдельные операторские проверки схемы
+
+internal/httpapi/               net/http ServeMux, middleware, /api/*, /health/*
+internal/auth/                  сессии и роли
+internal/config/                конфигурация Go API (не конфигурация Worker)
+internal/workerconfig/          явные enable-флаги, интервалы и grace Worker
+internal/workerengine/          engine, loopback monitor и read-only readers
+internal/workerloop/            три последовательных профиля и bounded backoff
+internal/parser/                SQL jobs/runs/attempts, HH, AI, import, recovery,
+                                scheduler, расходы, диагностика, воронка
+internal/consumercontrol/       отдельные guarded/consumer candidate-контракты;
+                                не считать все подключёнными к runtime
+
+internal/storage/               MariaDB, SQL и baseline/schema tests
+internal/dbschema/              доверенная схема
+internal/backup/, v39/          export/validate/restore
+internal/catalog/, crm/         каталог и пользовательская CRM
+internal/vacancies/             операции над вакансиями
+internal/applications/          отклики, receipts, CAS
+internal/tasks/, contacts/      задачи и контакты
+internal/channels/, roles/      каналы и справочники
+internal/profiles/              резюме/настройки
+internal/classification/        классификация направлений и промтов
+internal/coverletters/          генерация сопроводительных писем
+internal/aiproviders/           OpenAI/OpenRouter и защищённые провайдеры
+internal/apifyruns/             paid Actor ledger/reconcile и uncertainty
+internal/integrations/
+  googlecalendar/               OAuth/PKCE, ручной sync, стабильные Event ID
+  hhpublic/                     публичный HH, read-only извлечение
+internal/legacycrypto/          криптосовместимость прежних форматов
+
+frontend/                       React, TypeScript, бизнес-экраны/карта/редакторы
+frontend/api/client.ts          API client и cache invalidation
+frontend/features/settings/     диагностика, JSON, настройки парсера
+web/main.tsx                    точка входа React SPA
+vite.web.config.ts              сборка клиентского кода
+shared/                         общие контракты/фильтры
+server/, build/, db/schema.ts   историческая JS/Cloudflare D1 база для parity,
+                                не backend новой Go-программы
+deploy/                         release receiver, systemd templates и runbooks
+.github/workflows/              проверка, публикация API и Worker artifact
+docs/, tasks/                   документация, утверждённые критерии и статусы
 ```
 
-Go-бекенд находится в `cmd/` и `internal/`, а не в `server/`. Для поиска файлов: `rg --files cmd internal -g '*.go'`. JavaScript сохраняется как эталон миграции; наличие JS-модуля не означает, что соответствующая функция уже подключена в Go. По состоянию на 09.11.2026 **Go-конвейер HH существует и выполняет отдельные stages** (worker, очередь, Apify listing, ИИ, импорт). Реализация не охватывает автоматически все legacy-источники: наличие адаптера не гарантирует его запуск в автоматическом HH-расписании. [Матрица доказательств GO-119](GO-119-ARCHITECTURE-EVIDENCE.md) разделяет код, CI, staging и не принятые функции.
+**Именование:** названия `workerengine`, `workerloop`, `parser.Worker` обозначают разные уровни **одного** фонового runtime. Профили `launch`, `reconcile`, `pipeline` работают поверх общей SQL-очереди, а не трёх отдельных брокеров. HTTP API не обрабатывает очередь непрерывно.
 
-HTTP использует стандартный `net/http`, не Gin; хранилище — `database/sql`. MariaDB-драйвер включается build tag `mariadb`. Приложение читает окружение процесса, но не загружает `.env` автоматически; [.env.example](../../.env.example) содержит безопасный шаблон параметров, не реальные секреты.
+## Сборка и деплой
 
-## Сборка, запуск и проверки
+- Go использует `net/http`, `database/sql` и build tag `mariadb`; минимальный модульный Go — `go 1.23.0` по [go.mod](../../go.mod).
+- [`publish.yml`](../../.github/workflows/publish.yml) собирает `./cmd/itmap` и Vite `dist/web` для разрешённого `main`; **не** собирает и не обновляет отдельно установленный Worker в release archive.
+- [`worker-artifact.yml`](../../.github/workflows/worker-artifact.yml) собирает `./cmd/itmap-worker` и `./cmd/itmap-recovery` для Linux amd64/arm64, с `vcs.revision` и checksum; не включает автоустановку на сервер.
+- [GO-447](../../tasks/GO-447-WORKER-DEPLOY-RESTART.md) — ещё открытая задача безопасной совместной доставки, grace/drain, restart и rollback. [`deploy/WORKER-PRODUCTION.md`](../../deploy/WORKER-PRODUCTION.md) содержит текущую процедуру и ограничения.
+- Worker запускается с отдельными разрешающими флагами и проверкой схемы. Включение флага способно инициировать платный запрос, поэтому не является диагностикой. В API `APP_ENV=production` пока запрещён кодом конфигурации, а `/health/ready` намеренно сообщает 503.
+- Команды проекта и тестирования: [локальная инструкция](../user/deployment/LOCAL.md). Для React нужны `npm run typecheck:web`, `npm run format:check`, `npm run build:web`; для Go — `go test -race ./...`, `go vet ./...` и disposable MariaDB gate при затронутой SQL-логике.
 
-Команды, переменные и назначение проверок перенесены в [локальную инструкцию](../user/deployment/LOCAL.md). Сборка Go с MariaDB требует `-tags mariadb`, React — `npm run build:web`; старые Worker-команды не заменяют их. Запуск на собственном сервере и ограничения текущего приложения описаны в [развёртывании](../user/deployment/README.md).
-
-Работающий GPT Sites/D1/Site Automation остаётся отдельной системой. Не нужно включать исторический `server/` как Node-бекенд Go-сервиса или переносить в Git рабочие данные/ключи. Текущая Go-реализация не объявлена production-ready; статусы конкретных проверок и неперенесённых сценариев фиксируются в задачах, а не выводятся из наличия исходников.
+**Граница готовности:** наличие Go-модуля и успешный PR CI не доказывают, что тот же бинарник установлен, что legacy и новый consumer не сосуществуют, или что реальные OAuth/AI/Apify вызовы безопасно завершились. Проверки в `main` и на сервере документируются раздельно.

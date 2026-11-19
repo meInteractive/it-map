@@ -23,7 +23,7 @@
     {
       "id": "073edb066dcc58ad",
       "file": "frontend/Application.tsx",
-      "line": 606,
+      "line": 607,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -294,9 +294,25 @@
       "dynamicURL": true
     },
     {
+      "id": "185c4fa20f4741a4",
+      "file": "frontend/features/companies/CompanyDrawer.tsx",
+      "line": 449,
+      "call": "request",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/crm?company=' + encodeURIComponent(name)",
+      "literalFragments": [
+        "/api/crm?company="
+      ],
+      "families": [
+        "crm"
+      ],
+      "dynamicURL": true
+    },
+    {
       "id": "949b2dca183adec8",
       "file": "frontend/features/companies/CompanyDrawer.tsx",
-      "line": 442,
+      "line": 489,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",

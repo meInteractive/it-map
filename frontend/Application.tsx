@@ -334,6 +334,7 @@ function Workspace({ user }: { user: Session }) {
       className={'app' + (company ? ' panel-open' : '') + (standalone ? ' pwa-standalone' : '')}
       data-section={section}
       data-admin={user.isAdmin}
+      data-session-user={user.name}
     >
       <header>
         {showTools && (
@@ -646,7 +647,7 @@ export default function Application() {
   if (q.error instanceof ApiError && q.error.status === 401) return <Login />;
   return (
     <State loading={!q.data && q.loading} error={q.error}>
-      {q.data && <Workspace user={q.data} />}
+      {q.data && <Workspace key={q.data.name} user={q.data} />}
     </State>
   );
 }
