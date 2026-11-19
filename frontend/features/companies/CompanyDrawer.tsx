@@ -1,7 +1,7 @@
 import { FirecrawlCompanyTest } from '../settings/Firecrawl';
 import { companyRankLabel } from './labels';
 import { useEffect, useRef, useState } from 'react';
-import { useApi, mutate } from '../../api/client';
+import { useApi, mutate, request, invalidate } from '../../api/client';
 import {
   ActionForm,
   ErrorText,
@@ -427,19 +427,92 @@ export default function CompanyDrawer({
     [review, setReview] = useState(false),
     [error, setError] = useState<unknown>();
   const agency = c?.entityType === 'agency';
-  async function flag(key: 'favorite' | 'hidden') {
+  const [flagBusy, setFlagBusy] = useState(false);
+  const [flagUncertain, setFlagUncertain] = useState(false);
+  const [confirmedFlags, setConfirmedFlags] = useState<{
+    favorite: boolean;
+    hidden: boolean;
+  } | null>(null);
+  const flagBusyRef = useRef(false);
+  const confirmedFlagsRef = useRef<{ favorite: boolean; hidden: boolean } | null>(null);
+  const shownFavorite = confirmedFlags?.favorite ?? !!c?.favorite;
+  const shownHidden = confirmedFlags?.hidden ?? !!c?.hidden;
+
+  // Новая карточка или подтверждённый GET являются источником текущих признаков.
+  useEffect(() => {
+    confirmedFlagsRef.current = null;
+    setConfirmedFlags(null);
+    setFlagUncertain(false);
+  }, [name, c]);
+
+  async function reconcileFlags() {
+    const state = await request<{ favorite: boolean; hidden: boolean }>(
+      '/api/crm?company=' + encodeURIComponent(name),
+      { cache: 'no-store' },
+    );
+    if (typeof state?.favorite !== 'boolean' || typeof state.hidden !== 'boolean')
+      throw new Error('Не удалось проверить сохранённые признаки компании.');
+    const flags = { favorite: state.favorite, hidden: state.hidden };
+    confirmedFlagsRef.current = flags;
+    setConfirmedFlags(flags);
+    setFlagUncertain(false);
+    invalidate(
+      (key) => key.startsWith('/api/companies/') || key.startsWith('/api/agencies/'),
+    );
+  }
+
+  async function verifyFlags() {
+    if (flagBusyRef.current) return;
+    flagBusyRef.current = true;
+    setFlagBusy(true);
     try {
+      await reconcileFlags();
       setError(undefined);
-      await mutate(
+    } catch {
+      setFlagUncertain(true);
+      setError(new Error('Состояние признаков неизвестно. Повторите проверку перед записью.'));
+    } finally {
+      flagBusyRef.current = false;
+      setFlagBusy(false);
+    }
+  }
+
+  async function flag(key: 'favorite' | 'hidden') {
+    // Ref блокирует также два синхронных клика до React re-render.
+    if (flagBusyRef.current || flagUncertain || !c) return;
+    flagBusyRef.current = true;
+    setFlagBusy(true);
+    setError(undefined);
+    const previous = confirmedFlagsRef.current ?? {
+      favorite: !!c.favorite,
+      hidden: !!c.hidden,
+    };
+    try {
+      const state = await mutate<{ favorite: boolean; hidden: boolean }>(
         '/api/crm/' +
           (key === 'hidden' ? 'hidden-company' : 'favorite') +
           '?company=' +
           encodeURIComponent(name),
         'PUT',
-        { [key]: !c?.[key] },
+        { [key]: !previous[key] },
       );
+      if (typeof state?.favorite !== 'boolean' || typeof state.hidden !== 'boolean')
+        throw new Error('Не удалось проверить сохранённые признаки компании.');
+      const flags = { favorite: state.favorite, hidden: state.hidden };
+      confirmedFlagsRef.current = flags;
+      setConfirmedFlags(flags);
     } catch (e) {
       setError(e);
+      // PUT может завершиться в БД даже при потерянном ответе: сначала только GET.
+      try {
+        await reconcileFlags();
+      } catch {
+        setFlagUncertain(true);
+        setError(new Error('Состояние признаков неизвестно. Повторите проверку перед записью.'));
+      }
+    } finally {
+      flagBusyRef.current = false;
+      setFlagBusy(false);
     }
   }
   return (
@@ -531,17 +604,19 @@ export default function CompanyDrawer({
                           Откликнуться <Icon name="externalLink" />
                         </a>
                         <button
-                          className={'favorite-toggle' + (c.favorite ? ' active' : '')}
+                          className={'favorite-toggle' + (shownFavorite ? ' active' : '')}
                           aria-label="Избранное"
-                          aria-pressed={!!c.favorite}
+                          aria-pressed={shownFavorite}
+                          disabled={flagBusy || flagUncertain}
                           onClick={() => void flag('favorite')}
                         >
                           <Icon name="star" />
                         </button>
                         <button
-                          className={'hidden-toggle' + (c.hidden ? ' active' : '')}
+                          className={'hidden-toggle' + (shownHidden ? ' active' : '')}
                           aria-label="Скрыть компанию"
-                          aria-pressed={!!c.hidden}
+                          aria-pressed={shownHidden}
+                          disabled={flagBusy || flagUncertain}
                           onClick={() => void flag('hidden')}
                         >
                           <Icon name="eyeOff" />
@@ -549,6 +624,11 @@ export default function CompanyDrawer({
                       </div>
                     </div>
                     <ErrorText error={error} />
+                    {flagUncertain && (
+                      <button type="button" onClick={() => void verifyFlags()} disabled={flagBusy}>
+                        Проверить состояние признаков
+                      </button>
+                    )}
                     <div className={agency ? 'agency-salary-summary' : undefined}>
                       <KV
                         rows={['Middle', 'Senior', 'Lead', 'Head'].map((l) => {
