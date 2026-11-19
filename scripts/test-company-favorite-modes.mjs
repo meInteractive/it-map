@@ -51,3 +51,6 @@ assert.equal(restoreFilters({ version: 2, favorites: 'favorites' }).favorites, '
 assert.equal(restoreFilters({ version: 2, favorites: 'other' }).favorites, 'all');
 assert.equal(restoreFilters({ version: 2, favorites: null }).favorites, 'all');
 console.log('PASS: избранные / не избранные / все одинаково для списка и карты, миграция и независимость фильтров');
+
+// Дополнительная React-регрессия BATCH-03/A поверх браузерного покрытия #500.
+await import('./test-company-personal-flags.mjs');
