@@ -1,10 +1,28 @@
 # GO-119 — проверяемая карта архитектуры IT Map
 
-**Срез исходников:** 09.11.2026, `main` на SHA [7fa1047](https://github.com/meInteractive/it-map/commit/7fa1047860df0a92165726c438418f77a4b43909) (после merge PR #292). Следующие PR/CI могут изменить этот срез: перед применением Codex обязан проверить актуальный `main`.
+> **Новый актуальный срез 19.11.2026:** [`main 2e670273`](https://github.com/meInteractive/it-map/commit/2e67027363534b54b16295fe541dfdb4b968e693), [обновлённая ARCHITECTURE.md](ARCHITECTURE.md). Таблицы и тройная проверка CI от **09.11 ниже — историческая контрольная точка**. Они больше не являются текущей матрицей развёрнутого кода. Актуальная схема — **отдельные `itmap` HTTP API и `itmap-worker`**, не один Go процесс; состояние установленного worker отдельно не подтверждено.
+
+## Дополнение к доказательной матрице на 19.11.2026
+
+| Компонент | Проверяемый код / PR | Проверено в исходниках и CI | Отдельный непроверенный шаг |
+| --- | --- | --- | --- |
+| Непрерывный Go Worker | [`cmd/itmap-worker/main.go`](../../cmd/itmap-worker/main.go), [`workerengine/engine.go`](../../internal/workerengine/engine.go), [`workerloop/profiles.go`](../../internal/workerloop/profiles.go), [GO-431](../../tasks/GO-431-CONTINUOUS-WORKER.md) | Три последовательных профиля `launch/reconcile/pipeline`; generation check, lease/cooldown, grace shutdown и synthetic MariaDB gates | Установленный бинарный SHA, актуальные systemd/DB ownership, все реальные provider results |
+| AI paid shutdown/recovery | [#490](https://github.com/meInteractive/it-map/pull/490), [#491](https://github.com/meInteractive/it-map/pull/491), [#494](https://github.com/meInteractive/it-map/pull/494), [#495](https://github.com/meInteractive/it-map/pull/495), [инварианты](GO-431-STOP-BEFORE-PAID-DISPATCH.md) | StopClaims, отказ от нового paid dispatch до reserve/post, сохранение in-flight settlement и запрет небезопасного повтора | Глобальная durable AI identity между разными кандидатами, recovery реального ledger, миграция/Issue #489 |
+| Worker health/diagnostics | [`workerengine/monitor.go`](../../internal/workerengine/monitor.go), [`cmd/itmap-worker/main.go`](../../cmd/itmap-worker/main.go) | `127.0.0.1:18082`, `/healthz`, `/readyz`, `/profilez`, `/queuez`, `/recoveryz`, `/hh-schedulez`, `/activityz` | Сигнал ready не является доказательством новых импортов/расходов и не подтверждает установленную версию |
+| Сборка и выпуск | [`publish.yml`](../../.github/workflows/publish.yml), [`worker-artifact.yml`](../../.github/workflows/worker-artifact.yml), [GO-447](../../tasks/GO-447-WORKER-DEPLOY-RESTART.md) | Публикация API/React отдельно; worker/recovery артефакты для amd64/arm64 с vcs SHA и checksum | Автоматическая согласованная установка Worker и API одним SHA, безопасный drain/rollback (Issue #472) |
+| Ручные письма OpenAI | [`coverletters/`](../../internal/coverletters/), [PR #493](https://github.com/meInteractive/it-map/pull/493), [документ](GO-018-PAID-OPENAI-LETTERS.md) | Ручной trigger и fail-closed evidence без автоматического повторного POST; бесплатный OpenRouter сохранён | Нет подтверждённой полной финансовой стоимости ручных писем и общего paid ledger |
+| Google Calendar | [`googlecalendar/`](../../internal/integrations/googlecalendar/), [PR #496](https://github.com/meInteractive/it-map/pull/496), [контракт](GO-015-GOOGLE-CALENDAR.md) | Go OAuth/PKCE/state, шифрованный refresh, ручная IT Map → Google sync, `pending`; PR #496 merge `2e670273`, 4 required workflow успешны на `51ffa71d` | Реальная OAuth/Google event интеграционная приёмка; нет двустороннего/автоматического sync |
+| UI, CI и статистика | [`go-ci.yml`](../../.github/workflows/go-ci.yml), [`mariadb-staging-ci.yml`](../../.github/workflows/mariadb-staging-ci.yml), [GO-436](GO-436-FUNNEL-RECONCILIATION.md), [GO-433](GO-433-PARTIAL-UNIT-COST.md) | TypeScript check, Prettier check, synthetic SQL/browser, разделение import receipts и впервые созданных вакансий | Исторические 61 импортов, полная атрибуция расходов и реальная бизнес-приёмка |
+
+**Важное различие runtime:** [`internal/config/config.go`](../../internal/config/config.go) блокирует `APP_ENV=production` для **HTTP API**, [`cmd/itmap-worker/main.go`](../../cmd/itmap-worker/main.go) допускает production только с дополнительными флагами, а `GET /health/ready` API не соответствует `/readyz` Worker. Даже успешный `publish.yml` не подтверждает обновление Worker. Текущие статусы «к проверке» и незакрытые acceptance gates хранятся в `tasks/`; нельзя выдавать synthetic CI за реальное восстановление/миграцию.
+
+---
+
+**Срез исходников (исторический):** 09.11.2026, `main` на SHA [7fa1047](https://github.com/meInteractive/it-map/commit/7fa1047860df0a92165726c438418f77a4b43909) (после merge PR #292). Следующие PR/CI могут изменить этот срез: перед применением Codex обязан проверить актуальный `main`.
 
 **Назначение:** короткий технический ориентир для нового разработчика и Codex. Исторический план, синтетический CI, ограниченная staging-приёмка и наблюдение владельца за работающим пилотом — **разные уровни доказательств**. Ни один из них не означает, что Go-версия принята как production-ready или что D1 полностью заменена MariaDB.
 
-## Карта фактической реализации
+## Карта фактической реализации (исторический срез 09.11)
 
 | Подсистема | Где искать код | Реализовано и доказано | Чего нельзя утверждать |
 | --- | --- | --- | --- |
