@@ -306,14 +306,35 @@ test('S11-B03-09/10: задержанный PUT старого пользова�
   release();
   await expect.poll(() => state.users.Alpha.favorite).toBe(true);
   await expect(page.locator('.app')).toHaveAttribute('data-session-user', 'Beta');
-  await page.getByRole('button', { name: 'Список', exact: true }).click();
-  await expect(page.getByRole('button', { name, exact: true })).toBeVisible();
-  await page.getByRole('button', { name, exact: true }).click();
+  // После смены сессии Workspace восстанавливает текущий раздел сам.
+  // Повторное нажатие на мобильную кнопку «Список» раскрывает меню
+  // и может конфликтовать с последующим переходом в карточку.
+  await expect(page.locator('.app')).toHaveAttribute('data-section', 'list');
+  const betaRow = page.getByRole('button', { name, exact: true });
+  await expect(betaRow).toBeVisible();
+  await betaRow.click();
   const second = page.getByRole('dialog', { name, exact: true });
-  await expect(second.getByRole('button', { name: 'Избранное' })).toHaveAttribute(
-    'aria-pressed',
-    'false',
-  );
+  try {
+    await expect(second).toBeVisible();
+    await expect(second.getByRole('button', { name: 'Избранное' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+  } catch (failure) {
+    // Диагностика только синтетического fixture: отличаем отсутствие данных
+    // от отсутствия панели/ошибки сессии, не скрывая неуспешный сценарий.
+    console.log('S11-B03-09/10 mobile evidence:', JSON.stringify({
+      identity: await page.locator('.app').getAttribute('data-session-user'),
+      section: await page.locator('.app').getAttribute('data-section'),
+      dialogCount: await second.count(),
+      dialogText: (await second.count()) ? (await second.innerText()).slice(0, 600) : null,
+      user: state.user,
+      sessionReads: state.sessionReads,
+      listReads: state.listReads,
+      writes: state.writes,
+    }));
+    throw failure;
+  }
   expect(state.users.Beta.favorite).toBe(false);
   expect(state.writes).toEqual([{ user: 'Alpha', key: 'favorite', value: true }]);
 });
