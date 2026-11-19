@@ -1,4 +1,5 @@
 import { useSectionState } from '../../hooks/useSectionState';
+import { confirmNavigation, useDirty } from '../../hooks/useDirty';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApplicationConflict, isApplicationConflict } from './ApplicationConflict';
 import { useCreationIntent } from './useCreationIntent';
@@ -106,6 +107,13 @@ export function ApplicationForm({
   const [formEpoch, setFormEpoch] = useState(0);
   const set = (key: string, v: string | string[] | number | null) =>
     setValue({ ...value, [key]: v });
+  // В текущей форме сравниваем только редактируемые поля. Серверный refresh
+  // не должен стирать черновик, а успешный ACK обновляет base и снимает guard.
+  const original = { ...blank, ...base, ...(vacancyId ? { vacancyId } : {}) };
+  const dirty = (Object.keys(blank) as Array<keyof typeof blank>).some(
+    (key) => JSON.stringify(value[key]) !== JSON.stringify(original[key]),
+  );
+  useDirty(dirty);
   return (
     <ActionForm
       key={formEpoch}
@@ -636,6 +644,7 @@ export function CompanyApplications({
               className="company-application-new"
               disabled={locked || (q.data?.records.length || 0) >= 10}
               onClick={() => {
+                if (!confirmNavigation()) return;
                 setFormRecord(undefined);
                 setSelected('new');
               }}
@@ -650,7 +659,9 @@ export function CompanyApplications({
               <button
                 className={'company-application-card' + (current?.id === r.id ? ' active' : '')}
                 disabled={locked}
-                onClick={() => setSelected(r.id)}
+                onClick={() => {
+                  if (selected !== r.id && confirmNavigation()) setSelected(r.id);
+                }}
               >
                 <b>{r.vacancyTitle || 'Без вакансии'}</b>
                 <span>{r.recruiterName}</span>
