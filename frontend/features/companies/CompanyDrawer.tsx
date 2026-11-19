@@ -16,7 +16,13 @@ import {
 } from '../../components/Common';
 import { Drawer } from '../../components/Drawer';
 import { Markdown, MarkdownEditor } from '../../components/Markdown';
-import { statuses, type Entity, type EntityType, type Navigation, type VacancyDetail } from '../../../shared/contracts';
+import {
+  statuses,
+  type Entity,
+  type EntityType,
+  type Navigation,
+  type VacancyDetail,
+} from '../../../shared/contracts';
 import { CompanyApplications } from '../applications/Applications';
 import Tasks from '../tasks/Tasks';
 import { CompanyJobs } from '../vacancies/Vacancies';
@@ -123,7 +129,9 @@ function NoteForm({ name, initial }: { name: string; initial: CompanyCRMState })
     if (current.status !== baseline.status || current.comment !== baseline.comment) {
       setConflicted(true);
       setSaved(false);
-      throw new Error('Комментарий или статус изменён в другом сеансе. Проверьте сохранённые данные.');
+      throw new Error(
+        'Комментарий или статус изменён в другом сеансе. Проверьте сохранённые данные.',
+      );
     }
     const result = await mutate<CompanyCRMState>(url, 'PUT', {
       status: draft.status,
@@ -553,9 +561,7 @@ export default function CompanyDrawer({
     confirmedFlagsRef.current = flags;
     setConfirmedFlags(flags);
     setFlagUncertain(false);
-    invalidate(
-      (key) => key.startsWith('/api/companies/') || key.startsWith('/api/agencies/'),
-    );
+    invalidate((key) => key.startsWith('/api/companies/') || key.startsWith('/api/agencies/'));
   }
 
   async function verifyFlags() {
@@ -665,7 +671,9 @@ export default function CompanyDrawer({
                   aria-label={label}
                   role="tab"
                   aria-selected={tab === key}
-                  onClick={() => { if (key === tab || confirmNavigation()) setTab(key); }}
+                  onClick={() => {
+                    if (key === tab || confirmNavigation()) setTab(key);
+                  }}
                 >
                   <Icon name={icon} />
                 </button>
