@@ -76,8 +76,15 @@ export async function request<T>(url: string, options: RequestInit = {}): Promis
         ? data.name
         : null;
     if (identity) {
-      // Смена пользователя с HTTP 200 должна сбросить также личные GET/flags.
-      if (sessionIdentity !== null && identity !== sessionIdentity) clearCache();
+      // Смена пользователя с HTTP 200 должна сбросить личные GET/flags.
+      // Сам ответ /api/session при этом остаётся достоверным: иначе clearCache
+      // повышает generation и load() отбрасывает только что проверенную сессию.
+      if (sessionIdentity !== null && identity !== sessionIdentity) {
+        clearCache();
+        const current = entry('/api/session');
+        current.fetchedAt = Date.now();
+        emit(current, { data, loading: false, stale: false });
+      }
       sessionIdentity = identity;
     }
     sessionExpired = false;
