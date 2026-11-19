@@ -1,5 +1,25 @@
 # GO-119 — проверяемая карта архитектуры IT Map
 
+> **Текущий срез: 19.11.2026, `main` [`2e670273`](https://github.com/meInteractive/it-map/commit/2e67027363534b54b16295fe541dfdb4b968e693), после PR #496.** Ниже добавлена новая проверяемая матрица. Раздел **«Архив: срез 09.11.2026»** сохраняет прежний обзор и CI старых SHA как исторические факты; он **не описывает текущий Worker**.
+
+## Матрица реализации на 19.11.2026
+
+| Область | Где проверить | Код/CI | Что не следует считать принятым |
+| --- | --- | --- | --- |
+| **Go API + React SPA** | [main.go](../../cmd/itmap/main.go), [handler.go](../../internal/httpapi/handler.go), [React](../../frontend/) | Модульный `net/http`/MariaDB API, auth, CRM, вакансии/задачи, Vite; typecheck/format/web/HTTP/MariaDB/Playwright CI | Полное покрытие старого Sites API и фактическая эксплуатация каждой ветки |
+| **Постоянный Worker** | [cmd/itmap-worker](../../cmd/itmap-worker/), [workerengine](../../internal/workerengine/), [workerloop](../../internal/workerloop/) | Три профиля `launch/reconcile/pipeline`, bounded sessions, leasing, generation fence, grace/shutdown; серия GO-431 PR #324–495 | **Не установлен автоматически** из `publish.yml`; установленный SHA и live outcome на сервере надо сверять отдельно |
+| **Paid AI / Apify safety** | [parser](../../internal/parser/), [worker_stop_billing.go](../../internal/parser/worker_stop_billing.go), [BILLING.md](../../internal/parser/BILLING.md) | Резерв → отправка → settlement/evidence; no-blind-replay при unknown/ACK/SIGTERM; #490, #491, #494, #495 имеют синтетические регрессионные проверки | Межкандидатная durable AI operation identity пока **дизайн** ([GO-431](../../tasks/GO-431-DURABLE-AI-OPERATION-DESIGN.md), Issue #489); unknown reserve ≠ подтверждённая стоимость |
+| **Read-only recovery и HH** | [monitor.go](../../internal/workerengine/monitor.go), [recovery cmd](../../cmd/itmap-recovery/), [HH schedule](../../internal/parser/hh_scan_schedule.go) | Локальные `healthz/readyz/profilez/queuez/recoveryz/hh-schedulez/activityz`; recovery binary build, read-only наблюдаемость | Health/ready не гарантирует новых публикаций; старый HH cursor и неопределённые платные операции требуют операторского решения |
+| **Google Calendar** | [integrations/googlecalendar](../../internal/integrations/googlecalendar/), [routes](../../internal/httpapi/google_calendar_routes.go), [GO-015](GO-015-GOOGLE-CALENDAR.md) | OAuth/PKCE, encrypted refresh, ручная outbound sync, deterministic Event ID, lost-ACK protection; [#496](https://github.com/meInteractive/it-map/pull/496) в main, 4/4 workflow зелёные на `51ffa71d` | Настоящий тестовый Google OAuth, повторное подключение и production-настройка ещё не подтверждены; **нет двустороннего/background sync** |
+| **Письма/роли** | [coverletters](../../internal/coverletters/), [classification routes](../../internal/httpapi/handler.go) | OpenRouter/OpenAI письма #277/#493; настройки классификации с CAS #276 | Полная GO-018 и браузерная/провайдерская приёмка не закрываются автоматически |
+| **Статистика расходов и воронка** | [funnel.go](../../internal/parser/funnel.go), [unit_cost.go](../../internal/parser/unit_cost.go), [expense_repeats.go](../../internal/parser/expense_repeats.go) | Разные метрики candidate import и впервые созданных вакансий, частичная себестоимость, локальная read-only проверка повторов | Полная provider→candidate→vacancy атрибуция и реальная сверка исторических 61 событий не приняты |
+| **Отдельная доставка Worker** | [publish.yml](../../.github/workflows/publish.yml), [worker-artifact.yml](../../.github/workflows/worker-artifact.yml), [GO-447](../../tasks/GO-447-WORKER-DEPLOY-RESTART.md) | Build Worker+Recovery для amd64/arm64 со SHA; отдельно main-only publish API+web | **GO-447 не реализована**: нет гарантированного деплоя и безопасного рестарта Worker одновременно с API |
+
+**Разделяйте уровни свидетельств:** код в `main`, зелёный CI конкретного head SHA, установленный бинарник, реальные данные/счета и операторская приёмка — разные доказательства. Не приписывать последнему CI статус live окружения. [Полная актуальная схема](ARCHITECTURE.md), [актуальный план миграции](GO_MIGRATION_PROGRESS.md), [задачи](../../tasks/SPRINT-01.md).
+
+## Архив: срез 09.11.2026 (ниже исходный документ)
+
+
 **Срез исходников:** 09.11.2026, `main` на SHA [7fa1047](https://github.com/meInteractive/it-map/commit/7fa1047860df0a92165726c438418f77a4b43909) (после merge PR #292). Следующие PR/CI могут изменить этот срез: перед применением Codex обязан проверить актуальный `main`.
 
 **Назначение:** короткий технический ориентир для нового разработчика и Codex. Исторический план, синтетический CI, ограниченная staging-приёмка и наблюдение владельца за работающим пилотом — **разные уровни доказательств**. Ни один из них не означает, что Go-версия принята как production-ready или что D1 полностью заменена MariaDB.
