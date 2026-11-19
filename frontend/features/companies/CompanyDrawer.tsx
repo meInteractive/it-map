@@ -425,21 +425,33 @@ export default function CompanyDrawer({
   const c = q.data?.company || fallback.data?.company,
     [tab, setTab] = useState('summary'),
     [review, setReview] = useState(false),
-    [error, setError] = useState<unknown>();
+    [error, setError] = useState<unknown>(),
+    [savingFlags, setSavingFlags] = useState({ favorite: false, hidden: false });
+  // Синхронный guard необходим: disabled появится только после React commit.
+  // Оба быстрых клика по одной кнопке не должны послать одинаковый stale PUT.
+  const flagWrites = useRef(new Set<'favorite' | 'hidden'>());
   const agency = c?.entityType === 'agency';
   async function flag(key: 'favorite' | 'hidden') {
+    if (!c || flagWrites.current.has(key)) return;
+    flagWrites.current.add(key);
+    setSavingFlags((value) => ({ ...value, [key]: true }));
+    setError(undefined);
     try {
-      setError(undefined);
+      // До успешного PUT значение на экране не меняем. invalidateMutation
+      // перечитает карточку и список из БД с текущей сессией пользователя.
       await mutate(
         '/api/crm/' +
           (key === 'hidden' ? 'hidden-company' : 'favorite') +
           '?company=' +
           encodeURIComponent(name),
         'PUT',
-        { [key]: !c?.[key] },
+        { [key]: !c[key] },
       );
     } catch (e) {
       setError(e);
+    } finally {
+      flagWrites.current.delete(key);
+      setSavingFlags((value) => ({ ...value, [key]: false }));
     }
   }
   return (
@@ -534,6 +546,8 @@ export default function CompanyDrawer({
                           className={'favorite-toggle' + (c.favorite ? ' active' : '')}
                           aria-label="Избранное"
                           aria-pressed={!!c.favorite}
+                          aria-busy={savingFlags.favorite}
+                          disabled={savingFlags.favorite}
                           onClick={() => void flag('favorite')}
                         >
                           <Icon name="star" />
@@ -542,6 +556,8 @@ export default function CompanyDrawer({
                           className={'hidden-toggle' + (c.hidden ? ' active' : '')}
                           aria-label="Скрыть компанию"
                           aria-pressed={!!c.hidden}
+                          aria-busy={savingFlags.hidden}
+                          disabled={savingFlags.hidden}
                           onClick={() => void flag('hidden')}
                         >
                           <Icon name="eyeOff" />
