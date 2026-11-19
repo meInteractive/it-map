@@ -334,6 +334,7 @@ function Workspace({ user }: { user: Session }) {
       className={'app' + (company ? ' panel-open' : '') + (standalone ? ' pwa-standalone' : '')}
       data-section={section}
       data-admin={user.isAdmin}
+      data-session-user={user.name}
     >
       <header>
         {showTools && (

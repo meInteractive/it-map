@@ -295,8 +295,12 @@ test('S11-B03-09/10: задержанный PUT старого пользова�
     window.dispatchEvent(new Event('focus'));
   });
   await expect.poll(() => state.sessionReads.includes('Beta')).toBe(true);
+  // Дождаться commit нового Workspace, а не только получения /api/session.
+  // На мобильном layout старый Workspace ещё может быть в фазе размонтирования.
+  await expect(page.locator('.app')).toHaveAttribute('data-session-user', 'Beta');
   await expect(page.getByRole('dialog', { name, exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Список', exact: true }).click();
+  await expect(page.getByRole('button', { name, exact: true })).toBeVisible();
   await page.getByRole('button', { name, exact: true }).click();
   const second = page.getByRole('dialog', { name, exact: true });
   await expect(second.getByRole('button', { name: 'Избранное' })).toHaveAttribute(
