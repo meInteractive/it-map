@@ -306,11 +306,16 @@ test('S11-B03-09/10: задержанный PUT старого пользова�
   release();
   await expect.poll(() => state.users.Alpha.favorite).toBe(true);
   await expect(page.locator('.app')).toHaveAttribute('data-session-user', 'Beta');
-  await page.getByRole('button', { name: 'Список', exact: true }).click();
-  await expect(page.getByRole('button', { name, exact: true })).toBeVisible();
-  await page.getByRole('button', { name, exact: true }).click();
+  // После смены сессии Workspace восстанавливает текущий раздел сам.
+  // Повторное нажатие на мобильную кнопку «Список» раскрывает меню
+  // и может конфликтовать с последующим переходом в карточку.
+  await expect(page.locator('.app')).toHaveAttribute('data-section', 'list');
+  const betaRow = page.getByRole('button', { name, exact: true });
+  await expect(betaRow).toBeVisible();
+  await betaRow.click();
   const second = page.getByRole('dialog', { name, exact: true });
   try {
+    await expect(second).toBeVisible();
     await expect(second.getByRole('button', { name: 'Избранное' })).toHaveAttribute(
       'aria-pressed',
       'false',
