@@ -1,5 +1,8 @@
 # GO-431: устойчивость AI-этапов после запуска worker
 
+**Статус 19.11.2026: реализованные части — к проверке Codex; GO-431 целиком не закрыт.** По задачам этого файла смержены [#463–#478](https://github.com/meInteractive/it-map/pulls?q=is%3Apr+is%3Amerged+GO-431), [#485–#495](https://github.com/meInteractive/it-map/pulls?q=is%3Apr+is%3Amerged+GO-431) (границы AI deadline/SIGTERM/SIGKILL, no-replay, invalid_output, read-only recovery, stop-before-paid). Отдельная интеграция PR #495 проверяет прекращение нового платного dispatch перед reserve и после StartAttempt. Независимая приёмка Codex и live-разбор ledger не задокументированы; межкандидатная identity остаётся только дизайном #482.
+
+
 Это задачи для нового чата / ChatGPT по кодовой базе, без доступа к production,
 изменения структуры реальной БД или файлов на сервере. Сначала сверить `main`,
 открытые PR и существующие тесты. Владелец объединяет PR сам. Задачи ниже можно
