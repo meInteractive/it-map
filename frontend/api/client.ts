@@ -23,7 +23,8 @@ interface Entry {
 }
 let cacheEpoch = 0,
   sessionExpired = false,
-  sessionVerified = false;
+  sessionVerified = false,
+  sessionIdentity: string | null = null;
 const entries = new Map<string, Entry>(),
   empty: Snapshot = { loading: true, stale: true };
 function entry(key: string) {
@@ -70,6 +71,15 @@ export async function request<T>(url: string, options: RequestInit = {}): Promis
     );
   }
   if (url === '/api/session') {
+    const identity =
+      data && typeof data === 'object' && 'name' in data && typeof data.name === 'string'
+        ? data.name
+        : null;
+    if (identity) {
+      // Смена пользователя с HTTP 200 должна сбросить также личные GET/flags.
+      if (sessionIdentity !== null && identity !== sessionIdentity) clearCache();
+      sessionIdentity = identity;
+    }
     sessionExpired = false;
     sessionVerified = true;
   }
