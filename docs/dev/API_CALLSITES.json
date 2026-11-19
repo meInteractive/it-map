@@ -55,7 +55,7 @@
     {
       "id": "b1e282f4628a4715",
       "file": "frontend/features/applications/Applications.tsx",
-      "line": 118,
+      "line": 126,
       "call": "mutate",
       "method": "DYNAMIC",
       "methodExpression": "base ? 'PUT' : 'POST'",
@@ -72,7 +72,7 @@
     {
       "id": "64aa30be5ee9c306",
       "file": "frontend/features/applications/Applications.tsx",
-      "line": 355,
+      "line": 363,
       "call": "mutate",
       "method": "DELETE",
       "methodExpression": "'DELETE'",
@@ -88,7 +88,7 @@
     {
       "id": "9a6930d78ebc4508",
       "file": "frontend/features/applications/Applications.tsx",
-      "line": 412,
+      "line": 420,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
@@ -104,7 +104,7 @@
     {
       "id": "d8a0e318e518dd82",
       "file": "frontend/features/applications/Applications.tsx",
-      "line": 611,
+      "line": 619,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -120,7 +120,7 @@
     {
       "id": "e40516acc87fa58c",
       "file": "frontend/features/applications/Applications.tsx",
-      "line": 712,
+      "line": 723,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
