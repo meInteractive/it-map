@@ -1,5 +1,25 @@
 # Миграция IT Map: актуальный срез и архив исходной итерации
 
+> **Актуальный срез 19.11.2026:** код `main` [`2e670273`](https://github.com/meInteractive/it-map/commit/2e67027363534b54b16295fe541dfdb4b968e693); [архитектурная схема](ARCHITECTURE.md), [матрица доказательств](GO-119-ARCHITECTURE-EVIDENCE.md). Сведения ниже с датой 09.11 — **исторический срез**, а не состояние текущего Worker. Никакие настоящие production SQL/платные операции в ходе этой редакции не запускались.
+
+## Текущее состояние (19 ноября 2026)
+
+| Направление | Реализация в репозитории | Незакрытая приёмка |
+| --- | --- | --- |
+| API / React / CRM / задачи | Go `cmd/itmap` + Vite React, HTTP/SQL/browser CI | Все legacy API, эксплуатационные браузерные сценарии |
+| **Постоянный Go Worker** | `cmd/itmap-worker`, три профиля, lease/fence, graceful stop, recovery, диагностические GET; GO-431 PR #324–495 | Installed SHA, реальный consumer cutover, unknown paid outcomes; долговечная cross-candidate AI identity |
+| HH/Apify и расходы | Разделённые `launch/reconcile/pipeline`, read-only HH-контроль, guards платных POST | Полная проверка реальных Actor, legacy HH job и исторического провала 7/3 дней; запрещены повторные paid POST без evidence |
+| Письма | Ручная генерация OpenRouter и OpenAI, #277/#493 | Полная GO-018 и финансовые/live сценарии |
+| Google Calendar | OAuth/PKCE, защищённое хранение refresh, ручная outbound sync, #496 смержен | Live тестовый Google account; нет фоновой/двусторонней синхронизации |
+| Диагностика и стоимость | P1/P2/воронка, безопасный JSON, частичный cost/read-only audit | Полный provider lineage и реальная сверка данных |
+| Доставка | `publish.yml` обновляет **только API+SPA**; Worker/Recovery собираются отдельно | GO-447 (Issue #472): безопасная доставка/остановка/откат Worker вместе с API |
+| D1→MariaDB / backup | MariaDB, Go v39 export/restore и одноразовая интеграционная CI | Реальная миграция/restore/cutover и принятие рабочей схемы отдельно |
+
+**Границы:** успешный worker-artifact build не равен серверной установке; `/readyz` не доказывает throughput; merge Google OAuth не означает, что интеграция уже подключена пользователем. RabbitMQ/outbox остаются только возможными будущими решениями, а текущая durable queue — MariaDB. Критические эксплуатационные действия — только по отдельному решению владельца.
+
+## Архив: срез 09.11.2026 (ниже исходный документ)
+
+
 > **Обновлено 09.11.2026 по коду main SHA [7fa1047](https://github.com/meInteractive/it-map/commit/7fa1047860df0a92165726c438418f77a4b43909).** Полная оценка по фактическому коду, PR/SHA/tests и границам — [GO-119: доказательная матрица](GO-119-ARCHITECTURE-EVIDENCE.md). Это **не** акт приёмки production и не обновление реальных данных.
 
 ## Срез 09.11.2026
