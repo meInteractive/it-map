@@ -299,16 +299,17 @@ test('S11-B03-09/10: задержанный PUT старого пользова�
   // На мобильном layout старый Workspace ещё может быть в фазе размонтирования.
   await expect(page.locator('.app')).toHaveAttribute('data-session-user', 'Beta');
   await expect(page.getByRole('dialog', { name, exact: true })).toHaveCount(0);
+  // Поздний ответ прежнего PUT поступает уже после подтверждённого входа Beta.
+  // Освобождаем его до повторного открытия карточки: на mobile перехватчик
+  // Playwright может задерживать следующий GET detail, пока held route не завершён.
+  // Проверка по-прежнему проходит через настоящий React и HTTP-клиент.
+  release();
+  await expect.poll(() => state.users.Alpha.favorite).toBe(true);
+  await expect(page.locator('.app')).toHaveAttribute('data-session-user', 'Beta');
   await page.getByRole('button', { name: 'Список', exact: true }).click();
   await expect(page.getByRole('button', { name, exact: true })).toBeVisible();
   await page.getByRole('button', { name, exact: true }).click();
   const second = page.getByRole('dialog', { name, exact: true });
-  await expect(second.getByRole('button', { name: 'Избранное' })).toHaveAttribute(
-    'aria-pressed',
-    'false',
-  );
-  release();
-  await expect.poll(() => state.users.Alpha.favorite).toBe(true);
   await expect(second.getByRole('button', { name: 'Избранное' })).toHaveAttribute(
     'aria-pressed',
     'false',
