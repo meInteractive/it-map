@@ -665,7 +665,7 @@ export default function CompanyDrawer({
                   aria-label={label}
                   role="tab"
                   aria-selected={tab === key}
-                  onClick={() => setTab(key)}
+                  onClick={() => { if (key === tab || confirmNavigation()) setTab(key); }}
                 >
                   <Icon name={icon} />
                 </button>
