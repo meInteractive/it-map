@@ -310,10 +310,26 @@ test('S11-B03-09/10: задержанный PUT старого пользова�
   await expect(page.getByRole('button', { name, exact: true })).toBeVisible();
   await page.getByRole('button', { name, exact: true }).click();
   const second = page.getByRole('dialog', { name, exact: true });
-  await expect(second.getByRole('button', { name: 'Избранное' })).toHaveAttribute(
-    'aria-pressed',
-    'false',
-  );
+  try {
+    await expect(second.getByRole('button', { name: 'Избранное' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+  } catch (failure) {
+    // Диагностика только синтетического fixture: отличаем отсутствие данных
+    // от отсутствия панели/ошибки сессии, не скрывая неуспешный сценарий.
+    console.log('S11-B03-09/10 mobile evidence:', JSON.stringify({
+      identity: await page.locator('.app').getAttribute('data-session-user'),
+      section: await page.locator('.app').getAttribute('data-section'),
+      dialogCount: await second.count(),
+      dialogText: (await second.count()) ? (await second.innerText()).slice(0, 600) : null,
+      user: state.user,
+      sessionReads: state.sessionReads,
+      listReads: state.listReads,
+      writes: state.writes,
+    }));
+    throw failure;
+  }
   expect(state.users.Beta.favorite).toBe(false);
   expect(state.writes).toEqual([{ user: 'Alpha', key: 'favorite', value: true }]);
 });
