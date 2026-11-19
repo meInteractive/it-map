@@ -17,10 +17,11 @@ export function useDirty(dirty: boolean) {
       e.preventDefault();
       e.returnValue = '';
     };
-    window.addEventListener('beforeunload', listener);
+    // Нужен и в браузере, и в синтетических React-тестах без Window.
+    if (typeof window !== 'undefined') window.addEventListener('beforeunload', listener);
     return () => {
       dirtyForms.delete(id);
-      window.removeEventListener('beforeunload', listener);
+      if (typeof window !== 'undefined') window.removeEventListener('beforeunload', listener);
     };
   }, [dirty, id]);
 }
