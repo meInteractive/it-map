@@ -1,5 +1,8 @@
 # S11-DIAG-03 — JSON-диагностика затрат JEV/LLM, Apify и Firecrawl
 
+**Актуальный статус (19.11.2026): к проверке Codex.** Работа ChatGPT смержена в `main` через [#263](https://github.com/meInteractive/it-map/pull/263), [#264](https://github.com/meInteractive/it-map/pull/264), [#265](https://github.com/meInteractive/it-map/pull/265). Apify/Firecrawl budget JSON, JEV/LLM ledger и 10 последних операций Apify; проверить provenance, unknown costs, no double count и вкладки UI. Сам факт merge и synthetic CI не закрывает отдельные acceptance-критерии ниже. Существующие `[ ]` сохраняются до документированной приёмки; старые строки «в разработке/запланировано» исторические.
+
+
 **Статус:** [ ] Частично реализовано: PR #263 (Apify/Firecrawl snapshots) и PR #264 (JEV/LLM ledger) слиты; часть C по историческим операциям Apify разрабатывается отдельно. Итоговая приёмка и визуальная проверка настоящего интерфейса не завершены. **Приоритет:** высокий для расходов JEV/LLM, средний для Apify/Firecrawl. **Зависимость:** S11-DIAG-01 (контракт и защита). Реализовать отдельным PR или двумя небольшими PR, не включать GO-433 (полную себестоимость вакансии) в эту работу.
 
 ## Где разместить
