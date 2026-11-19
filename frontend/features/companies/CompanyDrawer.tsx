@@ -2,7 +2,7 @@ import { FirecrawlCompanyTest } from '../settings/Firecrawl';
 import { companyRankLabel } from './labels';
 import { useEffect, useRef, useState } from 'react';
 import { useApi, mutate, request, invalidate } from '../../api/client';
-import { useDirty } from '../../hooks/useDirty';
+import { confirmNavigation, useDirty } from '../../hooks/useDirty';
 import {
   ActionForm,
   ErrorText,
@@ -445,7 +445,9 @@ export function ReviewDrawer({ c, onClose }: { c: Entity; onClose: () => void })
             type="button"
             role="tab"
             aria-selected={tab === key}
-            onClick={() => setTab(key)}
+            onClick={() => {
+                    if (key === tab || confirmNavigation()) setTab(key);
+                  }}
           >
             {label}
           </button>
