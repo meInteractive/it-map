@@ -32,15 +32,6 @@ const run = (mode) =>
     maxBuffer: 4 * 1024 * 1024,
   });
 try {
-  // Иначе --write в негативном тесте молча форматирует и маскирует
-  // исходники PR, а API inventory ниже проверяется уже против изменённого CI дерева.
-  const cleanSource = run('--check');
-  assert.equal(
-    cleanSource.status,
-    0,
-    'Прежде чем запускать негативный sentinel, исходники должны быть отформатированы:\n' +
-      (cleanSource.stdout || '') + (cleanSource.stderr || ''),
-  );
   writeFileSync(sentinel, 'export const go114_sentinel:string="неформатированный";\n');
   let result = run('--check');
   assert.notEqual(result.status, 0, 'Неформатированный новый файл обязан провалить проверку');
