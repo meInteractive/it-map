@@ -312,7 +312,7 @@
     {
       "id": "949b2dca183adec8",
       "file": "frontend/features/companies/CompanyDrawer.tsx",
-      "line": 491,
+      "line": 489,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
