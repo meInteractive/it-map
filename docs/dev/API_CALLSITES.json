@@ -296,7 +296,7 @@
     {
       "id": "949b2dca183adec8",
       "file": "frontend/features/companies/CompanyDrawer.tsx",
-      "line": 433,
+      "line": 442,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
