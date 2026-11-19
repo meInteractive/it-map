@@ -2,6 +2,7 @@ import { FirecrawlCompanyTest } from '../settings/Firecrawl';
 import { companyRankLabel } from './labels';
 import { useEffect, useRef, useState } from 'react';
 import { useApi, mutate, request, invalidate } from '../../api/client';
+import { confirmNavigation, useDirty } from '../../hooks/useDirty';
 import {
   ActionForm,
   ErrorText,
@@ -15,7 +16,13 @@ import {
 } from '../../components/Common';
 import { Drawer } from '../../components/Drawer';
 import { Markdown, MarkdownEditor } from '../../components/Markdown';
-import type { Entity, EntityType, Navigation, VacancyDetail } from '../../../shared/contracts';
+import {
+  statuses,
+  type Entity,
+  type EntityType,
+  type Navigation,
+  type VacancyDetail,
+} from '../../../shared/contracts';
 import { CompanyApplications } from '../applications/Applications';
 import Tasks from '../tasks/Tasks';
 import { CompanyJobs } from '../vacancies/Vacancies';
@@ -65,52 +72,148 @@ export function EntitySources({ value }: { value: unknown }) {
     />
   );
 }
-function AgencyNote({ name }: { name: string }) {
-  const q = useApi<{
-    comment: string;
-    status: string;
-  }>('/api/crm?company=' + encodeURIComponent(name));
+type CompanyCRMState = {
+  status: string;
+  comment: string;
+  history: { fromStatus: string; toStatus: string; changedAt: string }[];
+};
+
+function CompanyNote({ name }: { name: string }) {
+  const q = useApi<CompanyCRMState>('/api/crm?company=' + encodeURIComponent(name));
   return (
     <State loading={!q.data && q.loading} error={q.error}>
-      {q.data && (
-        <NoteForm key={name} name={name} initial={q.data.comment || ''} status={q.data.status} />
-      )}
+      {q.data && <NoteForm key={name} name={name} initial={q.data} />}
     </State>
   );
 }
-function NoteForm({ name, initial, status }: { name: string; initial: string; status: string }) {
-  const [value, setValue] = useState(initial),
-    [saved, setSaved] = useState(false);
+
+function NoteForm({ name, initial }: { name: string; initial: CompanyCRMState }) {
+  const [draft, setDraft] = useState({ status: initial.status, comment: initial.comment });
+  const [baseline, setBaseline] = useState({ status: initial.status, comment: initial.comment });
+  const [saved, setSaved] = useState(false);
+  const [conflicted, setConflicted] = useState(false);
+  const [version, setVersion] = useState(0);
+  const dirty = draft.status !== baseline.status || draft.comment !== baseline.comment;
+  const url = '/api/crm?company=' + encodeURIComponent(name);
+  useDirty(dirty);
+
+  // При фоновом GET нельзя затирать несохранённый черновик.
+  useEffect(() => {
+    if (dirty) return;
+    const current = { status: initial.status, comment: initial.comment };
+    setDraft(current);
+    setBaseline(current);
+  }, [initial.status, initial.comment]);
+
+  function applyConfirmed(state: CompanyCRMState) {
+    if (typeof state?.status !== 'string' || typeof state.comment !== 'string')
+      throw new Error('Не удалось подтвердить состояние CRM.');
+    const confirmed = { status: state.status, comment: state.comment };
+    setBaseline(confirmed);
+    setDraft(confirmed);
+    setConflicted(false);
+    setSaved(true);
+    invalidate((key) => key === url || key.startsWith('/api/crm/'));
+  }
+
+  async function save() {
+    // Legacy PUT не поддерживает CAS. Проверка GET не устраняет межсессионную
+    // гонку, но не допускает слепого повтора после потерянного ответа.
+    const current = await request<CompanyCRMState>(url, { cache: 'no-store' });
+    if (typeof current?.status !== 'string' || typeof current.comment !== 'string')
+      throw new Error('Не удалось проверить текущее состояние CRM.');
+    if (current.status === draft.status && current.comment === draft.comment) {
+      applyConfirmed(current);
+      return;
+    }
+    if (current.status !== baseline.status || current.comment !== baseline.comment) {
+      setConflicted(true);
+      setSaved(false);
+      throw new Error(
+        'Комментарий или статус изменён в другом сеансе. Проверьте сохранённые данные.',
+      );
+    }
+    const result = await mutate<CompanyCRMState>(url, 'PUT', {
+      status: draft.status,
+      comment: draft.comment,
+    });
+    applyConfirmed(result);
+  }
+
+  async function discardAndReload() {
+    if (!confirm('Заменить несохранённый черновик сохранёнными данными?')) return;
+    try {
+      const current = await request<CompanyCRMState>(url, { cache: 'no-store' });
+      applyConfirmed(current);
+      setSaved(false);
+      setVersion((value) => value + 1);
+    } catch {
+      setConflicted(true);
+    }
+  }
+
   return (
-    <ActionForm
-      className="agency-note-editor react-form"
-      onSubmit={async () => {
-        await mutate('/api/crm', 'PUT', { companyName: name, comment: value, status });
-        setSaved(true);
-      }}
-    >
-      {(busy) => (
-        <>
-          <label>
-            Персональный комментарий
-            <MarkdownEditor
-              value={value}
-              onChange={(v) => {
-                setValue(v);
-                setSaved(false);
-              }}
-              limit={1000}
-            />
-          </label>
-          <div className="agency-note-actions">
-            <button type="submit" className="crm-save" disabled={busy}>
-              Сохранить
-            </button>
-            {saved && <span>Сохранено</span>}
-          </div>
-        </>
+    <div className="company-crm-note">
+      <h3>Личный статус и комментарий</h3>
+      <ActionForm
+        key={version}
+        lockWhileBusy
+        className="agency-note-editor react-form"
+        onSubmit={save}
+      >
+        {(busy) => (
+          <>
+            <label>
+              Статус компании
+              <select
+                value={draft.status}
+                onChange={(event) => {
+                  setDraft((previous) => ({ ...previous, status: event.target.value }));
+                  setSaved(false);
+                }}
+              >
+                {statuses.map((value) => (
+                  <option key={value} value={value}>
+                    {value || 'Нет статуса'}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Персональный комментарий
+              <MarkdownEditor
+                value={draft.comment}
+                onChange={(value) => {
+                  setDraft((previous) => ({ ...previous, comment: value }));
+                  setSaved(false);
+                }}
+                limit={1000}
+              />
+            </label>
+            <div className="agency-note-actions">
+              <button type="submit" className="crm-save" disabled={busy || conflicted}>
+                Сохранить
+              </button>
+              {saved && !dirty && <span role="status">Сохранено</span>}
+              {conflicted && (
+                <button type="button" onClick={() => void discardAndReload()} disabled={busy}>
+                  Загрузить сохранённое состояние
+                </button>
+              )}
+            </div>
+          </>
+        )}
+      </ActionForm>
+      {initial.history.length > 0 && (
+        <ol aria-label="История статусов компании">
+          {initial.history.map((change, index) => (
+            <li key={index}>
+              {change.fromStatus || 'Без статуса'} → {change.toStatus || 'Без статуса'}
+            </li>
+          ))}
+        </ol>
       )}
-    </ActionForm>
+    </div>
   );
 }
 export function agencyRatingValue(value: unknown, max: number, decimal = false): string {
@@ -243,7 +346,7 @@ export function AgencySummary({ c }: { c: Entity }) {
           </section>
         ))}
       </div>
-      <AgencyNote name={c.name} />
+      <CompanyNote name={c.name} />
     </>
   );
 }
@@ -350,7 +453,9 @@ export function ReviewDrawer({ c, onClose }: { c: Entity; onClose: () => void })
             type="button"
             role="tab"
             aria-selected={tab === key}
-            onClick={() => setTab(key)}
+            onClick={() => {
+                    if (key === tab || confirmNavigation()) setTab(key);
+                  }}
           >
             {label}
           </button>
@@ -456,9 +561,7 @@ export default function CompanyDrawer({
     confirmedFlagsRef.current = flags;
     setConfirmedFlags(flags);
     setFlagUncertain(false);
-    invalidate(
-      (key) => key.startsWith('/api/companies/') || key.startsWith('/api/agencies/'),
-    );
+    invalidate((key) => key.startsWith('/api/companies/') || key.startsWith('/api/agencies/'));
   }
 
   async function verifyFlags() {
@@ -568,7 +671,9 @@ export default function CompanyDrawer({
                   aria-label={label}
                   role="tab"
                   aria-selected={tab === key}
-                  onClick={() => setTab(key)}
+                  onClick={() => {
+                    if (key === tab || confirmNavigation()) setTab(key);
+                  }}
                 >
                   <Icon name={icon} />
                 </button>
@@ -662,7 +767,10 @@ export default function CompanyDrawer({
                     )}
                   </>
                 ) : tab === 'crm' ? (
-                  <CompanyApplications companyName={name} />
+                  <>
+                    <CompanyNote name={name} />
+                    <CompanyApplications companyName={name} />
+                  </>
                 ) : tab === 'tasks' ? (
                   <Tasks companyName={name} nav={nav} />
                 ) : tab === 'jobs' ? (
