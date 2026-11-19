@@ -45,6 +45,7 @@ type Model = {
   users: Record<'Alpha' | 'Beta', Flags>;
   writes: Write[];
   listReads: number;
+  sessionReads: string[];
   holdNextWrite?: Promise<void>;
   onWrite?: () => void;
   nextFailure?: 'lost_ack' | 'rejected';
@@ -59,6 +60,7 @@ const model = (): Model => ({
   },
   writes: [],
   listReads: 0,
+  sessionReads: [],
 });
 
 function entity(flags: Flags) {
@@ -96,8 +98,10 @@ async function fixture(page: Page, state: Model) {
         contentType: 'text/html',
         body: '<!doctype html><html><body><main id="root"></main></body></html>',
       });
-    if (path === '/api/session')
+    if (path === '/api/session') {
+      state.sessionReads.push(state.user);
       return send({ name: state.user, isAdmin: false });
+    }
     if (path === '/api/tasks') return send({ tasks: [], entities: [] });
     if (path === '/api/google-calendar/status')
       return send({ configured: false, connected: false });
@@ -265,4 +269,44 @@ test('S11-B03-01/02/04/10: после смены синтетического а
   expect(state.users.Alpha).toEqual({ favorite: true, hidden: true });
   expect(state.users.Beta).toEqual({ favorite: false, hidden: false });
   expect(state.writes.every(({ user }) => user === 'Alpha')).toBe(true);
+});
+
+test('S11-B03-09/10: задержанный PUT старого пользователя не восстанавливает его флаг после нового /api/session', async ({
+  page,
+}) => {
+  const state = model();
+  await fixture(page, state);
+  const dialog = page.getByRole('dialog', { name, exact: true });
+  const favorite = dialog.getByRole('button', { name: 'Избранное' });
+  let release!: () => void;
+  state.holdNextWrite = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await favorite.click();
+  await expect.poll(() => state.writes.length).toBe(1);
+  await expect(favorite).toBeDisabled();
+  // Новый успешный GET /api/session означает смену аккаунта в той же SPA.
+  state.user = 'Beta';
+  await page.evaluate(() => {
+    const now = Date.now();
+    Date.now = () => now + 120_000;
+    window.dispatchEvent(new Event('focus'));
+  });
+  await expect.poll(() => state.sessionReads.includes('Beta')).toBe(true);
+  await expect(page.getByRole('dialog', { name, exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Список', exact: true }).click();
+  await page.getByRole('button', { name, exact: true }).click();
+  const second = page.getByRole('dialog', { name, exact: true });
+  await expect(second.getByRole('button', { name: 'Избранное' })).toHaveAttribute(
+    'aria-pressed',
+    'false',
+  );
+  release();
+  await expect.poll(() => state.users.Alpha.favorite).toBe(true);
+  await expect(second.getByRole('button', { name: 'Избранное' })).toHaveAttribute(
+    'aria-pressed',
+    'false',
+  );
+  expect(state.users.Beta.favorite).toBe(false);
+  expect(state.writes).toEqual([{ user: 'Alpha', key: 'favorite', value: true }]);
 });
