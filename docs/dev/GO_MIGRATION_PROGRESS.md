@@ -20,9 +20,28 @@
 ## Архив: срез 09.11.2026 (ниже исходный документ)
 
 
-> **Обновлено 09.11.2026 по коду main SHA [7fa1047](https://github.com/meInteractive/it-map/commit/7fa1047860df0a92165726c438418f77a4b43909).** Полная оценка по фактическому коду, PR/SHA/tests и границам — [GO-119: доказательная матрица](GO-119-ARCHITECTURE-EVIDENCE.md). Это **не** акт приёмки production и не обновление реальных данных.
+> **Историческое состояние на 09.11.2026 по коду main SHA [7fa1047](https://github.com/meInteractive/it-map/commit/7fa1047860df0a92165726c438418f77a4b43909).** Полная оценка по фактическому коду, PR/SHA/tests и границам — [GO-119: доказательная матрица](GO-119-ARCHITECTURE-EVIDENCE.md). Это **не** акт приёмки production и не обновление реальных данных.
 
-## Срез 09.11.2026
+> **Текущая сводка обновлена 19.11.2026 по `main=2e670273`** (merge #496). [Архитектура](ARCHITECTURE.md) и [GO-119: матрица доказательств](GO-119-ARCHITECTURE-EVIDENCE.md) заменяют оценки от 09.11. Ниже старый срез 09.11 и архив сохранены для истории, **не** описывают сегодняшний runtime.
+
+## Срез 19.11.2026
+
+| Область | Реализовано к контрольной точке | Осталось принять |
+| --- | --- | --- |
+| Runtime | Отдельные Go API/React и непрерывный `cmd/itmap-worker` с тремя профилями `launch/reconcile/pipeline`, общей MariaDB-очередью, bounded claim, generation/leases, shutdown grace | Установленный worker SHA, взаимное исключение старого consumer и end-to-end операторская приёмка; автообновление Worker с API — GO-447 |
+| HH, Apify, AI | Go-конвейер list/reconcile/full text/title/extraction/roles/import/relevance, provider ledger/evidence и P0 no-paid-replay guards | Read-only сверка заблокированных исторических jobs, unknown расходов, платных исходов и возможных пробелов; durable межкандидатная AI identity — Issue #489 |
+| Google Calendar | GO-015, PR #496 смержен: OAuth/PKCE, зашифрованный refresh, ручная однонаправленная синхронизация задач, `pending` | Первый настоящий тестовый Google OAuth, повторное подключение и событийная синхронизация; нет фоновой двусторонней синхронизации |
+| Письма | GO-018: бесплатный OpenRouter и платный OpenAI с явной генерацией, pre-POST evidence и отказом от повтора | Финансовая/provider приёмка и все остальные критерии эпика; `openrouter_ai_logs` не полноценный ledger стоимости |
+| Каталог/CRM/UI | Go/MariaDB endpoints, личные флаги, список/карта, трёхпозиционный фильтр избранных компаний (GO-448), диагностические JSON-кнопки | Независимая ревизия ChatGPT-работ Codex, часть UI/legacy-parity |
+| Статистика и экономика | GO-107/108/436, read-only GO-433/434, отдельные кандидаты/import receipts и новые уникальные вакансии | Исторические 61 и полная атрибуция provider→vacancy на реальных разрешённых данных |
+| Сборки/доставка | `publish.yml` публикует API+React; `worker-artifact.yml` собирает Worker/Recovery для amd64/arm64; required CI включает TS/Prettier, MariaDB, Go/browser | API publish **не устанавливает Worker**; GO-447 для совместного safe drain/restart/rollback, проверяемый релизный SHA и отключение старого consumer |
+| MariaDB/backup | Trusted baseline, schema-init, backup/restore v39 и исторические форматы проверены на disposable MariaDB | Миграции заполненной БД и реальная проверка backup/restore только после решения владельца |
+
+**Неприкосновенные различия:** code present ≠ synthetic CI success ≠ installed SHA ≠ рабочее выполнение реального задания ≠ production acceptance. API `APP_ENV=production` пока отвергается в `internal/config`; `/health/ready` отвечает 503 с migration gate, несмотря на существующие Go endpoints. Рабочий экземпляр и отдельный Worker могли иметь иную конфигурацию/версию; на 19.11 новая read-only проверка сервера не выполнялась.
+
+## Исторический срез 09.11.2026 (не текущий статус)
+
+
 
 | Область | Наблюдаемое состояние | Доказательство / ограничение |
 | --- | --- | --- |
