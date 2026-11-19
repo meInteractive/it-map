@@ -646,7 +646,7 @@ export default function Application() {
   if (q.error instanceof ApiError && q.error.status === 401) return <Login />;
   return (
     <State loading={!q.data && q.loading} error={q.error}>
-      {q.data && <Workspace user={q.data} />}
+      {q.data && <Workspace key={q.data.name} user={q.data} />}
     </State>
   );
 }
