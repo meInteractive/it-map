@@ -1,8 +1,24 @@
 # Миграция IT Map: актуальный срез и архив исходной итерации
 
-> **Обновлено 09.11.2026 по коду main SHA [7fa1047](https://github.com/meInteractive/it-map/commit/7fa1047860df0a92165726c438418f77a4b43909).** Полная оценка по фактическому коду, PR/SHA/tests и границам — [GO-119: доказательная матрица](GO-119-ARCHITECTURE-EVIDENCE.md). Это **не** акт приёмки production и не обновление реальных данных.
+> **Актуализация 19.11.2026:** [архитектура на main `2e670273`](ARCHITECTURE.md), [матрица подтверждений GO-119](GO-119-ARCHITECTURE-EVIDENCE.md). Срез 09.11 и архив ниже не отражают новый постоянный Worker и Google Calendar. Не использовать их утверждения об отсутствии непрерывного Worker, платного OpenAI или обязательного TypeScript CI как текущий статус.
 
-## Срез 09.11.2026
+## Срез 19.11.2026
+
+| Область | Текущий код | Неподтверждённые gates |
+| --- | --- | --- |
+| Go API и React | `cmd/itmap`, защищённые маршруты CRM/вакансий/задач и диагностики; `typecheck:web` и Prettier обязательны в PR CI | Не все legacy endpoints и live browser/provider workflows прошли полную приёмку; API `/health/ready` закрыт 503 |
+| Непрерывный HH Worker | `cmd/itmap-worker` + `workerengine/workerloop`: три профиля, bounded steps, durable MariaDB leases и generation fencing | Не подтверждён установленный SHA Worker; GO-447 должен связать delivery API/Worker и rollback |
+| AI/Apify paid recovery | Доказательства резервов/unknown/confirmed, проверка потерянного ACK/COMMIT, безопасный SIGTERM с StopClaims (#490–495) | Межкандидатная durable operation identity — дизайн Issue #489; фактические списания и старые HH jobs требуют read-only preflight |
+| Google Calendar GO-015 | #496 смержен: OAuth, зашифрованные refresh tokens, ручная однонаправленная sync задач | Нет live OAuth приёмки и периодической/двусторонней синхронизации |
+| Ручные письма GO-018 | #493: OpenAI с явным нажатием и fail-closed paid evidence, бесплатный OpenRouter сохранён | Нет полноценной confirmed provider-cost атрибуции и полного GO-018 |
+| Административная статистика и фильтры | JSON-кнопки, P1/P2, воронка, уникальные CREATE, трёхпозиционный фильтр избранных компаний (#479), read-only частичная себестоимость | Историческая аномалия 61 импортов, full lineage расходов и live UI/финансовая приёмка не завершены |
+| Сборка и релиз | API+React доставляются `publish.yml`; worker/recovery собираются в отдельном `worker-artifact.yml` для amd64/arm64 | Artifact != установка Worker, автоматический deploy GO-447 ещё не внедрён |
+
+**Правило статусов:** реализация ChatGPT, смерженная в `main`, без принятия Codex — **«к проверке»**, а большой частичный эпик — **«частично реализовано — к проверке»** (см. [AGENTS.md](../../AGENTS.md) после публикации соответствующего PR). Любая оценка production требует отдельной операторской проверки. Ни одна документационная правка не включает новые фоновые задания или платных провайдеров.
+
+> **Исторический срез 09.11.2026 по коду main SHA [7fa1047](https://github.com/meInteractive/it-map/commit/7fa1047860df0a92165726c438418f77a4b43909).** Полная оценка по фактическому коду, PR/SHA/tests и границам — [GO-119: доказательная матрица](GO-119-ARCHITECTURE-EVIDENCE.md). Это **не** акт приёмки production и не обновление реальных данных.
+
+## Срез 09.11.2026 (архив)
 
 | Область | Наблюдаемое состояние | Доказательство / ограничение |
 | --- | --- | --- |
