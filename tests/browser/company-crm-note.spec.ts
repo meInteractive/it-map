@@ -162,7 +162,8 @@ test('S11-B03-11/14/15/16: comment/status roundtrip через Go контрак
     status: 'Откликнулся',
     comment: 'Синтетический комментарий',
   });
-  await page.reload();
+  // Смена/повторное открытие начинается с чистого route, без старого drawer history.
+  await page.goto('/__ci_company_crm_fixture');
   dialog = await open(page);
   await expect(dialog.getByRole('combobox', { name: 'Статус компании' })).toHaveValue(
     'Откликнулся',
@@ -186,7 +187,10 @@ test('S11-B03-12/13/20: отказ сохраняет draft, повтор пос
   await comment.fill('Черновик после потерянного ответа');
   await dialog.getByRole('button', { name: 'Сохранить', exact: true }).click();
   await expect(comment).toHaveValue('Черновик после потерянного ответа');
-  expect(data.users.Alpha.comment).toBe('Черновик после потерянного ответа');
+  // Playwright click завершается до асинхронного GET→PUT. Дожидаемся
+  // фактического исхода синтетического HTTP, а не состояния textarea.
+  await expect.poll(() => data.writes.length).toBe(1);
+  await expect.poll(() => data.users.Alpha.comment).toBe('Черновик после потерянного ответа');
   expect(data.writes).toHaveLength(1);
   // Результат неизвестен: повтор не должен создавать второй PUT и событие истории.
   await dialog.getByRole('button', { name: 'Сохранить', exact: true }).click();
@@ -232,7 +236,7 @@ test('S11-B03-17: два синтетических пользователя и�
   await dialog.getByRole('button', { name: 'Сохранить', exact: true }).click();
   await expect(dialog.getByText('Сохранено', { exact: true })).toBeVisible();
   data.user = 'Beta';
-  await page.reload();
+  await page.goto('/__ci_company_crm_fixture');
   dialog = await open(page);
   await expect(dialog.getByRole('combobox', { name: 'Статус компании' })).toHaveValue('');
   await expect(dialog.getByRole('textbox', { name: 'Комментарий' })).toHaveValue('');
