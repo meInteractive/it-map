@@ -256,7 +256,9 @@ test('S11-B03-01/02/04/10: после смены синтетического а
   await page.getByRole('button', { name: 'Список', exact: true }).click();
   await expect(page.getByRole('button', { name, exact: true })).toHaveCount(0);
   state.user = 'Beta';
-  await page.reload();
+  // После logout новая вкладка должна начать с публичного адреса, а не
+  // восстанавливать историю drawer прежнего пользователя.
+  await page.goto('/__ci_company_flags_fixture');
   dialog = await open(page);
   await expect(dialog.getByRole('button', { name: 'Избранное' })).toHaveAttribute(
     'aria-pressed',
