@@ -232,7 +232,7 @@
     {
       "id": "3870f43a53481d18",
       "file": "frontend/features/companies/CompanyDrawer.tsx",
-      "line": 69,
+      "line": 82,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -246,25 +246,51 @@
       "dynamicURL": true
     },
     {
-      "id": "ba20940e918d3319",
+      "id": "980d749e7ed20f76",
       "file": "frontend/features/companies/CompanyDrawer.tsx",
-      "line": 88,
+      "line": 122,
+      "call": "request",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "url",
+      "literalFragments": [],
+      "families": [
+        "dynamic"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "32b9e89a67bd5e93",
+      "file": "frontend/features/companies/CompanyDrawer.tsx",
+      "line": 136,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
-      "urlExpression": "'/api/crm'",
-      "literalFragments": [
-        "/api/crm"
-      ],
+      "urlExpression": "url",
+      "literalFragments": [],
       "families": [
-        "crm"
+        "dynamic"
       ],
-      "dynamicURL": false
+      "dynamicURL": true
+    },
+    {
+      "id": "980d749e7ed20f76-2",
+      "file": "frontend/features/companies/CompanyDrawer.tsx",
+      "line": 146,
+      "call": "request",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "url",
+      "literalFragments": [],
+      "families": [
+        "dynamic"
+      ],
+      "dynamicURL": true
     },
     {
       "id": "693f85528d623e31",
       "file": "frontend/features/companies/CompanyDrawer.tsx",
-      "line": 410,
+      "line": 515,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -280,7 +306,7 @@
     {
       "id": "0343de1abfc3a679",
       "file": "frontend/features/companies/CompanyDrawer.tsx",
-      "line": 418,
+      "line": 523,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -296,7 +322,7 @@
     {
       "id": "185c4fa20f4741a4",
       "file": "frontend/features/companies/CompanyDrawer.tsx",
-      "line": 449,
+      "line": 554,
       "call": "request",
       "method": "GET",
       "methodExpression": "GET",
@@ -312,7 +338,7 @@
     {
       "id": "949b2dca183adec8",
       "file": "frontend/features/companies/CompanyDrawer.tsx",
-      "line": 489,
+      "line": 594,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
