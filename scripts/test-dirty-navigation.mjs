@@ -78,3 +78,6 @@ try {
   if (oldWindow === undefined) delete globalThis.window; else globalThis.window = oldWindow;
   if (oldConfirm === undefined) delete globalThis.confirm; else globalThis.confirm = oldConfirm;
 }
+
+// BATCH-03/B: в том же обязательном CI проверить реальную CRM-форму.
+await import('./test-application-dirty-navigation.mjs');
