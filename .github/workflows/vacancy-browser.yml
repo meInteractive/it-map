@@ -1,0 +1,40 @@
+name: Vacancy browser synthetic regression
+on:
+  pull_request:
+    paths:
+      - 'frontend/Application.tsx'
+      - 'frontend/api/client.ts'
+      - 'frontend/features/vacancies/**'
+      - 'frontend/features/companies/Filters.tsx'
+      - 'frontend/components/Drawer.tsx'
+      - 'frontend/components/PanelBoundary.tsx'
+      - 'tests/browser/vacancy-*.spec.ts'
+      - 'playwright.config.ts'
+      - '.github/workflows/vacancy-browser.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  vacancy-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Проверить безопасность публичного источника
+        run: python3 scripts/check-public-repo.py
+      - name: Установить закреплённые зависимости и Chromium
+        run: |
+          npm ci --no-audit --no-fund
+          npx playwright install --with-deps --only-shell chromium
+      - name: Собрать React (общий GO-114 format gate проверяется отдельно)
+        run: npm run build:web
+      - name: Выполнить реальные desktop/mobile сценарии вакансий
+        env:
+          CI: 'true'
+          ITMAP_BROWSER_URL: http://127.0.0.1:18080
+        run: |
+          set -euo pipefail
+          npx playwright test tests/browser/vacancy-*.spec.ts --project=desktop --project=mobile
