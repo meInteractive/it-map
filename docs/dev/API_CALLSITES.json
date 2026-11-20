@@ -2399,7 +2399,7 @@
     {
       "id": "ad62ed67af333723",
       "file": "frontend/features/vacancies/Vacancies.tsx",
-      "line": 135,
+      "line": 133,
       "call": "mutate",
       "method": "DYNAMIC",
       "methodExpression": "method",
@@ -2413,7 +2413,7 @@
     {
       "id": "4d43454e8fdaf721",
       "file": "frontend/features/vacancies/Vacancies.tsx",
-      "line": 423,
+      "line": 421,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -2429,7 +2429,7 @@
     {
       "id": "7f670cfffe2968c2",
       "file": "frontend/features/vacancies/Vacancies.tsx",
-      "line": 446,
+      "line": 444,
       "call": "load",
       "method": "GET",
       "methodExpression": "GET",
@@ -2445,7 +2445,7 @@
     {
       "id": "79a374e05b348366",
       "file": "frontend/features/vacancies/Vacancies.tsx",
-      "line": 536,
+      "line": 534,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
