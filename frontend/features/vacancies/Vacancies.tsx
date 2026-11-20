@@ -556,8 +556,16 @@ export default function Vacancies({
         </div>
         <span className="applications-count">{rows.length}</span>
       </Heading>
-      <State loading={!q.data && q.loading} error={q.error}>
-        <div className="vacancies-groups">
+      {q.error ? (
+        <div className="vacancies-empty" role="alert">
+          <p>{q.error.message}</p>
+          <button type="button" className="job-full" disabled={q.loading} onClick={() => q.reload()}>
+            {q.loading ? 'Загрузка…' : 'Повторить загрузку'}
+          </button>
+        </div>
+      ) : (
+        <State loading={!q.data && q.loading}>
+          <div className="vacancies-groups">
           {!rows.length ? (
             <div className="vacancies-empty">В выбранных фильтрах вакансий нет.</div>
           ) : sort === 'company' ? (
@@ -609,8 +617,9 @@ export default function Vacancies({
               />
             </section>
           )}
-        </div>
-      </State>
+          </div>
+        </State>
+      )}
     </div>
   );
 }
