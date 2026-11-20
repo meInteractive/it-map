@@ -2,7 +2,7 @@ import { publicationPeriods, type PublicationPeriod } from '../../../shared/publ
 import { VacancyRelevance } from './Relevance';
 import { useSectionState } from '../../hooks/useSectionState';
 import { useEffect, useRef, useState } from 'react';
-import { useApi, mutate, load, request, ApiError } from '../../api/client';
+import { useApi, mutate, load, request, invalidate, invalidateMutation, ApiError } from '../../api/client';
 import { ErrorText, Heading, Icon, State, rank, safeUrl } from '../../components/Common';
 import type {
   Entity,
@@ -46,6 +46,7 @@ export function VacancyActions({
     [error, setError] = useState<unknown>();
   const pending = useRef(false),
     alive = useRef(true);
+  const uncertainDeletion = useRef<{ id: number; archived: boolean } | undefined>(undefined);
   const intent = useRef<
     { id: number; companyName: string; key: string; context?: string } | undefined
   >(undefined);
@@ -61,6 +62,7 @@ export function VacancyActions({
     pending.current = true;
     setBusy(true);
     setError(undefined);
+    let sentDelete = false;
     try {
       let url = '/api/vacancies/' + v.id + path;
       if (path === '/apply') {
@@ -88,8 +90,41 @@ export function VacancyActions({
           creationContext: current.context,
         };
       }
+      // После неизвестного результата DELETE сначала выясняем, прошёл ли COMMIT.
+      // Для linked-вакансии второй DELETE уже означает безвозвратное удаление.
+      if (method === 'DELETE' && uncertainDeletion.current?.id === v.id) {
+        let current: VacancyDetailResponse;
+        try {
+          current = await request<VacancyDetailResponse>('/api/vacancies/' + v.id, {
+            cache: 'no-store',
+          });
+        } catch (e) {
+          if (e instanceof ApiError && e.status === 404) {
+            uncertainDeletion.current = undefined;
+            invalidateMutation(url, 'DELETE');
+            nav.vacancyDeleted?.(v.id);
+            return;
+          }
+          throw e;
+        }
+        if (!current?.vacancy || current.vacancy.id !== v.id)
+          throw new ApiError('Не удалось проверить состояние вакансии перед удалением.', 503);
+        if (current.vacancy.archived !== uncertainDeletion.current.archived) {
+          uncertainDeletion.current = undefined;
+          invalidate(
+            (key) => key.startsWith('/api/vacancies') || key.startsWith('/api/companies'),
+          );
+          throw new ApiError(
+            'Вакансия уже изменила состояние. Список обновлён; подтвердите удаление заново.',
+            409,
+          );
+        }
+        uncertainDeletion.current = undefined;
+      }
+      sentDelete = method === 'DELETE';
       const result = await mutate<VacancyDeletionResult>(url, method, body);
       if (method === 'DELETE') {
+        uncertainDeletion.current = undefined;
         if (result.archived) {
           alert('У вакансии есть связанный отклик или задача, поэтому она помечена как архивная.');
         } else {
@@ -102,6 +137,7 @@ export function VacancyActions({
         }
       }
     } catch (e) {
+      if (sentDelete) uncertainDeletion.current = { id: v.id, archived: v.archived };
       if (alive.current) setError(e);
     } finally {
       pending.current = false;
