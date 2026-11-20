@@ -39,4 +39,4 @@ jobs:
           ITMAP_BROWSER_URL: http://127.0.0.1:18080
         run: |
           set -euo pipefail
-          npx playwright test tests/browser/vacancy-filters.spec.ts --project=desktop --project=mobile --reporter=list
+          npx playwright test tests/browser/vacancy-filters.spec.ts --project=desktop --project=mobile
