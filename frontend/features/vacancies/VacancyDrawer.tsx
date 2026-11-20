@@ -110,7 +110,7 @@ export default function VacancyDrawer({
     salary = v && vacancySalary(v, q.data?.entities || [], view);
   return (
     <Drawer
-      title={v?.title || 'Загрузка вакансии…'}
+      title={v?.title || (q.error ? 'Вакансия недоступна' : 'Загрузка вакансии…')}
       subtitle={
         context && (
           <button
