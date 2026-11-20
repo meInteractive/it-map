@@ -117,8 +117,10 @@ export function VacancyActions({
         }
         if (!current?.vacancy || current.vacancy.id !== v.id)
           throw new ApiError('Не удалось проверить состояние вакансии перед удалением.', 503);
-        if (current.vacancy.archived !== uncertainDeletion.current.archived) {
-          uncertainDeletion.current = undefined;
+        // Сверяем с состоянием, для которого пользователь видел подтверждение.
+        // Если UI ещё не получил новое archived, второй этап запрещён.
+        if (current.vacancy.archived !== v.archived) {
+          uncertainDeletion.current = { id: v.id, archived: current.vacancy.archived };
           invalidate(
             (key) => key.startsWith('/api/vacancies') || key.startsWith('/api/companies'),
           );
