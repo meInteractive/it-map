@@ -70,9 +70,25 @@
       "dynamicURL": true
     },
     {
+      "id": "93015b8a15941106",
+      "file": "frontend/features/applications/Applications.tsx",
+      "line": 369,
+      "call": "request",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/applications/' + record.id",
+      "literalFragments": [
+        "/api/applications/"
+      ],
+      "families": [
+        "applications"
+      ],
+      "dynamicURL": true
+    },
+    {
       "id": "64aa30be5ee9c306",
       "file": "frontend/features/applications/Applications.tsx",
-      "line": 363,
+      "line": 383,
       "call": "mutate",
       "method": "DELETE",
       "methodExpression": "'DELETE'",
@@ -88,7 +104,7 @@
     {
       "id": "9a6930d78ebc4508",
       "file": "frontend/features/applications/Applications.tsx",
-      "line": 420,
+      "line": 447,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
@@ -104,7 +120,7 @@
     {
       "id": "d8a0e318e518dd82",
       "file": "frontend/features/applications/Applications.tsx",
-      "line": 619,
+      "line": 646,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -120,7 +136,7 @@
     {
       "id": "e40516acc87fa58c",
       "file": "frontend/features/applications/Applications.tsx",
-      "line": 723,
+      "line": 750,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
