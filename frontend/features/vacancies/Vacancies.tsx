@@ -2,7 +2,15 @@ import { publicationPeriods, type PublicationPeriod } from '../../../shared/publ
 import { VacancyRelevance } from './Relevance';
 import { useSectionState } from '../../hooks/useSectionState';
 import { useEffect, useRef, useState } from 'react';
-import { useApi, mutate, load, request, invalidate, invalidateMutation, ApiError } from '../../api/client';
+import {
+  useApi,
+  mutate,
+  load,
+  request,
+  invalidate,
+  invalidateMutation,
+  ApiError,
+} from '../../api/client';
 import { ErrorText, Heading, Icon, State, rank, safeUrl } from '../../components/Common';
 import type {
   Entity,
