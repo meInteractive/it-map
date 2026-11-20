@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useApi } from '../../api/client';
-import { State, dateLabel, safeUrl } from '../../components/Common';
+import { State, dateLabel } from '../../components/Common';
 import { Drawer } from '../../components/Drawer';
 import { Markdown } from '../../components/Markdown';
 import type {
@@ -16,6 +16,7 @@ import { VacancyActions } from './Vacancies';
 import { vacancyContext, vacancySalary, publicationLabel, vacancyDateLabel } from './model';
 import CoverLetter from './CoverLetter';
 import { vacancyRoleText } from './RoleTree';
+import { vacancySourceLinks } from './sources';
 export function VacancyInfo({
   v,
   entities,
@@ -107,7 +108,8 @@ export default function VacancyDrawer({
     [tab, setTab] = useState('description');
   const v = q.data?.vacancy,
     context = v && vacancyContext(v, view),
-    salary = v && vacancySalary(v, q.data?.entities || [], view);
+    salary = v && vacancySalary(v, q.data?.entities || [], view),
+    sourceLinks = v ? vacancySourceLinks(v) : [];
   return (
     <Drawer
       title={v?.title || (q.error ? 'Вакансия недоступна' : 'Загрузка вакансии…')}
@@ -167,40 +169,20 @@ export default function VacancyDrawer({
                         Редактировать
                       </button>
                     )}
-                    {safeUrl(v.url) && (
+                    {sourceLinks.map((source) => (
                       <a
+                        key={source.key}
                         className="vacancy-source-button"
-                        href={safeUrl(v.url)}
+                        href={source.href}
                         target="_blank"
-                        rel="noreferrer"
+                        rel="noopener noreferrer"
                       >
-                        Открыть источник
-                      </a>
-                    )}
-                    {v.publicationSources
-                      ?.filter((s) => s.url !== v.url && safeUrl(s.url))
-                      .map((s) => (
-                        <a
-                          key={s.candidateId}
-                          className="vacancy-source-button"
-                          href={safeUrl(s.url)}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          Дополнительный источник #{s.candidateId}
-                        </a>
-                      ))}
-                    {v.telegramSources.map((s) => (
-                      <a
-                        key={s.channelId}
-                        className="vacancy-source-button"
-                        href={safeUrl(s.messageUrl)}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        Пост в {s.channelName}
+                        {source.label}
                       </a>
                     ))}
+                    {!sourceLinks.length && (
+                      <span className="job-fact">Доступных ссылок на источники нет.</span>
+                    )}
                   </div>
                   <div className="job-facts">
                     <span className={salary?.estimated ? 'vacancy-salary-estimate' : undefined}>
