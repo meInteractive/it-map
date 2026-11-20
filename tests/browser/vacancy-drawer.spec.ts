@@ -119,6 +119,15 @@ async function fixture(page: Page, options: FixtureOptions) {
       return json(route, { error: 'CI задачи недоступны' }, 503);
     if (path === '/api/tasks')
       return json(route, { tasks: [], entities: [] });
+    if (/^\/api\/vacancies\/\d+\/state$/.test(path) && req.method() === 'PUT') {
+      const id = Number(path.split('/')[3]);
+      const row = options.records.find((v) => v.id === id);
+      if (!row) return json(route, { error: 'Вакансия не найдена' }, 404);
+      const body = req.postDataJSON() as { favorite?: boolean; hidden?: boolean };
+      if (typeof body.favorite === 'boolean') row.favorite = body.favorite;
+      if (typeof body.hidden === 'boolean') row.hidden = body.hidden;
+      return json(route, { ok: true });
+    }
     if (/^\/api\/vacancies\/\d+$/.test(path)) {
       const id = Number(path.split('/').at(-1));
       const value = options.detail ? await options.detail(id) : options.records.find((r) => r.id === id) ?? null;
@@ -249,4 +258,67 @@ test('S11-B04-19: после второй карточки с пустыми р�
   dialog = await open(page, second.title);
   await expect(dialog.getByText(engineering.path)).toHaveCount(0);
   await expect(dialog.getByText('Полный текст пока не добавлен.')).toBeVisible();
+});
+
+
+test('S11-B04-21/22/23: источники без дублей, пустых href и небезопасных схем', async ({ page }) => {
+  const v = record(701, 'CI источники');
+  v.url = 'https://example.invalid/primary?one=1&two=2';
+  v.publicationSources = [
+    { candidateId: 20, url: v.url, updatedAt: '' },
+    { candidateId: 21, url: 'https://example.invalid/second?x=a%2Fb', updatedAt: '' },
+    { candidateId: 22, url: 'https://example.invalid/second?x=a%2Fb', updatedAt: '' },
+    { candidateId: 23, url: 'javascript:alert(1)', updatedAt: '' },
+  ];
+  v.telegramSources = [
+    { channelId: 1, channelName: 'CI без URL' },
+    { channelId: 2, channelName: 'CI пост', messageUrl: 'https://t.me/ci/24?ref=test' },
+    { channelId: 3, channelName: 'CI дубликат', messageUrl: 'https://t.me/ci/24?ref=test' },
+  ];
+  await fixture(page, { records: [v] });
+  const dialog = await open(page, v.title);
+  const links = dialog.locator('.vacancy-drawer-primary-actions a.vacancy-source-button');
+  await expect(links).toHaveCount(3);
+  expect(await links.evaluateAll((items) =>
+    items.map((item) => ({
+      href: item.getAttribute('href'),
+      label: item.textContent?.trim(),
+      rel: item.getAttribute('rel'),
+    })),
+  )).toEqual([
+    { href: v.url, label: 'Открыть источник', rel: 'noopener noreferrer' },
+    { href: 'https://example.invalid/second?x=a%2Fb', label: 'Дополнительный источник #21', rel: 'noopener noreferrer' },
+    { href: 'https://t.me/ci/24?ref=test', label: 'Пост в CI пост', rel: 'noopener noreferrer' },
+  ]);
+});
+
+test('S11-B04-22/28/29: исчезновение связанных источников и пустые роли безопасны', async ({ page }) => {
+  const v = record(702, 'CI без доступных источников', [], '');
+  v.url = '';
+  v.telegramSources = [{ channelId: 6, channelName: 'CI источник удалён', messageUrl: '' }];
+  v.publicationSources = [{ candidateId: 33, url: 'mailto:invalid@example.test', updatedAt: '' }];
+  await fixture(page, { records: [v] });
+  const dialog = await open(page, v.title);
+  await expect(dialog.getByText('Доступных ссылок на источники нет.')).toBeVisible();
+  await expect(dialog.locator('.vacancy-drawer-primary-actions a.vacancy-source-button')).toHaveCount(0);
+  await expect(dialog.getByText('Полный текст пока не добавлен.')).toBeVisible();
+  await dialog.getByRole('tab', { name: 'Инфо' }).click();
+  await expect(dialog.getByText('Краткая информация')).toBeVisible();
+});
+
+test('S11-B04-26/30: смена личного избранного в карточке обновляет фильтр списка', async ({ page }) => {
+  const v = record(703, 'CI флаг в карточке');
+  v.favorite = true;
+  await fixture(page, { records: [v] });
+  await page.getByRole('button', { name: 'Признаки', exact: true }).click();
+  await page.getByRole('checkbox', { name: 'Только избранные' }).check();
+  const dialog = await open(page, v.title);
+  const favorite = dialog.getByRole('button', { name: 'Избранная вакансия' });
+  await expect(favorite).toHaveAttribute('aria-pressed', 'true');
+  await favorite.click();
+  await expect(favorite).toHaveAttribute('aria-pressed', 'false');
+  await dialog.getByRole('button', { name: 'Закрыть' }).click();
+  await expect(page.getByRole('button', { name: v.title, exact: true })).toHaveCount(0);
+  await page.getByRole('checkbox', { name: 'Только избранные' }).uncheck();
+  await expect(page.getByRole('button', { name: v.title, exact: true })).toBeVisible();
 });
