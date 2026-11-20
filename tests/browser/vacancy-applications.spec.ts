@@ -158,7 +158,7 @@ async function fixture(page: Page, options: {
     }
     if (path === '/api/companies/detail')
       return json(route, { company });
-    if (path === '/api/crm') return json(route, { status: '', comment: '' });
+    if (path === '/api/crm') return json(route, { status: '', comment: '', history: [] });
     if (path === '/api/applications/create-context') {
       state.createContextReads++;
       return json(route, { creationContext: signedContext });
@@ -369,8 +369,6 @@ test('S11-B05-28/29: отмена удаления не отправляет DEL
 
 
 test('S11-B05-22: компания сохраняет выбранную вакансию при отмене перехода на другую вкладку', async ({ page }) => {
-  const errors: string[] = [];
-  page.on('pageerror', (error) => errors.push(error.message));
   const state = await fixture(page);
   await page.locator('.vacancies-company').first().click();
   const companyDialog = page.getByRole('dialog', { name: company.name });
@@ -379,15 +377,7 @@ test('S11-B05-22: компания сохраняет выбранную вак�
   await crmTab.click();
   await expect(crmTab).toHaveAttribute('aria-selected', 'true');
   const create = companyDialog.getByRole('button', { name: 'Новый отклик' });
-  try {
-    await expect(create).toBeVisible({ timeout: 5000 });
-  } catch {
-    throw new Error(
-      'CI форма отклика компании отсутствует: ' +
-        (await page.locator('body').innerText()).slice(0, 1600) +
-        '; pageerrors=' + errors.join('; ').slice(0, 1400),
-    );
-  }
+  await expect(create).toBeVisible();
   await create.click();
   const vacancySelect = companyDialog.getByRole('combobox', { name: 'Вакансия' });
   await vacancySelect.selectOption('902');
