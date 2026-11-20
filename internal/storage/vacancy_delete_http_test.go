@@ -15,10 +15,15 @@ import (
 	"strings"
 	"testing"
 
+	"itmap/internal/applications"
 	"itmap/internal/auth"
 	"itmap/internal/httpapi"
 	"itmap/internal/vacancies"
 )
+
+type vacancyDeleteApplicationDetail struct {
+	Record applications.Record `json:"record"`
+}
 
 type vacancyDeleteHTTP struct {
 	f       *vacancyCreateFixture
@@ -33,7 +38,7 @@ func openVacancyDeleteHTTP(f *vacancyCreateFixture, writer vacancies.Repository)
 		f.t.Fatal("cannot initialize synthetic vacancy creation auth")
 	}
 	h := &vacancyDeleteHTTP{f: f, cookies: map[string]*http.Cookie{}}
-	h.handler = httpapi.NewHandlerWithOptions(slog.New(slog.NewTextHandler(io.Discard, nil)), httpapi.Options{DB: f.db, Auth: manager, Vacancies: f.repo, VacancyDetails: f.repo, VacancyDeletes: writer})
+	h.handler = httpapi.NewHandlerWithOptions(slog.New(slog.NewTextHandler(io.Discard, nil)), httpapi.Options{DB: f.db, Auth: manager, Vacancies: f.repo, VacancyDetails: f.repo, VacancyDeletes: writer, Applications: applications.Repository{DB: f.db}})
 	for _, login := range []string{"eugene", "demo", "nastya"} {
 		form := url.Values{"login": {login}, "password": {"CI_SYNTHETIC_TASK_PASSWORD"}}
 		req := httptest.NewRequest("POST", "https://itmap.test/auth", strings.NewReader(form.Encode()))
@@ -146,6 +151,98 @@ func TestMariaDBVacancyDeleteHTTPDisposable(t *testing.T) {
 		h.error(h.call("eugene", "GET", path, nil, 404))
 		h.error(h.call("eugene", "DELETE", path, nil, 404))
 	})
+	t.Run("lost acknowledgement after real MariaDB COMMIT keeps archived vacancy or retained CRM", func(t *testing.T) {
+		for _, stage := range []string{"archive", "hard-delete"} {
+			t.Run(stage, func(t *testing.T) {
+				f, id := prepareVacancyDeletion(t, true)
+				h := openVacancyDeleteHTTP(f, f.repo)
+				vacancyPath := fmt.Sprintf("/api/vacancies/%d", id)
+				var demoID, nastyaID int64
+				f.scan("SELECT id FROM company_applications WHERE vacancy_id=? AND user_name='Demo'", []any{id}, &demoID)
+				f.scan("SELECT id FROM company_applications WHERE vacancy_id=? AND user_name='Nastya'", []any{id}, &nastyaID)
+				demoPath := fmt.Sprintf("/api/applications/%d", demoID)
+				nastyaPath := fmt.Sprintf("/api/applications/%d", nastyaID)
+				before := vacancyDeleteJSON[vacancyDeleteApplicationDetail](t, h.call("demo", "GET", demoPath, nil, 200)).Record
+				otherBefore := vacancyDeleteJSON[vacancyDeleteApplicationDetail](t, h.call("nastya", "GET", nastyaPath, nil, 200)).Record
+				if before.VacancyID == nil || *before.VacancyID != id || otherBefore.VacancyID == nil || *otherBefore.VacancyID != id || len(before.History) != 1 || len(otherBefore.History) != 1 {
+					t.Fatal("linked application HTTP fixture missing owned vacancy and history")
+				}
+				h.error(h.call("nastya", "GET", demoPath, nil, 404))
+				h.error(h.call("demo", "GET", nastyaPath, nil, 404))
+				links, retained := f.links(id), f.retainedCRM()
+				if stage == "hard-delete" {
+					first := vacancyDeleteJSON[vacancies.DeleteResult](t, h.call("eugene", "DELETE", vacancyPath, nil, 200))
+					if !first.OK || !first.Archived {
+						t.Fatal("cannot prepare archived vacancy for lost hard-delete acknowledgement")
+					}
+				}
+				// Меняем только доставку ответа: реальный Go handler уже выполнил SQL COMMIT.
+				backend := h.handler
+				deleteCalls := 0
+				h.handler = http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+					if req.Method != http.MethodDelete || req.URL.Path != vacancyPath {
+						backend.ServeHTTP(w, req)
+						return
+					}
+					deleteCalls++
+					if deleteCalls != 1 {
+						backend.ServeHTTP(w, req)
+						return
+					}
+					actual := httptest.NewRecorder()
+					backend.ServeHTTP(actual, req)
+					if actual.Code != http.StatusOK {
+						t.Fatalf("real SQL-backed DELETE returned %d, cannot simulate lost ACK", actual.Code)
+					}
+					for key, values := range actual.Header() {
+						w.Header()[key] = append([]string(nil), values...)
+					}
+					w.WriteHeader(http.StatusServiceUnavailable)
+					_, _ = io.WriteString(w, `{"error":"CI synthetic response lost after COMMIT"}`)
+				})
+				h.error(h.call("eugene", "DELETE", vacancyPath, nil, 503))
+				if deleteCalls != 1 {
+					t.Fatal("failed to simulate precisely one committed DELETE")
+				}
+				if stage == "archive" {
+					// Клиентское восстановление должно увидеть archived:true и НЕ повторить DELETE.
+					got := vacancyDeleteJSON[vacancies.DetailResponse](t, h.call("eugene", "GET", vacancyPath, nil, 200))
+					if !got.Vacancy.Archived || f.links(id) != links || retained != f.retainedCRM() {
+						t.Fatal("lost archive ACK changed CRM links or did not expose new archived state")
+					}
+					demo := vacancyDeleteJSON[vacancyDeleteApplicationDetail](t, h.call("demo", "GET", demoPath, nil, 200)).Record
+					if demo.VacancyID == nil || *demo.VacancyID != id || !reflect.DeepEqual(demo.History, before.History) {
+						t.Fatal("archived vacancy lost linked application/history")
+					}
+				} else {
+					// После COMMIT hard-delete GET 404 исключает второй DELETE без нового подтверждения.
+					h.error(h.call("eugene", "GET", vacancyPath, nil, 404))
+					f.assertDeleted(id, true)
+					if retained != f.retainedCRM() {
+						t.Fatal("hard-delete with lost ACK changed retained CRM data")
+					}
+					for _, owner := range []struct {
+						user string
+						path string
+						previous applications.Record
+					}{{"demo", demoPath, before}, {"nastya", nastyaPath, otherBefore}} {
+						after := vacancyDeleteJSON[vacancyDeleteApplicationDetail](t, h.call(owner.user, "GET", owner.path, nil, 200)).Record
+						if after.ID != owner.previous.ID || after.VacancyID != nil || after.VacancyTitle != "" ||
+							after.CompanyName != owner.previous.CompanyName || after.Status != owner.previous.Status ||
+							after.Comment != owner.previous.Comment || !reflect.DeepEqual(after.History, owner.previous.History) {
+							t.Fatal("detached application HTTP lost owner, content or status history")
+						}
+					}
+					h.error(h.call("nastya", "GET", demoPath, nil, 404))
+					h.error(h.call("demo", "GET", nastyaPath, nil, 404))
+				}
+				if deleteCalls != 1 {
+					t.Fatal("client recovery must not issue another DELETE before a new confirmation")
+				}
+			})
+		}
+	})
+
 	t.Run("channel hard delete keeps false preservation flags and cascades source", func(t *testing.T) {
 		f := openVacancyCreateFixture(t)
 		input := f.input("channel-delete")
