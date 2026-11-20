@@ -388,7 +388,11 @@ test('S11-B05-22: компания сохраняет выбранную вак�
   await expect(companyDialog.getByRole('tab', { name: 'Отклики' }))
     .toHaveAttribute('aria-selected', 'true');
   await expect(vacancySelect).toHaveValue('902');
-  await companyDialog.getByRole('button', { name: 'Сохранить', exact: true }).click();
+  // На CRM-вкладке две независимые формы: заметка компании и новый отклик.
+  await companyDialog.locator('form.crm-form').getByRole('button', {
+    name: 'Сохранить',
+    exact: true,
+  }).click();
   await expect.poll(() => state.writes.filter((w) => w.method === 'POST').length).toBe(1);
   expect(state.writes.find((w) => w.method === 'POST')?.body?.vacancyId).toBe(902);
   expect(state.records['CI Alice'][0].vacancyId).toBe(902);
