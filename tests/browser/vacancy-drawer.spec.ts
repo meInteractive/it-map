@@ -400,8 +400,8 @@ test('S11-B05-11/15 (частично): linked DELETE архивирует бе�
   await expect(dialog.getByText('Архив', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: v.title, exact: true })).toBeVisible();
   expect(mutations).toEqual([{ method: 'DELETE', id: v.id }]);
-  // Archive is deliberately still accessible: without an Archive tab a hidden row
-  // would prevent the required second-stage permanent removal.
+  // Архив остаётся доступен: без отдельной вкладки скрытие строки помешает
+  // подтверждённому второму этапу окончательного удаления.
   page.once('dialog', (confirmation) => confirmation.dismiss());
   await button.click();
   expect(mutations).toHaveLength(1);
