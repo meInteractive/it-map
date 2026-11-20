@@ -117,15 +117,15 @@ test('S11-B04-04/05: категория включает конечного по
   await fixture(page, () => ({
     body: list(vacancy(101, 'CI backend engineer'), vacancy(102, 'CI product designer', company, design)),
   }));
-  await expect(page.getByRole('button', { name: 'CI backend engineer' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'CI product designer' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'CI backend engineer', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'CI product designer', exact: true })).toBeVisible();
   await page.locator('.vacancy-search input').fill('CI');
   await page.getByRole('button', { name: /Роль · Все/ }).click();
   await page.getByRole('checkbox', { name: /Инженерия/ }).check();
-  await expect(page.getByRole('button', { name: 'CI backend engineer' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'CI product designer' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'CI backend engineer', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'CI product designer', exact: true })).toHaveCount(0);
   await page.getByRole('checkbox', { name: /Инженерия/ }).uncheck();
-  await expect(page.getByRole('button', { name: 'CI product designer' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'CI product designer', exact: true })).toBeVisible();
   await expect(page.locator('.vacancy-search input')).toHaveValue('CI');
 });
 
@@ -138,20 +138,20 @@ test('S11-B04-06: период пересекается с типом источ
     return { body: period === 'week' ? list(companyRow) : list(companyRow, agencyRow) };
   });
   await page.getByRole('combobox', { name: 'Дата публикации вакансии' }).selectOption('month');
-  await expect(page.getByRole('button', { name: 'CI вакансия компании' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'CI вакансия компании', exact: true })).toBeVisible();
   const nav = page.locator('[data-section-menu="vacancies"]');
   await nav.locator('.settings-nav-trigger').click();
   await nav.getByRole('button', { name: 'Агентства' }).click();
   await expect(page.getByRole('heading', { name: 'Вакансии агентств' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'CI вакансия агентства' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'CI вакансия компании' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'CI вакансия агентства', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'CI вакансия компании', exact: true })).toHaveCount(0);
   await expect(page.getByRole('combobox', { name: 'Дата публикации вакансии' })).toHaveValue('month');
   expect(periods).toContain('month');
 });
 
 test('S11-B04-07: неизвестная роль даёт безопасно пустую выборку', async ({ page }) => {
   await fixture(page, () => ({ body: list(vacancy(301, 'CI backend engineer')) }));
-  await expect(page.getByRole('button', { name: 'CI backend engineer' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'CI backend engineer', exact: true })).toBeVisible();
   const displayed = await page.evaluate(() => {
     const node = (window as unknown as {
       __ciVacancyVisible: (...args: unknown[]) => boolean;
@@ -189,13 +189,13 @@ test('S11-B04-08: поздний ответ прошлого периода не
     return { body: list(vacancy(402, 'CI актуальный месяц')) };
   });
   await page.getByRole('combobox', { name: 'Дата публикации вакансии' }).selectOption('month');
-  await expect(page.getByRole('button', { name: 'CI актуальный месяц' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'CI актуальный месяц', exact: true })).toBeVisible();
   const oldResponse = page.waitForResponse((response) =>
     response.url().includes('/api/vacancies/list?period=week') && response.status() === 200);
   releaseWeek();
   await oldResponse;
-  await expect(page.getByRole('button', { name: 'CI актуальный месяц' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'CI устаревшая неделя' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'CI актуальный месяц', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'CI устаревшая неделя', exact: true })).toHaveCount(0);
 });
 
 test('S11-B04-09/10: ошибка сохраняет фильтры, повтор не добавляет дубликат строк', async ({ page }) => {
@@ -212,9 +212,9 @@ test('S11-B04-09/10: ошибка сохраняет фильтры, повто�
   await expect(page.getByRole('alert')).toContainText('CI временная ошибка чтения');
   await page.locator('.vacancy-search input').fill('восстановленная');
   await page.getByRole('button', { name: 'Повторить загрузку' }).click();
-  await expect(page.getByRole('button', { name: 'CI восстановленная вакансия' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'CI восстановленная вакансия' })).toHaveCount(1);
-  await expect(page.getByRole('button', { name: 'CI другая' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'CI восстановленная вакансия', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'CI восстановленная вакансия', exact: true })).toHaveCount(1);
+  await expect(page.getByRole('button', { name: 'CI другая', exact: true })).toHaveCount(0);
   await expect(page.locator('.vacancy-search input')).toHaveValue('восстановленная');
   await expect(page.getByRole('combobox', { name: 'Дата публикации вакансии' })).toHaveValue('week');
   expect(periods).toEqual(['week', 'week']);
