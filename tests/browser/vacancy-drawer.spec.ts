@@ -91,6 +91,9 @@ type FixtureOptions = {
   tasksFailure?: boolean;
   roleResponse?: () => Promise<unknown> | unknown;
   admin?: boolean;
+  mutations?: { method: string; id: number; body?: unknown }[];
+  deleteFailures?: { remaining: number };
+  flagFailures?: { remaining: number };
 };
 async function json(route: Route, body: unknown, status = 200) {
   await route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
@@ -125,12 +128,36 @@ async function fixture(page: Page, options: FixtureOptions) {
       const row = options.records.find((v) => v.id === id);
       if (!row) return json(route, { error: 'Вакансия не найдена' }, 404);
       const body = req.postDataJSON() as { favorite?: boolean; hidden?: boolean };
+      options.mutations?.push({ method: 'PUT', id, body });
+      if (options.flagFailures?.remaining) {
+        options.flagFailures.remaining--;
+        return json(route, { error: 'CI временный отказ личного флага' }, 503);
+      }
       if (typeof body.favorite === 'boolean') row.favorite = body.favorite;
       if (typeof body.hidden === 'boolean') row.hidden = body.hidden;
       return json(route, { ok: true });
     }
     if (/^\/api\/vacancies\/\d+$/.test(path)) {
       const id = Number(path.split('/').at(-1));
+      if (req.method() === 'DELETE') {
+        options.mutations?.push({ method: 'DELETE', id });
+        if (options.deleteFailures?.remaining) {
+          options.deleteFailures.remaining--;
+          return json(route, { error: 'CI временный отказ удаления' }, 503);
+        }
+        const index = options.records.findIndex((v) => v.id === id);
+        if (index < 0) return json(route, { error: 'Вакансия не найдена' }, 404);
+        const current = options.records[index];
+        if (!current.archived && current.applicationId) {
+          current.archived = true;
+          return json(route, { ok: true, archived: true, companyName: current.companyName });
+        }
+        options.records.splice(index, 1);
+        return json(route, {
+          ok: true, archived: false, companyName: current.companyName,
+          preservedApplication: !!current.applicationId, preservedTask: false,
+        });
+      }
       const value = options.detail ? await options.detail(id) : options.records.find((r) => r.id === id) ?? null;
       if (!value) return json(route, { error: 'Вакансия не найдена' }, 404);
       return json(route, { vacancy: value, entities: [employer] });
@@ -323,4 +350,107 @@ test('S11-B04-26/30: смена личного избранного в карт�
   await page.getByRole('button', { name: 'Признаки', exact: true }).click();
   await page.getByRole('checkbox', { name: 'Только избранные' }).uncheck();
   await expect(page.getByRole('button', { name: v.title, exact: true })).toBeVisible();
+});
+
+
+test('S11-B05-12/13: отмена удаления не вызывает DELETE; подтверждение закрывает drawer и удаляет строку', async ({ page }) => {
+  const v = record(801, 'CI без связей: удаление');
+  const mutations: NonNullable<FixtureOptions['mutations']> = [];
+  await fixture(page, { records: [v], admin: true, mutations });
+  const dialog = await open(page, v.title);
+  const button = dialog.getByRole('button', { name: 'Удалить вакансию «' + v.title + '»' });
+  page.once('dialog', (confirmation) => confirmation.dismiss());
+  await button.click();
+  await expect(dialog).toBeVisible();
+  expect(mutations).toHaveLength(0);
+  page.once('dialog', (confirmation) => confirmation.accept());
+  await button.click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByRole('button', { name: v.title, exact: true })).toHaveCount(0);
+  expect(mutations).toEqual([{ method: 'DELETE', id: v.id }]);
+});
+
+test('S11-B05-14: временный 503 оставляет карточку, ручной повтор удаляет одну вакансию', async ({ page }) => {
+  const v = record(802, 'CI ошибка удаления');
+  const mutations: NonNullable<FixtureOptions['mutations']> = [];
+  await fixture(page, { records: [v], admin: true, mutations, deleteFailures: { remaining: 1 } });
+  const dialog = await open(page, v.title);
+  const button = dialog.getByRole('button', { name: 'Удалить вакансию «' + v.title + '»' });
+  page.once('dialog', (confirmation) => confirmation.accept());
+  await button.click();
+  await expect(dialog.getByRole('alert')).toContainText('CI временный отказ удаления');
+  await expect(dialog).toBeVisible();
+  page.once('dialog', (confirmation) => confirmation.accept());
+  await button.click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByRole('button', { name: v.title, exact: true })).toHaveCount(0);
+  expect(mutations.map((m) => m.method)).toEqual(['DELETE', 'DELETE']);
+});
+
+test('S11-B05-11/15 (частично): linked DELETE архивирует без потери строки и требует отдельного подтверждения', async ({ page }) => {
+  const v = record(803, 'CI архив со связанным откликом');
+  v.applicationId = 77;
+  v.applicationStatus = 'Отправлен';
+  const mutations: NonNullable<FixtureOptions['mutations']> = [];
+  await fixture(page, { records: [v], admin: true, mutations });
+  const dialog = await open(page, v.title);
+  const button = dialog.getByRole('button', { name: 'Удалить вакансию «' + v.title + '»' });
+  page.once('dialog', (confirmation) => confirmation.accept());
+  await button.click();
+  await expect(dialog.getByText('Архив', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: v.title, exact: true })).toBeVisible();
+  expect(mutations).toEqual([{ method: 'DELETE', id: v.id }]);
+  // Archive is deliberately still accessible: without an Archive tab a hidden row
+  // would prevent the required second-stage permanent removal.
+  page.once('dialog', (confirmation) => confirmation.dismiss());
+  await button.click();
+  expect(mutations).toHaveLength(1);
+});
+
+test('S11-B05-16/18: любимый флаг переживает перезапуск UI; отказ не меняет revision', async ({ page }) => {
+  const v = record(804, 'CI избранное после reload');
+  const mutations: NonNullable<FixtureOptions['mutations']> = [];
+  await fixture(page, {
+    records: [v], mutations, flagFailures: { remaining: 1 },
+  });
+  let dialog = await open(page, v.title);
+  const first = dialog.getByRole('button', { name: 'Избранная вакансия' });
+  await expect(first).toHaveAttribute('aria-pressed', 'false');
+  await first.click();
+  await expect(dialog.getByRole('alert')).toContainText('CI временный отказ личного флага');
+  await expect(first).toHaveAttribute('aria-pressed', 'false');
+  expect(v.revision).toBe('ci-revision');
+  await first.click();
+  await expect(first).toHaveAttribute('aria-pressed', 'true');
+  expect(v.revision).toBe('ci-revision');
+  await dialog.getByRole('button', { name: 'Закрыть' }).click();
+  await page.reload();
+  await page.addScriptTag({ content: script });
+  await expect(page.getByRole('heading', { name: 'Вакансии компаний' })).toBeVisible();
+  dialog = await open(page, v.title);
+  await expect(dialog.getByRole('button', { name: 'Избранная вакансия' }))
+    .toHaveAttribute('aria-pressed', 'true');
+  expect(mutations.map((m) => m.body)).toEqual([{ favorite: true }, { favorite: true }]);
+});
+
+test('S11-B05-19/20: два личных флага перечитываются последовательно; снятие hidden возвращает строку', async ({ page }) => {
+  const v = record(805, 'CI смена личных флагов');
+  const mutations: NonNullable<FixtureOptions['mutations']> = [];
+  await fixture(page, { records: [v], mutations });
+  const dialog = await open(page, v.title);
+  const favorite = dialog.getByRole('button', { name: 'Избранная вакансия' });
+  const hidden = dialog.getByRole('button', { name: 'Скрытая вакансия' });
+  await favorite.click();
+  await expect(favorite).toHaveAttribute('aria-pressed', 'true');
+  await hidden.click();
+  await expect(hidden).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('button', { name: v.title, exact: true })).toHaveCount(0);
+  await hidden.click();
+  await expect(hidden).toHaveAttribute('aria-pressed', 'false');
+  await expect(favorite).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('button', { name: v.title, exact: true })).toBeVisible();
+  expect(mutations.map((m) => m.body)).toEqual([
+    { favorite: true }, { hidden: true }, { hidden: false },
+  ]);
+  expect(v.revision).toBe('ci-revision');
 });
