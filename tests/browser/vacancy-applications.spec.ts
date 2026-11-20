@@ -373,8 +373,17 @@ test('S11-B05-22: компания сохраняет выбранную вак�
   await page.locator('.vacancies-company').first().click();
   const companyDialog = page.getByRole('dialog', { name: company.name });
   await expect(companyDialog).toBeVisible();
-  await companyDialog.getByRole('tab', { name: 'Отклики' }).click();
-  await companyDialog.getByRole('button', { name: 'Новый отклик' }).click();
+  const crmTab = companyDialog.getByRole('tab', { name: 'Отклики' });
+  await crmTab.click();
+  await expect(crmTab).toHaveAttribute('aria-selected', 'true');
+  const create = companyDialog.getByRole('button', { name: 'Новый отклик' });
+  try {
+    await expect(create).toBeVisible({ timeout: 5000 });
+  } catch {
+    throw new Error('CI форма отклика компании отсутствует: ' +
+      (await companyDialog.innerText()).slice(0, 1400));
+  }
+  await create.click();
   const vacancySelect = companyDialog.getByRole('combobox', { name: 'Вакансия' });
   await vacancySelect.selectOption('902');
   await companyDialog.getByRole('checkbox', { name: 'HH.ru' }).check();
