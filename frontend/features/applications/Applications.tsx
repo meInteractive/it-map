@@ -366,9 +366,10 @@ export function DeleteApplication({
               // После потери ответа сначала проверяем, остался ли собственный отклик.
               // Подтверждённый 404 означает, что второй DELETE уже не нужен.
               try {
-                await request<{ record: ApplicationRecord }>('/api/applications/' + record.id, {
-                  cache: 'no-store',
-                });
+                await request<{ record: ApplicationRecord }>(
+                  '/api/applications/' + record.id,
+                  { cache: 'no-store' },
+                );
               } catch (readError) {
                 if (!(readError instanceof ApiError) || readError.status !== 404)
                   throw readError;
