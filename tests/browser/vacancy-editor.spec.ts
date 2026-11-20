@@ -299,7 +299,9 @@ test('S11-B05-08: после 503 повтор сверяет revision через
   await editor.getByRole('button', { name: 'Сохранить изменения' }).click();
   const detail = page.getByRole('dialog', { name: 'CI сохраняемый черновик после 503' });
   await expect(detail).toBeVisible();
-  expect(state.events.slice(callsBeforeRetry))
+  // После подтверждённого PUT клиент вправе перечитать карточку для обновления кэша.
+  // Главное — проверочный GET должен предшествовать повторному PUT.
+  expect(state.events.slice(callsBeforeRetry, callsBeforeRetry + 2))
     .toEqual(['GET /api/vacancies/901', 'PUT /api/vacancies/901']);
   expect(state.writes.map((w) => w.body.revision))
     .toEqual(['ci-revision-1', 'ci-revision-1']);
