@@ -1,5 +1,6 @@
 import { test, expect, type Page, type Route } from '@playwright/test';
 import { build } from 'esbuild';
+import type { VacancyDetail } from '../../shared/contracts';
 
 // Настоящие React, Drawer и API-client. HTTP полностью синтетический; без платных вызовов.
 const bundle = await build({
@@ -68,7 +69,7 @@ const catalog = {
   roles: [...roots, engineering, product], tree: roots,
   roots, leaves: [engineering, product],
 };
-function record(id: number, title: string, assigned = [engineering], description = 'Текст вакансии') {
+function record(id: number, title: string, assigned = [engineering], description = 'Текст вакансии'): VacancyDetail {
   return {
     id, companyName: employer.name, entityType: 'company',
     realCompanyName: '', title, salaryFrom: null, salaryTo: null,
@@ -82,7 +83,7 @@ function record(id: number, title: string, assigned = [engineering], description
     coverLetterScope: 'shared',
   };
 }
-type Data = ReturnType<typeof record>;
+type Data = VacancyDetail;
 type DetailResolver = (id: number) => Promise<Data | null> | Data | null;
 type FixtureOptions = {
   records: Data[];
