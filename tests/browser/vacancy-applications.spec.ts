@@ -250,7 +250,8 @@ test('S11-B05-21/23: форма вакансии создаёт отклик с 
   const save = dialog.getByRole('button', { name: 'Сохранить', exact: true });
   await expect(save).toBeEnabled();
   await save.click();
-  await expect(dialog.getByText('CI отклик связан с вакансией 901')).toBeVisible();
+  await expect(dialog.getByRole('textbox', { name: 'Комментарий' }))
+    .toHaveValue('CI отклик связан с вакансией 901');
   const post = state.writes.find((w) => w.method === 'POST');
   expect(post?.path).toBe('/api/applications/create');
   expect(post?.body?.vacancyId).toBe(901);
@@ -279,7 +280,8 @@ test('S11-B05-24: после 503 с COMMIT повтор отправляет т�
   await expect(dialog.getByRole('textbox', { name: 'Комментарий' }))
     .toHaveValue('CI неизменный черновик');
   await save.click();
-  await expect(dialog.getByText('CI неизменный черновик')).toBeVisible();
+  await expect(dialog.getByRole('textbox', { name: 'Комментарий' }))
+    .toHaveValue('CI неизменный черновик');
   const posts = state.writes.filter((w) => w.method === 'POST');
   expect(posts).toHaveLength(2);
   expect(posts[0].body?.idempotencyKey).toBe(posts[1].body?.idempotencyKey);
