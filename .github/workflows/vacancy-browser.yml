@@ -29,10 +29,8 @@ jobs:
         run: |
           npm ci --no-audit --no-fund
           npx playwright install --with-deps --only-shell chromium
-      - name: Проверить фронтенд
-        run: |
-          npm run format:check
-          npm run build:web
+      - name: Собрать React (общий GO-114 format gate проверяется отдельно)
+        run: npm run build:web
       - name: Выполнить реальные desktop/mobile сценарии вакансий
         env:
           CI: 'true'
