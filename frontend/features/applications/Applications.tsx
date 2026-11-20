@@ -366,7 +366,9 @@ export function DeleteApplication({
               // После потери ответа сначала проверяем, остался ли собственный отклик.
               // Подтверждённый 404 означает, что второй DELETE уже не нужен.
               try {
-                await request<{ record: ApplicationRecord }>(path, { cache: 'no-store' });
+                await request<{ record: ApplicationRecord }>('/api/applications/' + record.id, {
+                  cache: 'no-store',
+                });
               } catch (readError) {
                 if (!(readError instanceof ApiError) || readError.status !== 404)
                   throw readError;
@@ -377,7 +379,7 @@ export function DeleteApplication({
               }
             }
             try {
-              await mutate(path, 'DELETE');
+              await mutate('/api/applications/' + record.id, 'DELETE');
               uncertain.current = false;
             } catch (deleteError) {
               // 5xx/обрыв не доказывают rollback; перед следующим DELETE нужен GET.
