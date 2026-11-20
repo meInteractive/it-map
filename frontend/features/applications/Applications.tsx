@@ -3,7 +3,7 @@ import { confirmNavigation, useDirty } from '../../hooks/useDirty';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApplicationConflict, isApplicationConflict } from './ApplicationConflict';
 import { useCreationIntent } from './useCreationIntent';
-import { mutate, useApi } from '../../api/client';
+import { ApiError, invalidateMutation, mutate, request, useApi } from '../../api/client';
 import {
   ActionForm,
   EntitySwitch,
@@ -343,7 +343,8 @@ export function DeleteApplication({
 }) {
   const [busy, setBusy] = useState(false),
     [error, setError] = useState<unknown>();
-  const inFlight = useRef(false);
+  const inFlight = useRef(false),
+    uncertain = useRef(false);
   return (
     <>
       <button
@@ -360,7 +361,30 @@ export function DeleteApplication({
           setError(undefined);
           try {
             onBusyChange?.(true);
-            await mutate('/api/applications/' + record.id, 'DELETE');
+            const path = '/api/applications/' + record.id;
+            if (uncertain.current) {
+              // После потери ответа сначала проверяем, остался ли собственный отклик.
+              // Подтверждённый 404 означает, что второй DELETE уже не нужен.
+              try {
+                await request<{ record: ApplicationRecord }>(path, { cache: 'no-store' });
+              } catch (readError) {
+                if (!(readError instanceof ApiError) || readError.status !== 404)
+                  throw readError;
+                uncertain.current = false;
+                invalidateMutation(path, 'DELETE');
+                onDeleted?.();
+                return;
+              }
+            }
+            try {
+              await mutate(path, 'DELETE');
+              uncertain.current = false;
+            } catch (deleteError) {
+              // 5xx/обрыв не доказывают rollback; перед следующим DELETE нужен GET.
+              uncertain.current =
+                !(deleteError instanceof ApiError) || deleteError.status >= 500;
+              throw deleteError;
+            }
             onDeleted?.();
           } catch (e) {
             setError(e);
