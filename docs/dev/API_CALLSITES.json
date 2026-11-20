@@ -1681,6 +1681,38 @@
       "dynamicURL": false
     },
     {
+      "id": "d7c58bb132d61c04",
+      "file": "frontend/features/settings/scheduler-run.ts",
+      "line": 12,
+      "call": "fetch",
+      "method": "POST",
+      "methodExpression": "'POST'",
+      "urlExpression": "'/api/scheduler/run'",
+      "literalFragments": [
+        "/api/scheduler/run"
+      ],
+      "families": [
+        "scheduler"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "e99a994bb7b46ea6",
+      "file": "frontend/features/settings/scheduler-run.ts",
+      "line": 94,
+      "call": "fetch",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/scheduler/run?requestId=' + encodeURIComponent(requestId)",
+      "literalFragments": [
+        "/api/scheduler/run?requestId="
+      ],
+      "families": [
+        "scheduler"
+      ],
+      "dynamicURL": true
+    },
+    {
       "id": "ab313e001aa9f9bc",
       "file": "frontend/features/settings/Scheduler.tsx",
       "line": 156,
@@ -2189,38 +2221,6 @@
       "dynamicURL": true
     },
     {
-      "id": "d7c58bb132d61c04",
-      "file": "frontend/features/settings/scheduler-run.ts",
-      "line": 12,
-      "call": "fetch",
-      "method": "POST",
-      "methodExpression": "'POST'",
-      "urlExpression": "'/api/scheduler/run'",
-      "literalFragments": [
-        "/api/scheduler/run"
-      ],
-      "families": [
-        "scheduler"
-      ],
-      "dynamicURL": false
-    },
-    {
-      "id": "e99a994bb7b46ea6",
-      "file": "frontend/features/settings/scheduler-run.ts",
-      "line": 94,
-      "call": "fetch",
-      "method": "GET",
-      "methodExpression": "GET",
-      "urlExpression": "'/api/scheduler/run?requestId=' + encodeURIComponent(requestId)",
-      "literalFragments": [
-        "/api/scheduler/run?requestId="
-      ],
-      "families": [
-        "scheduler"
-      ],
-      "dynamicURL": true
-    },
-    {
       "id": "dcc34ffe3083584b",
       "file": "frontend/features/tasks/Tasks.tsx",
       "line": 30,
@@ -2317,6 +2317,22 @@
       "dynamicURL": true
     },
     {
+      "id": "a1679a01d53c8d81",
+      "file": "frontend/features/vacancies/cover-letter.ts",
+      "line": 54,
+      "call": "fetch",
+      "method": "POST",
+      "methodExpression": "'POST'",
+      "urlExpression": "'/api/vacancies/' + id + '/cover-letter' + (regenerate ? '/regenerate' : '')",
+      "literalFragments": [
+        "/api/vacancies/"
+      ],
+      "families": [
+        "cover-letter"
+      ],
+      "dynamicURL": true
+    },
+    {
       "id": "9ae6c19a2d9c0cb6",
       "file": "frontend/features/vacancies/Relevance.tsx",
       "line": 31,
@@ -2367,7 +2383,7 @@
     {
       "id": "ed2ea2d8e7f03e6c",
       "file": "frontend/features/vacancies/Vacancies.tsx",
-      "line": 73,
+      "line": 75,
       "call": "request",
       "method": "GET",
       "methodExpression": "GET",
@@ -2381,9 +2397,25 @@
       "dynamicURL": false
     },
     {
+      "id": "78a531860c76d49f",
+      "file": "frontend/features/vacancies/Vacancies.tsx",
+      "line": 98,
+      "call": "request",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/vacancies/' + v.id",
+      "literalFragments": [
+        "/api/vacancies/"
+      ],
+      "families": [
+        "vacancies"
+      ],
+      "dynamicURL": true
+    },
+    {
       "id": "ad62ed67af333723",
       "file": "frontend/features/vacancies/Vacancies.tsx",
-      "line": 91,
+      "line": 125,
       "call": "mutate",
       "method": "DYNAMIC",
       "methodExpression": "method",
@@ -2397,7 +2429,7 @@
     {
       "id": "4d43454e8fdaf721",
       "file": "frontend/features/vacancies/Vacancies.tsx",
-      "line": 377,
+      "line": 413,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -2413,7 +2445,7 @@
     {
       "id": "7f670cfffe2968c2",
       "file": "frontend/features/vacancies/Vacancies.tsx",
-      "line": 400,
+      "line": 436,
       "call": "load",
       "method": "GET",
       "methodExpression": "GET",
@@ -2429,7 +2461,7 @@
     {
       "id": "79a374e05b348366",
       "file": "frontend/features/vacancies/Vacancies.tsx",
-      "line": 490,
+      "line": 526,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -2519,22 +2551,6 @@
       ],
       "families": [
         "vacancies"
-      ],
-      "dynamicURL": true
-    },
-    {
-      "id": "a1679a01d53c8d81",
-      "file": "frontend/features/vacancies/cover-letter.ts",
-      "line": 54,
-      "call": "fetch",
-      "method": "POST",
-      "methodExpression": "'POST'",
-      "urlExpression": "'/api/vacancies/' + id + '/cover-letter' + (regenerate ? '/regenerate' : '')",
-      "literalFragments": [
-        "/api/vacancies/"
-      ],
-      "families": [
-        "cover-letter"
       ],
       "dynamicURL": true
     }
