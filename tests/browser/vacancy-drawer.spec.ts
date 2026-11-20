@@ -405,7 +405,10 @@ test('S11-B05-14: ответ 503 после COMMIT архива не допус�
   const reads: number[] = [];
   const records = [v];
   await fixture(page, {
-    records, admin: true, mutations, reads,
+    records,
+    admin: true,
+    mutations,
+    reads,
     deleteFailures: { remaining: 1, afterCommit: true },
   });
   const dialog = await open(page, v.title);
@@ -431,7 +434,10 @@ test('S11-B05-14: ответ 503 после окончательного DELETE 
   const reads: number[] = [];
   const records = [v];
   await fixture(page, {
-    records, admin: true, mutations, reads,
+    records,
+    admin: true,
+    mutations,
+    reads,
     deleteFailures: { remaining: 1, afterCommit: true },
   });
   const dialog = await open(page, v.title);
