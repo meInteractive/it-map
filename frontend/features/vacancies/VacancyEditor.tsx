@@ -98,7 +98,9 @@ export default function VacancyEditor({
             if (record && !record.revision)
               throw new Error('Обновите карточку вакансии перед редактированием.');
             if (record && conflict)
-              throw new Error('Вакансия изменилась. Проверьте актуальную версию и откройте редактор заново.');
+              throw new Error(
+                'Вакансия изменилась. Проверьте актуальную версию и откройте редактор заново.',
+              );
             const payload: Record<string, unknown> = {
               ...value,
               ...(record ? { revision: record.revision } : {}),
@@ -151,7 +153,9 @@ export default function VacancyEditor({
                   current.vacancy.revision !== record.revision
                 ) {
                   setConflict(true);
-                  throw new Error('Версия вакансии изменилась. Просмотрите актуальную запись; черновик сохранён.');
+                  throw new Error(
+                    'Версия вакансии изменилась. Просмотрите актуальную запись; черновик сохранён.',
+                  );
                 }
               }
               if (record) verifyRevisionBeforeRetry.current = true;
