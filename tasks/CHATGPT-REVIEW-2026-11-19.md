@@ -310,3 +310,25 @@
 2. Проверить GO-113/114/115/117/119, GO-107/108 и GO-018 без live платных вызовов; частично принятые части не закрывают родительскую задачу.
 3. Аудировать GO-431 денежные границы, evidence и recovery, сохраняя все unknown/reserved данные; отделить release GO-447, migration #489 и живую операторскую приёмку от уже смерженного Go-кода.
 4. GO-433/434/436 и HH историческую полноту проверять read-only на отдельно разрешённых обезличенных данных; не подменять факты synthetic тестами.
+
+
+## Дополнение к аудиту от 20.11.2026: результаты двух последних чатов
+
+Это **дополнение** к историческому аудиту 251 PR за 05–18.11, не пересчёт той выборки. Контрольный `main` после merge #505 владельцем 20.11: `52ae69e4dfa9ceecebf03d3c638bcd744069ad75`. Задачи ChatGPT ниже не прошли независимую проверку Codex; **merge + CI не означают приёмку**.
+
+| PR | Результат и статус | Проверки / доставка |
+|---|---|---|
+| [#496](https://github.com/meInteractive/it-map/pull/496) | GO-015 Google OAuth/manual sync, **частично реализовано — к проверке**; live Google acceptance нет | `51ffa71d`, 4/4 CI; в main |
+| [#497](https://github.com/meInteractive/it-map/pull/497) | GO-119 аудит PR и статусов, **к проверке** | `a1ef31572`, 4/4 CI; в main |
+| [#498](https://github.com/meInteractive/it-map/pull/498) | GO-119 архитектура Go API + Worker, **частично реализовано — к проверке** | `ead909a46`, 4/4 CI; в main |
+| [#499](https://github.com/meInteractive/it-map/pull/499) | Альтернатива архитектурного обновления, **не реализовано в main** | Закрыт без merge; использовать #498 |
+| [#500](https://github.com/meInteractive/it-map/pull/500) | GO-390/BATCH-03/A: 01–10, **к проверке** | `b71fe8a50`, 5/5 CI, Playwright **90/90**, main |
+| [#501](https://github.com/meInteractive/it-map/pull/501) | GO-010/BATCH-03/B: CRM статусы/комментарии/история, **к проверке** | `ec42a6757`, 4/4 CI, 98/98; merge только в ветку #500, в main доставлен через #505 |
+| [#502](https://github.com/meInteractive/it-map/pull/502) | GO-032/BATCH-03/C: read-only min/max, **частично реализовано — к проверке**; 22–26,29–30 не реализованы | `89d64e07b`, 4/4 CI; в main |
+| [#503](https://github.com/meInteractive/it-map/pull/503) | Дополнительный React test после снятия конфликтов с #500, **к проверке** | `35ea6c82f`, 4/4 CI, Playwright **90/90**; в main |
+| [#504](https://github.com/meInteractive/it-map/pull/504) | Guard несохранённых изменений отклика, **к проверке** | `060d24afd`, 4/4 CI; в main |
+| [#505](https://github.com/meInteractive/it-map/pull/505) | Прямой перенос CRM-кода из #501 в main после missed stacked merge, **к проверке** | `804f7b0ba`, 5/5 CI, Playwright **98/98**, 0 skipped; merge 20.11 |
+
+**Отладка CI 19.11:** S11-B03-09/10 первоначально падал в mobile, так как при смене synthetic пользователя карточка не открывалась (`dialogCount=0`) после лишнего нажатия на уже активную кнопку «Список». Исправлена навигация теста, полный Playwright в `MariaDB isolated staging gate` прошёл на финальных SHA. **Разница workflow:** зелёный специализированный company-flags Go workflow сам по себе не подтверждал полный Playwright.
+
+**Незавершённая приёмка:** GO-010/390/119/015, GO-032 transactional CRUD, реальный Google OAuth, deployed Worker SHA/GO-447, durable AI identity #489, исторические HH/GO-436 когорты, GO-433/434 неизвестные расходы. Индивидуальные ID и точные границы в [BATCH-03](sprint-01-subtasks/BATCH-03.md). Следующая передача [20 ноября](../docs/dev/handoff/HANDOFF-2026-11-20.md).
