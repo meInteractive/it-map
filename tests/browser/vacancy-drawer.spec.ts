@@ -320,6 +320,7 @@ test('S11-B04-26/30: смена личного избранного в карт�
   await expect(favorite).toHaveAttribute('aria-pressed', 'false');
   await dialog.getByRole('button', { name: 'Закрыть' }).click();
   await expect(page.getByRole('button', { name: v.title, exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Признаки', exact: true }).click();
   await page.getByRole('checkbox', { name: 'Только избранные' }).uncheck();
   await expect(page.getByRole('button', { name: v.title, exact: true })).toBeVisible();
 });
