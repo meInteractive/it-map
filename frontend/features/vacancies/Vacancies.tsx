@@ -121,9 +121,7 @@ export function VacancyActions({
         // Если UI ещё не получил новое archived, второй этап запрещён.
         if (current.vacancy.archived !== v.archived) {
           uncertainDeletion.current = { id: v.id, archived: current.vacancy.archived };
-          invalidate(
-            (key) => key.startsWith('/api/vacancies') || key.startsWith('/api/companies'),
-          );
+          invalidate((key) => key.startsWith('/api/vacancies') || key.startsWith('/api/companies'));
           throw new ApiError(
             'Вакансия уже изменила состояние. Список обновлён; подтвердите удаление заново.',
             409,
