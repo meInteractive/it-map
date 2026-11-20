@@ -71,15 +71,22 @@ type FixtureState = {
   writes: Write[];
   reads: string[];
   conflictOnce: boolean;
+  transientPut?: 'unapplied' | 'applied';
+  events: string[];
 };
 async function respond(route: Route, body: unknown, status = 200) {
   await route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
 }
 
-async function fixture(page: Page, options: { conflictOnce?: boolean } = {}) {
+async function fixture(page: Page, options: {
+  conflictOnce?: boolean;
+  transientPut?: 'unapplied' | 'applied';
+  admin?: boolean;
+} = {}) {
   const state: FixtureState = {
     rows: [vacancy(901, 'CI существующая вакансия')],
     writes: [], reads: [], conflictOnce: !!options.conflictOnce,
+    transientPut: options.transientPut, events: [],
   };
   await page.route('**/*', async (route) => {
     const req = route.request();
@@ -92,7 +99,8 @@ async function fixture(page: Page, options: { conflictOnce?: boolean } = {}) {
         body: '<!doctype html><html><body><main id="root"></main></body></html>',
       });
     }
-    if (path === '/api/session') return respond(route, { name: 'CI Editor', isAdmin: true });
+    if (path === '/api/session')
+      return respond(route, { name: 'CI Editor', isAdmin: options.admin ?? true });
     if (path === '/api/vacancy-roles') return respond(route, roles);
     if (path === '/api/channels') return respond(route, { channels: [] });
     if (path === '/api/vacancies/list' || path === '/api/vacancies') {
@@ -124,11 +132,25 @@ async function fixture(page: Page, options: { conflictOnce?: boolean } = {}) {
       if (!row) return respond(route, { error: 'Вакансия не найдена' }, 404);
       if (method === 'GET') {
         state.reads.push(path);
+        state.events.push('GET ' + path);
         return respond(route, { vacancy: row, entities: [company] });
       }
       if (method === 'PUT') {
         const body = req.postDataJSON() as Record<string, unknown>;
         state.writes.push({ path, method, body });
+        state.events.push('PUT ' + path);
+        if (state.transientPut) {
+          const failed = state.transientPut;
+          state.transientPut = undefined;
+          if (failed === 'applied') {
+            const updated = {
+              ...row, title: String(body.title), descriptionMd: String(body.descriptionMd),
+              revision: 'ci-revision-2',
+            };
+            state.rows = state.rows.map((v) => v.id === id ? updated : v);
+          }
+          return respond(route, { error: 'CI временный сбой ответа' }, 503);
+        }
         if (state.conflictOnce) {
           state.conflictOnce = false;
           const current = { ...row, title: 'CI версия на сервере', revision: 'ci-revision-2' };
@@ -262,4 +284,57 @@ test('S11-B05-06/07 (частично): 409 сохраняет черновик 
   await expect(editor).toBeVisible();
   expect(state.writes.map((w) => w.method)).toEqual(['PUT']);
   expect(state.rows[0].title).toBe('CI версия на сервере');
+});
+
+
+test('S11-B05-08: после 503 повтор сверяет revision через GET до следующего PUT', async ({ page }) => {
+  const state = await fixture(page, { transientPut: 'unapplied' });
+  const editor = await openEdit(page);
+  await editor.getByRole('textbox', { name: 'Название вакансии *' })
+    .fill('CI сохраняемый черновик после 503');
+  await editor.getByRole('button', { name: 'Сохранить изменения' }).click();
+  await expect(editor.getByRole('alert')).toContainText('CI временный сбой ответа');
+  expect(state.writes).toHaveLength(1);
+  const callsBeforeRetry = state.events.length;
+  await editor.getByRole('button', { name: 'Сохранить изменения' }).click();
+  const detail = page.getByRole('dialog', { name: 'CI сохраняемый черновик после 503' });
+  await expect(detail).toBeVisible();
+  expect(state.events.slice(callsBeforeRetry))
+    .toEqual(['GET /api/vacancies/901', 'PUT /api/vacancies/901']);
+  expect(state.writes.map((w) => w.body.revision))
+    .toEqual(['ci-revision-1', 'ci-revision-1']);
+});
+
+test('S11-B05-08: потерянный ответ после COMMIT не вызывает повторный PUT', async ({ page }) => {
+  const state = await fixture(page, { transientPut: 'applied' });
+  const editor = await openEdit(page);
+  await editor.getByRole('textbox', { name: 'Название вакансии *' })
+    .fill('CI уже применённая запись');
+  await editor.getByRole('button', { name: 'Сохранить изменения' }).click();
+  await expect(editor.getByRole('alert')).toContainText('CI временный сбой ответа');
+  const callsBeforeRetry = state.events.length;
+  await editor.getByRole('button', { name: 'Сохранить изменения' }).click();
+  await expect(editor.getByRole('region', { name: 'Конфликт изменений вакансии' }))
+    .toBeVisible();
+  await expect(editor.getByRole('textbox', { name: 'Название вакансии *' }))
+    .toHaveValue('CI уже применённая запись');
+  expect(state.events.slice(callsBeforeRetry)).toEqual(['GET /api/vacancies/901']);
+  expect(state.writes).toHaveLength(1);
+  expect(state.rows[0].revision).toBe('ci-revision-2');
+});
+
+test('S11-B05-10 (UI): пользователь без admin читает вакансию, но не видит создание и edit', async ({ page }) => {
+  const state = await fixture(page, { admin: false });
+  await page.getByRole('button', { name: 'CI существующая вакансия', exact: true }).click();
+  const detail = page.getByRole('dialog', { name: 'CI существующая вакансия' });
+  await expect(detail).toBeVisible();
+  await expect(detail.getByText('CI описание')).toBeVisible();
+  await expect(detail.getByRole('button', { name: 'Редактировать' })).toHaveCount(0);
+  await detail.getByRole('button', { name: 'Закрыть' }).click();
+  await page.locator('.vacancies-company').first().click();
+  const companyDialog = page.getByRole('dialog', { name: company.name });
+  await companyDialog.getByRole('tab', { name: 'Вакансии' }).click();
+  await expect(companyDialog.getByRole('button', { name: 'Добавить вакансию' })).toHaveCount(0);
+  await expect(companyDialog.getByRole('button', { name: 'Редактировать' })).toHaveCount(0);
+  expect(state.writes).toHaveLength(0);
 });
