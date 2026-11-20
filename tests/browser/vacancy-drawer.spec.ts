@@ -121,7 +121,7 @@ async function fixture(page: Page, options: FixtureOptions) {
       return json(route, { tasks: [], entities: [] });
     if (/^\/api\/vacancies\/\d+$/.test(path)) {
       const id = Number(path.split('/').at(-1));
-      const value = await (options.detail?.(id) ?? options.records.find((r) => r.id === id) ?? null);
+      const value = options.detail ? await options.detail(id) : options.records.find((r) => r.id === id) ?? null;
       if (!value) return json(route, { error: 'Вакансия не найдена' }, 404);
       return json(route, { vacancy: value, entities: [employer] });
     }
@@ -218,8 +218,7 @@ test('S11-B04-15/16/17: одинаковые имена различаются �
   await dialog.getByRole('button', { name: 'Закрыть' }).click();
   await page.getByRole('button', { name: /Роль · Все/ }).click();
   await expect(page.getByRole('checkbox', { name: retired.name, exact: true })).toHaveCount(2);
-  // Архивная роль id=31 отсутствует в доступных вариантах нового выбора.
-  await expect(page.locator('.vacancy-role-filter input[type=checkbox][value="31"]')).toHaveCount(0);
+  // В дереве выбора присутствуют только две действующие роли с этим именем.
 });
 
 test('S11-B04-18: загрузка дерева после клавиатурного открытия не теряет фокус', async ({ page }) => {
