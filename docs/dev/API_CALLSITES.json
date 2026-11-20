@@ -2477,7 +2477,7 @@
     {
       "id": "fcc914929c1a3a8d",
       "file": "frontend/features/vacancies/VacancyEditor.tsx",
-      "line": 143,
+      "line": 145,
       "call": "request",
       "method": "GET",
       "methodExpression": "GET",
@@ -2493,7 +2493,7 @@
     {
       "id": "3b14a8c440b4d00a",
       "file": "frontend/features/vacancies/VacancyEditor.tsx",
-      "line": 158,
+      "line": 162,
       "call": "mutate",
       "method": "DYNAMIC",
       "methodExpression": "record ? 'PUT' : 'POST'",
