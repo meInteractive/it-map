@@ -2475,9 +2475,25 @@
       "dynamicURL": false
     },
     {
+      "id": "fcc914929c1a3a8d",
+      "file": "frontend/features/vacancies/VacancyEditor.tsx",
+      "line": 145,
+      "call": "request",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/vacancies/' + record.id",
+      "literalFragments": [
+        "/api/vacancies/"
+      ],
+      "families": [
+        "vacancies"
+      ],
+      "dynamicURL": true
+    },
+    {
       "id": "3b14a8c440b4d00a",
       "file": "frontend/features/vacancies/VacancyEditor.tsx",
-      "line": 137,
+      "line": 162,
       "call": "mutate",
       "method": "DYNAMIC",
       "methodExpression": "record ? 'PUT' : 'POST'",

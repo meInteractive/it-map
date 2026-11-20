@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { ApiError, mutate, useApi } from '../../api/client';
+import { useRef, useState } from 'react';
+import { ApiError, mutate, request, useApi } from '../../api/client';
 import { ActionForm, Field } from '../../components/Common';
 import { Drawer } from '../../components/Drawer';
 import { MarkdownEditor } from '../../components/Markdown';
@@ -57,6 +57,7 @@ export default function VacancyEditor({
     [value, setValue] = useState(initial),
     [saving, setSaving] = useState(false),
     [conflict, setConflict] = useState(Boolean(record && !record.revision));
+  const verifyRevisionBeforeRetry = useRef(false);
   const dirty = JSON.stringify(value) !== initialText;
   useDirty(dirty);
   function close() {
@@ -96,6 +97,10 @@ export default function VacancyEditor({
               throw new Error('Укажите хотя бы одну роль вакансии.');
             if (record && !record.revision)
               throw new Error('Обновите карточку вакансии перед редактированием.');
+            if (record && conflict)
+              throw new Error(
+                'Вакансия изменилась. Проверьте актуальную версию и откройте редактор заново.',
+              );
             const payload: Record<string, unknown> = {
               ...value,
               ...(record ? { revision: record.revision } : {}),
@@ -134,6 +139,26 @@ export default function VacancyEditor({
             }
             setSaving(true);
             try {
+              if (record && verifyRevisionBeforeRetry.current) {
+                // После неопределённого исхода PUT сверяем revision из нового GET без кэша.
+                // Изменившуюся запись запрещено повторно перезаписывать старым черновиком.
+                const current = await request<{ vacancy: VacancyDetail }>(
+                  '/api/vacancies/' + record.id,
+                  { cache: 'no-store' },
+                );
+                if (
+                  !current.vacancy ||
+                  current.vacancy.id !== record.id ||
+                  !current.vacancy.revision ||
+                  current.vacancy.revision !== record.revision
+                ) {
+                  setConflict(true);
+                  throw new Error(
+                    'Версия вакансии изменилась. Просмотрите актуальную запись; черновик сохранён.',
+                  );
+                }
+              }
+              if (record) verifyRevisionBeforeRetry.current = true;
               const result = await mutate<{
                 vacancies: VacancyDetail[];
               }>(
@@ -144,6 +169,7 @@ export default function VacancyEditor({
               const saved = result.vacancies.find((v) =>
                 record ? v.id === record.id : v.url === new URL(value.url).href,
               );
+              verifyRevisionBeforeRetry.current = false;
               onSaved(saved?.id);
             } catch (error) {
               if (error instanceof ApiError && [409, 428].includes(error.status)) setConflict(true);
