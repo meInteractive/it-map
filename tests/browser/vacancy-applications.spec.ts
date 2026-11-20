@@ -93,6 +93,8 @@ type FixtureState = {
   createContextReads: number;
   failCreateOnce: boolean;
   conflictOnce: boolean;
+  deleteFailure?: 'applied' | 'unapplied';
+  events: string[];
 };
 async function json(route: Route, body: unknown, status = 200) {
   return route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
@@ -121,11 +123,13 @@ async function fixture(page: Page, options: {
   failCreateOnce?: boolean;
   conflictOnce?: boolean;
   seeded?: boolean;
+  deleteFailure?: 'applied' | 'unapplied';
 } = {}) {
   const state: FixtureState = {
     user: 'CI Alice', records: { 'CI Alice': options.seeded ? [application(1001)] : [], 'CI Bob': [] },
     nextID: 1002, receipts: new Map(), writes: [], createContextReads: 0,
     failCreateOnce: !!options.failCreateOnce, conflictOnce: !!options.conflictOnce,
+    deleteFailure: options.deleteFailure, events: [],
   };
   await page.route('**/*', async (route) => {
     const req = route.request();
@@ -154,6 +158,7 @@ async function fixture(page: Page, options: {
     }
     if (path === '/api/companies/detail')
       return json(route, { company });
+    if (path === '/api/crm') return json(route, { status: '', comment: '' });
     if (path === '/api/applications/create-context') {
       state.createContextReads++;
       return json(route, { creationContext: signedContext });
@@ -189,8 +194,10 @@ async function fixture(page: Page, options: {
     if (/^\/api\/applications\/\d+$/.test(path)) {
       const id = Number(path.split('/').at(-1));
       const item = mine(state).find((r) => r.id === id);
-      if (method === 'GET')
+      if (method === 'GET') {
+        state.events.push('GET ' + path);
         return item ? json(route, { record: item }) : json(route, { error: 'Не найден' }, 404);
+      }
       if (method === 'PUT') {
         const body = req.postDataJSON() as Record<string, unknown>;
         state.writes.push({ path, method, user: state.user, body });
@@ -216,7 +223,16 @@ async function fixture(page: Page, options: {
       }
       if (method === 'DELETE') {
         state.writes.push({ path, method, user: state.user });
+        state.events.push('DELETE ' + path);
         if (!item) return json(route, { error: 'Не найден' }, 404);
+        const failed = state.deleteFailure;
+        state.deleteFailure = undefined;
+        if (failed === 'applied') {
+          state.records[state.user] = mine(state).filter((r) => r.id !== id);
+          return json(route, { error: 'CI ответ удаления потерян после COMMIT' }, 503);
+        }
+        if (failed === 'unapplied')
+          return json(route, { error: 'CI удаление не было применено' }, 503);
         state.records[state.user] = mine(state).filter((r) => r.id !== id);
         return json(route, response(state));
       }
@@ -349,4 +365,69 @@ test('S11-B05-28/29: отмена удаления не отправляет DEL
   expect(state.records['CI Alice']).toHaveLength(0);
   await mount(page, '/applications');
   await expect(page.locator('.applications-table tbody tr')).toHaveCount(0);
+});
+
+
+test('S11-B05-22: компания сохраняет выбранную вакансию при отмене перехода на другую вкладку', async ({ page }) => {
+  const state = await fixture(page);
+  await page.locator('.vacancies-company').first().click();
+  const companyDialog = page.getByRole('dialog', { name: company.name });
+  await expect(companyDialog).toBeVisible();
+  await companyDialog.getByRole('tab', { name: 'Отклики' }).click();
+  await companyDialog.getByRole('button', { name: 'Новый отклик' }).click();
+  const vacancySelect = companyDialog.getByRole('combobox', { name: 'Вакансия' });
+  await vacancySelect.selectOption('902');
+  await companyDialog.getByRole('checkbox', { name: 'HH.ru' }).check();
+  await expect(vacancySelect).toHaveValue('902');
+  page.once('dialog', (confirmation) => confirmation.dismiss());
+  await companyDialog.getByRole('tab', { name: 'Вакансии' }).click();
+  await expect(companyDialog.getByRole('tab', { name: 'Отклики' }))
+    .toHaveAttribute('aria-selected', 'true');
+  await expect(vacancySelect).toHaveValue('902');
+  await companyDialog.getByRole('button', { name: 'Сохранить', exact: true }).click();
+  await expect.poll(() => state.writes.filter((w) => w.method === 'POST').length).toBe(1);
+  expect(state.writes.find((w) => w.method === 'POST')?.body?.vacancyId).toBe(902);
+  expect(state.records['CI Alice'][0].vacancyId).toBe(902);
+});
+
+test('S11-B05-30: после 503 с COMMIT повтор подтверждает отсутствие через GET, не посылая второй DELETE', async ({ page }) => {
+  const state = await fixture(page, { seeded: true, deleteFailure: 'applied' });
+  await mount(page, '/applications');
+  const row = page.locator('.applications-table tbody tr').first();
+  const remove = row.getByRole('button', { name: 'Удалить отклик ' + vacancies[0].title });
+  page.once('dialog', (confirmation) => confirmation.accept());
+  await remove.click();
+  await expect(row.getByRole('alert')).toContainText('CI ответ удаления потерян после COMMIT');
+  expect(state.records['CI Alice']).toHaveLength(0);
+  await expect(row).toBeVisible();
+  page.once('dialog', (confirmation) => confirmation.accept());
+  await remove.click();
+  await expect(page.locator('.applications-table tbody tr')).toHaveCount(0);
+  expect(state.events).toEqual([
+    'DELETE /api/applications/1001',
+    'GET /api/applications/1001',
+  ]);
+  expect(state.writes.filter((w) => w.method === 'DELETE')).toHaveLength(1);
+  await mount(page, '/applications');
+  await expect(page.locator('.applications-table tbody tr')).toHaveCount(0);
+});
+
+test('S11-B05-30: если DELETE не применён, повторный GET проверяет запись до нового DELETE', async ({ page }) => {
+  const state = await fixture(page, { seeded: true, deleteFailure: 'unapplied' });
+  await mount(page, '/applications');
+  const row = page.locator('.applications-table tbody tr').first();
+  const remove = row.getByRole('button', { name: 'Удалить отклик ' + vacancies[0].title });
+  page.once('dialog', (confirmation) => confirmation.accept());
+  await remove.click();
+  await expect(row.getByRole('alert')).toContainText('CI удаление не было применено');
+  expect(state.records['CI Alice']).toHaveLength(1);
+  page.once('dialog', (confirmation) => confirmation.accept());
+  await remove.click();
+  await expect(page.locator('.applications-table tbody tr')).toHaveCount(0);
+  expect(state.events).toEqual([
+    'DELETE /api/applications/1001',
+    'GET /api/applications/1001',
+    'DELETE /api/applications/1001',
+  ]);
+  expect(state.records['CI Alice']).toHaveLength(0);
 });
