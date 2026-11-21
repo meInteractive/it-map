@@ -92,7 +92,8 @@ type FixtureOptions = {
   roleResponse?: () => Promise<unknown> | unknown;
   admin?: boolean;
   mutations?: { method: string; id: number; body?: unknown }[];
-  deleteFailures?: { remaining: number };
+  reads?: number[];
+  deleteFailures?: { remaining: number; afterCommit?: boolean };
   flagFailures?: { remaining: number };
 };
 async function json(route: Route, body: unknown, status = 200) {
@@ -141,23 +142,33 @@ async function fixture(page: Page, options: FixtureOptions) {
       const id = Number(path.split('/').at(-1));
       if (req.method() === 'DELETE') {
         options.mutations?.push({ method: 'DELETE', id });
-        if (options.deleteFailures?.remaining) {
-          options.deleteFailures.remaining--;
+        const fail = !!options.deleteFailures?.remaining;
+        if (fail && !options.deleteFailures?.afterCommit) {
+          options.deleteFailures!.remaining--;
           return json(route, { error: 'CI временный отказ удаления' }, 503);
         }
         const index = options.records.findIndex((v) => v.id === id);
         if (index < 0) return json(route, { error: 'Вакансия не найдена' }, 404);
         const current = options.records[index];
         if (!current.archived && current.applicationId) {
-          current.archived = true;
+          options.records[index] = { ...current, archived: true };
+          if (fail) {
+            options.deleteFailures!.remaining--;
+            return json(route, { error: 'CI временный отказ удаления' }, 503);
+          }
           return json(route, { ok: true, archived: true, companyName: current.companyName });
         }
         options.records.splice(index, 1);
+        if (fail) {
+          options.deleteFailures!.remaining--;
+          return json(route, { error: 'CI временный отказ удаления' }, 503);
+        }
         return json(route, {
           ok: true, archived: false, companyName: current.companyName,
           preservedApplication: !!current.applicationId, preservedTask: false,
         });
       }
+      options.reads?.push(id);
       const value = options.detail ? await options.detail(id) : options.records.find((r) => r.id === id) ?? null;
       if (!value) return json(route, { error: 'Вакансия не найдена' }, 404);
       return json(route, { vacancy: value, entities: [employer] });
@@ -385,6 +396,61 @@ test('S11-B05-14: временный 503 оставляет карточку, р
   await expect(dialog).toHaveCount(0);
   await expect(page.getByRole('button', { name: v.title, exact: true })).toHaveCount(0);
   expect(mutations.map((m) => m.method)).toEqual(['DELETE', 'DELETE']);
+});
+
+test('S11-B05-14: ответ 503 после COMMIT архива не допускает случайного второго удаления', async ({ page }) => {
+  const v = record(806, 'CI потерянный ответ архивирования');
+  v.applicationId = 77;
+  const mutations: NonNullable<FixtureOptions['mutations']> = [];
+  const reads: number[] = [];
+  const records = [v];
+  await fixture(page, {
+    records,
+    admin: true,
+    mutations,
+    reads,
+    deleteFailures: { remaining: 1, afterCommit: true },
+  });
+  const dialog = await open(page, v.title);
+  const button = dialog.getByRole('button', { name: 'Удалить вакансию «' + v.title + '»' });
+  page.once('dialog', (confirmation) => confirmation.accept());
+  await button.click();
+  await expect(dialog.getByRole('alert')).toContainText('CI временный отказ удаления');
+  expect(mutations).toHaveLength(1);
+  expect(records[0].archived).toBe(true);
+  page.once('dialog', (confirmation) => confirmation.accept());
+  await button.click();
+  await expect(dialog.getByRole('alert')).toContainText('подтвердите удаление заново');
+  expect(mutations).toHaveLength(1);
+  expect(reads.filter((id) => id === v.id).length).toBeGreaterThanOrEqual(2);
+  expect(records).toHaveLength(1);
+});
+
+test('S11-B05-14: ответ 503 после окончательного DELETE сверяется по GET 404', async ({ page }) => {
+  const v = record(807, 'CI потерянный ответ окончательного удаления');
+  v.applicationId = 77;
+  v.archived = true;
+  const mutations: NonNullable<FixtureOptions['mutations']> = [];
+  const reads: number[] = [];
+  const records = [v];
+  await fixture(page, {
+    records,
+    admin: true,
+    mutations,
+    reads,
+    deleteFailures: { remaining: 1, afterCommit: true },
+  });
+  const dialog = await open(page, v.title);
+  const button = dialog.getByRole('button', { name: 'Удалить вакансию «' + v.title + '»' });
+  page.once('dialog', (confirmation) => confirmation.accept());
+  await button.click();
+  await expect(dialog.getByRole('alert')).toContainText('CI временный отказ удаления');
+  expect(records).toHaveLength(0);
+  page.once('dialog', (confirmation) => confirmation.accept());
+  await button.click();
+  await expect(dialog).toHaveCount(0);
+  expect(mutations).toEqual([{ method: 'DELETE', id: v.id }]);
+  expect(reads.filter((id) => id === v.id).length).toBeGreaterThanOrEqual(2);
 });
 
 test('S11-B05-11/15 (частично): linked DELETE архивирует без потери строки и требует отдельного подтверждения', async ({ page }) => {
