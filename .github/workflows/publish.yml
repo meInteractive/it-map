@@ -116,7 +116,7 @@ jobs:
           persist-credentials: false
       - uses: actions/download-artifact@v4
         with:
-          name: ${{ needs.package.outputs.artifact_name }}
+          name: ${{ vars.ITMAP_JOINT_RELEASE_ENABLED == 'true' && format('joint-release-{0}-{1}', github.run_id, github.run_attempt) || needs.package.outputs.artifact_name }}
           path: ${{ runner.temp }}/release
       - name: Deliver and wait for server smoke or rollback
         env:
@@ -127,4 +127,10 @@ jobs:
           DEPLOY_USER: ${{ vars.DEPLOY_USER }}
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
           DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
-        run: python3 deploy/publish_release.py publish --archive '${{ runner.temp }}/release/release.tar'
+          JOINT_RELEASE_ENABLED: ${{ vars.ITMAP_JOINT_RELEASE_ENABLED }}
+        run: |
+          if [[ "$JOINT_RELEASE_ENABLED" == true ]]; then
+            python3 deploy/publish_release.py publish --joint --archive "$RUNNER_TEMP/release/joint-release.tar"
+          else
+            python3 deploy/publish_release.py publish --archive "$RUNNER_TEMP/release/release.tar"
+          fi
