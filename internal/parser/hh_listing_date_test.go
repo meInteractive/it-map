@@ -129,3 +129,26 @@ func TestGO293HHWindowAtMoscowMidnight(t *testing.T) {
 		t.Fatalf("Moscow midnight boundary lost: before=%v, after=%v", beforeTo, afterTo)
 	}
 }
+
+// Внутридневные сканы при окне полных суток запрашивают одни даты.
+func TestGO293HHFourDailyScansUseSameDateWindow(t *testing.T) {
+	msk, err := time.LoadLocation("Europe/Moscow")
+	if err != nil {
+		t.Fatal(err)
+	}
+	midnight := time.Date(2026, time.November, 21, 0, 0, 0, 0, msk)
+	for _, hour := range []int{0, 6, 12, 18} {
+		from, to := hhDateWindow(midnight.Add(time.Duration(hour)*time.Hour), 3)
+		if from == nil || to == nil ||
+			*from != "2026-11-18T00:00:00+03:00" ||
+			*to != "2026-11-20T23:59:59+03:00" {
+			t.Fatalf("hour %d: unexpected date window: %v, %v", hour, from, to)
+		}
+	}
+	from, to := hhDateWindow(midnight.AddDate(0, 0, 1), 3)
+	if from == nil || to == nil ||
+		*from != "2026-11-19T00:00:00+03:00" ||
+		*to != "2026-11-21T23:59:59+03:00" {
+		t.Fatalf("date window did not advance at midnight: %v, %v", from, to)
+	}
+}
