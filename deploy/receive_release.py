@@ -4,6 +4,7 @@ import argparse
 import contextlib
 import fcntl
 import hashlib
+import http.client
 import json
 import os
 from pathlib import Path, PurePosixPath
@@ -11,6 +12,8 @@ import platform
 import re
 import shutil
 import signal
+import socket
+import stat
 import struct
 import subprocess
 import sys
@@ -100,6 +103,162 @@ class Systemd:
                                     timeout=10).returncode == 0
             if not active:
                 raise Rejected('worker_launch_failed')
+
+
+class UnixWorkerConnection(http.client.HTTPConnection):
+    def __init__(self, path):
+        super().__init__('localhost', timeout=3)
+        self.path = path
+
+    def connect(self):
+        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        try:
+            sock.settimeout(self.timeout)
+            sock.connect(self.path)
+        except OSError:
+            sock.close()
+            raise
+        self.sock = sock
+
+
+class WorkerDrain:
+    """Подтверждение паузы для одного MainPID без сетевого доступа к control."""
+
+    unit = 'itmap-worker.service'
+    token_pattern = re.compile(r'[a-zA-Z0-9_-]{1,96}')
+
+    def __init__(self, root=Path('/opt/itmap/worker'), control='/run/itmap-worker/release.sock'):
+        self.hold = root / 'release-hold'
+        self.control = control
+
+    def main_pid(self):
+        result = subprocess.run(
+            ['/usr/bin/systemctl', 'show', self.unit, '-p', 'MainPID', '--value'],
+            check=True, capture_output=True, text=True, timeout=5)
+        pid = int(result.stdout.strip())
+        if pid <= 1:
+            raise Rejected('worker_instance_unavailable')
+        return pid
+
+    def message(self, path, request=None):
+        with contextlib.closing(UnixWorkerConnection(self.control)) as conn:
+            if request is None:
+                conn.request('GET', path)
+            else:
+                conn.request('POST', path, json.dumps(request), {'Content-Type': 'application/json'})
+            with conn.getresponse() as response:
+                if response.status != 200:
+                    raise Rejected('worker_control_rejected')
+                data = response.read(4097)
+                if len(data) > 4096:
+                    raise Rejected('worker_control_invalid')
+                value = json.loads(data)
+        if not isinstance(value, dict):
+            raise Rejected('worker_control_invalid')
+        return value
+
+    def instance(self):
+        value = self.message('/instance')
+        nonce, pid = value.get('instance'), value.get('pid')
+        if (not isinstance(nonce, str) or not re.fullmatch(r'[0-9a-f]{32}', nonce)
+                or type(pid) is not int or pid != self.main_pid()
+                or type(value.get('paused')) is not bool):
+            raise Rejected('worker_instance_changed')
+        return value
+
+    def hold_token(self):
+        try:
+            fd = os.open(self.hold, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+        except FileNotFoundError:
+            return None
+        with os.fdopen(fd, 'r', encoding='ascii') as stream:
+            info = os.fstat(stream.fileno())
+            if not stat.S_ISREG(info.st_mode) or info.st_uid != os.geteuid() or info.st_mode & 0o022:
+                raise Rejected('unsafe_worker_hold')
+            token = stream.read(98).removesuffix('\n')
+        if not self.token_pattern.fullmatch(token):
+            raise Rejected('unsafe_worker_hold')
+        return token
+
+    def create_hold(self, token):
+        if not isinstance(token, str) or not self.token_pattern.fullmatch(token):
+            raise Rejected('invalid_worker_hold_token')
+        fd, name = tempfile.mkstemp(prefix='.worker-hold-', dir=self.hold.parent)
+        try:
+            with os.fdopen(fd, 'w', encoding='ascii') as stream:
+                stream.write(token + '\n')
+                stream.flush()
+                os.fchmod(stream.fileno(), 0o644)
+                os.fsync(stream.fileno())
+            try:
+                os.link(name, self.hold)
+            except FileExistsError:
+                if self.hold_token() != token:
+                    raise Rejected('worker_hold_conflict') from None
+            fsync_dir(self.hold.parent)
+        finally:
+            Path(name).unlink(missing_ok=True)
+
+    def verify_idle(self):
+        # Прямое loopback-чтение, без прокси и без перехода по redirect.
+        with contextlib.closing(http.client.HTTPConnection('127.0.0.1', 18082, timeout=3)) as conn:
+            snapshots = {}
+            for endpoint in ('queuez', 'recoveryz'):
+                conn.request('GET', '/' + endpoint)
+                with conn.getresponse() as response:
+                    if response.status != 200:
+                        raise Rejected('worker_diagnostics_unavailable')
+                    data = response.read(4097)
+                    if len(data) > 4096:
+                        raise Rejected('worker_diagnostics_invalid')
+                    snapshots[endpoint] = json.loads(data)
+        queue, recovery = snapshots['queuez'], snapshots['recoveryz']
+        try:
+            values = [queue[kind]['running'] for kind in ('scan', 'pipeline')]
+            values += [recovery[key] for key in (
+                'actorCurrentUnresolved', 'currentAIReservedRunning', 'currentAIReservedOther',
+                'currentAIZeroReserveProviderUnknown', 'actorUnknown', 'actorReconcile',
+                'schedulerHistoricalUnknown', 'schedulerOrphanUnknown',
+                'schedulerHistoricalZeroReserveProviderUnknown', 'schedulerOrphanZeroReserveProviderUnknown')]
+        except (KeyError, TypeError):
+            raise Rejected('worker_diagnostics_invalid') from None
+        if any(type(value) is not int or value != 0 for value in values):
+            raise Rejected('worker_unsettled_operations')
+
+    def drain(self, token, timeout=30):
+        original = self.instance()
+        self.create_hold(token)
+        request = {'instance': original['instance'], 'token': token}
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            state = self.message('/pause', request).get('state')
+            if state == 'held':
+                self.verify_idle()
+                confirmed = self.instance()
+                if (confirmed['instance'] != original['instance'] or confirmed['pid'] != original['pid']
+                        or not confirmed['paused'] or self.hold_token() != token):
+                    raise Rejected('worker_instance_changed')
+                return confirmed
+            if state != 'draining':
+                raise Rejected('worker_drain_unsafe')
+            time.sleep(1)
+        raise Rejected('worker_drain_timeout')
+
+    def resume(self, token, expected):
+        current = self.instance()
+        if current['instance'] != expected['instance'] or current['pid'] != expected['pid']:
+            raise Rejected('worker_instance_changed')
+        hold = self.hold_token()
+        if hold is not None:
+            if hold != token:
+                raise Rejected('worker_hold_conflict')
+            self.hold.unlink()
+            fsync_dir(self.hold.parent)
+        if self.message('/resume', {'instance': expected['instance'], 'token': token}).get('state') != 'resumed':
+            raise Rejected('worker_resume_unconfirmed')
+        current = self.instance()
+        if current['instance'] != expected['instance'] or current['pid'] != expected['pid'] or current['paused']:
+            raise Rejected('worker_resume_unconfirmed')
 
 
 def health(url):

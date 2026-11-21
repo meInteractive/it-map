@@ -75,6 +75,68 @@ class SystemdInterpreterTests(unittest.TestCase):
         self.assertNotIn('/usr/bin/python3', command)
 
 
+class WorkerDrainTests(unittest.TestCase):
+    def setUp(self):
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        self.worker = r.WorkerDrain(Path(temp.name))
+        self.instance = {'instance': 'a' * 32, 'pid': 42, 'paused': True}
+
+    def test_hold_is_idempotent_but_different_release_cannot_replace_it(self):
+        self.worker.create_hold('release-1')
+        self.worker.create_hold('release-1')
+        self.assertEqual(self.worker.hold_token(), 'release-1')
+        self.assertEqual(self.worker.hold.stat().st_mode & 0o777, 0o644)
+        with self.assertRaisesRegex(r.Rejected, 'worker_hold_conflict'):
+            self.worker.create_hold('release-2')
+        self.assertEqual(self.worker.hold_token(), 'release-1')
+
+    def test_drain_and_resume_same_instance(self):
+        resumed = dict(self.instance, paused=False)
+        with (patch.object(self.worker, 'instance', side_effect=[self.instance, self.instance, self.instance, resumed]),
+              patch.object(self.worker, 'message', side_effect=[{'state': 'draining'}, {'state': 'held'}, {'state': 'resumed'}]) as message,
+              patch.object(self.worker, 'verify_idle') as idle, patch.object(r.time, 'sleep')):
+            actual = self.worker.drain('release-1')
+            idle.assert_called_once()
+            self.assertEqual(actual, self.instance)
+            request = {'instance': self.instance['instance'], 'token': 'release-1'}
+            message.assert_called_with('/pause', request)
+            self.worker.resume('release-1', actual)
+            message.assert_called_with('/resume', request)
+        self.assertFalse(self.worker.hold.exists())
+
+    def test_drain_defers_on_unsettled_ledger_or_process_change(self):
+        for changed in (False, True):
+            with self.subTest(changed=changed):
+                other = dict(self.instance, pid=43) if changed else self.instance
+                problem = None if changed else r.Rejected('worker_unsettled_operations')
+                with (patch.object(self.worker, 'instance', side_effect=[self.instance, other]),
+                      patch.object(self.worker, 'message', return_value={'state': 'held'}),
+                      patch.object(self.worker, 'verify_idle', side_effect=problem)):
+                    with self.assertRaisesRegex(r.Rejected, 'worker_instance_changed' if changed else 'worker_unsettled_operations'):
+                        self.worker.drain('release-1')
+                self.assertEqual(self.worker.hold_token(), 'release-1')
+
+    def test_unsettled_diagnostics_refuse_release(self):
+        queue = {'scan': {'running': 0}, 'pipeline': {'running': 0}}
+        recovery = {key: 0 for key in (
+            'actorCurrentUnresolved', 'currentAIReservedRunning', 'currentAIReservedOther',
+            'currentAIZeroReserveProviderUnknown', 'actorUnknown', 'actorReconcile',
+            'schedulerHistoricalUnknown', 'schedulerOrphanUnknown',
+            'schedulerHistoricalZeroReserveProviderUnknown', 'schedulerOrphanZeroReserveProviderUnknown')}
+        for unsettled, expected in ((0, None), (1, 'worker_unsettled_operations'), (False, 'worker_unsettled_operations')):
+            with self.subTest(unsettled=unsettled), patch.object(r.http.client, 'HTTPConnection') as connection:
+                recovery['actorCurrentUnresolved'] = unsettled
+                response = connection.return_value.getresponse.return_value.__enter__.return_value
+                response.status = 200
+                response.read.side_effect = [json.dumps(snapshot).encode() for snapshot in (queue, recovery)]
+                if expected is None:
+                    self.worker.verify_idle()
+                else:
+                    with self.assertRaisesRegex(r.Rejected, expected):
+                        self.worker.verify_idle()
+
+
 class ReceiverTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
