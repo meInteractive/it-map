@@ -40,6 +40,7 @@ type Engine struct {
 	Worker   parser.Worker
 	OnResult func(workerloop.ProfileName, workerloop.ProfileOutcome)
 	Config   *workerconfig.Config
+	Pause    *PauseGate
 }
 
 // Run продолжает обход до отмены контекста. Новый случайный идентификатор
@@ -69,7 +70,9 @@ func (e Engine) profiles(stop context.Context, config workerconfig.Config) []wor
 			Name: name, WorkDelay: time.Second, IdleDelay: idle,
 			ErrorMin: config.ErrorMin, ErrorMax: config.ErrorMax, StepTimeout: profileStepTimeout,
 			OnResult: e.OnResult,
-			Step:     func(ctx context.Context) (bool, error) { return e.cycle(ctx, stop.Done(), name, config.MaxJobs) },
+			Step: func(ctx context.Context) (bool, error) {
+				return e.runProfile(ctx, stop, name, config.MaxJobs)
+			},
 		}
 	}
 	return []workerloop.Profile{
@@ -77,6 +80,27 @@ func (e Engine) profiles(stop context.Context, config workerconfig.Config) []wor
 		makeProfile(workerloop.Reconcile, config.ReconcileIdle),
 		makeProfile(workerloop.Pipeline, config.IdleDelay),
 	}
+}
+
+func (e Engine) runProfile(ctx, stop context.Context, name workerloop.ProfileName, maxJobs int) (worked bool, err error) {
+	if e.Pause == nil {
+		return e.cycle(ctx, stop.Done(), name, maxJobs)
+	}
+	claims, err := e.Pause.enter(ctx)
+	if err != nil {
+		return false, err
+	}
+	// Общий сигнал сохраняет прежнее прекращение claims при SIGTERM.
+	cancel := context.AfterFunc(stop, claims.stop)
+	defer cancel()
+	if stop.Err() != nil {
+		claims.stop()
+	}
+	safe := false
+	defer func() { e.Pause.leave(safe) }()
+	worked, err = e.cycle(ctx, claims.done, name, maxJobs)
+	safe = err == nil && ctx.Err() == nil
+	return worked, err
 }
 
 func (e Engine) cycle(ctx context.Context, stopClaims <-chan struct{}, profile workerloop.ProfileName, maxJobs int) (bool, error) {
