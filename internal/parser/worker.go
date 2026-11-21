@@ -493,6 +493,9 @@ func workerExecute(ctx context.Context, d workerDispatch, lease *JobLease, owner
 		if errors.Is(executeErr, ErrHHRoleFilter) {
 			finish = FinishOptions{Status: "failed", Code: "hh_roles_missing", Message: "Выберите профессиональные роли HH для каждого активного направления и повторите запуск."}
 		}
+		if executeErr == ErrHHPublicationExpired {
+			finish = FinishOptions{Status: "cancelled", Code: "hh_publication_expired"}
+		}
 		if onlyAdmissionCause(executeErr, ErrHHDetailPending) || onlyAdmissionCause(executeErr, ErrDetailBusy) || onlyAdmissionCause(executeErr, ErrHHCycleLimit) || onlyAdmissionCause(executeErr, ErrWorkerDrainBeforePaid) || onlyAdmissionCause(executeErr, context.Canceled) || onlyAdmissionCause(executeErr, context.DeadlineExceeded) {
 			finish = FinishOptions{Status: "pending", Code: "deferred", Delay: 10 * time.Second, Deferred: true}
 		}
@@ -569,7 +572,7 @@ func workerExecute(ctx context.Context, d workerDispatch, lease *JobLease, owner
 	if err != nil {
 		return errors.Join(executeErr, err)
 	}
-	if finish.Status == "pending" {
+	if finish.Status == "pending" || finish.Code == "hh_publication_expired" {
 		return nil
 	}
 	return executeErr

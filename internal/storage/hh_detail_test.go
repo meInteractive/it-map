@@ -205,6 +205,47 @@ func TestMariaDBHHDetailRecoveryDisposable(t *testing.T) {
 			t.Fatal("detail snapshot cache spent provider", err)
 		}
 	})
+	t.Run("expired detail only reconciles known Actor", func(t *testing.T) {
+		for _, known := range []bool{false, true} {
+			t.Run(fmt.Sprintf("known_%t", known), func(t *testing.T) {
+				_, s, lease, candidate := hhDetailFixture(t)
+				provider := &hhDetailProvider{item: hhDetailItem(hhDetailBody()), pending: true}
+				public := &hhPublicFixture{}
+				executor := parser.HHFullTextExecutor{Settings: apifysettings.NewRepository(s.db, "CI_SECRET"), Runtime: hhDetailRuntime(s, provider), Public: public, Owner: "CI_OWNER"}
+				settledBeforeDetail := s.count("SELECT COUNT(*) FROM apify_runs WHERE charged_usd IS NOT NULL")
+				starts := 0
+				if known {
+					if _, err := executor.Execute(s.ctx, lease); !errors.Is(err, parser.ErrHHDetailPending) {
+						t.Fatal("seed existing Actor", err)
+					}
+					starts++
+				}
+				if err := lease.Finish(s.ctx, parser.FinishOptions{Status: "pending"}); err != nil {
+					t.Fatal(err)
+				}
+				s.exec("UPDATE scheduler_jobs SET payload=JSON_SET(payload,'$.hhPublishedAtMs',1) WHERE candidate_id=? AND type='fetch_full_text'", candidate)
+				var runID string
+				if err := s.db.QueryRowContext(s.ctx, "SELECT id FROM scheduler_runs WHERE status='running'").Scan(&runID); err != nil {
+					t.Fatal(err)
+				}
+				source := "hh"
+				lease, err := s.repo.ClaimJob(s.ctx, runID, parser.ClaimOptions{Types: []string{"fetch_full_text"}, SourceID: &source})
+				if err != nil || lease == nil {
+					t.Fatal("reclaim expired detail", err)
+				}
+				public.after = func() { t.Error("expired detail fetched public content") }
+				if _, err = executor.Execute(s.ctx, lease); !errors.Is(err, parser.ErrHHPublicationExpired) {
+					t.Fatal("expired detail was not stopped", known, err)
+				}
+				if provider.starts != starts || provider.reads != 0 ||
+					s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE candidate_id=? AND type='extract_vacancy'", candidate) != 0 ||
+					s.count("SELECT COUNT(*) FROM apify_runs WHERE charged_usd IS NOT NULL") != settledBeforeDetail+starts {
+					t.Fatal("expired detail started Actor, read content, or lost settlement", known)
+				}
+			})
+		}
+	})
+
 	t.Run("unknown detail acknowledgement never starts twice", func(t *testing.T) {
 		_, s, lease, candidate := hhDetailFixture(t)
 		p := &hhDetailProvider{lost: true}

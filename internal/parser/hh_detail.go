@@ -69,6 +69,7 @@ func (e HHFullTextExecutor) Execute(ctx context.Context, lease *JobLease) (resul
 		return result, ErrJobInput
 	}
 	job := lease.Job()
+	expired := expiredHHJob(job, time.Now())
 	var plan hhFullTextPlan
 	err = lease.WithinOwned(ctx, func(tx *sql.Tx) error {
 		var err error
@@ -76,13 +77,16 @@ func (e HHFullTextExecutor) Execute(ctx context.Context, lease *JobLease) (resul
 		if err != nil {
 			return err
 		}
-		if plan.Cached == nil {
+		if plan.Cached == nil && !expired {
 			plan.Token, plan.Slot, plan.Started, err = acquireDetailLeases(ctx, tx, job, *job.CandidateID, false)
 		}
 		return err
 	})
 	if err != nil {
 		return result, err
+	}
+	if expired {
+		return result, e.settleExpiredDetail(ctx, lease, job, plan)
 	}
 	if plan.Cached != nil {
 		err = lease.WithinOwned(ctx, func(tx *sql.Tx) error {
@@ -144,12 +148,7 @@ func (e HHFullTextExecutor) Execute(ctx context.Context, lease *JobLease) (resul
 		if !cfg.Enabled {
 			return result, apifysettings.ErrDisabled
 		}
-		v := apifysettings.OperationVersion{Generation: job.Generation, CompanyID: *job.CompanyID, SourceURL: plan.Source.URL, SourceRevision: plan.Source.Revision, SettingsRevision: cfg.Revision, Profile: "free", CandidateID: *job.CandidateID, TitleRevision: plan.Title.TitleRevision, VacancyURL: plan.URL}
-		old := "missing"
-		if plan.LastSnapshotID != "" {
-			old = plan.LastSnapshotID
-		}
-		key := fmt.Sprintf("detail:%d:%d:%s:proxy-v1", v.CandidateID, v.TitleRevision, old)
+		v, key := hhDetailOperation(job, plan, cfg.Revision)
 		options := apify.HHOptions{Detail: true}
 		v.Profile, err = runtime.ResolveProfile(bounded, v, key, options)
 		if err != nil {
@@ -217,4 +216,58 @@ func (e HHFullTextExecutor) Execute(ctx context.Context, lease *JobLease) (resul
 		return HHFullTextResult{}, ErrHHDetailInvalid
 	}
 	return result, nil
+}
+
+// settleExpiredDetail сохраняет возможность сверки прежнего Actor. Проверка
+// срока не даёт права выполнять новый POST или читать Dataset вакансии.
+func (e HHFullTextExecutor) settleExpiredDetail(ctx context.Context, lease *JobLease, job Job, plan hhFullTextPlan) error {
+	cfg, err := e.Settings.Read(ctx)
+	if err != nil {
+		return err
+	}
+	v, key := hhDetailOperation(job, plan, cfg.Revision)
+	service := apifyruns.Service{
+		Repository: apifyruns.Repository{DB: e.Settings.DB, Settings: e.Settings},
+		CheckActive: func(active context.Context) error {
+			return lease.WithinOwned(active, func(tx *sql.Tx) error {
+				return e.validateHHFullTextPlan(active, tx, job, plan)
+			})
+		},
+	}
+	if e.Runtime != nil {
+		switch runtime := e.Runtime.(type) {
+		case apifyruns.Service:
+			service.NewClient = runtime.NewClient
+		case *apifyruns.Service:
+			if runtime == nil {
+				return ErrJobInput
+			}
+			service.NewClient = runtime.NewClient
+		default:
+			return ErrJobInput
+		}
+	}
+	service.BeforeNewOperation = func() error { return ErrHHPublicationExpired }
+	options := apify.HHOptions{Detail: true}
+	v.Profile, err = service.ResolveProfile(ctx, v, key, options)
+	if err != nil {
+		return err
+	}
+	record, err := service.Execute(ctx, v, key, options)
+	if err != nil {
+		return err
+	}
+	if (record.State != "succeeded" && record.State != "failed") || record.ChargedUSD == nil {
+		return ErrHHDetailPending
+	}
+	return ErrHHPublicationExpired
+}
+
+func hhDetailOperation(job Job, plan hhFullTextPlan, settingsRevision int64) (apifysettings.OperationVersion, string) {
+	v := apifysettings.OperationVersion{Generation: job.Generation, CompanyID: *job.CompanyID, SourceURL: plan.Source.URL, SourceRevision: plan.Source.Revision, SettingsRevision: settingsRevision, Profile: "free", CandidateID: *job.CandidateID, TitleRevision: plan.Title.TitleRevision, VacancyURL: plan.URL}
+	old := plan.LastSnapshotID
+	if old == "" {
+		old = "missing"
+	}
+	return v, fmt.Sprintf("detail:%d:%d:%s:proxy-v1", v.CandidateID, v.TitleRevision, old)
 }

@@ -16,12 +16,12 @@ var ErrHistoricalAttemptsIncompatible = errors.New("historical scheduler evidenc
 // означает отсутствие run и не позволяет определить generation этой попытки.
 // Нулевые счётчики не доказывают полноту истории и не разрешают новую работу.
 type HistoricalPaidAttempts struct {
-	HistoricalUnknown      int
-	HistoricalCostRecorded int
-	OrphanUnknown          int
-	OrphanCostRecorded     int
+	HistoricalUnknown                    int
+	HistoricalCostRecorded               int
+	OrphanUnknown                        int
+	OrphanCostRecorded                   int
 	HistoricalZeroReserveProviderUnknown int
-	OrphanZeroReserveProviderUnknown int
+	OrphanZeroReserveProviderUnknown     int
 }
 
 // InspectHistoricalPaidAttempts кратковременно удерживает generation lock и
@@ -95,6 +95,10 @@ func InspectHistoricalPaidAttemptsTx(ctx context.Context, tx *sql.Tx, generation
 				return HistoricalPaidAttempts{}, ErrHistoricalAttemptsIncompatible
 			}
 		case "completed", "failed", "interrupted", "done":
+		case "cancelled":
+			if attemptType != "fetch_full_text" || reason != "hh_publication_expired" || reserved != 0 || !cost.Valid || cost.Float64 != 0 {
+				return HistoricalPaidAttempts{}, ErrHistoricalAttemptsIncompatible
+			}
 		case "pending":
 			// Отложенная попытка может иметь нулевой scheduler receipt. Это
 			// не доказывает отсутствие расходов провайдера: Apify проверяется отдельно.

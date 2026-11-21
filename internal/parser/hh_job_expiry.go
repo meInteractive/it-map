@@ -4,12 +4,31 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"time"
 
 	"itmap/internal/backup"
 )
 
 const hhVacancyJobMaxAge = 14 * 24 * time.Hour
+
+var ErrHHPublicationExpired = errors.New("истёк срок обработки вакансии HH")
+
+func hhJobPublication(payload json.RawMessage) int64 {
+	var metadata struct {
+		PublishedAt int64 `json:"hhPublishedAtMs"`
+	}
+	if json.Unmarshal(payload, &metadata) != nil {
+		return 0
+	}
+	return metadata.PublishedAt
+}
+
+func expiredHHJob(job Job, now time.Time) bool {
+	publishedAt := hhJobPublication(job.Payload)
+	return job.SourceID != nil && *job.SourceID == "hh" && publishedAt > 0 &&
+		publishedAt < now.Add(-hhVacancyJobMaxAge).UnixMilli()
+}
 
 func addHHJobPublication(payload json.RawMessage, publishedAt int64) (json.RawMessage, error) {
 	var fields map[string]json.RawMessage
