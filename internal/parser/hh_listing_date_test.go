@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"encoding/json"
 	"strconv"
 	"testing"
 	"time"
