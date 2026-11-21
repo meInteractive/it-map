@@ -50,7 +50,7 @@ func hhPublicationTime(raw json.RawMessage) (time.Time, error) {
 
 func hhPublicationExpired(raw json.RawMessage, now time.Time) bool {
 	published, err := hhPublicationTime(raw)
-	return err == nil && published.Before(now.Add(-14*24*time.Hour))
+	return err == nil && published.Before(now.Add(-hhVacancyJobMaxAge))
 }
 
 type hhQuarantine struct {
