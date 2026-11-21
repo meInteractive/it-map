@@ -24,6 +24,7 @@ var ErrJobLeaseLost = errors.New("scheduler job ownership lost")
 var ErrBoundJobUnavailable = errors.New("consumer-bound job execution is not available")
 
 type Job struct {
+	hhPublishedAt                                                                int64
 	ID, Generation, DedupeKey, Type, Status                                      string
 	CompanyID, AgencyID, CandidateID                                             *int64
 	SourceID                                                                     *string
@@ -179,9 +180,20 @@ func (r RunRepository) claimJob(ctx context.Context, runID string, options Claim
 	if e != nil {
 		return nil, e
 	}
+	if options.WorkerPipelineFairness {
+		if e = expireQueuedHHJobs(ctx, tx, r.Generation, now); e != nil {
+			return nil, e
+		}
+	}
 	best, e := r.selectEligibleJob(ctx, tx, now, options, false)
-	if e != nil || best == nil {
+	if e != nil {
 		return nil, e
+	}
+	if best == nil {
+		if options.WorkerPipelineFairness && tx.Commit() != nil {
+			return nil, storageError(ctx)
+		}
+		return nil, nil
 	}
 	if _, e = activeRun(ctx, tx, r.Generation, runID); e != nil {
 		return nil, e
