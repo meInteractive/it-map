@@ -212,6 +212,7 @@ func TestMariaDBHHDetailRecoveryDisposable(t *testing.T) {
 				provider := &hhDetailProvider{item: hhDetailItem(hhDetailBody()), pending: true}
 				public := &hhPublicFixture{}
 				executor := parser.HHFullTextExecutor{Settings: apifysettings.NewRepository(s.db, "CI_SECRET"), Runtime: hhDetailRuntime(s, provider), Public: public, Owner: "CI_OWNER"}
+				settledBeforeDetail := s.count("SELECT COUNT(*) FROM apify_runs WHERE charged_usd IS NOT NULL")
 				starts := 0
 				if known {
 					if _, err := executor.Execute(s.ctx, lease); !errors.Is(err, parser.ErrHHDetailPending) {
@@ -238,7 +239,7 @@ func TestMariaDBHHDetailRecoveryDisposable(t *testing.T) {
 				}
 				if provider.starts != starts || provider.reads != 0 ||
 					s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE candidate_id=? AND type='extract_vacancy'", candidate) != 0 ||
-					s.count("SELECT COUNT(*) FROM apify_runs WHERE charged_usd IS NOT NULL") != starts {
+					s.count("SELECT COUNT(*) FROM apify_runs WHERE charged_usd IS NOT NULL") != settledBeforeDetail+starts {
 					t.Fatal("expired detail started Actor, read content, or lost settlement", known)
 				}
 			})
