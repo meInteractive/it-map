@@ -71,15 +71,28 @@ jobs:
       - run: go mod download && go mod verify
       - run: npm ci --no-audit --no-fund
       - run: npm run build:web
-      - name: Build static MariaDB binary
+      - name: Build API and Worker from the exact checked commit
         env:
           CGO_ENABLED: '0'
+          GOOS: linux
           GOARCH: ${{ vars.ITMAP_GOARCH || 'amd64' }}
-        run: go build -mod=readonly -trimpath -tags mariadb -o '${{ runner.temp }}/itmap-release' ./cmd/itmap
+        run: |
+          go build -mod=readonly -trimpath -buildvcs=true -tags mariadb -o "$RUNNER_TEMP/itmap-release" ./cmd/itmap
+          go build -mod=readonly -trimpath -buildvcs=true -tags mariadb -o "$RUNNER_TEMP/itmap-worker-release" ./cmd/itmap-worker
       - name: Package the exact checked commit
         env:
           REQUEST_JSON: ${{ needs.context.outputs.request }}
         run: python3 deploy/publish_release.py package --binary '${{ runner.temp }}/itmap-release' --web dist/web --archive '${{ runner.temp }}/release.tar'
+      - name: Prepare joint release for receiver integration
+        env:
+          REQUEST_JSON: ${{ needs.context.outputs.request }}
+        run: python3 deploy/publish_release.py package --binary "$RUNNER_TEMP/itmap-release" --worker "$RUNNER_TEMP/itmap-worker-release" --web dist/web --archive "$RUNNER_TEMP/joint-release.tar"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: joint-release-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/joint-release.tar
+          if-no-files-found: error
+          retention-days: 7
       - id: meta
         env:
           ARTIFACT_NAME: release-${{ github.run_id }}-${{ github.run_attempt }}

@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import tarfile
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -83,6 +84,47 @@ class PublishTests(unittest.TestCase):
             p.package(identity(), binary, web, self.root / 'bad.tar', verify_checkout=False)
         with self.assertRaisesRegex(p.Rejected, 'checkout_sha_or_content_mismatch'):
             p.package(identity(), binary, web, self.root / 'bad.tar')
+
+    def test_joint_package_verifies_both_binaries_and_lists_digest(self):
+        binary, web = self.inputs()
+        worker = self.root / 'itmap-worker'
+        request = identity(branch='main')
+        result = self.root / 'joint.tar'
+
+        def build_info(args, text):
+            name = Path(args[-1]).name
+            sha = worker_sha if name == 'itmap-worker' else request['sha']
+            arch = worker_arch if name == 'itmap-worker' else 'arm64'
+            return f'{name}: go1.23\n\tpath\titmap/cmd/{name}\n' + ''.join(
+                f'\tbuild\t{key}={value}\n' for key, value in {
+                    'GOOS': 'linux', 'GOARCH': arch, 'CGO_ENABLED': '0',
+                    '-tags': 'mariadb', 'vcs.modified': 'false', 'vcs.revision': sha,
+                }.items())
+
+        def elf(machine):
+            return b'\x7fELF\x02\x01' + bytes(12) + machine.to_bytes(2, 'little')
+
+        binary.write_bytes(elf(183))
+        worker.write_bytes(elf(183))
+        worker_sha, worker_arch = request['sha'], 'arm64'
+        with patch.object(p.subprocess, 'check_output', side_effect=build_info):
+            p.package(request, binary, web, result, verify_checkout=False, worker=worker)
+            with tarfile.open(result) as tar:
+                manifest = json.load(tar.extractfile('manifest.json'))
+                self.assertEqual(manifest['identity'], request)
+                self.assertEqual(manifest['files']['itmap-worker'], p.hashlib.sha256(worker.read_bytes()).hexdigest())
+                self.assertEqual(tar.getmember('itmap-worker').mode, 0o755)
+            with self.assertRaisesRegex(p.Rejected, 'invalid_worker_package_input'):
+                p.package(identity(), binary, web, result, verify_checkout=False, worker=worker)
+            worker_sha = '2' * 40
+            with self.assertRaisesRegex(p.Rejected, 'binary_build_info_mismatch'):
+                p.package(request, binary, web, result, verify_checkout=False, worker=worker)
+            worker_sha, worker_arch = request['sha'], 'amd64'
+            with self.assertRaisesRegex(p.Rejected, 'wrong_binary_platform'):
+                p.package(request, binary, web, result, verify_checkout=False, worker=worker)
+            worker.write_bytes(elf(62))
+            with self.assertRaisesRegex(p.Rejected, 'binary_architecture_mismatch'):
+                p.package(request, binary, web, result, verify_checkout=False, worker=worker)
 
     def client(self):
         client = p.Client({'DEPLOY_SSH_KEY':'CI_SYNTHETIC_KEY',

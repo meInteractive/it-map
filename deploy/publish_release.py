@@ -39,7 +39,25 @@ def event_request(event, payload, env):
     return slot, operation, request
 
 
-def package(request, binary, web, output, verify_checkout=True):
+def binary_architecture(binary, sha, main_package):
+    info = subprocess.check_output(['go', 'version', '-m', str(binary)], text=True)
+    rows = [line.strip().split('\t') for line in info.splitlines()[1:]]
+    settings = dict(row[1].split('=', 1) for row in rows if len(row) == 2 and row[0] == 'build')
+    arch = settings.get('GOARCH')
+    machine = {'amd64': 62, 'arm64': 183}.get(arch)
+    if (['path', main_package] not in rows or settings.get('vcs.revision') != sha
+            or settings.get('vcs.modified') != 'false' or settings.get('GOOS') != 'linux'
+            or settings.get('CGO_ENABLED') != '0' or settings.get('-tags') != 'mariadb'
+            or machine is None):
+        raise Rejected('binary_build_info_mismatch')
+    with binary.open('rb') as stream:
+        header = stream.read(20)
+    if len(header) != 20 or header[:6] != b'\x7fELF\x02\x01' or int.from_bytes(header[18:20], 'little') != machine:
+        raise Rejected('wrong_binary_platform')
+    return arch
+
+
+def package(request, binary, web, output, verify_checkout=True, *, worker=None):
     slot = 'main' if request['ref'] == 'refs/heads/main' else 'dev'
     request_identity(request, slot)
     if verify_checkout:
@@ -50,6 +68,11 @@ def package(request, binary, web, output, verify_checkout=True):
     if binary.is_symlink() or not binary.is_file() or web.is_symlink() or not web.is_dir():
         raise Rejected('invalid_package_inputs')
     paths = {'itmap': binary}
+    if worker is not None:
+        worker = Path(worker)
+        if slot != 'main' or worker.is_symlink() or not worker.is_file():
+            raise Rejected('invalid_worker_package_input')
+        paths['itmap-worker'] = worker
     for path in sorted(web.rglob('*')):
         if path.is_symlink() or not (path.is_file() or path.is_dir()):
             raise Rejected('unsafe_package_input')
@@ -59,12 +82,18 @@ def package(request, binary, web, output, verify_checkout=True):
         raise Rejected('incomplete_or_large_package')
     if any(p.stat().st_size > 32 * 1024 * 1024 for p in paths.values()) or sum(p.stat().st_size for p in paths.values()) > min(MAX_CONTENT, MAX_ARCHIVE - 1024 * 1024):
         raise Rejected('package_size_limit')
-    manifest = {'identity': request, 'files': {k: hashlib.sha256(p.read_bytes()).hexdigest() for k, p in paths.items()}}
+    if worker is not None:
+        api_arch = binary_architecture(binary, request['sha'], 'itmap/cmd/itmap')
+        worker_arch = binary_architecture(worker, request['sha'], 'itmap/cmd/itmap-worker')
+        if api_arch != worker_arch:
+            raise Rejected('binary_architecture_mismatch')
+    contents = {name: path.read_bytes() for name, path in sorted(paths.items())}
+    manifest = {'identity': request, 'files': {name: hashlib.sha256(data).hexdigest() for name, data in contents.items()}}
     with tarfile.open(output, 'w') as tar:
-        for name, data in [(name, p.read_bytes()) for name, p in sorted(paths.items())] + [('manifest.json', json.dumps(manifest, sort_keys=True).encode())]:
+        for name, data in list(contents.items()) + [('manifest.json', json.dumps(manifest, sort_keys=True).encode())]:
             entry = tarfile.TarInfo(name)
             entry.size = len(data)
-            entry.mode = 0o755 if name == 'itmap' else 0o644
+            entry.mode = 0o755 if name in ('itmap', 'itmap-worker') else 0o644
             entry.mtime = 0
             tar.addfile(entry, io.BytesIO(data))
     if output.stat().st_size > MAX_ARCHIVE:
@@ -196,6 +225,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('operation', choices=('context', 'package', 'register', 'invalidate', 'publish', 'status'))
     parser.add_argument('--binary')
+    parser.add_argument('--worker')
     parser.add_argument('--web')
     parser.add_argument('--archive')
     args = parser.parse_args()
@@ -207,7 +237,7 @@ def main():
         return
     request = json.loads(os.environ.get('REQUEST_JSON', '{}'))
     if args.operation == 'package':
-        package(request, args.binary, args.web, args.archive)
+        package(request, args.binary, args.web, args.archive, worker=args.worker)
         print('PASS: immutable native artifact packaged for the requested SHA')
         return
     client = Client(os.environ)
