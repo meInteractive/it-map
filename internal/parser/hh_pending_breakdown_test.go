@@ -59,7 +59,7 @@ func TestHHPendingBreakdownSeparatesReadinessWithoutStartingActor(t *testing.T) 
 	view.lastListingStart = now - int64(hhActorLaunchCooldown/time.Millisecond)
 	got = summarizeHHPending(jobs, now, settings, view)
 	if got.ReconcileCandidate != 1 || got.LaunchCandidate != 1 || got.LaunchCooldown != 0 {
-		t.Fatalf("ровно через 15 минут cooldown должен закончиться: %+v", got)
+		t.Fatalf("ровно через 5 минут cooldown должен закончиться: %+v", got)
 	}
 }
 

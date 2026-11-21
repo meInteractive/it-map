@@ -13,9 +13,9 @@ func TestCooldownRetryDelay(t *testing.T) {
 		last int64
 		want time.Duration
 	}{
-		{"expired", now - 900000, 0}, {"almost expired", now - 899999, time.Millisecond},
-		{"one minute remaining", now - 840000, time.Minute}, {"new result", now, 15 * time.Minute},
-		{"future clock", now + 1, 15 * time.Minute}, {"extreme future", 1 << 62, 15 * time.Minute},
+		{"expired", now - 300000, 0}, {"almost expired", now - 299999, time.Millisecond},
+		{"one minute remaining", now - 240000, time.Minute}, {"new result", now, 5 * time.Minute},
+		{"future clock", now + 1, 5 * time.Minute}, {"extreme future", 1 << 62, 5 * time.Minute},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			if got := retryAfterCooldown(tc.last, now); got != tc.want {

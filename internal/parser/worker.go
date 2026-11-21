@@ -536,9 +536,9 @@ func workerExecute(ctx context.Context, d workerDispatch, lease *JobLease, owner
 			finish = FinishOptions{Status: "pending", Code: apifyReadRetryReason, Delay: spreadDeferredRetry(lease.Job().ID, "apify-read", delay, retryafter.MaxDelay), Deferred: true}
 		}
 		if onlyAdmissionCause(executeErr, apifyruns.ErrCooldown) {
-			delay := 15 * time.Minute
+			delay := apifyruns.ActorCooldown
 			var cooldown *apifyruns.CooldownError
-			if errors.As(executeErr, &cooldown) && cooldown != nil && cooldown.RetryAfter > 0 && cooldown.RetryAfter <= 15*time.Minute {
+			if errors.As(executeErr, &cooldown) && cooldown != nil && cooldown.RetryAfter > 0 && cooldown.RetryAfter <= apifyruns.ActorCooldown {
 				delay = cooldown.RetryAfter
 			}
 			// Даём запас на разницу часов и планирование; Reserve проверит снова.
