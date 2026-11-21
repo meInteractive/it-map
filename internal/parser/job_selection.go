@@ -29,8 +29,8 @@ func claimAgenciesEnabled(raw []byte) (bool, error) {
 	return text == "1" || text == "1.0", err
 }
 
-// Один новый HH Actor в 15 минут; GET ранее сохранённого Actor не ограничен этим интервалом.
-const hhActorLaunchCooldown = 15 * time.Minute
+// Интервал нового HH Actor; GET ранее сохранённого Actor не ограничен этим интервалом.
+const hhActorLaunchCooldown = apifyruns.ActorCooldown
 
 type claimView struct {
 	busy            map[int64]bool

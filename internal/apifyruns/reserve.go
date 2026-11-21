@@ -27,15 +27,16 @@ type CooldownError struct{ RetryAfter time.Duration }
 func (e *CooldownError) Error() string { return ErrCooldown.Error() }
 func (e *CooldownError) Unwrap() error { return ErrCooldown }
 
-const actorCooldown = 15 * time.Minute
+// ActorCooldown задаёт минимальный интервал между платными запусками.
+const ActorCooldown = 5 * time.Minute
 
 // retryAfterCooldown использует значения часов БД. Будущие timestamps и
 // погрешность часов приводят к дополнительной проверке, а не раннему POST.
 func retryAfterCooldown(last, now int64) time.Duration {
 	if last > now {
-		return actorCooldown
+		return ActorCooldown
 	}
-	threshold := now - actorCooldown.Milliseconds()
+	threshold := now - ActorCooldown.Milliseconds()
 	if last <= threshold {
 		return 0
 	}
