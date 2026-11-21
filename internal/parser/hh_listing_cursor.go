@@ -27,17 +27,30 @@ func (c hhListingCursor) includesPublication(raw json.RawMessage) (bool, error) 
 	if err != nil || !from.Before(to) {
 		return false, errHHDate
 	}
+	published, err := hhPublicationTime(raw)
+	if err != nil {
+		return false, err
+	}
+	return !published.Before(from) && published.Before(to.Add(time.Second)), nil
+}
+
+func hhPublicationTime(raw json.RawMessage) (time.Time, error) {
 	var fields struct {
 		DatePosted string `json:"date_posted"`
 	}
 	if json.Unmarshal(raw, &fields) != nil {
-		return false, errHHDate
+		return time.Time{}, errHHDate
 	}
 	published, err := time.Parse(time.RFC3339Nano, fields.DatePosted)
 	if err != nil {
-		return false, errHHDate
+		return time.Time{}, errHHDate
 	}
-	return !published.Before(from) && published.Before(to.Add(time.Second)), nil
+	return published, nil
+}
+
+func hhPublicationExpired(raw json.RawMessage, now time.Time) bool {
+	published, err := hhPublicationTime(raw)
+	return err == nil && published.Before(now.Add(-14*24*time.Hour))
 }
 
 type hhQuarantine struct {
@@ -68,6 +81,7 @@ type hhListingCursor struct {
 	Done                             bool
 	PartialCode                      string
 	Candidates, Created, Quarantined int64
+	ExpiredPublications              int64 `json:",omitempty"`
 	OutsideMoscow                    int64 `json:",omitempty"`
 	OutsideDateWindow                int64 `json:",omitempty"`
 	Quarantine                       []hhQuarantine

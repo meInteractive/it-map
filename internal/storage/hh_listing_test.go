@@ -256,7 +256,7 @@ func TestMariaDBHHListingDisposable(t *testing.T) {
 			t.Fatal("old dataset was not resumed without new Actor", last, err, p.starts)
 		}
 	})
-	t.Run("keeps out-of-range and missing dates from filtered Actor", func(t *testing.T) {
+	t.Run("filters expired vacancies and keeps unknown dates", func(t *testing.T) {
 		moscow := time.FixedZone("MSK", 3*60*60)
 		old := time.Now().In(moscow).AddDate(0, 0, -8).Format(time.RFC3339)
 		today := time.Now().In(moscow).Format(time.RFC3339)
@@ -264,13 +264,14 @@ func TestMariaDBHHListingDisposable(t *testing.T) {
 		missing := json.RawMessage(`{"title":"CI undated","url":"https://hh.ru/vacancy/125","vacancy_id":125,"employer_id":456,"location":"Москва"}`)
 		current := json.RawMessage(fmt.Sprintf(`{"title":"CI today","url":"https://hh.ru/vacancy/126","vacancy_id":126,"employer_id":456,"location":"Москва","date_posted":%q}`, today))
 		malformed := json.RawMessage(`{"title":"CI malformed date","url":"https://hh.ru/vacancy/127","vacancy_id":127,"employer_id":456,"location":"Москва","date_posted":"not-a-date"}`)
-		p := &hhScanProvider{requireMoscow: true, rows: [][]json.RawMessage{{hhScanItem(123, "CI recent"), outside, missing, current, malformed}}}
+		expired := json.RawMessage(fmt.Sprintf(`{"title":"CI expired","url":"https://hh.ru/vacancy/128","vacancy_id":128,"employer_id":456,"location":"Москва","date_posted":%q}`, time.Now().Add(-15*24*time.Hour).Format(time.RFC3339)))
+		p := &hhScanProvider{requireMoscow: true, rows: [][]json.RawMessage{{hhScanItem(123, "CI recent"), outside, missing, current, malformed, expired}}}
 		f, s, lease, e := hhScanFixture(t, p)
 		progress, err := e.Execute(f.ctx, lease)
-		if err != nil || !progress.Done || progress.Candidates != 5 || progress.Created != 5 || progress.Quarantined != 0 || progress.OutsideDateWindow != 2 || s.count("SELECT COUNT(*) FROM vacancy_candidates WHERE company_id=991302") != 5 || s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='classify_title'") != 5 || p.starts != 1 {
+		if err != nil || !progress.Done || progress.Candidates != 5 || progress.Created != 5 || progress.Quarantined != 0 || progress.OutsideDateWindow != 3 || progress.ExpiredPublications != 1 || s.count("SELECT COUNT(*) FROM vacancy_candidates WHERE company_id=991302") != 5 || s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='classify_title'") != 5 || p.starts != 1 {
 			t.Fatal("Actor results were filtered by publication date or Actor was repeated", progress, err)
 		}
-		if s.count("SELECT COUNT(*) FROM vacancy_discovery_runs WHERE company_id=991302 AND JSON_EXTRACT(result_json,'$.LineageVersion')=1 AND JSON_LENGTH(JSON_EXTRACT(result_json,'$.CandidateIDs'))=5 AND JSON_EXTRACT(result_json,'$.OutsideDateWindow')=2") != 1 {
+		if s.count("SELECT COUNT(*) FROM vacancy_discovery_runs WHERE company_id=991302 AND JSON_EXTRACT(result_json,'$.LineageVersion')=1 AND JSON_LENGTH(JSON_EXTRACT(result_json,'$.CandidateIDs'))=5 AND JSON_EXTRACT(result_json,'$.OutsideDateWindow')=3 AND JSON_EXTRACT(result_json,'$.ExpiredPublications')=1") != 1 {
 			t.Fatal("accepted records or date diagnostics were not saved in cursor")
 		}
 	})
