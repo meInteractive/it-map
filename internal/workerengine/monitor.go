@@ -19,6 +19,7 @@ type Monitor struct {
 	now      func() time.Time
 	maxAge   time.Duration
 	counters workerloop.ProfileCounters
+	pause    *PauseGate
 }
 type profileHealth struct {
 	at      time.Time
@@ -53,6 +54,13 @@ func (m *Monitor) Record(name workerloop.ProfileName, outcome workerloop.Profile
 	}
 }
 
+// SetPauseGate подключает состояние управляемой паузы к readiness.
+func (m *Monitor) SetPauseGate(gate *PauseGate) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.pause = gate
+}
+
 // Stop необратимо снимает готовность после завершения worker.
 func (m *Monitor) Stop() {
 	if m != nil {
@@ -72,6 +80,9 @@ func (m *Monitor) Snapshot() MonitorSnapshot {
 	defer m.mu.Unlock()
 	if m.stopped {
 		return MonitorSnapshot{Reason: "stopped"}
+	}
+	if m.pause != nil && m.pause.Paused() {
+		return MonitorSnapshot{Live: true, Reason: "release_paused"}
 	}
 	now := m.now()
 	live := false
