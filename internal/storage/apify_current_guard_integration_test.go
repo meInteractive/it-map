@@ -23,7 +23,7 @@ func TestMariaDBApifyCurrentUnknownGuardDisposable(t *testing.T) {
 		{"contradictory", "failed", "", "", "CIHistory", 0.1},
 		{"running_known", "running", "CIRunOther", "CIData", "CIHistory", nil},
 		{"terminal_no_cost", "succeeded", "CIRunOther", "CIData", "CIHistory", nil},
-		{"terminal_no_reserve", "succeeded", "CIRunOther", "CIData", "CIHistory", nil},
+		{"terminal_insufficient_reserve", "succeeded", "CIRunOther", "CIData", "CIHistory", nil},
 		{"running_with_cost", "running", "CIRunOther", "CIData", "CIHistory", 0.1},
 		{"terminal_bad_dataset", "succeeded", "CIRunOther", "bad-data", "CIHistory", 0.1},
 		{"terminal_missing_dataset", "succeeded", "CIRunOther", "", "CIHistory", 0.1},
@@ -41,8 +41,8 @@ func TestMariaDBApifyCurrentUnknownGuardDisposable(t *testing.T) {
 			if err != nil {
 				t.Fatal("cannot seed current unknown", err)
 			}
-			if tc.name == "terminal_no_reserve" {
-				if _, err = f.db.ExecContext(f.ctx, "UPDATE apify_runs SET reserved_usd=0 WHERE id='CI_current_unknown'"); err != nil {
+			if tc.name == "terminal_insufficient_reserve" {
+				if _, err = f.db.ExecContext(f.ctx, "UPDATE apify_runs SET reserved_usd=0.01 WHERE id='CI_current_unknown'"); err != nil {
 					t.Fatal(err)
 				}
 			}
