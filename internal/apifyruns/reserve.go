@@ -179,7 +179,7 @@ func (r Repository) Reserve(ctx context.Context, v apifysettings.OperationVersio
 	// Ключ привязан к job; новый job может получить иной ключ для того же
 	// источника. Пока в текущем поколении есть незавершённый запуск или
 	// некорректные идентификаторы, новый POST может повторить прежнюю операцию.
-	if tx.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM apify_runs WHERE "+currentUnresolvedPredicate+")", generation).Scan(&unresolved) != nil {
+	if tx.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM apify_runs WHERE "+currentBlockingPredicate+")", generation, RunCapUSD).Scan(&unresolved) != nil {
 		return Reservation{}, ErrStorage
 	}
 	if unresolved != 0 {

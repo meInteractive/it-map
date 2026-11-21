@@ -13,6 +13,10 @@ import (
 
 var ErrRecoveryChanged = errors.New("apify recovery state changed")
 var ErrRecoveryCommitUnknown = errors.New("apify recovery commit outcome unknown")
+
+// Пять минут дают штатной обработке время завершить запуск Actor с timeout 180s.
+const staleRecoveryAge = 5 * time.Minute
+
 var recoveryID = regexp.MustCompile(`^[0-9a-f]{32}$`)
 var recoveryKeyHash = regexp.MustCompile(`^[0-9a-f]{64}$`)
 var recoveryOperationKey = regexp.MustCompile(`^go398:[0-9a-f]{64}$`)
@@ -69,10 +73,39 @@ func (r Repository) lockRecovery(ctx context.Context, generation, id string) (*s
 // changes the token hash, fetches datasets or creates a job. Only a terminal
 // provider response with matching account/run/dataset and confirmed cost can
 // be saved; generation, settings revision and every ledger field are rechecked
-// after I/O under locks. This method is not connected to an HTTP endpoint or
-// automatic worker. Caller must supply an ID from trusted local inventory.
+// after I/O under locks. Caller must supply an ID from trusted local inventory.
 func (s Service) ReconcileKnownRecovery(ctx context.Context, generation, id string) error {
-	return s.reconcileKnownRecovery(ctx, generation, id, s.Repository.Settings.Resolve)
+	return s.reconcileKnownRecovery(ctx, generation, id, s.Repository.Settings.Resolve, false)
+}
+
+// ReconcileStaleKnownRun проверяет не более одного сохранённого запуска за
+// итерацию. Свежие записи оставляем штатному обработчику Dataset.
+func (s Service) ReconcileStaleKnownRun(ctx context.Context, generation string) (bool, error) {
+	if ctx == nil || s.Repository.DB == nil || !jobGenerationPattern.MatchString(generation) {
+		return false, ErrStorage
+	}
+	var id string
+	err := s.Repository.DB.QueryRowContext(ctx, `SELECT id FROM apify_runs
+		WHERE generation=? AND state IN ('running','uncertain','succeeded','failed')
+		AND charged_usd IS NULL AND reserved_usd>0 AND profile IN ('free','starter')
+		AND BINARY id REGEXP BINARY '^[0-9a-f]{32}$'
+		AND BINARY operation_key REGEXP BINARY '^go398:[0-9a-f]{64}$'
+		AND BINARY key_hash REGEXP BINARY '^[0-9a-f]{64}$'
+		AND BINARY run_id REGEXP BINARY '^[A-Za-z0-9]+$'
+		AND BINARY dataset_id REGEXP BINARY '^[A-Za-z0-9]+$'
+		AND BINARY account_id REGEXP BINARY '^[A-Za-z0-9]+$'
+		AND updated_at<=CAST(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000 AS SIGNED)-?
+		ORDER BY updated_at,id LIMIT 1`, generation, staleRecoveryAge.Milliseconds()).Scan(&id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, ErrStorage
+	}
+	if err = s.reconcileKnownRecovery(ctx, generation, id, s.Repository.Settings.Resolve, true); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 // ReconcileKnownRecoveryWithToken uses an operator-supplied credential only for
@@ -82,10 +115,10 @@ func (s Service) ReconcileKnownRecoveryWithToken(ctx context.Context, generation
 	if token == "" {
 		return ErrRecoveryEvidence
 	}
-	return s.reconcileKnownRecovery(ctx, generation, id, func(context.Context, string) (string, error) { return token, nil })
+	return s.reconcileKnownRecovery(ctx, generation, id, func(context.Context, string) (string, error) { return token, nil }, false)
 }
 
-func (s Service) reconcileKnownRecovery(ctx context.Context, generation, id string, resolve func(context.Context, string) (string, error)) error {
+func (s Service) reconcileKnownRecovery(ctx context.Context, generation, id string, resolve func(context.Context, string) (string, error), staleOnly bool) error {
 	if ctx == nil || !jobGenerationPattern.MatchString(generation) || !recoveryID.MatchString(id) {
 		return ErrRecoveryEvidence
 	}
@@ -95,6 +128,13 @@ func (s Service) reconcileKnownRecovery(ctx context.Context, generation, id stri
 	tx, original, err := s.Repository.lockRecovery(ctx, generation, id)
 	if err != nil {
 		return err
+	}
+	if staleOnly {
+		var stale bool
+		if err = tx.QueryRowContext(ctx, "SELECT ?<=CAST(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000 AS SIGNED)-?", original.updated, staleRecoveryAge.Milliseconds()).Scan(&stale); err != nil || !stale {
+			_ = tx.Rollback()
+			return ErrRecoveryChanged
+		}
 	}
 	if err = tx.Commit(); err != nil {
 		return ErrStorage

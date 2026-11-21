@@ -8,6 +8,7 @@ import (
 	"errors"
 	"time"
 
+	"itmap/internal/apifyruns"
 	"itmap/internal/parser"
 	"itmap/internal/workerconfig"
 	"itmap/internal/workerloop"
@@ -37,10 +38,11 @@ var ErrGenerationChanged = errors.New("worker generation changed; restart requir
 // Engine выполняет только один ограниченный цикл за раз. Владелец обязан
 // обеспечить допустимость исполнителя и хранилища до запуска Run.
 type Engine struct {
-	Worker   parser.Worker
-	OnResult func(workerloop.ProfileName, workerloop.ProfileOutcome)
-	Config   *workerconfig.Config
-	Pause    *PauseGate
+	Worker              parser.Worker
+	OnResult            func(workerloop.ProfileName, workerloop.ProfileOutcome)
+	Config              *workerconfig.Config
+	Pause               *PauseGate
+	ReconcileStaleApify bool
 }
 
 // Run продолжает обход до отмены контекста. Новый случайный идентификатор
@@ -138,6 +140,9 @@ func (e Engine) cycle(ctx context.Context, stopClaims <-chan struct{}, profile w
 			return false, ErrCycle
 		}
 		if !ready {
+			if profile == workerloop.Reconcile && e.ReconcileStaleApify {
+				return e.reconcileStaleApify(ctx, stopClaims, generation)
+			}
 			return false, nil
 		}
 	}
@@ -164,6 +169,27 @@ func (e Engine) cycle(ctx context.Context, stopClaims <-chan struct{}, profile w
 		return false, ErrCycle
 	}
 	return result.Processed > 0, nil
+}
+
+func (e Engine) reconcileStaleApify(ctx context.Context, stopClaims <-chan struct{}, generation string) (bool, error) {
+	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
+	defer cancel()
+	service := apifyruns.Service{
+		Repository: apifyruns.Repository{DB: e.Worker.Runs.DB, Settings: e.Worker.Settings},
+		CheckActive: func(context.Context) error {
+			select {
+			case <-stopClaims:
+				return context.Canceled
+			default:
+				return nil
+			}
+		},
+	}
+	worked, err := service.ReconcileStaleKnownRun(ctx, generation)
+	if err != nil {
+		return false, ErrCycle
+	}
+	return worked, nil
 }
 
 // workerForProfile uses the same durable paid-start cooldown in every queue.
