@@ -31,6 +31,7 @@ type settings struct {
 	runtime                     workerconfig.Config
 	password, secret, openAIKey string
 	health                      bool
+	releaseControl              bool
 }
 
 // load проверяет все допуски до открытия соединения. Значения учётных данных
@@ -47,6 +48,10 @@ func load(getenv func(string) string) (settings, error) {
 	}
 	health := getenv("ITMAP_WORKER_HEALTH_ENABLED")
 	if health != "" && health != "0" && health != "1" {
+		return settings{}, errConfig
+	}
+	control := getenv("ITMAP_WORKER_RELEASE_CONTROL_ENABLED")
+	if control != "" && control != "0" && (control != "1" || getenv("APP_ENV") != "production") {
 		return settings{}, errConfig
 	}
 	switch getenv("APP_ENV") {
@@ -69,7 +74,7 @@ func load(getenv func(string) string) (settings, error) {
 		return settings{}, errConfig
 	}
 	return settings{runtime: runtime, database: database, password: password,
-		secret: getenv("SESSION_SECRET"), openAIKey: getenv("OPENAI_API_KEY"), health: health == "1"}, nil
+		secret: getenv("SESSION_SECRET"), openAIKey: getenv("OPENAI_API_KEY"), health: health == "1", releaseControl: control == "1"}, nil
 }
 
 type opener func(context.Context, storage.Settings, string) (*sql.DB, error)
@@ -141,6 +146,22 @@ func runWorker(ctx context.Context, db *sql.DB, s settings) error {
 		<-workerCtx.Done()
 		monitor.Stop()
 	}()
+	var pause *workerengine.PauseGate
+	if s.releaseControl {
+		control, listener, gate, err := openReleaseControl()
+		if err != nil {
+			return errStartup
+		}
+		pause = gate
+		monitor.SetPauseGate(gate)
+		defer control.Close()
+		go func() {
+			if err := control.Serve(listener); !errors.Is(err, http.ErrServerClosed) {
+				stop()
+			}
+		}()
+	}
+
 	var server *http.Server
 	var serverDone chan error
 	if s.health {
@@ -158,7 +179,7 @@ func runWorker(ctx context.Context, db *sql.DB, s settings) error {
 			}
 		}()
 	}
-	err = (workerengine.Engine{Worker: w, Config: &s.runtime, ReconcileStaleApify: true, OnResult: func(profile workerloop.ProfileName, outcome workerloop.ProfileOutcome) {
+	err = (workerengine.Engine{Worker: w, Config: &s.runtime, Pause: pause, ReconcileStaleApify: true, OnResult: func(profile workerloop.ProfileName, outcome workerloop.ProfileOutcome) {
 		monitor.Record(profile, outcome)
 		if outcome == workerloop.ProfileFailed || outcome == workerloop.ProfileTimeout {
 			slog.Warn("worker step failed", "profile", profile, "outcome", outcome)

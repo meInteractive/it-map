@@ -8,12 +8,13 @@ import (
 
 // PauseGate сериализует допуск профиля и запрос на паузу внутри экземпляра.
 type PauseGate struct {
-	mu      sync.Mutex
-	token   string
-	active  bool
-	claims  *claimSignal
-	resumed chan struct{}
-	unsafe  bool
+	mu          sync.Mutex
+	token       string
+	lastResumed string
+	active      bool
+	claims      *claimSignal
+	resumed     chan struct{}
+	unsafe      bool
 }
 
 var ErrPauseConflict = errors.New("worker pause token conflict")
@@ -28,6 +29,13 @@ const (
 
 func NewPauseGate() *PauseGate {
 	return &PauseGate{}
+}
+
+// Paused сообщает, закрыт ли допуск новых профилей.
+func (g *PauseGate) Paused() bool {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return g.token != ""
 }
 
 // Pause закрывает допуск новых профилей и claims. Текущий контекст не отменяется.
@@ -57,10 +65,14 @@ func (g *PauseGate) Pause(token string) (PauseState, error) {
 func (g *PauseGate) Resume(token string) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	if token != "" && g.token == "" && token == g.lastResumed {
+		return nil
+	}
 	if token == "" || token != g.token {
 		return ErrPauseConflict
 	}
 	g.token = ""
+	g.lastResumed = token
 	close(g.resumed)
 	return nil
 }

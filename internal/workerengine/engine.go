@@ -88,6 +88,10 @@ func (e Engine) runProfile(ctx, stop context.Context, name workerloop.ProfileNam
 	if e.Pause == nil {
 		return e.cycle(ctx, stop.Done(), name, maxJobs)
 	}
+	// Профиль в управляемой паузе сохраняет штатный интервал ожидания.
+	if e.Pause.Paused() {
+		return false, nil
+	}
 	claims, err := e.Pause.enter(ctx)
 	if err != nil {
 		return false, err
