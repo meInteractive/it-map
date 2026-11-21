@@ -284,6 +284,15 @@ func TestMariaDBHHListingDisposable(t *testing.T) {
 		if err := s.db.QueryRowContext(s.ctx, "SELECT id FROM scheduler_runs WHERE status='running'").Scan(&runID); err != nil {
 			t.Fatal(err)
 		}
+		// Отдельно моделируем подтверждённую стоимость и потерянный ответ.
+		s.exec(`UPDATE scheduler_jobs SET attempts=1, priority=0, payload=JSON_SET(payload,'$.hhPublishedAtMs',1)
+			WHERE type='classify_title' AND candidate_id IN (SELECT id FROM vacancy_candidates WHERE external_job_id IN ('124','125'))`)
+		s.exec(`INSERT INTO scheduler_attempts(id,job_id,run_id,type,started_at,finished_at,status,provider,reserved_usd,cost_usd)
+			SELECT CONCAT('CI_expiry_',c.external_job_id),j.id,?,j.type,1,2,'failed','synthetic',0.25,
+				CASE WHEN c.external_job_id='124' THEN 0.08 ELSE NULL END
+			FROM scheduler_jobs j JOIN vacancy_candidates c ON c.id=j.candidate_id
+			WHERE j.type='classify_title' AND c.external_job_id IN ('124','125')`, runID)
+
 		source := "hh"
 		next, err := s.repo.ClaimJob(s.ctx, runID, parser.ClaimOptions{
 			Types: []string{"classify_title"}, SourceID: &source, VerifiedHHOnly: true, WorkerPipelineFairness: true,
@@ -291,6 +300,12 @@ func TestMariaDBHHListingDisposable(t *testing.T) {
 		if err != nil || next == nil ||
 			s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE status='cancelled' AND reason_code='hh_publication_expired' AND attempts=0") != 1 {
 			t.Fatal("expired job was not retired before the next fresh claim", err)
+		}
+		if s.count(`SELECT COUNT(*) FROM scheduler_jobs j JOIN scheduler_attempts a ON a.job_id=j.id
+			WHERE a.id='CI_expiry_124' AND a.cost_usd=0.08 AND j.status='cancelled' AND j.reason_code='hh_publication_expired'`) != 1 ||
+			s.count(`SELECT COUNT(*) FROM scheduler_jobs j JOIN scheduler_attempts a ON a.job_id=j.id
+			WHERE a.id='CI_expiry_125' AND a.cost_usd IS NULL AND a.reserved_usd=0.25 AND j.status='pending'`) != 1 {
+			t.Fatal("expiry did not distinguish settled and unresolved attempts")
 		}
 
 	})
