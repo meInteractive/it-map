@@ -152,3 +152,24 @@ func TestGO293HHFourDailyScansUseSameDateWindow(t *testing.T) {
 		t.Fatalf("date window did not advance at midnight: %v, %v", from, to)
 	}
 }
+
+func TestHHPublicationExpiry(t *testing.T) {
+	now := time.Date(2026, 11, 21, 12, 0, 0, 0, time.UTC)
+	for _, test := range []struct {
+		name string
+		raw  string
+		want bool
+	}{
+		{"older", `{"date_posted":"2026-11-07T14:59:59.999+03:00"}`, true},
+		{"boundary", `{"date_posted":"2026-11-07T15:00:00+03:00"}`, false},
+		{"recent", `{"date_posted":"2026-11-08T12:00:00Z"}`, false},
+		{"missing", `{}`, false},
+		{"invalid", `{"date_posted":"not-a-date"}`, false},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if got := hhPublicationExpired(json.RawMessage(test.raw), now); got != test.want {
+				t.Fatalf("expiry = %v, want %v", got, test.want)
+			}
+		})
+	}
+}

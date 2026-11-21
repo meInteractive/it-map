@@ -23,6 +23,7 @@ type hhCheckedRuntime interface {
 }
 type HHListingProgress struct {
 	Page, Offset, Candidates, Created, Quarantined, OutsideMoscow, OutsideDateWindow int64
+	ExpiredPublications                                                              int64
 	Done                                                                             bool
 	PartialCode                                                                      string
 }
@@ -35,7 +36,7 @@ type HHListingExecutor struct {
 }
 
 func hhListingProgress(c hhListingCursor) HHListingProgress {
-	return HHListingProgress{Page: c.Page, Offset: c.Offset, Candidates: c.Candidates, Created: c.Created, Quarantined: c.Quarantined, OutsideMoscow: c.OutsideMoscow, OutsideDateWindow: c.OutsideDateWindow, Done: c.Done, PartialCode: c.PartialCode}
+	return HHListingProgress{Page: c.Page, Offset: c.Offset, Candidates: c.Candidates, Created: c.Created, Quarantined: c.Quarantined, OutsideMoscow: c.OutsideMoscow, OutsideDateWindow: c.OutsideDateWindow, ExpiredPublications: c.ExpiredPublications, Done: c.Done, PartialCode: c.PartialCode}
 }
 
 // Execute обрабатывает одну raw-порцию под уже полученной lease. Он не запускает
@@ -202,6 +203,7 @@ func (e HHListingExecutor) Execute(ctx context.Context, lease *JobLease) (HHList
 			handoff = &CandidateHandoff{Planner: SQLCandidateHandoffPlanner{Owner: e.Owner}}
 		}
 		prefixValues := [][2]json.RawMessage{}
+		checkedAt := time.Now()
 		for i, raw := range slice.Items {
 			var fields map[string]json.RawMessage
 			_ = json.Unmarshal(raw, &fields)
@@ -212,8 +214,7 @@ func (e HHListingExecutor) Execute(ctx context.Context, lease *JobLease) (HHList
 				}
 			}
 			prefixValues = append(prefixValues, pair)
-			// Дата ограничивает запрос к Actor, но не исключает полученную запись:
-			// HH может вернуть обновлённую вакансию с прежней датой публикации.
+			// Окно запроса и максимальный возраст вакансии проверяются отдельно.
 			include, dateErr := cur.includesPublication(raw)
 			item, err := parseHHListingVacancy(raw, cur.Operation.SourceURL)
 			code := "invalid_vacancy"
@@ -232,6 +233,10 @@ func (e HHListingExecutor) Execute(ctx context.Context, lease *JobLease) (HHList
 				// даты вне интервала, не отправляя запись в карантин.
 				if dateErr == nil && !include {
 					next.OutsideDateWindow++
+				}
+				if hhPublicationExpired(raw, checkedAt) {
+					next.ExpiredPublications++
+					continue
 				}
 				var id int64
 				var created, imported bool
