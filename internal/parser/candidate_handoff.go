@@ -25,12 +25,7 @@ func (h *CandidateHandoff) Enqueue(ctx context.Context, tx *sql.Tx, job Job) err
 	}
 	publishedAt := job.hhPublishedAt
 	if job.Type != "scan_source" && *job.SourceID == "hh" {
-		var metadata struct {
-			PublishedAt int64 `json:"hhPublishedAtMs"`
-		}
-		if json.Unmarshal(job.Payload, &metadata) == nil {
-			publishedAt = metadata.PublishedAt
-		}
+		publishedAt = hhJobPublication(job.Payload)
 	}
 	now, e := runClock(ctx, tx)
 	if e != nil {
