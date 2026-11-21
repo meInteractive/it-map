@@ -158,7 +158,7 @@ func runWorker(ctx context.Context, db *sql.DB, s settings) error {
 			}
 		}()
 	}
-	err = (workerengine.Engine{Worker: w, Config: &s.runtime, OnResult: func(profile workerloop.ProfileName, outcome workerloop.ProfileOutcome) {
+	err = (workerengine.Engine{Worker: w, Config: &s.runtime, ReconcileStaleApify: true, OnResult: func(profile workerloop.ProfileName, outcome workerloop.ProfileOutcome) {
 		monitor.Record(profile, outcome)
 		if outcome == workerloop.ProfileFailed || outcome == workerloop.ProfileTimeout {
 			slog.Warn("worker step failed", "profile", profile, "outcome", outcome)

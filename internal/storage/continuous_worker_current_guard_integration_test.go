@@ -44,6 +44,14 @@ func TestMariaDBContinuousWorkerCurrentUnknownDisposable(t *testing.T) {
 					t.Fatal("worker did not finish launch")
 				}
 			}
+			if tc.name == "terminal_missing_cost" {
+				runLaunch()
+				if provider.Starts() != 1 || s.count("SELECT COUNT(*) FROM apify_runs WHERE id='CI_current_unknown' AND charged_usd IS NULL AND reserved_usd=0.25") != 1 {
+					t.Fatal("terminal operation should preserve its reserve and allow an independent launch")
+				}
+				return
+			}
+
 			for i := 0; i < 2; i++ {
 				runLaunch()
 				if provider.Starts() != 0 || s.count("SELECT COUNT(*) FROM apify_runs") != 1 || s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='scan_source' AND status='pending' AND reason_code='current_paid_unknown' AND run_after>0 AND attempts=0") != 1 {

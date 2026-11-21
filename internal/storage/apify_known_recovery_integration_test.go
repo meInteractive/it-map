@@ -23,7 +23,7 @@ func TestMariaDBApifyKnownRecoveryDisposable(t *testing.T) {
 		name string
 		mode string
 	}{
-		{"rotated_token", "success"}, {"external_token", "external_success"}, {"external_other_account", "external_account"}, {"invalid_hash", "hash"}, {"invalid_operation", "operation"}, {"other_account", "account"}, {"nil_client", "nil_client"}, {"changed_row", "row"}, {"changed_settings", "settings"}, {"changed_generation", "generation"}, {"lost_ack", "lost_ack"}, {"before_commit", "before_commit"},
+		{"rotated_token", "success"}, {"automatic_stale", "auto"}, {"automatic_fresh", "fresh"}, {"automatic_missing_run", "missing_run"}, {"external_token", "external_success"}, {"external_other_account", "external_account"}, {"invalid_hash", "hash"}, {"invalid_operation", "operation"}, {"other_account", "account"}, {"nil_client", "nil_client"}, {"changed_row", "row"}, {"changed_settings", "settings"}, {"changed_generation", "generation"}, {"lost_ack", "lost_ack"}, {"before_commit", "before_commit"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := openApifyRuntimeFixture(t)
@@ -31,6 +31,16 @@ func TestMariaDBApifyKnownRecoveryDisposable(t *testing.T) {
 			if err != nil {
 				t.Fatal("synthetic ledger fixture", err)
 			}
+			if tc.mode == "fresh" {
+				_, err = f.db.ExecContext(f.ctx, "UPDATE apify_runs SET updated_at=CAST(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000 AS SIGNED) WHERE id=?", id)
+			}
+			if tc.mode == "missing_run" {
+				_, err = f.db.ExecContext(f.ctx, "UPDATE apify_runs SET run_id='' WHERE id=?", id)
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+
 			expectedHash := oldHash
 			if tc.mode == "hash" {
 				expectedHash = "invalid"
@@ -92,7 +102,13 @@ func TestMariaDBApifyKnownRecoveryDisposable(t *testing.T) {
 					}
 				}()
 			}
-			if tc.mode == "external_success" || tc.mode == "external_account" {
+			if tc.mode == "auto" || tc.mode == "fresh" || tc.mode == "missing_run" {
+				var worked bool
+				worked, err = service.ReconcileStaleKnownRun(f.ctx, f.v.Generation)
+				if worked != (tc.mode == "auto") {
+					t.Fatal("unexpected automatic recovery result", worked, err)
+				}
+			} else if tc.mode == "external_success" || tc.mode == "external_account" {
 				service.NewClient = func(token string) (apifyruns.Provider, error) {
 					if token != "external-test-credential" {
 						t.Error("external credential was not used")
@@ -113,9 +129,13 @@ func TestMariaDBApifyKnownRecoveryDisposable(t *testing.T) {
 				t.Fatal("recovery changed credential identity or started Actor")
 			}
 			switch tc.mode {
-			case "success", "external_success":
+			case "success", "external_success", "auto":
 				if err != nil || state != "succeeded" || !cost.Valid || cost.Float64 != 0.08 || provider.runs.Load() != 1 {
 					t.Fatal("verified recovery failed", err)
+				}
+			case "fresh", "missing_run":
+				if err != nil || provider.runs.Load() != 0 || cost.Valid {
+					t.Fatal("automatic recovery made an unverified provider request or write", err)
 				}
 			case "hash", "operation", "nil_client":
 				if !errors.Is(err, apifyruns.ErrRecoveryEvidence) || cost.Valid || provider.runs.Load() != 0 {

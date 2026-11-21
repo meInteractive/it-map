@@ -23,6 +23,7 @@ func TestMariaDBApifyCurrentUnknownGuardDisposable(t *testing.T) {
 		{"contradictory", "failed", "", "", "CIHistory", 0.1},
 		{"running_known", "running", "CIRunOther", "CIData", "CIHistory", nil},
 		{"terminal_no_cost", "succeeded", "CIRunOther", "CIData", "CIHistory", nil},
+		{"terminal_insufficient_reserve", "succeeded", "CIRunOther", "CIData", "CIHistory", nil},
 		{"running_with_cost", "running", "CIRunOther", "CIData", "CIHistory", 0.1},
 		{"terminal_bad_dataset", "succeeded", "CIRunOther", "bad-data", "CIHistory", 0.1},
 		{"terminal_missing_dataset", "succeeded", "CIRunOther", "", "CIHistory", 0.1},
@@ -40,10 +41,27 @@ func TestMariaDBApifyCurrentUnknownGuardDisposable(t *testing.T) {
 			if err != nil {
 				t.Fatal("cannot seed current unknown", err)
 			}
+			if tc.name == "terminal_insufficient_reserve" {
+				if _, err = f.db.ExecContext(f.ctx, "UPDATE apify_runs SET reserved_usd=0.01 WHERE id='CI_current_unknown'"); err != nil {
+					t.Fatal(err)
+				}
+			}
+
 			known, err := service.Execute(f.ctx, f.v, "CI known current", options)
 			if err != nil || known.State != "succeeded" || p.starts.Load() != 1 || p.runs.Load() != 1 {
 				t.Fatal("known run did not reconcile", err)
 			}
+			if tc.name == "terminal_no_cost" {
+				if _, err = service.Execute(f.ctx, f.v, "CI different job", options); err != nil || p.starts.Load() != 2 {
+					t.Fatal("terminal operation with reserve blocked a different job", err)
+				}
+				var unchanged int
+				if err = f.db.QueryRowContext(f.ctx, "SELECT COUNT(*) FROM apify_runs WHERE id='CI_current_unknown' AND charged_usd IS NULL AND reserved_usd=0.25").Scan(&unchanged); err != nil || unchanged != 1 {
+					t.Fatal("new operation modified unresolved cost or reserve", err)
+				}
+				return
+			}
+
 			if _, err = service.Execute(f.ctx, f.v, "CI different job", options); !errors.Is(err, apifyruns.ErrCurrentUnresolved) || p.starts.Load() != 1 {
 				t.Fatal("old unknown allowed new POST", err)
 			}
