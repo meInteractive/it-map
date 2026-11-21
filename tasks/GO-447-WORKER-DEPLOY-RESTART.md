@@ -16,6 +16,8 @@
 
 ### Этап 1 — дизайн и тестируемая реализация в Codex (без live-переключения)
 
+[Проект контракта паузы и релиза](../docs/dev/GO-447-RELEASE-DESIGN.md) описывает необходимое подтверждение от воркера, совместимость пакетов и порядок восстановления.
+
 1. Проверить реальные `publish.yml`, упаковщик `deploy/publish_release.py`, `deploy/receive_release.py`, systemd unit и существующие protocol/rollback тесты; оформить краткий план атомарной доставки двух бинарников (API и worker). Не предполагать, что существующий пакет уже содержит `itmap-worker`.
 2. Собирать `cmd/itmap-worker` для архитектуры целевого сервера (включая ARM64), с нужными build tags; проверять `go.mod`, исходный commit, ELF architecture, digest/manifest и совместимость runtime-конфигурации. **Оба бинарника должны происходить из одного SHA**; артефакт нельзя менять после проверки.
 3. Расширить формат релиза/receiver по обратно совместимому, fail-closed протоколу: доставлять worker в отдельный root-controlled versioned release path с `current/previous`; использовать существующие ограниченный deploy identity, slot locking, sequence, digest и защиту от повторного/устаревшего release. Не выдавать произвольный shell/systemctl через SSH, не включать root-доступ runtime-пользователю.
