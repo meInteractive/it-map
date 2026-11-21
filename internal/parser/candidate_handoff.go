@@ -23,6 +23,22 @@ func (h *CandidateHandoff) Enqueue(ctx context.Context, tx *sql.Tx, job Job) err
 	if h == nil || h.Planner == nil || tx == nil || job.Generation == "" || job.CandidateID == nil || job.SourceID == nil || (job.CompanyID == nil) == (job.AgencyID == nil) {
 		return ErrJobInput
 	}
+	publishedAt := job.hhPublishedAt
+	if job.Type != "scan_source" && *job.SourceID == "hh" {
+		var metadata struct {
+			PublishedAt int64 `json:"hhPublishedAtMs"`
+		}
+		if json.Unmarshal(job.Payload, &metadata) == nil {
+			publishedAt = metadata.PublishedAt
+		}
+	}
+	now, e := runClock(ctx, tx)
+	if e != nil {
+		return ErrSettingsStorage
+	}
+	if *job.SourceID == "hh" && publishedAt > 0 && publishedAt < now-hhVacancyJobMaxAge.Milliseconds() {
+		return nil
+	}
 	next, e := h.Planner.Next(ctx, tx, job)
 	if e != nil {
 		return e
@@ -65,13 +81,16 @@ func (h *CandidateHandoff) Enqueue(ctx context.Context, tx *sql.Tx, job Job) err
 	if e != nil {
 		return ErrJobInput
 	}
+	storedStagePayload := payload
+	if next.SourceID == "hh" && publishedAt > 0 && publishedAt <= now {
+		payload, e = addHHJobPublication(payload, publishedAt)
+		if e != nil {
+			return ErrJobInput
+		}
+	}
 	id, e := stageToken()
 	if e != nil {
 		return e
-	}
-	now, e := runClock(ctx, tx)
-	if e != nil {
-		return ErrSettingsStorage
 	}
 	dedupe := stageHash(next.Key)
 	_, e = tx.ExecContext(ctx, `INSERT INTO scheduler_jobs(id,generation,dedupe_key,type,company_id,agency_id,candidate_id,source_id,payload,priority,run_after,max_attempts,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,4,?,?) ON DUPLICATE KEY UPDATE id=id`, id, job.Generation, dedupe, next.Type, next.CompanyID, next.AgencyID, next.CandidateID, next.SourceID, string(payload), priority, now, now, now)
@@ -81,7 +100,7 @@ func (h *CandidateHandoff) Enqueue(ctx context.Context, tx *sql.Tx, job Job) err
 	var kind, source string
 	var company, agency, candidate sql.NullInt64
 	var storedPayload []byte
-	e = tx.QueryRowContext(ctx, `SELECT type,company_id,agency_id,candidate_id,source_id,payload FROM scheduler_jobs WHERE generation=? AND dedupe_key=? FOR UPDATE`, job.Generation, dedupe).Scan(&kind, &company, &agency, &candidate, &source, &storedPayload)
+	e = tx.QueryRowContext(ctx, `SELECT type,company_id,agency_id,candidate_id,source_id,CASE WHEN source_id='hh' THEN JSON_REMOVE(payload,'$.hhPublishedAtMs') ELSE payload END FROM scheduler_jobs WHERE generation=? AND dedupe_key=? FOR UPDATE`, job.Generation, dedupe).Scan(&kind, &company, &agency, &candidate, &source, &storedPayload)
 	if errors.Is(e, sql.ErrNoRows) {
 		return ErrSettingsStorage
 	}
@@ -92,7 +111,7 @@ func (h *CandidateHandoff) Enqueue(ctx context.Context, tx *sql.Tx, job Job) err
 	if e != nil {
 		return ErrSettingsStorage
 	}
-	if kind != next.Type || !reflect.DeepEqual(nullableInt(company), next.CompanyID) || !reflect.DeepEqual(nullableInt(agency), next.AgencyID) || !candidate.Valid || candidate.Int64 != next.CandidateID || source != next.SourceID || string(storedPayload) != string(payload) {
+	if kind != next.Type || !reflect.DeepEqual(nullableInt(company), next.CompanyID) || !reflect.DeepEqual(nullableInt(agency), next.AgencyID) || !candidate.Valid || candidate.Int64 != next.CandidateID || source != next.SourceID || string(storedPayload) != string(storedStagePayload) {
 		return ErrSettingsChanged
 	}
 	return nil

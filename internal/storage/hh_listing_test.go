@@ -274,6 +274,25 @@ func TestMariaDBHHListingDisposable(t *testing.T) {
 		if s.count("SELECT COUNT(*) FROM vacancy_discovery_runs WHERE company_id=991302 AND JSON_EXTRACT(result_json,'$.LineageVersion')=1 AND JSON_LENGTH(JSON_EXTRACT(result_json,'$.CandidateIDs'))=5 AND JSON_EXTRACT(result_json,'$.OutsideDateWindow')=3 AND JSON_EXTRACT(result_json,'$.ExpiredPublications')=1") != 1 {
 			t.Fatal("accepted records or date diagnostics were not saved in cursor")
 		}
+		if s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='classify_title' AND JSON_TYPE(JSON_EXTRACT(payload,'$.hhPublishedAtMs'))='INTEGER'") != 3 {
+			t.Fatal("trusted dates were not persisted or unknown dates were promoted")
+		}
+		// Моделируем истечение срока только в одноразовой MariaDB.
+		s.exec(`UPDATE scheduler_jobs SET payload=JSON_SET(payload,'$.hhPublishedAtMs',1)
+			WHERE type='classify_title' AND candidate_id=(SELECT id FROM vacancy_candidates WHERE external_job_id='123')`)
+		var runID string
+		if err := s.db.QueryRowContext(s.ctx, "SELECT id FROM scheduler_runs WHERE status='running'").Scan(&runID); err != nil {
+			t.Fatal(err)
+		}
+		source := "hh"
+		next, err := s.repo.ClaimJob(s.ctx, runID, parser.ClaimOptions{
+			Types: []string{"classify_title"}, SourceID: &source, VerifiedHHOnly: true, WorkerPipelineFairness: true,
+		})
+		if err != nil || next == nil ||
+			s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE status='cancelled' AND reason_code='hh_publication_expired' AND attempts=0") != 1 {
+			t.Fatal("expired job was not retired before the next fresh claim", err)
+		}
+
 	})
 	t.Run("raw pagination quarantine duplicate URL title revision and restart", func(t *testing.T) {
 		rows := []json.RawMessage{}

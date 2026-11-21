@@ -252,6 +252,9 @@ func (e HHListingExecutor) Execute(ctx context.Context, lease *JobLease) (HHList
 					if !imported && len(keys) > 0 {
 						shadow := job
 						shadow.CandidateID = &id
+						if published, publicationErr := hhPublicationTime(raw); publicationErr == nil {
+							shadow.hhPublishedAt = published.UnixMilli()
+						}
 						if err = handoff.Enqueue(ctx, tx, shadow); err != nil {
 							return err
 						}
