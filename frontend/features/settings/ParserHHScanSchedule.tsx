@@ -34,6 +34,12 @@ export interface HHScanScheduleReport {
   enabled: boolean;
   sourceSelected: boolean;
   favoritesOnly: boolean;
+  favoriteCoverage?: {
+    total: number;
+    missingSetting: number;
+    savedDisabled: number;
+    savedEnabled: number;
+  };
   intervalDays: 1 | 3 | 7;
   vacancyAgeDays: 0 | 3 | 7 | 14;
   summary: HHScheduleSummary;
@@ -104,6 +110,20 @@ export function isHHScanScheduleReport(v: unknown): v is HHScanScheduleReport {
         v.pendingBreakdown.pending !== v.pendingHHScans))
   )
     return false;
+  if (v.favoriteCoverage !== undefined) {
+    const f = v.favoriteCoverage;
+    if (
+      !v.favoritesOnly ||
+      !object(f) ||
+      !nonnegative(f.total) ||
+      !nonnegative(f.missingSetting) ||
+      !nonnegative(f.savedDisabled) ||
+      !nonnegative(f.savedEnabled) ||
+      f.total !== f.missingSetting + f.savedDisabled + f.savedEnabled
+    ) {
+      return false;
+    }
+  }
   const s = v.summary;
   const eligible = s.configured - s.disabled - s.outsideScope;
   const coveragePresent =
@@ -158,6 +178,14 @@ export function HHScanScheduleView({ report: r }: { report: HHScanScheduleReport
         {r.vacancyAgeDays === 0 ? 'все даты' : r.vacancyAgeDays + ' полных дн.'},{' '}
         {r.favoritesOnly ? 'только избранные компании' : 'все компании'}.
       </p>
+      {r.favoriteCoverage && (
+        <p className="resume-hint">
+          Избранных компаний у владельца расписания: {n(r.favoriteCoverage.total)}. Из них с
+          включённой настройкой HH: {n(r.favoriteCoverage.savedEnabled)}, с выключенной:{' '}
+          {n(r.favoriteCoverage.savedDisabled)}, без сохранённой настройки:{' '}
+          {n(r.favoriteCoverage.missingSetting)}.
+        </p>
+      )}
       {r.intervalDays > r.vacancyAgeDays && r.vacancyAgeDays !== 0 && (
         <p role="alert" className="error">
           Интервал проверки больше окна публикаций. Между сканированиями часть вакансий может быть
@@ -185,11 +213,12 @@ export function HHScanScheduleView({ report: r }: { report: HHScanScheduleReport
       </p>
       {s.successfulLast24h !== undefined && (
         <p className="resume-hint">
-          Успешно проверено HH-источников за последние 24 часа: <strong>{n(s.successfulLast24h)}</strong>{' '}
-          из {n(s.configured - s.disabled - s.outsideScope)} включённых в выбранной области.
-          За 48 часов — {n(s.successfulLast48h ?? 0)}; без достоверной даты последней успешной
-          проверки — {n(s.successDateUnknown ?? 0)}. Учитывается последний полностью завершённый
-          обход каждого источника, не количество запусков Apify и не число новых вакансий.
+          Успешно проверено HH-источников за последние 24 часа:{' '}
+          <strong>{n(s.successfulLast24h)}</strong> из{' '}
+          {n(s.configured - s.disabled - s.outsideScope)} включённых в выбранной области. За 48
+          часов — {n(s.successfulLast48h ?? 0)}; без достоверной даты последней успешной проверки —{' '}
+          {n(s.successDateUnknown ?? 0)}. Учитывается последний полностью завершённый обход каждого
+          источника, не количество запусков Apify и не число новых вакансий.
         </p>
       )}
       <p className="resume-hint">
@@ -200,23 +229,23 @@ export function HHScanScheduleView({ report: r }: { report: HHScanScheduleReport
       {r.pendingBreakdown && (
         <div>
           <p className="resume-hint">
-            Предварительная классификация {n(r.pendingBreakdown.pending)} ожидающих HH-заданий:
-            срок выполнения ещё не наступил — {n(r.pendingBreakdown.notDue)};
-            неподтверждённый курсор — {n(r.pendingBreakdown.unverifiedCursor)};
-            существующий запуск для дочитывания — {n(r.pendingBreakdown.reconcileCandidate)};
-            курсор с неподтверждённой записью запуска — {n(r.pendingBreakdown.orphanPaid)};
-            ограничение частоты нового запуска — {n(r.pendingBreakdown.launchCooldown)};
-            потенциально готовы к новому запуску — {n(r.pendingBreakdown.launchCandidate)};
-            прочие причины — {n(r.pendingBreakdown.other)}.
+            Предварительная классификация {n(r.pendingBreakdown.pending)} ожидающих HH-заданий: срок
+            выполнения ещё не наступил — {n(r.pendingBreakdown.notDue)}; неподтверждённый курсор —{' '}
+            {n(r.pendingBreakdown.unverifiedCursor)}; существующий запуск для дочитывания —{' '}
+            {n(r.pendingBreakdown.reconcileCandidate)}; курсор с неподтверждённой записью запуска —{' '}
+            {n(r.pendingBreakdown.orphanPaid)}; ограничение частоты нового запуска —{' '}
+            {n(r.pendingBreakdown.launchCooldown)}; потенциально готовы к новому запуску —{' '}
+            {n(r.pendingBreakdown.launchCandidate)}; прочие причины — {n(r.pendingBreakdown.other)}.
           </p>
           {r.pendingBreakdown.oldestPendingAt !== null && (
             <p className="resume-hint">
-              Самое старое из ожидающих HH-заданий создано: {moscow(r.pendingBreakdown.oldestPendingAt)} МСК.
+              Самое старое из ожидающих HH-заданий создано:{' '}
+              {moscow(r.pendingBreakdown.oldestPendingAt)} МСК.
             </p>
           )}
           <p className="resume-hint">
-            Это оценка на момент чтения. Она не проверяет квоты Apify, бюджет, lease, лимиты цикла
-            и фактическое разрешение на запуск. Для разблокировки не следует вручную повторять Actor.
+            Это оценка на момент чтения. Она не проверяет квоты Apify, бюджет, lease, лимиты цикла и
+            фактическое разрешение на запуск. Для разблокировки не следует вручную повторять Actor.
           </p>
         </div>
       )}
@@ -241,7 +270,9 @@ export function HHScanScheduleView({ report: r }: { report: HHScanScheduleReport
     </>
   );
 }
-export default function ParserHHScanSchedule({ isAuthorized }: { isAuthorized?: () => boolean } = {}) {
+export default function ParserHHScanSchedule({
+  isAuthorized,
+}: { isAuthorized?: () => boolean } = {}) {
   const q = useApi<HHScanScheduleReport>('/api/scheduler/hh-schedule', {
     refreshIntervalMs: 60000,
   });

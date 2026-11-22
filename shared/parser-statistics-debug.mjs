@@ -134,6 +134,12 @@ export function hhScanScheduleSnapshot(report) {
       noSuccess48hActive:s.noSuccess48hActive??null,
       noSuccess48hDue:s.noSuccess48hDue??null,
       noSuccess48hWaitPartial:s.noSuccess48hWaitPartial??null,
+      favoriteCoverage:report.favoriteCoverage?{
+        total:report.favoriteCoverage.total,
+        missingSetting:report.favoriteCoverage.missingSetting,
+        savedDisabled:report.favoriteCoverage.savedDisabled,
+        savedEnabled:report.favoriteCoverage.savedEnabled,
+      }:null,
       pendingHHScans:report.pendingHHScans,runningHHScans:report.runningHHScans,
       pendingBreakdownAvailable:Boolean(p),
       pendingBreakdown:p?{

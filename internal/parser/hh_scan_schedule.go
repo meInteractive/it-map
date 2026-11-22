@@ -19,27 +19,27 @@ type HHScanScheduleRepository struct {
 }
 
 type HHScanScheduleSource struct {
-	Enabled        bool
-	Favorite       bool
-	HasActiveScan  bool
-	NextRunAt      int64
-	IntervalDays   int
-	LastSuccessAt  sql.NullString
-	LastResult     sql.NullString
+	Enabled       bool
+	Favorite      bool
+	HasActiveScan bool
+	NextRunAt     int64
+	IntervalDays  int
+	LastSuccessAt sql.NullString
+	LastResult    sql.NullString
 }
 
 type HHScanScheduleSummary struct {
-	Configured         int64  `json:"configured"`
-	Disabled           int64  `json:"disabled"`
-	OutsideScope       int64  `json:"outsideScope"`
-	ActiveScan         int64  `json:"activeScan"`
-	Waiting            int64  `json:"waiting"`
-	PotentiallyDue     int64  `json:"potentiallyDue"`
-	Recalculated       int64  `json:"recalculated"`
-	UnknownLastSuccess int64  `json:"unknownLastSuccess"`
-	SuccessfulLast24h  int64  `json:"successfulLast24h"`
-	SuccessfulLast48h  int64  `json:"successfulLast48h"`
-	SuccessDateUnknown        int64  `json:"successDateUnknown"`
+	Configured              int64  `json:"configured"`
+	Disabled                int64  `json:"disabled"`
+	OutsideScope            int64  `json:"outsideScope"`
+	ActiveScan              int64  `json:"activeScan"`
+	Waiting                 int64  `json:"waiting"`
+	PotentiallyDue          int64  `json:"potentiallyDue"`
+	Recalculated            int64  `json:"recalculated"`
+	UnknownLastSuccess      int64  `json:"unknownLastSuccess"`
+	SuccessfulLast24h       int64  `json:"successfulLast24h"`
+	SuccessfulLast48h       int64  `json:"successfulLast48h"`
+	SuccessDateUnknown      int64  `json:"successDateUnknown"`
 	NoSuccess48hWaiting     int64  `json:"noSuccess48hWaiting"`
 	NoSuccess48hActive      int64  `json:"noSuccess48hActive"`
 	NoSuccess48hDue         int64  `json:"noSuccess48hDue"`
@@ -47,19 +47,27 @@ type HHScanScheduleSummary struct {
 	NextDueAt               *int64 `json:"nextDueAt"`
 }
 
+type HHFavoriteCoverage struct {
+	Total          int64 `json:"total"`
+	MissingSetting int64 `json:"missingSetting"`
+	SavedDisabled  int64 `json:"savedDisabled"`
+	SavedEnabled   int64 `json:"savedEnabled"`
+}
+
 type HHScanScheduleReport struct {
-	CheckedAt          int64                 `json:"checkedAt"`
-	SourceID           string                `json:"sourceId"`
-	Enabled            bool                  `json:"enabled"`
-	SourceSelected     bool                  `json:"sourceSelected"`
-	FavoritesOnly      bool                  `json:"favoritesOnly"`
-	IntervalDays       int                   `json:"intervalDays"`
-	VacancyAgeDays     int                   `json:"vacancyAgeDays"`
-	Summary            HHScanScheduleSummary `json:"summary"`
-	PendingHHScans     int64                 `json:"pendingHHScans"`
-	RunningHHScans     int64                 `json:"runningHHScans"`
-	PendingBreakdown   HHPendingBreakdown    `json:"pendingBreakdown"`
-	FinalEligibilityVerified bool            `json:"finalEligibilityVerified"`
+	CheckedAt                int64                 `json:"checkedAt"`
+	SourceID                 string                `json:"sourceId"`
+	Enabled                  bool                  `json:"enabled"`
+	SourceSelected           bool                  `json:"sourceSelected"`
+	FavoritesOnly            bool                  `json:"favoritesOnly"`
+	IntervalDays             int                   `json:"intervalDays"`
+	VacancyAgeDays           int                   `json:"vacancyAgeDays"`
+	FavoriteCoverage         *HHFavoriteCoverage   `json:"favoriteCoverage,omitempty"`
+	Summary                  HHScanScheduleSummary `json:"summary"`
+	PendingHHScans           int64                 `json:"pendingHHScans"`
+	RunningHHScans           int64                 `json:"runningHHScans"`
+	PendingBreakdown         HHPendingBreakdown    `json:"pendingBreakdown"`
+	FinalEligibilityVerified bool                  `json:"finalEligibilityVerified"`
 }
 
 // Mirrors the interval-change recalculation in scheduleHH without modifying
@@ -179,12 +187,12 @@ func (r HHScanScheduleRepository) ReadHHScanSchedule(ctx context.Context) (json.
 		return nil, ErrHHScanScheduleStorage
 	}
 	report := HHScanScheduleReport{
-		CheckedAt: now.UnixMilli(),
-		SourceID: "hh",
-		Enabled: settings.Enabled,
-		FavoritesOnly: settings.FavoritesOnly,
-		IntervalDays: settings.IntervalDays,
-		VacancyAgeDays: settings.VacancyAgeDays,
+		CheckedAt:                now.UnixMilli(),
+		SourceID:                 "hh",
+		Enabled:                  settings.Enabled,
+		FavoritesOnly:            settings.FavoritesOnly,
+		IntervalDays:             settings.IntervalDays,
+		VacancyAgeDays:           settings.VacancyAgeDays,
 		FinalEligibilityVerified: false,
 	}
 	for _, id := range settings.SourceIDs {
@@ -192,6 +200,22 @@ func (r HHScanScheduleRepository) ReadHHScanSchedule(ctx context.Context) (json.
 			report.SourceSelected = true
 			break
 		}
+	}
+	if settings.FavoritesOnly {
+		var coverage HHFavoriteCoverage
+		if err = tx.QueryRowContext(ctx, `SELECT COUNT(*),
+			COALESCE(SUM(s.company_id IS NULL),0), COALESCE(SUM(s.enabled=0),0),
+			COALESCE(SUM(s.enabled=1),0)
+			FROM company_user_state u JOIN company_identity c ON c.company_name=u.company_name
+			LEFT JOIN vacancy_source_parsing s ON s.company_id=c.id AND s.source_id='hh'
+			WHERE u.user_name=? AND u.favorite=1`, settings.OwnerName).Scan(
+			&coverage.Total, &coverage.MissingSetting, &coverage.SavedDisabled, &coverage.SavedEnabled); err != nil {
+			return nil, ErrHHScanScheduleStorage
+		}
+		if coverage.Total != coverage.MissingSetting+coverage.SavedDisabled+coverage.SavedEnabled {
+			return nil, ErrHHScanScheduleStorage
+		}
+		report.FavoriteCoverage = &coverage
 	}
 	// All configured HH rows are counted, including excluded/disabled ones.
 	// EXISTS avoids multiplying source rows by a user's company-state records
