@@ -191,6 +191,9 @@ class Client:
                     raise Rejected('immutable_release_conflict')
                 return state
             if uploaded and state.get('result') in ('failed_rolled_back', 'rollback_failed', 'superseded', 'deferred'):
+                reason = state.get('defer_reason')
+                if state['result'] == 'deferred' and isinstance(reason, str) and re.fullmatch(r'[a-z_]{1,80}', reason):
+                    raise Rejected('deferred_' + reason)
                 raise Rejected(state['result'])
             if state.get('result') in ('queued', 'applying'):
                 if pending.get('identity') == request:

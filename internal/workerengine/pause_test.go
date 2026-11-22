@@ -47,14 +47,21 @@ func TestPauseHoldsAdmissionUntilActiveProfileFinishes(t *testing.T) {
 
 func TestPauseDoesNotAcknowledgeFailedProfile(t *testing.T) {
 	gate := NewPauseGate()
-	for _, safe := range []bool{false, true} {
-		if _, err := gate.enter(context.Background()); err != nil {
-			t.Fatal(err)
-		}
-		gate.leave(safe)
+	if _, err := gate.enter(context.Background()); err != nil {
+		t.Fatal(err)
 	}
-	if state, err := gate.Pause("release"); err != nil || state != PauseUnsafe {
+	if state, err := gate.Pause("first"); err != nil || state != PauseDraining {
 		t.Fatalf("pause = %s, %v", state, err)
+	}
+	gate.leave(false)
+	if state, err := gate.Pause("first"); err != nil || state != PauseUnsafe {
+		t.Fatalf("pause = %s, %v", state, err)
+	}
+	if err := gate.Resume("first"); err != nil {
+		t.Fatal(err)
+	}
+	if state, err := gate.Pause("second"); err != nil || state != PauseHeld {
+		t.Fatalf("new pause = %s, %v", state, err)
 	}
 }
 

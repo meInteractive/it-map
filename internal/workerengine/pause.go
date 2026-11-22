@@ -47,6 +47,7 @@ func (g *PauseGate) Pause(token string) (PauseState, error) {
 	}
 	if g.token == "" {
 		g.token = token
+		g.unsafe = false
 		g.resumed = make(chan struct{})
 		if g.active {
 			g.claims.stop()
@@ -106,8 +107,11 @@ func (g *PauseGate) leave(safe bool) {
 	defer g.mu.Unlock()
 	g.active = false
 	g.claims = nil
-	// Следующий успешный профиль не подтверждает исход предыдущей ошибки.
-	g.unsafe = g.unsafe || !safe
+	// Ошибка активного шага блокирует текущую паузу.
+	// Для новой попытки receiver повторно проверяет сохранённый журнал.
+	if g.token != "" && !safe {
+		g.unsafe = true
+	}
 }
 
 type claimSignal struct {
