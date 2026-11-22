@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
@@ -15,6 +16,7 @@ import (
 	"syscall"
 	"time"
 
+	"itmap/internal/paidrecovery"
 	"itmap/internal/workerengine"
 )
 
@@ -27,6 +29,7 @@ type releaseControl struct {
 	gate     *workerengine.PauseGate
 	instance string
 	readHold func() (string, error)
+	ledger   func(context.Context) (paidrecovery.ReleaseLedger, error)
 }
 
 type releaseRequest struct {
@@ -60,7 +63,7 @@ func readWorkerReleaseHold() (string, error) {
 	return token, nil
 }
 
-func openReleaseControl() (*http.Server, *net.UnixListener, *workerengine.PauseGate, error) {
+func openReleaseControl(ledger func(context.Context) (paidrecovery.ReleaseLedger, error)) (*http.Server, *net.UnixListener, *workerengine.PauseGate, error) {
 	for path := filepath.Dir(workerReleaseHold); path != "/"; path = filepath.Dir(path) {
 		info, err := os.Lstat(path)
 		if err != nil {
@@ -93,7 +96,7 @@ func openReleaseControl() (*http.Server, *net.UnixListener, *workerengine.PauseG
 		_ = listener.Close()
 		return nil, nil, nil, err
 	}
-	control := releaseControl{gate: gate, instance: hex.EncodeToString(nonce[:]), readHold: readWorkerReleaseHold}
+	control := releaseControl{gate: gate, instance: hex.EncodeToString(nonce[:]), readHold: readWorkerReleaseHold, ledger: ledger}
 	server := &http.Server{Handler: control, ReadHeaderTimeout: 2 * time.Second, ReadTimeout: 3 * time.Second, WriteTimeout: 3 * time.Second, MaxHeaderBytes: 4096}
 	return server, listener, gate, nil
 }
@@ -103,6 +106,15 @@ func (c releaseControl) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	if r.Method == http.MethodGet && r.URL.Path == "/instance" {
 		_ = json.NewEncoder(w).Encode(map[string]any{"instance": c.instance, "pid": os.Getpid(), "paused": c.gate.Paused()})
+		return
+	}
+	if r.Method == http.MethodGet && r.URL.Path == "/ledger" && c.ledger != nil {
+		evidence, err := c.ledger(r.Context())
+		if err != nil {
+			w.WriteHeader(http.StatusConflict)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(evidence)
 		return
 	}
 	if r.Method != http.MethodPost || (r.URL.Path != "/pause" && r.URL.Path != "/resume") {
