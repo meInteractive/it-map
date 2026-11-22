@@ -470,6 +470,7 @@ class Receiver:
                 archive = self.state_dir / (release + '.tar')
                 os.replace(incoming, archive)
                 fsync_dir(self.state_dir)
+                state.pop('defer_reason', None)
                 state.update(result='queued', pending={'identity': identity, 'digest': digest,
                                                       'archive': archive.name, 'release': release, 'joint': joint})
                 self.save(state)
@@ -587,6 +588,7 @@ class Receiver:
     def apply_joint(self, state, pending):
         if self.worker is None:
             state['result'] = 'rollback_failed' if state.get('joint') else 'deferred'
+            state['defer_reason'] = 'joint_release_policy_mismatch'
             self.save(state)
             return state
         token = pending['release']
@@ -662,7 +664,9 @@ class Receiver:
             self.worker.resume(token, current)
             self.wait_joint_health(worker_release / 'itmap-worker')
             return self.finish_joint(state, pending)
-        except Exception:
+        except Exception as error:
+            reason = str(error) if isinstance(error, Rejected) else ''
+            state['defer_reason'] = reason if re.fullmatch(r'[a-z_]{1,80}', reason) else 'joint_release_check_failed'
             try:
                 if phase == 'draining':
                     if self.worker.hold_token() == token:

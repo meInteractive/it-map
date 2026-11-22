@@ -199,7 +199,9 @@ class JointReceiverTests(unittest.TestCase):
         with (patch.object(self.worker, 'executable', return_value=self.current),
               patch.object(self.worker, 'drain', side_effect=r.Rejected('worker_unsettled_operations')),
               patch.object(self.worker, 'service') as service):
-            self.assertEqual(self.receiver.apply()['result'], 'deferred')
+            result = self.receiver.apply()
+            self.assertEqual(result['result'], 'deferred')
+            self.assertEqual(result['defer_reason'], 'worker_unsettled_operations')
             service.assert_not_called()
         self.assertEqual((self.worker_root / 'current').resolve(), self.old_worker)
         self.assertEqual((self.api_root / 'current').resolve(), self.old_api)
