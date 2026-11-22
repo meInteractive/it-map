@@ -28,7 +28,7 @@ func (e *CooldownError) Error() string { return ErrCooldown.Error() }
 func (e *CooldownError) Unwrap() error { return ErrCooldown }
 
 // ActorCooldown задаёт минимальный интервал между платными запусками.
-const ActorCooldown = 5 * time.Minute
+const ActorCooldown = time.Minute
 
 // retryAfterCooldown использует значения часов БД. Будущие timestamps и
 // погрешность часов приводят к дополнительной проверке, а не раннему POST.

@@ -43,15 +43,15 @@ func TestMariaDBApifyWorkerCooldownDisposable(t *testing.T) {
 	if _, err := service.Execute(f.ctx, f.v, "CI detail", opts); !errors.Is(err, apifyruns.ErrCooldown) || p.starts.Load() != 1 {
 		t.Fatal("cooldown bypassed", err)
 	}
-	if _, err := f.db.ExecContext(f.ctx, "UPDATE apify_runs SET updated_at=CAST(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000 AS SIGNED)-? WHERE id<>'CI_old_cooldown'", (apifyruns.ActorCooldown-time.Minute).Milliseconds()); err != nil {
+	if _, err := f.db.ExecContext(f.ctx, "UPDATE apify_runs SET updated_at=CAST(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000 AS SIGNED)-? WHERE id<>'CI_old_cooldown'", (apifyruns.ActorCooldown - 20*time.Second).Milliseconds()); err != nil {
 		t.Fatal(err)
 	}
 	_, waitErr := service.Execute(f.ctx, f.v, "CI detail", opts)
 	var cooldown *apifyruns.CooldownError
-	if !errors.As(waitErr, &cooldown) || cooldown.RetryAfter < 55*time.Second || cooldown.RetryAfter > time.Minute || p.starts.Load() != 1 {
+	if !errors.As(waitErr, &cooldown) || cooldown.RetryAfter < 15*time.Second || cooldown.RetryAfter > 20*time.Second || p.starts.Load() != 1 {
 		t.Fatal("incorrect remaining cooldown", waitErr)
 	}
-	if _, err := f.db.ExecContext(f.ctx, "UPDATE apify_runs SET updated_at=CAST(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000 AS SIGNED)-?", (apifyruns.ActorCooldown+time.Second).Milliseconds()); err != nil {
+	if _, err := f.db.ExecContext(f.ctx, "UPDATE apify_runs SET updated_at=CAST(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000 AS SIGNED)-?", (apifyruns.ActorCooldown + time.Second).Milliseconds()); err != nil {
 		t.Fatal(err)
 	}
 	var wg sync.WaitGroup
