@@ -24,12 +24,14 @@ def identity(sequence=1, branch='codex/test', sha=None):
                 sha=sha or (f'{sequence:040x}'), sequence=sequence, run_id=100 + sequence)
 
 
-def archive(request, extra=None, wrong_manifest=False):
+def archive(request, extra=None, wrong_manifest=False, joint=False):
     elf = bytearray(64)
     elf[:6] = b'\x7fELF\x02\x01'
     struct.pack_into('<H', elf, 18, {'x86_64': 62, 'aarch64': 183}[r.platform.machine()])
     files = {'itmap': bytes(elf), 'web/index.html': b'<div id="root"></div>',
              'web/assets/app.js': b'// CI SYNTHETIC RELEASE'}
+    if joint:
+        files['itmap-worker'] = bytes(elf)
     manifest = {'identity': request, 'files': {k: hashlib.sha256(v).hexdigest() for k, v in files.items()}}
     if wrong_manifest:
         manifest['identity'] = identity(99)
@@ -135,6 +137,115 @@ class WorkerDrainTests(unittest.TestCase):
                 else:
                     with self.assertRaisesRegex(r.Rejected, expected):
                         self.worker.verify_idle()
+
+
+class JointReceiverTests(unittest.TestCase):
+    def setUp(self):
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        root = Path(temp.name)
+        self.worker_root = root / 'worker'
+        self.api_root = root / 'api'
+        self.worker = r.WorkerDrain(self.worker_root)
+        self.service = Service()
+        self.service.verify_executable = lambda expected: self.assertTrue(expected.is_file())
+        self.receiver = r.Receiver('main', self.api_root, root / 'state', self.service, lambda: None,
+                                   worker_root=self.worker_root, worker=self.worker)
+        self.old_api = self.api_root / 'releases' / ('1' * 40)
+        self.old_worker = self.worker_root / 'releases' / ('1' * 40)
+        for release, binary in ((self.old_api, 'itmap'), (self.old_worker, 'itmap-worker')):
+            release.mkdir(parents=True)
+            (release / binary).write_bytes(b'previous')
+            (release.parents[1] / 'current').symlink_to(release)
+        # Existing API receiver uses a relative pointer.
+        (self.api_root / 'current').unlink()
+        (self.api_root / 'current').symlink_to('releases/' + self.old_api.name)
+        self.request = identity(2, 'main')
+        self.header, self.body = archive(self.request, joint=True)
+        self.header['joint'] = True
+        self.receiver.register(self.request)
+        self.receiver.upload(self.header, io.BytesIO(self.body))
+        self.current = {'instance': 'a' * 32, 'pid': 42, 'paused': False}
+        self.paused = dict(self.current, paused=True)
+
+    def test_joint_release_success_and_repeat(self):
+        with (patch.object(self.worker, 'executable', return_value=self.current),
+              patch.object(self.worker, 'drain', return_value=self.paused),
+              patch.object(self.worker, 'service') as service,
+              patch.object(self.worker, 'wait_executable', return_value=self.paused),
+              patch.object(self.worker, 'resume') as resume,
+              patch.object(self.worker, 'ready')):
+            state = self.receiver.apply()
+            self.assertEqual(state['result'], 'success')
+            self.assertEqual((self.worker_root / 'current').resolve().name, state['current']['release'])
+            self.assertEqual((self.worker_root / 'previous').resolve(), self.old_worker)
+            self.assertEqual([call.args for call in service.call_args_list], [('stop',), ('start',)])
+            resume.assert_called_once()
+            self.assertEqual(self.receiver.upload(self.header, io.BytesIO(self.body))['result'], 'success')
+            self.assertEqual(self.receiver.apply()['result'], 'success')
+            self.assertEqual(service.call_count, 2)
+
+    def test_active_paid_operation_defers_without_switching(self):
+        with (patch.object(self.worker, 'executable', return_value=self.current),
+              patch.object(self.worker, 'drain', side_effect=r.Rejected('worker_unsettled_operations')),
+              patch.object(self.worker, 'service') as service):
+            self.assertEqual(self.receiver.apply()['result'], 'deferred')
+            service.assert_not_called()
+        self.assertEqual((self.worker_root / 'current').resolve(), self.old_worker)
+        self.assertEqual((self.api_root / 'current').resolve(), self.old_api)
+
+    def test_failure_restores_previous_both(self):
+        def drain(token):
+            self.worker.create_hold(token)
+            return self.paused
+        with (patch.object(self.worker, 'executable', return_value=self.current),
+              patch.object(self.worker, 'drain', side_effect=drain),
+              patch.object(self.worker, 'active', return_value=False),
+              patch.object(self.worker, 'service'),
+              patch.object(self.worker, 'ready'),
+              patch.object(self.worker, 'resume'),
+              patch.object(self.worker, 'wait_executable', side_effect=[r.Rejected('failed_start'), self.paused])):
+            self.assertEqual(self.receiver.apply()['result'], 'failed_rolled_back')
+        self.assertEqual((self.worker_root / 'current').resolve(), self.old_worker)
+        self.assertEqual((self.api_root / 'current').resolve(), self.old_api)
+
+    def test_interrupted_switch_restores_both_targets(self):
+        token = self.receiver.load()['pending']['release']
+        new_worker = self.worker_root / 'releases' / token
+        new_worker.mkdir()
+        self.receiver.switch_worker(new_worker)
+        self.worker.create_hold(token)
+        state = self.receiver.load()
+        state.update(result='applying', joint={
+            'phase': 'switching', 'api': 'releases/' + self.old_api.name,
+            'worker': str(self.old_worker), 'instance': self.current,
+        })
+        self.receiver.save(state)
+        with (patch.object(self.worker, 'active', return_value=False),
+              patch.object(self.worker, 'service'),
+              patch.object(self.worker, 'ready'),
+              patch.object(self.worker, 'resume'),
+              patch.object(self.worker, 'executable', return_value=self.current),
+              patch.object(self.worker, 'wait_executable', return_value=self.paused)):
+            self.assertEqual(self.receiver.apply()['result'], 'failed_rolled_back')
+        self.assertEqual((self.worker_root / 'current').resolve(), self.old_worker)
+        self.assertEqual((self.api_root / 'current').resolve(), self.old_api)
+
+    def test_failed_rollback_blocks_following_release(self):
+        state = self.receiver.load()
+        state.update(result='applying', joint={
+            'phase': 'switching', 'api': 'releases/' + self.old_api.name,
+            'worker': str(self.old_worker), 'instance': self.current,
+        })
+        self.receiver.save(state)
+        self.assertEqual(self.receiver.apply()['result'], 'rollback_failed')
+        with self.assertRaisesRegex(r.Rejected, 'joint_rollback_requires_operator'):
+            self.receiver.register(identity(3, 'main'))
+
+    def test_joint_requires_local_opt_in(self):
+        self.receiver.worker = None
+        with self.assertRaisesRegex(r.Rejected, 'joint_release_policy_mismatch'):
+            self.receiver.upload(self.header, io.BytesIO(self.body))
 
 
 class ReceiverTests(unittest.TestCase):

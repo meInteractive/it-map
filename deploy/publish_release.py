@@ -171,7 +171,7 @@ class Client:
             raise Rejected('ssh_request_failed')
         return response
 
-    def publish(self, request, archive, check_head=True):
+    def publish(self, request, archive, check_head=True, *, joint=False):
         if check_head:
             verify_remote_head(request)
         body = Path(archive).read_bytes()
@@ -190,7 +190,7 @@ class Client:
                 if current.get('digest') != digest:
                     raise Rejected('immutable_release_conflict')
                 return state
-            if uploaded and state.get('result') in ('failed_rolled_back', 'rollback_failed', 'superseded'):
+            if uploaded and state.get('result') in ('failed_rolled_back', 'rollback_failed', 'superseded', 'deferred'):
                 raise Rejected(state['result'])
             if state.get('result') in ('queued', 'applying'):
                 if pending.get('identity') == request:
@@ -198,7 +198,10 @@ class Client:
                         raise Rejected('immutable_release_conflict')
                     uploaded = True
             elif not uploaded:
-                self.request({**request, 'operation': 'upload', 'size': len(body), 'digest': digest}, body)
+                upload = {**request, 'operation': 'upload', 'size': len(body), 'digest': digest}
+                if joint:
+                    upload['joint'] = True
+                self.request(upload, body)
                 uploaded = True
             time.sleep(3)
         raise Rejected('deployment_timeout_check_server_status')
@@ -226,6 +229,7 @@ def main():
     parser.add_argument('operation', choices=('context', 'package', 'register', 'invalidate', 'publish', 'status'))
     parser.add_argument('--binary')
     parser.add_argument('--worker')
+    parser.add_argument('--joint', action='store_true')
     parser.add_argument('--web')
     parser.add_argument('--archive')
     args = parser.parse_args()
@@ -243,7 +247,7 @@ def main():
     client = Client(os.environ)
     try:
         if args.operation == 'publish':
-            state = client.publish(request, args.archive)
+            state = client.publish(request, args.archive, joint=args.joint)
         else:
             state = client.request({'operation': 'status'} if args.operation == 'status' else {**request, 'operation': args.operation})
         print(json.dumps({'result': state.get('result'), 'sequence': state.get('sequence')}))

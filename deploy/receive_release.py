@@ -90,6 +90,14 @@ class Systemd:
         subprocess.run(['/usr/bin/systemctl', 'stop', f'itmap@{self.slot}.service'],
                        check=True, timeout=40, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
+    def verify_executable(self, expected):
+        result = subprocess.run(
+            ['/usr/bin/systemctl', 'show', f'itmap@{self.slot}.service', '-p', 'MainPID', '--value'],
+            check=True, capture_output=True, text=True, timeout=5)
+        pid = int(result.stdout.strip())
+        if pid <= 1 or Path('/proc', str(pid), 'exe').resolve(strict=True) != expected.resolve(strict=True):
+            raise Rejected('api_executable_mismatch')
+
     def launch(self, sequence):
         unit = f'itmap-release-{self.slot}-{sequence}.service'
         result = subprocess.run([
@@ -165,6 +173,42 @@ class WorkerDrain:
                 or type(value.get('paused')) is not bool):
             raise Rejected('worker_instance_changed')
         return value
+
+    def service(self, operation):
+        if operation not in ('start', 'stop'):
+            raise Rejected('invalid_worker_service_operation')
+        subprocess.run(['/usr/bin/systemctl', operation, self.unit], check=True, timeout=95,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    def active(self):
+        result = subprocess.run(['/usr/bin/systemctl', 'show', self.unit, '-p', 'ActiveState', '--value'],
+                                check=True, capture_output=True, text=True, timeout=5)
+        return result.stdout.strip() not in ('inactive', 'failed')
+
+    def executable(self, expected, paused=None):
+        current = self.instance()
+        if Path('/proc', str(current['pid']), 'exe').resolve(strict=True) != expected.resolve(strict=True):
+            raise Rejected('worker_executable_mismatch')
+        if paused is not None and current['paused'] != paused:
+            raise Rejected('worker_pause_state_mismatch')
+        return current
+
+    def wait_executable(self, expected, paused=None):
+        for attempt in range(15):
+            try:
+                return self.executable(expected, paused)
+            except (OSError, ValueError, http.client.HTTPException, Rejected, subprocess.SubprocessError):
+                if attempt == 14:
+                    raise Rejected('worker_start_unconfirmed') from None
+                time.sleep(1)
+
+    def ready(self):
+        with contextlib.closing(http.client.HTTPConnection('127.0.0.1', 18082, timeout=3)) as conn:
+            conn.request('GET', '/readyz')
+            with conn.getresponse() as response:
+                snapshot = json.loads(response.read(4096))
+                if response.status != 200 or snapshot.get('ready') is not True or snapshot.get('live') is not True:
+                    raise Rejected('worker_readiness_failed')
 
     def hold_token(self):
         try:
@@ -289,7 +333,7 @@ def health(url):
 
 
 class Receiver:
-    def __init__(self, slot, root=None, state_dir=None, service=None, probe=None):
+    def __init__(self, slot, root=None, state_dir=None, service=None, probe=None, *, worker_root=None, worker=None):
         if slot not in ('main', 'dev'):
             raise Rejected('invalid_slot')
         self.slot = slot
@@ -297,6 +341,10 @@ class Receiver:
         self.state_dir = Path(state_dir or f'/var/lib/itmap-deploy/{slot}')
         self.service = service or Systemd(slot)
         self.probe = probe or (lambda: health('http://127.0.0.1:' + ('18080' if slot == 'main' else '18081')))
+        self.worker_root = Path(worker_root) if worker_root is not None else None
+        if worker is not None and (slot != 'main' or self.worker_root is None):
+            raise Rejected('invalid_joint_release_slot')
+        self.worker = worker
         self.state_file = self.state_dir / 'state.json'
         self.root.mkdir(parents=True, exist_ok=True, mode=0o755)
         self.root.chmod(0o755)
@@ -329,10 +377,14 @@ class Receiver:
         identity = request_identity(request, self.slot)
         with self.locked():
             state = self.load()
+            if state['result'] == 'rollback_failed' and state.get('joint'):
+                raise Rejected('joint_rollback_requires_operator')
             seq = identity['sequence']
             if seq <= state['deleted'].get(identity['ref'], 0) or seq < state['sequence']:
                 raise Rejected('superseded')
             if seq == state['sequence']:
+                if state['result'] == 'rollback_failed' and state.get('joint'):
+                    raise Rejected('joint_rollback_requires_operator')
                 if identity != state['candidate']:
                     raise Rejected('sequence_conflict')
                 return state
@@ -346,6 +398,8 @@ class Receiver:
         identity = request_identity(request, self.slot)
         with self.locked():
             state = self.load()
+            if state['result'] == 'rollback_failed' and state.get('joint'):
+                raise Rejected('joint_rollback_requires_operator')
             ref, seq = identity['ref'], identity['sequence']
             state['deleted'][ref] = max(seq, state['deleted'].get(ref, 0))
             if len(state['deleted']) > 10000:
@@ -359,6 +413,9 @@ class Receiver:
 
     def upload(self, request, stream):
         identity = request_identity(request, self.slot)
+        joint = request.get('joint', False)
+        if type(joint) is not bool or joint != (self.worker is not None):
+            raise Rejected('joint_release_policy_mismatch')
         size, digest = request.get('size'), request.get('digest')
         if type(size) is not int or not 0 < size <= MAX_ARCHIVE or not isinstance(digest, str) or not DIGEST.fullmatch(digest):
             raise Rejected('invalid_archive_header')
@@ -403,7 +460,7 @@ class Receiver:
                 os.replace(incoming, archive)
                 fsync_dir(self.state_dir)
                 state.update(result='queued', pending={'identity': identity, 'digest': digest,
-                                                      'archive': archive.name, 'release': release})
+                                                      'archive': archive.name, 'release': release, 'joint': joint})
                 self.save(state)
                 self.service.launch(identity['sequence'])
                 return state
@@ -412,6 +469,7 @@ class Receiver:
 
     def unpack(self, archive, destination, pending):
         expected_machine = {'x86_64': 62, 'aarch64': 183}.get(platform.machine())
+        binaries = {'itmap', 'itmap-worker'} if pending.get('joint') else {'itmap'}
         with tarfile.open(archive, 'r:') as tar:
             members = tar.getmembers()
             if len(members) > MAX_FILES:
@@ -423,7 +481,7 @@ class Receiver:
                 if (not name or path.is_absolute() or '\\' in name or
                     any(ord(c) < 32 for c in name) or '..' in path.parts or
                     name != path.as_posix() or name in seen or
-                    not (name in ('itmap', 'manifest.json', 'web') or name.startswith('web/')) or
+                    not (name in (binaries | {'manifest.json', 'web'}) or name.startswith('web/')) or
                     not (member.isfile() or member.isdir()) or
                     (member.isdir() and not (name == 'web' or name.startswith('web/')))):
                     raise Rejected('unsafe_archive_entry')
@@ -441,9 +499,9 @@ class Receiver:
                     shutil.copyfileobj(source, out)
                     out.flush()
                     os.fsync(out.fileno())
-                target.chmod(0o755 if name == 'itmap' else 0o644)
+                target.chmod(0o755 if name in binaries else 0o644)
                 files[name] = hashlib.sha256(target.read_bytes()).hexdigest()
-            if not {'itmap', 'manifest.json', 'web/index.html'} <= files.keys():
+            if not (binaries | {'manifest.json', 'web/index.html'}) <= files.keys():
                 raise Rejected('incomplete_release')
             manifest = json.loads((destination / 'manifest.json').read_text())
             if manifest.get('identity') != pending['identity'] or manifest.get('files') != {k: v for k, v in files.items() if k != 'manifest.json'}:
@@ -452,10 +510,12 @@ class Receiver:
                 directory.chmod(0o755)
                 fsync_dir(directory)
             fsync_dir(destination)
-            header = (destination / 'itmap').read_bytes()[:20]
-            if (len(header) != 20 or header[:6] != b'\x7fELF\x02\x01' or expected_machine is None
-                    or struct.unpack('<H', header[18:20])[0] != expected_machine):
-                raise Rejected('wrong_binary_platform')
+            for binary in binaries:
+                with (destination / binary).open('rb') as stream:
+                    header = stream.read(20)
+                if (len(header) != 20 or header[:6] != b'\x7fELF\x02\x01' or expected_machine is None
+                        or struct.unpack('<H', header[18:20])[0] != expected_machine):
+                    raise Rejected('wrong_binary_platform')
 
     def current(self):
         path = self.root / 'current'
@@ -485,12 +545,192 @@ class Receiver:
                     raise Rejected('health_failed') from None
                 time.sleep(1)
 
+    def worker_target(self):
+        current = self.worker_root / 'current'
+        if not current.is_symlink():
+            raise Rejected('invalid_worker_current')
+        path = current.resolve(strict=True)
+        if (path.parent != self.worker_root / 'releases' or not path.is_dir()
+                or not re.fullmatch(r'(?:[1-9][0-9]*-)?[0-9a-f]{40}', path.name)):
+            raise Rejected('invalid_worker_current')
+        return path
+
+    def switch_worker(self, value, name='current'):
+        link = self.worker_root / (name + '.next')
+        link.unlink(missing_ok=True)
+        link.symlink_to(value)
+        os.replace(link, self.worker_root / name)
+        fsync_dir(self.worker_root)
+
+    def wait_joint_health(self, expected):
+        for attempt in range(40):
+            try:
+                self.worker.executable(expected, paused=False)
+                self.worker.ready()
+                return
+            except (OSError, ValueError, http.client.HTTPException, Rejected, subprocess.SubprocessError):
+                if attempt == 39:
+                    raise Rejected('worker_readiness_failed') from None
+                time.sleep(1)
+
+    def apply_joint(self, state, pending):
+        if self.worker is None:
+            state['result'] = 'rollback_failed' if state.get('joint') else 'deferred'
+            self.save(state)
+            return state
+        token = pending['release']
+        release = self.root / 'releases' / token
+        worker_release = self.worker_root / 'releases' / token
+        archive = self.state_dir / pending['archive']
+        recovering = state['result'] == 'applying'
+        journal = state.get('joint') if recovering else None
+        phase = journal['phase'] if journal else None
+        try:
+            if recovering:
+                if phase == 'committed' and pending['identity'] == state['candidate']:
+                    current = self.worker.wait_executable(worker_release / 'itmap-worker')
+                    self.service.verify_executable(release / 'itmap')
+                    self.wait_health()
+                    if current['paused']:
+                        self.worker.resume(token, current)
+                    elif self.worker.hold_token() is not None:
+                        raise Rejected('worker_hold_conflict')
+                    self.wait_joint_health(worker_release / 'itmap-worker')
+                    return self.finish_joint(state, pending)
+                raise Rejected('interrupted_joint_release')
+            if pending['identity'] != state['candidate']:
+                state.update(result='superseded', pending=None)
+                self.save(state)
+                return state
+            if hashlib.sha256(archive.read_bytes()).hexdigest() != pending['digest']:
+                raise Rejected('archive_digest_mismatch')
+            temp = Path(tempfile.mkdtemp(prefix='.joint-', dir=release.parent))
+            worker_temp = None
+            try:
+                self.unpack(archive, temp, pending)
+                worker_temp = Path(tempfile.mkdtemp(prefix='.joint-', dir=worker_release.parent))
+                shutil.copy2(temp / 'itmap-worker', worker_temp / 'itmap-worker')
+                with (worker_temp / 'itmap-worker').open('rb') as stream:
+                    os.fsync(stream.fileno())
+                worker_temp.chmod(0o755)
+                fsync_dir(worker_temp)
+                temp.chmod(0o755)
+                self.install_joint_tree(temp, release)
+                self.install_joint_tree(worker_temp, worker_release)
+            finally:
+                if temp.exists():
+                    shutil.rmtree(temp)
+                if worker_temp is not None and worker_temp.exists():
+                    shutil.rmtree(worker_temp)
+            old_api = self.current()
+            old_worker = self.worker_target()
+            if not old_api:
+                raise Rejected('joint_previous_api_unavailable')
+            self.service.verify_executable(self.root / old_api / 'itmap')
+            old_instance = self.worker.executable(old_worker / 'itmap-worker', paused=False)
+            journal = {'phase': 'draining', 'api': old_api, 'worker': str(old_worker), 'instance': old_instance}
+            state.update(result='applying', joint=journal)
+            self.save(state)
+            phase = 'draining'
+            instance = self.worker.drain(token)
+            if instance['instance'] != old_instance['instance'] or instance['pid'] != old_instance['pid']:
+                raise Rejected('worker_instance_changed')
+            journal['phase'] = phase = 'switching'
+            self.save(state)
+            self.worker.service('stop')
+            self.switch_worker(worker_release)
+            self.switch('releases/' + token)
+            self.service.restart()
+            self.wait_health()
+            self.service.verify_executable(release / 'itmap')
+            self.worker.service('start')
+            current = self.worker.wait_executable(worker_release / 'itmap-worker', paused=True)
+            self.switch_worker(old_worker, 'previous')
+            journal['phase'] = phase = 'committed'
+            self.save(state)
+            self.worker.resume(token, current)
+            self.wait_joint_health(worker_release / 'itmap-worker')
+            return self.finish_joint(state, pending)
+        except Exception:
+            try:
+                if phase == 'draining':
+                    if self.worker.hold_token() == token:
+                        current = self.worker.instance()
+                        if current['paused']:
+                            self.worker.resume(token, journal['instance'])
+                        elif current['instance'] == journal['instance']['instance'] and current['pid'] == journal['instance']['pid']:
+                            self.worker.hold.unlink()
+                            fsync_dir(self.worker.hold.parent)
+                        else:
+                            raise Rejected('worker_instance_changed')
+                    state['result'] = 'deferred'
+                elif phase in ('switching', 'committed'):
+                    if phase == 'committed':
+                        if self.worker.active():
+                            self.worker.drain(token)
+                        else:
+                            self.worker.create_hold(token)
+                        journal['phase'] = 'switching'
+                        self.save(state)
+                    self.rollback_joint(token, journal)
+                    state['result'] = 'failed_rolled_back'
+                else:
+                    state['result'] = 'deferred'
+            except Exception:
+                state['result'] = 'rollback_failed'
+            self.save(state)
+            return state
+
+    def install_joint_tree(self, staging, destination):
+        if not destination.exists():
+            os.replace(staging, destination)
+            fsync_dir(destination.parent)
+            return
+        expected = {path.relative_to(staging) for path in staging.rglob('*') if path.is_file()}
+        existing = {path.relative_to(destination) for path in destination.rglob('*') if path.is_file()}
+        if destination.is_symlink() or expected != existing or any(
+                (destination / name).is_symlink()
+                or hashlib.sha256((staging / name).read_bytes()).digest()
+                != hashlib.sha256((destination / name).read_bytes()).digest()
+                for name in expected):
+            raise Rejected('immutable_release_conflict')
+
+    def rollback_joint(self, token, journal):
+        if self.worker.hold_token() != token:
+            raise Rejected('worker_hold_conflict')
+        if self.worker.active():
+            current = self.worker_target()
+            self.worker.wait_executable(current / 'itmap-worker', paused=True)
+            self.worker.service('stop')
+        old_worker = Path(journal['worker'])
+        self.switch_worker(old_worker)
+        self.switch(journal['api'])
+        self.service.restart()
+        self.wait_health()
+        self.service.verify_executable(self.root / journal['api'] / 'itmap')
+        self.worker.service('start')
+        current = self.worker.wait_executable(old_worker / 'itmap-worker', paused=True)
+        self.worker.resume(token, current)
+        self.wait_joint_health(old_worker / 'itmap-worker')
+
+    def finish_joint(self, state, pending):
+        state.update(result='success', joint=None, current={'identity': pending['identity'],
+                     'digest': pending['digest'], 'release': pending['release']})
+        self.save(state)
+        return state
+
     def apply(self):
         # Worker is detached by systemd, not a child tied to the SSH connection.
         with self.locked():
             state = self.load()
             pending = state.get('pending')
             if not pending or state['result'] not in ('queued', 'applying'):
+                return state
+            if pending.get('joint'):
+                return self.apply_joint(state, pending)
+            if self.worker is not None:
+                state['result'] = 'deferred'
+                self.save(state)
                 return state
             if pending['identity'] != state['candidate']:
                 if state['result'] == 'applying':
@@ -589,7 +829,17 @@ def main():
     os.umask(0o077)
     trusted_directory(Path(f'/opt/itmap/{args.slot}'))
     trusted_directory(Path(f'/var/lib/itmap-deploy/{args.slot}'))
-    receiver = Receiver(args.slot)
+    worker_root = Path('/opt/itmap/worker')
+    state_root = Path(f'/var/lib/itmap-deploy/{args.slot}')
+    policy = state_root / 'joint-release-enabled'
+    worker = None
+    if args.slot == 'main' and os.path.lexists(policy):
+        info = policy.lstat()
+        if not stat.S_ISREG(info.st_mode) or info.st_uid != 0 or info.st_mode & 0o022:
+            raise Rejected('unsafe_joint_policy')
+        trusted_directory(worker_root / 'releases')
+        worker = WorkerDrain(worker_root)
+    receiver = Receiver(args.slot, worker_root=worker_root, worker=worker)
     if args.apply:
         result = receiver.apply()
     else:
