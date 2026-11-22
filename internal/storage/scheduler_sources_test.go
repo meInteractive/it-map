@@ -3,6 +3,7 @@
 package storage
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 
@@ -54,9 +55,13 @@ func TestMariaDBSchedulerSourcesDisposable(t *testing.T) {
 				if err != nil || before.Processed != 0 || provider.starts != 0 {
 					t.Fatal("source was in scope before adding to favorites", before, err)
 				}
-				s.exec(`INSERT INTO company_user_state(user_name,company_name,favorite)
-					SELECT 'CI_OWNER',company_name,1 FROM company_identity WHERE id=991302
-					ON DUPLICATE KEY UPDATE favorite=1`)
+				s.exec("INSERT INTO company_crm(company_name) VALUES('CI Apify Runtime')")
+				t.Cleanup(func() {
+					if _, err := s.db.ExecContext(context.Background(), "DELETE FROM company_crm WHERE company_name='CI Apify Runtime'"); err != nil {
+						t.Error("favorite CRM fixture cleanup", err)
+					}
+				})
+				s.exec("INSERT INTO company_user_state(user_name,company_name,favorite) VALUES('CI_OWNER','CI Apify Runtime',1)")
 			}
 
 			first, err := w.Cycle(s.ctx, parser.WorkerOptions{Run: parser.RunOptions{RequestID: "CI_SOURCE_TICK_1"}, MaxJobs: 20})

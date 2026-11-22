@@ -3,6 +3,7 @@
 package storage
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 	"time"
@@ -71,6 +72,14 @@ func TestMariaDBHHScanScheduleReadonlyDisposable(t *testing.T) {
 	}
 	f.exec("INSERT INTO company_identity(id,company_name) VALUES(29005,'CI GO290 Missing')")
 	f.exec("UPDATE firecrawl_settings SET favorites_only=1 WHERE id=1")
+	f.exec(`INSERT INTO company_crm(company_name) VALUES
+		('CI GO290 Due'),('CI GO290 Disabled'),('CI GO290 Missing'),('CI GO290 Waiting')`)
+	t.Cleanup(func() {
+		if _, err := f.db.ExecContext(context.Background(), `DELETE FROM company_crm
+			WHERE company_name IN ('CI GO290 Due','CI GO290 Disabled','CI GO290 Missing','CI GO290 Waiting')`); err != nil {
+			t.Error("favorite CRM fixture cleanup", err)
+		}
+	})
 	f.exec(`INSERT INTO company_user_state(user_name,company_name,favorite) VALUES
 		('Eugene','CI GO290 Due',1),('Eugene','CI GO290 Disabled',1),('Eugene','CI GO290 Missing',1),
 		('CI other user','CI GO290 Waiting',1)`)
