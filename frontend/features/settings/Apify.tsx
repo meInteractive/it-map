@@ -352,8 +352,7 @@ function HHSources() {
     (source) => source.revision === 0 && source.supported && !source.enabled,
   );
   return (
-    <details>
-      <summary>Источники HH компаний</summary>
+    <section aria-label="Источники HH компаний">
       <State loading={!q.data && q.loading} error={q.error}>
         {q.data && (
           <>
@@ -404,16 +403,21 @@ function HHSources() {
                 )}
               </>
             )}
-            {q.data.sources.map((source) => (
-              <HHSourceForm
-                key={source.companyId + ':' + source.revision + ':' + source.url}
-                source={source}
-              />
-            ))}
+            {q.data.sources.length > 0 && (
+              <details>
+                <summary>Источники HH компаний</summary>
+                {q.data.sources.map((source) => (
+                  <HHSourceForm
+                    key={source.companyId + ':' + source.revision + ':' + source.url}
+                    source={source}
+                  />
+                ))}
+              </details>
+            )}
           </>
         )}
       </State>
-    </details>
+    </section>
   );
 }
 export default function ApifySettings() {
@@ -431,9 +435,9 @@ export default function ApifySettings() {
               {q.data.enabled ? 'Сбор включён' : 'Сбор выключен'} · Starter{' '}
               {q.data.paidAllowed ? 'разрешён' : 'не разрешён'}
             </p>
+            <HHSources />
             <ApifyBudgets />
             <TargetHH />
-            <HHSources />
             <details>
               <summary>Подключения и тариф Apify</summary>
               <div className="settings-grid">

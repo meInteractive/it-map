@@ -1058,7 +1058,10 @@ export default function Scheduler({
                 >
                   {visited.includes('diagnostics') && (
                     <>
-                      <ParserHHScanSchedule isAuthorized={isAuthorized} />
+                      <ParserHHScanSchedule
+                        isAuthorized={isAuthorized}
+                        onOpenServices={services ? () => show('services') : undefined}
+                      />
                       <ParserFunnel isAuthorized={isAuthorized} />
                       <ParserUnitCost />
                       <ParserExpenseRepeats />

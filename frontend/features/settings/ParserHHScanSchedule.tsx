@@ -272,7 +272,8 @@ export function HHScanScheduleView({ report: r }: { report: HHScanScheduleReport
 }
 export default function ParserHHScanSchedule({
   isAuthorized,
-}: { isAuthorized?: () => boolean } = {}) {
+  onOpenServices,
+}: { isAuthorized?: () => boolean; onOpenServices?: () => void } = {}) {
   const q = useApi<HHScanScheduleReport>('/api/scheduler/hh-schedule', {
     refreshIntervalMs: 60000,
   });
@@ -306,7 +307,14 @@ export default function ParserHHScanSchedule({
       </div>
       <State loading={!report && q.loading} error={error}>
         {report ? (
-          <HHScanScheduleView report={report} />
+          <>
+            <HHScanScheduleView report={report} />
+            {onOpenServices && (report.favoriteCoverage?.missingSetting ?? 0) > 0 && (
+              <button type="button" className="settings-button secondary" onClick={onOpenServices}>
+                Перейти к настройке источников HH
+              </button>
+            )}
+          </>
         ) : (
           !q.loading && !error && <p>Диагностика пока недоступна.</p>
         )}

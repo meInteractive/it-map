@@ -82,7 +82,7 @@ let authorized=true;
 Object.defineProperty(globalThis,'navigator',{configurable:true,value:{
  clipboard:{async writeText(text){writes.push(JSON.parse(text));}},
 }});
-let root,mode='ok',calls=0;
+let root,mode='ok',calls=0,opened=0;
 globalThis.window={addEventListener(){},removeEventListener(){}};
 globalThis.IS_REACT_ACT_ENVIRONMENT=true;
 globalThis.fetch=async(url,options={})=>{
@@ -91,7 +91,7 @@ globalThis.fetch=async(url,options={})=>{
  calls++;
  if(mode==='network')throw new Error('Синтетический сетевой сбой');
  if(mode==='broken')return Response.json({...base,summary:null});
- if(mode==='full')return Response.json({...withBreakdown,summary:{...withBreakdown.summary,
+ if(mode==='full')return Response.json({...withBreakdown,favoriteCoverage:withFavorites.favoriteCoverage,summary:{...withBreakdown.summary,
   successfulLast24h:2,successfulLast48h:4,successDateUnknown:1},
   companyName:'CI_PRIVATE_COMPANY',accessToken:'CI_PRIVATE_TOKEN'});
  return Response.json(base);
@@ -99,7 +99,7 @@ globalThis.fetch=async(url,options={})=>{
 const flush=()=>act(async()=>{await new Promise(resolve=>setTimeout(resolve,0));});
 const view=()=>JSON.stringify(root.toJSON());
 try {
- await act(async()=>{root=create(h(ParserHHScanSchedule,{isAuthorized:()=>authorized}));});await flush();await flush();
+ await act(async()=>{root=create(h(ParserHHScanSchedule,{isAuthorized:()=>authorized,onOpenServices:()=>opened++}));});await flush();await flush();
  assert.equal(calls,1);
  assert.match(view(),/Срок проверки наступил/);
  const refresh=()=>root.root.findAllByType('button').find(b=>b.props.children==='Обновить');
@@ -127,6 +127,10 @@ try {
  assert.equal(writes[0].summary.pendingBreakdown.reconcileCandidate,1);
  assert.equal(writes[0].summary.pendingBreakdown.oldestPendingAt,new Date(now-day).toISOString());
  assert.equal(writes[0].dataAsOf,new Date(now).toISOString());
+ const sourceSetup=root.root.findAllByType('button').find(b=>b.props.children==='Перейти к настройке источников HH');
+ assert.ok(sourceSetup,'favorites missing HH configuration should expose source settings navigation');
+ await act(async()=>sourceSetup.props.onClick());
+ assert.equal(opened,1);
  assert.equal(writes[0].filters.intervalDays,1);
  assert.equal(writes[0].summary.finalEligibilityVerified,false);
  assert.ok(!JSON.stringify(writes[0]).includes('CI_PRIVATE'));

@@ -17,6 +17,18 @@ func catalogHHSource(data []byte, name string) (string, error) {
 	if name == "" {
 		return "", ErrSourceMissing
 	}
+	urls, err := catalogHHSourceURLs(data)
+	if err != nil {
+		return "", err
+	}
+	if urls[name] == "" {
+		return "", ErrSourceMissing
+	}
+	return urls[name], nil
+}
+
+func catalogHHSourceURLs(data []byte) (map[string]string, error) {
+	var counts map[string]int
 	if len(data) > 0 {
 		var catalog struct {
 			Companies []struct {
@@ -24,33 +36,25 @@ func catalogHHSource(data []byte, name string) (string, error) {
 			} `json:"companies"`
 		}
 		if json.Unmarshal(data, &catalog) != nil || catalog.Companies == nil {
-			return "", ErrStorage
+			return nil, ErrStorage
 		}
-		count := 0
+		counts = make(map[string]int, len(catalog.Companies))
 		for _, company := range catalog.Companies {
-			if company.Name == name {
-				count++
+			counts[company.Name]++
+		}
+	}
+	urls, err := backup.CatalogHHSourceURLs(data)
+	if err != nil {
+		return nil, ErrStorage
+	}
+	if counts != nil {
+		for name := range urls {
+			if counts[name] != 1 {
+				delete(urls, name)
 			}
 		}
-		if count != 1 {
-			return "", ErrSourceMissing
-		}
 	}
-	detail, err := backup.PrepareCatalogRead(data, backup.CatalogReadState{}, backup.CatalogReadOptions{EntityType: "company", View: "detail", Name: name})
-	if err != nil {
-		return "", ErrStorage
-	}
-	var entity *struct {
-		VacancySources map[string]json.RawMessage `json:"vacancySources"`
-	}
-	if json.Unmarshal(detail, &entity) != nil || entity == nil {
-		return "", ErrSourceMissing
-	}
-	var url string
-	if json.Unmarshal(entity.VacancySources["hh"], &url) != nil || url == "" {
-		return "", ErrSourceMissing
-	}
-	return url, nil
+	return urls, nil
 }
 
 func validateHHSource(catalogURL, submittedURL string, enabled bool) error {
@@ -129,24 +133,32 @@ func readHHSource(ctx context.Context, tx *sql.Tx, companyID int64, lock bool) (
 	if err != nil {
 		return HHSource{}, false, err
 	}
-	defaults, _ := normalizeListingConfig(nil)
-	out := HHSource{CompanyID: companyID, SourceID: "hh", URL: url, Config: defaults}
-	_, err = apify.HHInput(url, apify.HHOptions{})
-	out.Supported = err == nil
 	var storedURL string
 	var storedConfig []byte
-	var enabled, auto int64
+	var enabled, auto, revision int64
 	query = "SELECT source_url,enabled,revision,auto_enabled,config_json FROM vacancy_source_parsing WHERE company_id=? AND source_id='hh'"
 	if lock {
 		query += " FOR UPDATE"
 	}
-	err = tx.QueryRowContext(ctx, query, companyID).Scan(&storedURL, &enabled, &out.Revision, &auto, &storedConfig)
+	err = tx.QueryRowContext(ctx, query, companyID).Scan(&storedURL, &enabled, &revision, &auto, &storedConfig)
 	if errors.Is(err, sql.ErrNoRows) {
-		return out, false, nil
+		out, err := hhSourceView(companyID, url, "", 0, 0, 0, nil)
+		return out, false, err
 	}
-	if err != nil || (enabled != 0 && enabled != 1) || (auto != 0 && auto != 1) {
+	if err != nil {
 		return HHSource{}, false, ErrStorage
 	}
+	out, err := hhSourceView(companyID, url, storedURL, enabled, revision, auto, storedConfig)
+	return out, true, err
+}
+
+func hhSourceView(companyID int64, url, storedURL string, enabled, revision, auto int64, storedConfig []byte) (HHSource, error) {
+	if (enabled != 0 && enabled != 1) || (auto != 0 && auto != 1) {
+		return HHSource{}, ErrStorage
+	}
+	defaults, _ := normalizeListingConfig(nil)
+	_, supportedErr := apify.HHInput(url, apify.HHOptions{})
+	out := HHSource{CompanyID: companyID, SourceID: "hh", URL: url, Config: defaults, Revision: revision, Supported: supportedErr == nil}
 	validConfig := true
 	if storedURL == url {
 		normalized, configErr := normalizeListingConfig(storedConfig)
@@ -157,7 +169,7 @@ func readHHSource(ctx context.Context, tx *sql.Tx, companyID int64, lock bool) (
 	}
 	out.Enabled = storedURL == url && enabled == 1 && out.Supported && validConfig
 	out.AutoEnabled = storedURL == url && auto == 1 && out.Enabled
-	return out, true, nil
+	return out, nil
 }
 
 func (r Repository) ReadHHSource(ctx context.Context, companyID int64) (HHSource, error) {
