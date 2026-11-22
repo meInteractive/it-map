@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"testing"
 
+	"itmap/internal/paidrecovery"
 	"itmap/internal/parser"
 	"itmap/internal/workerengine"
 )
@@ -81,5 +82,33 @@ func TestMariaDBWorkerRecoveryZeroReserveProviderUnknownDisposable(t *testing.T)
 	}
 	if _, err := workerengine.NewRecoveryReader(f.db, old).ReadRecovery(f.ctx); err == nil {
 		t.Fatal("stale recovery reader accepted")
+	}
+}
+
+// Старые сохранённые записи учитываются по составу, а не только по количеству.
+func TestMariaDBWorkerReleaseLedgerDisposable(t *testing.T) {
+	f := openSchedulerFixture(t)
+	f.exec("INSERT INTO scheduler_runs(id,generation,`trigger`,started_at,status) VALUES('CI_ledger_run',?,'automatic',1,'interrupted')", f.repo.Generation)
+	f.exec(`INSERT INTO scheduler_jobs(id,generation,dedupe_key,type,source_id,status,priority,run_after,created_at,updated_at)
+		VALUES('CI_ledger_job',?,'CI_ledger_job','classify_title','hh','failed',10,1,1,1)`, f.repo.Generation)
+	f.exec(`INSERT INTO scheduler_attempts(id,job_id,run_id,type,provider,started_at,finished_at,status,reserved_usd)
+		VALUES('CI_ledger_attempt','CI_ledger_job','CI_ledger_run','classify_title','openai',1,2,'interrupted',0)`)
+	base, err := paidrecovery.ReadReleaseLedger(f.ctx, f.db, f.repo.Generation)
+	if err != nil || base.Count != 1 || len(base.Digest) != 64 {
+		t.Fatal("old ledger evidence unavailable", base, err)
+	}
+	f.exec("UPDATE scheduler_attempts SET reserved_usd=0.01 WHERE id='CI_ledger_attempt'")
+	changed, err := paidrecovery.ReadReleaseLedger(f.ctx, f.db, f.repo.Generation)
+	if err != nil || changed.Count != base.Count || changed.Digest == base.Digest {
+		t.Fatal("same-count mutation was not detected", changed, err)
+	}
+	f.exec("UPDATE scheduler_jobs SET status='running' WHERE id='CI_ledger_job'")
+	if _, err := paidrecovery.ReadReleaseLedger(f.ctx, f.db, f.repo.Generation); err == nil {
+		t.Fatal("active job was accepted as old evidence")
+	}
+	f.exec("UPDATE scheduler_jobs SET status='failed' WHERE id='CI_ledger_job'")
+	f.exec("UPDATE scheduler_attempts SET finished_at=CAST(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000 AS SIGNED) WHERE id='CI_ledger_attempt'")
+	if _, err := paidrecovery.ReadReleaseLedger(f.ctx, f.db, f.repo.Generation); err == nil {
+		t.Fatal("recent attempt was accepted as old evidence")
 	}
 }

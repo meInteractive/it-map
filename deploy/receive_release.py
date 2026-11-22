@@ -243,7 +243,14 @@ class WorkerDrain:
         finally:
             Path(name).unlink(missing_ok=True)
 
-    def verify_idle(self):
+    def ledger(self):
+        evidence = self.message('/ledger')
+        count, digest = evidence.get('count'), evidence.get('digest')
+        if type(count) is not int or not 0 <= count <= 1024 or not isinstance(digest, str) or not DIGEST.fullmatch(digest):
+            raise Rejected('worker_ledger_invalid')
+        return evidence
+
+    def verify_idle(self, baseline):
         # Прямое loopback-чтение, без прокси и без перехода по redirect.
         with contextlib.closing(http.client.HTTPConnection('127.0.0.1', 18082, timeout=3)) as conn:
             snapshots = {}
@@ -260,24 +267,28 @@ class WorkerDrain:
         try:
             values = [queue[kind]['running'] for kind in ('scan', 'pipeline')]
             values += [recovery[key] for key in (
-                'actorCurrentUnresolved', 'currentAIReservedRunning', 'currentAIReservedOther',
-                'currentAIZeroReserveProviderUnknown', 'actorUnknown', 'actorReconcile',
+                'actorCurrentUnresolved', 'currentAIReservedRunning', 'actorUnknown', 'actorReconcile',
                 'schedulerHistoricalUnknown', 'schedulerOrphanUnknown',
                 'schedulerHistoricalZeroReserveProviderUnknown', 'schedulerOrphanZeroReserveProviderUnknown')]
+            old_ai = [recovery[key] for key in ('currentAIReservedOther', 'currentAIZeroReserveProviderUnknown')]
         except (KeyError, TypeError):
             raise Rejected('worker_diagnostics_invalid') from None
         if any(type(value) is not int or value != 0 for value in values):
             raise Rejected('worker_unsettled_operations')
+        if (any(type(value) is not int or value < 0 for value in old_ai)
+                or sum(old_ai) != baseline['count'] or self.ledger() != baseline):
+            raise Rejected('worker_ledger_changed')
 
     def drain(self, token, timeout=30):
         original = self.instance()
+        baseline = self.ledger()
         self.create_hold(token)
         request = {'instance': original['instance'], 'token': token}
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
             state = self.message('/pause', request).get('state')
             if state == 'held':
-                self.verify_idle()
+                self.verify_idle(baseline)
                 confirmed = self.instance()
                 if (confirmed['instance'] != original['instance'] or confirmed['pid'] != original['pid']
                         or not confirmed['paused'] or self.hold_token() != token):
