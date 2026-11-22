@@ -611,9 +611,25 @@
       "dynamicURL": false
     },
     {
+      "id": "aac6287bbe74cd46-2",
+      "file": "frontend/features/settings/Apify.tsx",
+      "line": 378,
+      "call": "mutate",
+      "method": "PUT",
+      "methodExpression": "'PUT'",
+      "urlExpression": "'/api/apify/hh-source?companyId=' + source.companyId",
+      "literalFragments": [
+        "/api/apify/hh-source?companyId="
+      ],
+      "families": [
+        "apify"
+      ],
+      "dynamicURL": true
+    },
+    {
       "id": "97a6926cc087d3be",
       "file": "frontend/features/settings/Apify.tsx",
-      "line": 372,
+      "line": 420,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",

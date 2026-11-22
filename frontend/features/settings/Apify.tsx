@@ -347,6 +347,10 @@ function HHSourceForm({ source }: { source: HHSource }) {
 }
 function HHSources() {
   const q = useApi<{ sources: HHSource[] }>('/api/apify/hh-sources');
+  const [confirmed, setConfirmed] = useState<number>();
+  const ready = (q.data?.sources ?? []).filter(
+    (source) => source.revision === 0 && source.supported && !source.enabled,
+  );
   return (
     <details>
       <summary>Источники HH компаний</summary>
@@ -355,6 +359,50 @@ function HHSources() {
           <>
             {q.data.sources.length === 0 && (
               <p>Нет заполненных HH-источников компаний в текущей области парсинга.</p>
+            )}
+            {(ready.length > 0 || confirmed !== undefined) && (
+              <>
+                {ready.length > 0 && (
+                  <ActionForm
+                    lockWhileBusy
+                    onSubmit={async () => {
+                      if (
+                        !window.confirm(
+                          `Включить новые источники HH (${ready.length})? Планировщик сможет ставить их в очередь на общих условиях.`,
+                        )
+                      ) {
+                        return;
+                      }
+                      setConfirmed(0);
+                      for (const source of ready) {
+                        const saved = await mutate<HHSource>(
+                          '/api/apify/hh-source?companyId=' + source.companyId,
+                          'PUT',
+                          {
+                            sourceUrl: source.url,
+                            enabled: true,
+                            revision: source.revision,
+                            config: source.config,
+                          },
+                        );
+                        if (saved?.companyId !== source.companyId || saved.enabled !== true) {
+                          throw new Error('Сохранение источника HH не подтверждено.');
+                        }
+                        setConfirmed((count) => (count ?? 0) + 1);
+                      }
+                    }}
+                  >
+                    {(busy) => (
+                      <button className="settings-button" disabled={busy}>
+                        Включить новые источники HH ({ready.length})
+                      </button>
+                    )}
+                  </ActionForm>
+                )}
+                {confirmed !== undefined && (
+                  <p role="status">Подтверждено настроек HH: {confirmed}.</p>
+                )}
+              </>
             )}
             {q.data.sources.map((source) => (
               <HHSourceForm

@@ -2,14 +2,43 @@ import assert from 'node:assert/strict';import fs from 'node:fs';import {createE
 fs.mkdirSync('.tests',{recursive:true});fs.writeFileSync('.tests/apify-ui.tsx',"export {default as ApifySettings} from '../frontend/features/settings/Apify';export {FirecrawlSourcePanel} from '../frontend/features/settings/Firecrawl';export {clearCache} from '../frontend/api/client';");const ui=await moduleFor('.tests/apify-ui.tsx');const previous={fetch:globalThis.fetch,window:globalThis.window,IS_REACT_ACT_ENVIRONMENT:globalThis.IS_REACT_ACT_ENVIRONMENT};globalThis.IS_REACT_ACT_ENVIRONMENT=true;globalThis.window={confirm:()=>true,addEventListener(){},removeEventListener(){}};let root,calls=[],confirms=0;
 const profile=()=>({configured:false,keyMask:'',account:null,lastError:'',limits:{priceUsd:0,creditsUsd:5}}),state={enabled:false,paidAllowed:false,revision:0,profiles:{free:profile(),starter:{...profile(),limits:{priceUsd:19,creditsUsd:19}}}};
 const source={companyId:1,companyName:'HH company',sourceId:'hh',sourceName:'HH',url:'https://hh.ru/employer/42',supported:true,reason:null,enabled:true,revision:1,method:'apify',config:{adapter:'generic',html:false,titleClass:'',detailPathPrefix:'',allowedHosts:[],pagination:null},lastSuccessAt:null,lastError:''};
+const newSources=[
+ {...source,companyId:2,companyName:'CI new HH first',enabled:false,revision:0},
+ {...source,companyId:3,companyName:'CI new HH second',enabled:false,revision:0},
+ {...source,companyId:4,companyName:'CI unsupported HH',supported:false,enabled:false,revision:0},
+ {...source,companyId:5,companyName:'CI previously disabled HH',enabled:false,revision:2}
+];
+let failSecond=true;
 globalThis.fetch=async(url,options={})=>{
- if(options.method){const body=JSON.parse(options.body);calls.push({url,body});if(url==='/api/apify/check')return Response.json({account:{accountId:'CIAccount',planPriceUsd:0,planCreditsUsd:5,providerUsedUsd:1.5,providerLimitUsd:5,periodStart:'2026-10-01T00:00:00Z',periodEnd:'2026-11-30T00:00:00Z',checkedAt:1792844986040}});if(url==='/api/apify/key'){state.profiles[body.profile].configured=true;state.profiles[body.profile].keyMask='••••1234';state.paidAllowed=false;state.revision++;}if(url==='/api/apify/settings'){Object.assign(state,{enabled:body.enabled,paidAllowed:body.paidAllowed,revision:state.revision+1});}return Response.json(state);}
- if(url==='/api/apify/hh-sources')return Response.json({sources:[source]});if(url==='/api/apify/settings')return Response.json(state);if(url==='/api/apify/usage')return Response.json({profiles:{free:null,starter:null},active:[],providerLimitMode:true});if(url==='/api/firecrawl/settings')return Response.json({enabled:false,configured:false,favoritesOnly:true});if(url.includes('/pending'))return Response.json({runs:[]});if(url.includes('/sources'))return Response.json({sources:[source]});throw new Error('Unexpected UI request '+url);
+ if(options.method){const body=JSON.parse(options.body);calls.push({url,body});if(url.startsWith('/api/apify/hh-source?companyId=')){
+  const id=Number(url.split('=')[1]);const item=newSources.find(row=>row.companyId===id);
+  if(item){
+   if(id===3&&failSecond)return Response.json({error:'CI synthetic failure'},{status:503});
+   Object.assign(item,{enabled:true,revision:1});return Response.json(item);
+  }
+ }if(url==='/api/apify/check')return Response.json({account:{accountId:'CIAccount',planPriceUsd:0,planCreditsUsd:5,providerUsedUsd:1.5,providerLimitUsd:5,periodStart:'2026-10-01T00:00:00Z',periodEnd:'2026-11-30T00:00:00Z',checkedAt:1792844986040}});if(url==='/api/apify/key'){state.profiles[body.profile].configured=true;state.profiles[body.profile].keyMask='••••1234';state.paidAllowed=false;state.revision++;}if(url==='/api/apify/settings'){Object.assign(state,{enabled:body.enabled,paidAllowed:body.paidAllowed,revision:state.revision+1});}return Response.json(state);}
+ if(url==='/api/apify/hh-sources')return Response.json({sources:[source,...newSources]});if(url==='/api/apify/settings')return Response.json(state);if(url==='/api/apify/usage')return Response.json({profiles:{free:null,starter:null},active:[],providerLimitMode:true});if(url==='/api/firecrawl/settings')return Response.json({enabled:false,configured:false,favoritesOnly:true});if(url.includes('/pending'))return Response.json({runs:[]});if(url.includes('/sources'))return Response.json({sources:[source]});throw new Error('Unexpected UI request '+url);
 };
 const text=()=>JSON.stringify(root.toJSON()),submit=form=>form.props.onSubmit({preventDefault(){}}),formWith=name=>root.root.findAllByType('form').find(f=>f.findAllByType('button').some(b=>b.children.join('')===name)),label=part=>root.root.findAllByType('label').find(l=>l.children.some(c=>typeof c==='string'&&c.includes(part))).findByType('input');
 try{
  await act(async()=>{root=create(h(ui.ApifySettings));});assert.equal(label('Apify включён').props.checked,false);assert.equal(label('Разрешить платный').props.checked,false);assert.equal(label('Разрешить платный').props.disabled,true);assert.match(text(),/Остаток неизвестен/);assert.match(text(),/жёсткого лимита Apify/);assert.equal(root.root.findAllByType('input').filter(i=>i.props.type==='password').length,2);
  const sourceForm=formWith('Сохранить источник HH');await act(async()=>submit(sourceForm));assert.equal(calls.at(-1).url,'/api/apify/hh-source?companyId=1');assert.deepEqual(calls.at(-1).body,{sourceUrl:source.url,enabled:true,revision:1,config:source.config});
+ const beforeBulk=calls.length;
+ globalThis.window.confirm=()=>false;
+ await act(async()=>submit(formWith('Включить новые источники HH (2)')));
+ assert.equal(calls.length,beforeBulk,'declined action sends no requests');
+ globalThis.window.confirm=()=>true;
+ await act(async()=>submit(formWith('Включить новые источники HH (2)')));
+ assert.match(text(),/Подтверждено настроек HH: .*1/);
+ assert.match(text(),/CI synthetic failure/);
+ failSecond=false;
+ await act(async()=>submit(formWith('Включить новые источники HH (1)')));
+ assert.deepEqual(calls.slice(beforeBulk).map(c=>c.url),[
+  '/api/apify/hh-source?companyId=2','/api/apify/hh-source?companyId=3','/api/apify/hh-source?companyId=3'
+ ]);
+ assert.match(text(),/Подтверждено настроек HH: .*1/);
+ assert.ok(!formWith('Включить новые источники HH (1)'));
+
  for(const name of ['Free','Starter']){const secret='apify_api_SYNTHETIC_'+name+'_1234',form=formWith('Сохранить токен '+name);await act(async()=>form.findByType('input').props.onChange({target:{value:secret}}));await act(async()=>submit(form));assert.equal(calls.at(-1).body.apiKey,secret);assert.ok(!text().includes(secret));}
  await act(async()=>submit(formWith('Проверить подключение Free')));assert.deepEqual(calls.at(-1),{url:'/api/apify/check',body:{profile:'free'}});assert.match(text(),/Подключение проверено/);assert.match(text(),/использовано/);assert.ok(!calls.some(c=>c.url.includes('/actor')));
  assert.equal(label('Разрешить платный').props.disabled,false);await act(async()=>label('Apify включён').props.onChange({target:{checked:true}}));await act(async()=>label('Разрешить платный').props.onChange({target:{checked:true}}));
