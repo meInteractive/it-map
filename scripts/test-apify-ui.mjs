@@ -23,6 +23,11 @@ const text=()=>JSON.stringify(root.toJSON()),submit=form=>form.props.onSubmit({p
 try{
  await act(async()=>{root=create(h(ui.ApifySettings));});assert.equal(label('Apify включён').props.checked,false);assert.equal(label('Разрешить платный').props.checked,false);assert.equal(label('Разрешить платный').props.disabled,true);assert.match(text(),/Остаток неизвестен/);assert.match(text(),/жёсткого лимита Apify/);assert.equal(root.root.findAllByType('input').filter(i=>i.props.type==='password').length,2);
  const sourceForm=formWith('Сохранить источник HH');await act(async()=>submit(sourceForm));assert.equal(calls.at(-1).url,'/api/apify/hh-source?companyId=1');assert.deepEqual(calls.at(-1).body,{sourceUrl:source.url,enabled:true,revision:1,config:source.config});
+ const bulkForm=formWith('Включить новые источники HH (2)');
+ assert.ok(bulkForm,'bulk action is present');
+ for(let parent=bulkForm.parent;parent;parent=parent.parent){
+  assert.notEqual(parent.type,'details','bulk action must be visible without expanding settings');
+ }
  const beforeBulk=calls.length;
  globalThis.window.confirm=()=>false;
  await act(async()=>submit(formWith('Включить новые источники HH (2)')));

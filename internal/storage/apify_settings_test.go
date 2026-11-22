@@ -163,6 +163,12 @@ func TestMariaDBApifyHHSourceDisposable(t *testing.T) {
 	if err != nil || !source.Enabled || source.Revision != 1 {
 		t.Fatal("save HH source", err)
 	}
+	listed, listErr := r.ListHHSources(ctx, "CI HH Scope")
+	if listErr != nil || len(listed) != 1 || listed[0].Revision != source.Revision ||
+		listed[0].URL != source.URL || !listed[0].Supported || !listed[0].Enabled {
+		t.Fatal("HH bulk list disagreed with saved source", listErr)
+	}
+
 	key := "apify_api_" + strings.Repeat("z", 16)
 	if _, err = r.SaveKey(ctx, generation, apifysettings.KeyInput{Profile: "free", APIKey: key, Revision: 0}); err != nil {
 		t.Fatal("operation key fixture", err)

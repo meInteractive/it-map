@@ -613,7 +613,7 @@
     {
       "id": "aac6287bbe74cd46-2",
       "file": "frontend/features/settings/Apify.tsx",
-      "line": 378,
+      "line": 377,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
@@ -629,7 +629,7 @@
     {
       "id": "97a6926cc087d3be",
       "file": "frontend/features/settings/Apify.tsx",
-      "line": 420,
+      "line": 424,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -1429,7 +1429,7 @@
     {
       "id": "d121acc08c4213cc",
       "file": "frontend/features/settings/ParserHHScanSchedule.tsx",
-      "line": 276,
+      "line": 277,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -1859,7 +1859,7 @@
     {
       "id": "0f8303a5216fa000",
       "file": "frontend/features/settings/Scheduler.tsx",
-      "line": 1153,
+      "line": 1156,
       "call": "mutate",
       "method": "POST",
       "methodExpression": "'POST'",
@@ -1875,7 +1875,7 @@
     {
       "id": "952a1852bfcc4624",
       "file": "frontend/features/settings/Scheduler.tsx",
-      "line": 1167,
+      "line": 1170,
       "call": "mutate",
       "method": "POST",
       "methodExpression": "'POST'",

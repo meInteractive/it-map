@@ -90,6 +90,28 @@ func readArray(v *jsonValue) ([]*jsonValue, error) {
 	return v.items, nil
 }
 
+// CatalogHHSourceURLs reads the normalized company projection once.
+func CatalogHHSourceURLs(data []byte) (map[string]string, error) {
+	root, err := storedReadCatalog(data)
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[string]string)
+	for _, company := range root.field("companies").items {
+		name := stringFromUnits(company.field("name").text)
+		if _, seen := out[name]; seen {
+			out[name] = ""
+			continue
+		}
+		hh := company.field("vacancySources").field("hh")
+		out[name] = ""
+		if hh != nil && hh.kind == 's' {
+			out[name] = stringFromUnits(hh.text)
+		}
+	}
+	return out, nil
+}
+
 // PrepareCatalogRead builds the current source list/map/detail DTO without
 // activating a repository/HTTP path. Names stay UTF16-exact; output stays JSON
 // so lone surrogates, omitted properties and original scalar types survive.
