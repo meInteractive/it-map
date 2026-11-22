@@ -27,6 +27,11 @@ for(const bad of [
  {...base,finalEligibilityVerified:true}, {...base,intervalDays:5},
  {...base,summary:{...base.summary,nextDueAt:Infinity}},
 ])assert.equal(isHHScanScheduleReport(bad),false,'invalid schedule report accepted');
+const withFavorites={...base,favoriteCoverage:{total:9,missingSetting:3,savedDisabled:1,savedEnabled:5}};
+assert.equal(isHHScanScheduleReport(withFavorites),true);
+assert.match(render(HHScanScheduleView,{report:withFavorites}),/без сохранённой настройки/);
+assert.equal(isHHScanScheduleReport({...withFavorites,favoriteCoverage:{...withFavorites.favoriteCoverage,total:8}}),false);
+assert.equal(isHHScanScheduleReport({...withFavorites,favoritesOnly:false}),false);
 const withBreakdown={...base,pendingHHScans:6,pendingBreakdown:{
  pending:6,notDue:1,unverifiedCursor:1,orphanPaid:1,reconcileCandidate:1,
  launchCooldown:1,launchCandidate:1,other:0,oldestPendingAt:now-day

@@ -3,6 +3,7 @@
 package storage
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 
@@ -12,13 +13,14 @@ import (
 
 func TestMariaDBSchedulerSourcesDisposable(t *testing.T) {
 	for _, tc := range []struct {
-		name      string
-		favorites bool
-		shortened bool
-		known     bool
-		partial   bool
-		want      int
-	}{{"eligible source", false, false, false, false, 1}, {"outside favorites", true, false, false, false, 0}, {"shortened interval", false, true, false, false, 1}, {"known failed scan", false, false, true, false, 0}, {"partial source", false, false, false, true, 1}} {
+		name        string
+		favorites   bool
+		addFavorite bool
+		shortened   bool
+		known       bool
+		partial     bool
+		want        int
+	}{{"eligible source", false, false, false, false, false, 1}, {"outside favorites", true, false, false, false, false, 0}, {"new favorite", true, true, false, false, false, 1}, {"shortened interval", false, false, true, false, false, 1}, {"known failed scan", false, false, false, true, false, 0}, {"partial source", false, false, false, false, true, 1}} {
 		t.Run(tc.name, func(t *testing.T) {
 			items := []json.RawMessage{}
 			if tc.partial {
@@ -48,6 +50,20 @@ func TestMariaDBSchedulerSourcesDisposable(t *testing.T) {
 				s.exec(`UPDATE vacancy_source_parsing SET interval_days=7,last_success_at='2000-01-01T00:00:00.000Z',next_run_at=CAST(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000 AS SIGNED)+432000000 WHERE company_id=991302 AND source_id='hh'`)
 			}
 			w := parser.Worker{Runs: s.repo, Settings: apifysettings.NewRepository(s.db, "CI_SECRET"), ListingRuntime: listing.Runtime, ScheduleSources: true}
+			if tc.addFavorite {
+				before, err := w.Cycle(s.ctx, parser.WorkerOptions{Run: parser.RunOptions{RequestID: "CI_BEFORE_FAVORITE"}, MaxJobs: 20})
+				if err != nil || before.Processed != 0 || provider.starts != 0 {
+					t.Fatal("source was in scope before adding to favorites", before, err)
+				}
+				s.exec("INSERT INTO company_crm(company_name) VALUES('CI Apify Runtime')")
+				t.Cleanup(func() {
+					if _, err := s.db.ExecContext(context.Background(), "DELETE FROM company_crm WHERE company_name='CI Apify Runtime'"); err != nil {
+						t.Error("favorite CRM fixture cleanup", err)
+					}
+				})
+				s.exec("INSERT INTO company_user_state(user_name,company_name,favorite) VALUES('CI_OWNER','CI Apify Runtime',1)")
+			}
+
 			first, err := w.Cycle(s.ctx, parser.WorkerOptions{Run: parser.RunOptions{RequestID: "CI_SOURCE_TICK_1"}, MaxJobs: 20})
 			if err != nil || first.Processed != tc.want || provider.starts != tc.want {
 				t.Fatal("first source tick", first, provider.starts, err)

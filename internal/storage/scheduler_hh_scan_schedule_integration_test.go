@@ -3,6 +3,7 @@
 package storage
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 	"time"
@@ -69,4 +70,41 @@ func TestMariaDBHHScanScheduleReadonlyDisposable(t *testing.T) {
 	if gotAfter := dashboardFingerprint(f); gotAfter != before {
 		t.Fatal("SELECT-only diagnostic mutated disposable MariaDB")
 	}
+	f.exec("INSERT INTO company_identity(id,company_name) VALUES(29005,'CI GO290 Missing')")
+	f.exec("UPDATE firecrawl_settings SET favorites_only=1 WHERE id=1")
+	f.exec(`INSERT INTO company_crm(company_name) VALUES
+		('CI GO290 Due'),('CI GO290 Disabled'),('CI GO290 Missing'),('CI GO290 Waiting')`)
+	t.Cleanup(func() {
+		if _, err := f.db.ExecContext(context.Background(), `DELETE FROM company_crm
+			WHERE company_name IN ('CI GO290 Due','CI GO290 Disabled','CI GO290 Missing','CI GO290 Waiting')`); err != nil {
+			t.Error("favorite CRM fixture cleanup", err)
+		}
+	})
+	f.exec(`INSERT INTO company_user_state(user_name,company_name,favorite) VALUES
+		('Eugene','CI GO290 Due',1),('Eugene','CI GO290 Disabled',1),('Eugene','CI GO290 Missing',1),
+		('CI other user','CI GO290 Waiting',1)`)
+	readCoverage := func() parser.HHScanScheduleReport {
+		t.Helper()
+		body, err := repo.ReadHHScanSchedule(f.ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var result parser.HHScanScheduleReport
+		if err := json.Unmarshal(body, &result); err != nil {
+			t.Fatal(err)
+		}
+		return result
+	}
+	got = readCoverage()
+	want := parser.HHFavoriteCoverage{Total: 3, MissingSetting: 1, SavedDisabled: 1, SavedEnabled: 1}
+	if got.FavoriteCoverage == nil || *got.FavoriteCoverage != want || got.Summary.PotentiallyDue != 1 || got.Summary.Waiting != 0 {
+		t.Fatalf("wrong favorite scope after adding a due source: %+v", got)
+	}
+	f.exec("UPDATE company_user_state SET favorite=0 WHERE user_name='Eugene' AND company_name='CI GO290 Due'")
+	got = readCoverage()
+	want.Total, want.SavedEnabled = 2, 0
+	if got.FavoriteCoverage == nil || *got.FavoriteCoverage != want || got.Summary.PotentiallyDue != 0 {
+		t.Fatalf("removed favorite still visible as due: %+v", got)
+	}
+
 }

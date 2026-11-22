@@ -1413,7 +1413,7 @@
     {
       "id": "d121acc08c4213cc",
       "file": "frontend/features/settings/ParserHHScanSchedule.tsx",
-      "line": 248,
+      "line": 276,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
