@@ -15,6 +15,7 @@ import (
 
 	"itmap/internal/aiproviders"
 	"itmap/internal/apifysettings"
+	"itmap/internal/paidrecovery"
 	"itmap/internal/parser"
 	"itmap/internal/storage"
 	"itmap/internal/workerconfig"
@@ -148,7 +149,9 @@ func runWorker(ctx context.Context, db *sql.DB, s settings) error {
 	}()
 	var pause *workerengine.PauseGate
 	if s.releaseControl {
-		control, listener, gate, err := openReleaseControl()
+		control, listener, gate, err := openReleaseControl(func(active context.Context) (paidrecovery.ReleaseLedger, error) {
+			return paidrecovery.ReadReleaseLedger(active, db, generation)
+		})
 		if err != nil {
 			return errStartup
 		}

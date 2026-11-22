@@ -83,6 +83,7 @@ class WorkerDrainTests(unittest.TestCase):
         self.addCleanup(temp.cleanup)
         self.worker = r.WorkerDrain(Path(temp.name))
         self.instance = {'instance': 'a' * 32, 'pid': 42, 'paused': True}
+        self.baseline = {'count': 2, 'digest': 'a' * 64}
 
     def test_hold_is_idempotent_but_different_release_cannot_replace_it(self):
         self.worker.create_hold('release-1')
@@ -97,9 +98,10 @@ class WorkerDrainTests(unittest.TestCase):
         resumed = dict(self.instance, paused=False)
         with (patch.object(self.worker, 'instance', side_effect=[self.instance, self.instance, self.instance, resumed]),
               patch.object(self.worker, 'message', side_effect=[{'state': 'draining'}, {'state': 'held'}, {'state': 'resumed'}]) as message,
-              patch.object(self.worker, 'verify_idle') as idle, patch.object(r.time, 'sleep')):
+              patch.object(self.worker, 'verify_idle') as idle,
+              patch.object(self.worker, 'ledger', return_value=self.baseline), patch.object(r.time, 'sleep')):
             actual = self.worker.drain('release-1')
-            idle.assert_called_once()
+            idle.assert_called_once_with(self.baseline)
             self.assertEqual(actual, self.instance)
             request = {'instance': self.instance['instance'], 'token': 'release-1'}
             message.assert_called_with('/pause', request)
@@ -114,6 +116,7 @@ class WorkerDrainTests(unittest.TestCase):
                 problem = None if changed else r.Rejected('worker_unsettled_operations')
                 with (patch.object(self.worker, 'instance', side_effect=[self.instance, other]),
                       patch.object(self.worker, 'message', return_value={'state': 'held'}),
+                      patch.object(self.worker, 'ledger', return_value=self.baseline),
                       patch.object(self.worker, 'verify_idle', side_effect=problem)):
                     with self.assertRaisesRegex(r.Rejected, 'worker_instance_changed' if changed else 'worker_unsettled_operations'):
                         self.worker.drain('release-1')
@@ -126,17 +129,24 @@ class WorkerDrainTests(unittest.TestCase):
             'currentAIZeroReserveProviderUnknown', 'actorUnknown', 'actorReconcile',
             'schedulerHistoricalUnknown', 'schedulerOrphanUnknown',
             'schedulerHistoricalZeroReserveProviderUnknown', 'schedulerOrphanZeroReserveProviderUnknown')}
-        for unsettled, expected in ((0, None), (1, 'worker_unsettled_operations'), (False, 'worker_unsettled_operations')):
-            with self.subTest(unsettled=unsettled), patch.object(r.http.client, 'HTTPConnection') as connection:
+        recovery['currentAIReservedOther'] = 2
+        for unsettled, evidence, expected in (
+                (0, self.baseline, None),
+                (1, self.baseline, 'worker_unsettled_operations'),
+                (False, self.baseline, 'worker_unsettled_operations'),
+                (0, dict(self.baseline, digest='b' * 64), 'worker_ledger_changed')):
+            with (self.subTest(unsettled=unsettled, expected=expected),
+                  patch.object(r.http.client, 'HTTPConnection') as connection,
+                  patch.object(self.worker, 'ledger', return_value=evidence)):
                 recovery['actorCurrentUnresolved'] = unsettled
                 response = connection.return_value.getresponse.return_value.__enter__.return_value
                 response.status = 200
                 response.read.side_effect = [json.dumps(snapshot).encode() for snapshot in (queue, recovery)]
                 if expected is None:
-                    self.worker.verify_idle()
+                    self.worker.verify_idle(self.baseline)
                 else:
                     with self.assertRaisesRegex(r.Rejected, expected):
-                        self.worker.verify_idle()
+                        self.worker.verify_idle(self.baseline)
 
 
 class JointReceiverTests(unittest.TestCase):
