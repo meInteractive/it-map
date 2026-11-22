@@ -51,11 +51,11 @@ func TestHHQueuePhaseUsesReservedOperationIdentity(t *testing.T) {
 	}
 	view.lastListingStart = now - int64(hhActorLaunchCooldown/time.Millisecond)
 	if ok, _, err := claimEligible(job, now, settings, launch, types, view); !ok || err != nil {
-		t.Fatal("ровно через 5 минут новый HH запуск должен допускаться", err)
+		t.Fatal("ровно через одну минуту новый HH запуск должен допускаться", err)
 	}
 	view.lastListingStart++
 	if ok, _, err := claimEligible(job, now, settings, launch, types, view); ok || err != nil {
-		t.Fatal("за миллисекунду до конца 5 минут запуск недопустим", err)
+		t.Fatal("за миллисекунду до конца одну минуту запуск недопустим", err)
 	}
 	view.lastListingStart = now - int64(time.Hour/time.Millisecond)
 	if ok, _, err := claimEligible(job, now, settings, launch, types, view); !ok || err != nil {

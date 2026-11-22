@@ -48,9 +48,9 @@ func TestHHPendingBreakdownSeparatesReadinessWithoutStartingActor(t *testing.T) 
 		got.OldestCooldownAt != nil {
 		t.Fatalf("не разделены два вида неподтверждённого курсора: %+v", got)
 	}
-	// Новый Actor ограничен часовым интервалом, но дочитывание
+	// Новый Actor ограничен интервалом запуска, но дочитывание
 	// уже оплаченного Dataset остаётся допустимым.
-	view.lastListingStart = now - int64(time.Minute/time.Millisecond)
+	view.lastListingStart = now - (30 * time.Second).Milliseconds()
 	got = summarizeHHPending(jobs, now, settings, view)
 	if got.ReconcileCandidate != 1 || got.LaunchCandidate != 0 || got.LaunchCooldown != 1 ||
 		got.OldestCooldownAt == nil || *got.OldestCooldownAt != now-7200000 {
@@ -59,7 +59,7 @@ func TestHHPendingBreakdownSeparatesReadinessWithoutStartingActor(t *testing.T) 
 	view.lastListingStart = now - int64(hhActorLaunchCooldown/time.Millisecond)
 	got = summarizeHHPending(jobs, now, settings, view)
 	if got.ReconcileCandidate != 1 || got.LaunchCandidate != 1 || got.LaunchCooldown != 0 {
-		t.Fatalf("ровно через 5 минут cooldown должен закончиться: %+v", got)
+		t.Fatalf("ровно через одну минуту cooldown должен закончиться: %+v", got)
 	}
 }
 

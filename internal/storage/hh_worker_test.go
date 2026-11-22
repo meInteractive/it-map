@@ -117,7 +117,7 @@ func TestMariaDBHHWorkerDisposable(t *testing.T) {
 					return w, nil
 				})
 				if mode == "engine_near_expiry" {
-					s.exec("UPDATE apify_runs SET updated_at=CAST(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000 AS SIGNED)-?", (apifyruns.ActorCooldown-time.Minute).Milliseconds())
+					s.exec("UPDATE apify_runs SET updated_at=CAST(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000 AS SIGNED)-?", (apifyruns.ActorCooldown - 20*time.Second).Milliseconds())
 				}
 				if mode == "engine_paid_fallback" || mode == "engine_near_expiry" || mode == "engine_public_transient" {
 					ctx, cancel := context.WithCancel(s.ctx)
@@ -217,14 +217,14 @@ func TestMariaDBHHWorkerDisposable(t *testing.T) {
 					minimumDelay := (14 * time.Minute).Milliseconds()
 					switch mode {
 					case "engine_paid_fallback":
-						minimumDelay = (apifyruns.ActorCooldown - time.Minute).Milliseconds()
+						minimumDelay = (apifyruns.ActorCooldown - 10*time.Second).Milliseconds()
 					case "engine_near_expiry":
-						minimumDelay = (40 * time.Second).Milliseconds()
+						minimumDelay = (10 * time.Second).Milliseconds()
 					}
 					if provider.starts != 1 || detailProvider.starts != 0 || extraction.calls != 0 || s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='fetch_full_text' AND status='pending' AND attempts=0 AND reason_code=? AND run_after > CAST(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000 AS SIGNED) + ?", reason, minimumDelay) != 1 {
 						t.Fatal("pipeline admitted new paid fallback or did not defer it")
 					}
-					if mode == "engine_near_expiry" && s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='fetch_full_text' AND run_after < CAST(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000 AS SIGNED)+120000") != 1 {
+					if mode == "engine_near_expiry" && s.count("SELECT COUNT(*) FROM scheduler_jobs WHERE type='fetch_full_text' AND run_after < CAST(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000 AS SIGNED)+35000") != 1 {
 						t.Fatal("fallback waited a full extra cooldown")
 					}
 					if mode == "engine_paid_fallback" || mode == "engine_near_expiry" {
