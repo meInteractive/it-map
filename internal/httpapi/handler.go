@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -70,6 +71,7 @@ type Options struct {
 	Resumes              ResumeStore
 	ProfileSettings      ProfileSettingsStore
 	OpenAISettings       OpenAISettingsService
+	FirecrawlSettingsDB  *sql.DB
 	ApifySettings        ApifySettingsService
 	ApifyAccountCheck    ApifyAccountChecker
 	ApifyUsage           ApifyUsageReader
@@ -134,6 +136,7 @@ func NewHandlerWithOptions(logger *slog.Logger, opts Options) http.Handler {
 		mux.HandleFunc("/api/openai", OpenAISettingsHandler(opts.Auth, opts.OpenAISettings, opts.AIConnectionTests))
 		mux.HandleFunc("/api/openai/", OpenAISettingsHandler(opts.Auth, opts.OpenAISettings, opts.AIConnectionTests))
 		mux.HandleFunc("/api/apify/", ApifySettingsHandler(opts.Auth, opts.ApifySettings, opts.ApifyAccountCheck, opts.ApifyUsage))
+		mux.HandleFunc("GET /api/firecrawl/settings", firecrawlSettingsRead(opts.Auth, opts.FirecrawlSettingsDB))
 		mux.HandleFunc("/api/firecrawl/sources/", ApifySettingsHandler(opts.Auth, opts.ApifySettings, opts.ApifyAccountCheck, opts.ApifyUsage))
 		mux.HandleFunc("/api/openrouter", RouterSettingsHandler(opts.Auth, opts.RouterSettings, opts.AIConnectionTests))
 		mux.HandleFunc("/api/openrouter/", RouterSettingsHandler(opts.Auth, opts.RouterSettings, opts.AIConnectionTests))
