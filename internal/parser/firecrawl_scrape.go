@@ -23,6 +23,7 @@ type FirecrawlScrapeExecutor struct {
 }
 
 type FirecrawlScrapeStep struct {
+	validate        func(context.Context, *sql.Tx) error
 	ID              string
 	URL             string
 	AllowedHosts    []string
@@ -60,7 +61,7 @@ func (e FirecrawlScrapeExecutor) Execute(ctx context.Context, lease *JobLease, s
 	if err != nil {
 		return firecrawl.ScrapeResult{}, err
 	}
-	reservation, err := lease.ReserveFirecrawlCredits(ctx, step.ID, settings.hash, settings.mode, settings.revision, FirecrawlCreditSnapshot{Usage: usage, ObservedAt: checkedAt})
+	reservation, err := lease.reserveFirecrawlCredits(ctx, step.ID, settings.hash, settings.mode, settings.revision, FirecrawlCreditSnapshot{Usage: usage, ObservedAt: checkedAt}, step.validate)
 	if err != nil {
 		return firecrawl.ScrapeResult{}, err
 	}

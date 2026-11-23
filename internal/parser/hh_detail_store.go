@@ -165,39 +165,46 @@ func saveHHFullTextSnapshot(ctx context.Context, tx *sql.Tx, j Job, plan hhFullT
 			}
 		}
 		diagnostics, _ := json.Marshal(map[string]any{"errors": []string{}, "valid": true, "provider": provider, "profile": profile, "runId": runID, "descriptionFormat": document.Format})
-		var inline any = document.Markdown
-		large := len(document.Markdown) > 180000
-		if large {
-			inline = nil
-		}
 		mode := "free"
 		if profile == "starter" {
 			mode = "hobby"
 		}
-		if _, err = tx.ExecContext(ctx, "INSERT INTO vacancy_raw_snapshots(id,candidate_id,source_url,final_url,markdown_raw,content_hash,fetched_at,firecrawl_mode,content_status,diagnostics,created_at) VALUES(?,?,?,?,?,?,?,?,'valid',?,?)", id, j.CandidateID, plan.URL, document.URL, inline, hash, timestamp, mode, string(diagnostics), timestamp); err != nil {
-			return result, ErrSettingsStorage
-		}
-		if large {
-			part := 0
-			start := 0
-			for at := range document.Markdown {
-				if at-start >= 48000 {
-					if _, err = tx.ExecContext(ctx, "INSERT INTO vacancy_raw_snapshot_parts(snapshot_id,part_index,markdown_raw) VALUES(?,?,?)", id, part, document.Markdown[start:at]); err != nil {
-						return result, ErrSettingsStorage
-					}
-					part++
-					start = at
-				}
-			}
-			if start < len(document.Markdown) {
-				if _, err = tx.ExecContext(ctx, "INSERT INTO vacancy_raw_snapshot_parts(snapshot_id,part_index,markdown_raw) VALUES(?,?,?)", id, part, document.Markdown[start:]); err != nil {
-					return result, ErrSettingsStorage
-				}
-			}
+		if err := insertFullTextSnapshot(ctx, tx, id, *j.CandidateID, plan.URL, document.URL, document.Markdown, hash, timestamp, mode, nil, diagnostics); err != nil {
+			return result, err
 		}
 	}
 	if err := saveHHFetchHistory(ctx, tx, j, plan, result.SnapshotID, provider, profile, true); err != nil {
 		return HHFullTextResult{}, err
 	}
 	return result, nil
+}
+
+func insertFullTextSnapshot(ctx context.Context, tx *sql.Tx, id string, candidate int64, sourceURL, finalURL, markdown, hash, timestamp, mode string, credits *float64, diagnostics []byte) error {
+	var inline any = markdown
+	large := len(markdown) > 180000
+	if large {
+		inline = nil
+	}
+	if _, err := tx.ExecContext(ctx, "INSERT INTO vacancy_raw_snapshots(id,candidate_id,source_url,final_url,markdown_raw,content_hash,fetched_at,firecrawl_mode,firecrawl_credits,content_status,diagnostics,created_at) VALUES(?,?,?,?,?,?,?,?,?,'valid',?,?)", id, candidate, sourceURL, finalURL, inline, hash, timestamp, mode, credits, string(diagnostics), timestamp); err != nil {
+		return ErrSettingsStorage
+	}
+	if large {
+		part := 0
+		start := 0
+		for at := range markdown {
+			if at-start >= 48000 {
+				if _, err := tx.ExecContext(ctx, "INSERT INTO vacancy_raw_snapshot_parts(snapshot_id,part_index,markdown_raw) VALUES(?,?,?)", id, part, markdown[start:at]); err != nil {
+					return ErrSettingsStorage
+				}
+				part++
+				start = at
+			}
+		}
+		if start < len(markdown) {
+			if _, err := tx.ExecContext(ctx, "INSERT INTO vacancy_raw_snapshot_parts(snapshot_id,part_index,markdown_raw) VALUES(?,?,?)", id, part, markdown[start:]); err != nil {
+				return ErrSettingsStorage
+			}
+		}
+	}
+	return nil
 }

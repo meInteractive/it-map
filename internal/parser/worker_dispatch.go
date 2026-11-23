@@ -23,10 +23,11 @@ type workerAI interface {
 // workerDispatch не создаёт lease и не завершает job: эти операции принадлежат
 // ограниченному циклу. AI-исполнитель сам завершает свою attempt и job.
 type workerDispatch struct {
-	listing  workerListing
-	detail   workerDetail
-	importer workerImport
-	ai       workerAI
+	listing         workerListing
+	detail          workerDetail
+	firecrawlDetail workerDetail
+	importer        workerImport
+	ai              workerAI
 }
 type workerDispatchResult struct {
 	pending  bool
@@ -46,10 +47,14 @@ func (d workerDispatch) execute(ctx context.Context, lease *JobLease) (workerDis
 		result, err := d.listing.Execute(ctx, lease)
 		return workerDispatchResult{pending: !result.Done, code: result.PartialCode}, err
 	case "fetch_full_text":
-		if d.detail == nil {
+		detail := d.detail
+		if source := lease.Job().SourceID; source != nil && *source == "companySite" {
+			detail = d.firecrawlDetail
+		}
+		if detail == nil {
 			return workerDispatchResult{}, ErrAIStageUnavailable
 		}
-		result, err := d.detail.Execute(ctx, lease)
+		result, err := detail.Execute(ctx, lease)
 		return workerDispatchResult{pending: result.Pending}, err
 	case "import_vacancy":
 		if d.importer == nil {
