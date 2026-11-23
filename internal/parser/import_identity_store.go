@@ -15,9 +15,9 @@ var ErrImportIdentityConflict = errors.New("vacancy publication identities confl
 // readImportTarget блокирует существующие точные связи и запрещает их слияние,
 // если они указывают на разные карточки. Заголовок не является идентификатором.
 // Вызывается под общим import:global lease и внутри owned-транзакции.
-func readImportTarget(ctx context.Context, tx *sql.Tx, candidateID int64, canonical string) (int64, []string, error) {
+func readImportTarget(ctx context.Context, tx *sql.Tx, candidateID int64, canonical string, hh bool) (int64, []string, error) {
 	identity := importHHIdentity(canonical)
-	if identity == "" {
+	if hh && identity == "" {
 		return 0, nil, ErrCandidateChanged
 	}
 	keys := []string{"url:" + stageHash(canonical)}
@@ -63,7 +63,7 @@ func readImportTarget(ctx context.Context, tx *sql.Tx, candidateID int64, canoni
 		if err = rows.Scan(&id, &url); err != nil {
 			break
 		}
-		if url == canonical || importHHIdentity(url) == identity {
+		if url == canonical || (hh && importHHIdentity(url) == identity) {
 			targets[id] = true
 		}
 	}
@@ -84,7 +84,7 @@ func readImportTarget(ctx context.Context, tx *sql.Tx, candidateID int64, canoni
 		if err = rows.Scan(&id, &url); err != nil {
 			break
 		}
-		if url == canonical || importHHIdentity(url) == identity {
+		if url == canonical || (hh && importHHIdentity(url) == identity) {
 			targets[id] = true
 		}
 	}

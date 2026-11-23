@@ -5,6 +5,9 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"net/url"
+	"slices"
+	"strings"
 	"time"
 
 	"itmap/internal/apifysettings"
@@ -39,8 +42,15 @@ func (e HHImportExecutor) Execute(ctx context.Context, lease *JobLease) (result 
 		return result, ErrJobInput
 	}
 	job := lease.Job()
-	if job.Type != "import_vacancy" || job.CandidateID == nil || job.CompanyID == nil || job.AgencyID != nil || job.SourceID == nil || *job.SourceID != "hh" {
+	if job.Type != "import_vacancy" || job.CandidateID == nil || job.CompanyID == nil || job.AgencyID != nil || job.SourceID == nil || (*job.SourceID != "hh" && *job.SourceID != "companySite") {
 		return result, ErrJobInput
+	}
+	companySite := *job.SourceID == "companySite"
+	if companySite {
+		var origin companyScanPayload
+		if json.Unmarshal(job.Payload, &origin) != nil || origin.Version != 1 {
+			return result, ErrJobInput
+		}
 	}
 	err = lease.WithinOwned(ctx, func(tx *sql.Tx) error {
 		token, err := acquireImportGlobal(ctx, tx, job)
@@ -59,19 +69,16 @@ func (e HHImportExecutor) Execute(ctx context.Context, lease *JobLease) (result 
 		if json.Unmarshal(settingsView.PublicJSON(), &settings) != nil || !settings.Enabled || settings.OwnerName != e.Owner {
 			return ErrCandidateChanged
 		}
-		source, err := e.Settings.ReadHHSourceTx(ctx, tx, *job.CompanyID)
+		sourceURLExpected, err := e.importSourceURL(ctx, tx, job, settings)
 		if err != nil {
 			return err
-		}
-		if !source.Enabled || !source.Supported {
-			return apifysettings.ErrDisabled
 		}
 		var url, canonical, sourceURL, company string
 		var namespace, external sql.NullString
 		if err = tx.QueryRowContext(ctx, "SELECT vacancy_url,canonical_url,source_url,source_namespace,external_job_id FROM vacancy_candidates WHERE id=? FOR UPDATE", job.CandidateID).Scan(&url, &canonical, &sourceURL, &namespace, &external); err != nil {
 			return ErrCandidateChanged
 		}
-		if sourceURL != source.URL || canonical != url || importHHIdentity(url) == "" {
+		if sourceURL != sourceURLExpected || canonical != url || !validImportURL(url, sourceURLExpected, companySite) {
 			return ErrCandidateChanged
 		}
 		if err = tx.QueryRowContext(ctx, "SELECT company_name FROM company_identity WHERE id=? FOR UPDATE", job.CompanyID).Scan(&company); err != nil || company == "" {
@@ -106,13 +113,15 @@ func (e HHImportExecutor) Execute(ctx context.Context, lease *JobLease) (result 
 			}
 			result = HHImportResult{*job.CandidateID, receiptVacancy.Int64, receiptAction, true}
 		} else {
-			result, err = writeHHImport(ctx, tx, job, company, url, canonical, namespace, external, snapshot, leaf)
+			result, err = writeVacancyImport(ctx, tx, job, company, url, canonical, namespace, external, snapshot, leaf)
 			if err != nil {
 				return err
 			}
 		}
-		if err = enqueueHHRelevance(ctx, tx, job, e.Owner); err != nil {
-			return err
+		if !companySite {
+			if err = enqueueHHRelevance(ctx, tx, job, e.Owner); err != nil {
+				return err
+			}
 		}
 		if _, err = tx.ExecContext(ctx, "DELETE FROM vacancy_detail_leases WHERE lease_key='import:global' AND generation=? AND owner_token=?", job.Generation, token); err != nil {
 			return ErrSettingsStorage
@@ -123,6 +132,45 @@ func (e HHImportExecutor) Execute(ctx context.Context, lease *JobLease) (result 
 		return HHImportResult{}, err
 	}
 	return result, nil
+}
+
+func (e HHImportExecutor) importSourceURL(ctx context.Context, tx *sql.Tx, job Job, settings Settings) (string, error) {
+	if *job.SourceID == "hh" {
+		source, err := e.Settings.ReadHHSourceTx(ctx, tx, *job.CompanyID)
+		if err != nil {
+			return "", err
+		}
+		if !source.Enabled || !source.Supported {
+			return "", apifysettings.ErrDisabled
+		}
+		return source.URL, nil
+	}
+	if !slices.Contains(settings.SourceIDs, "companySite") {
+		return "", ErrCandidateChanged
+	}
+	var source string
+	err := tx.QueryRowContext(ctx, `SELECT source_url FROM vacancy_source_parsing
+		WHERE company_id=? AND source_id='companySite' AND enabled=1 FOR UPDATE`, job.CompanyID).Scan(&source)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", ErrCandidateChanged
+	}
+	if err != nil {
+		return "", storageError(ctx)
+	}
+	return source, nil
+}
+
+func validImportURL(raw, source string, companySite bool) bool {
+	if !companySite {
+		return importHHIdentity(raw) != ""
+	}
+	target, err := url.Parse(raw)
+	listing, sourceErr := url.Parse(source)
+	return err == nil && sourceErr == nil && target.User == nil && target.Port() == "" && target.Fragment == "" &&
+		(target.Scheme == "https" || target.Scheme == "http") && target.Hostname() != "" &&
+		strings.EqualFold(target.Hostname(), listing.Hostname()) &&
+		strings.TrimRight(target.Path, "/") != strings.TrimRight(listing.Path, "/") &&
+		companyVacancyPath.MatchString(target.Path)
 }
 
 func acquireImportGlobal(ctx context.Context, tx *sql.Tx, job Job) (string, error) {
