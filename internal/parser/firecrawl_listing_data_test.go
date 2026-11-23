@@ -33,3 +33,25 @@ func TestCompanyListingRejectsUnverifiedEmpty(t *testing.T) {
 		t.Fatalf("got %v", err)
 	}
 }
+
+func TestCompanyListingAcceptsSavedGenericDefaults(t *testing.T) {
+	const address = "https://careers.company.com/jobs"
+	for _, tc := range []struct {
+		config string
+		want   bool
+	}{
+		{`{}`, true},
+		{`{"adapter":"generic","html":false,"titleClass":"","detailPathPrefix":"","allowedHosts":[ ],"pagination":null,"useEnhancedProxy":false}`, true},
+		{`{"adapter":"selectel"}`, false},
+		{`{"adapter":"yoomoney","html":true}`, false},
+		{`{"allowedHosts":["example.com"]}`, false},
+		{`{"pagination":{"queryParam":"page"}}`, false},
+		{`{"detailPathPrefix":"/careers/"}`, false},
+		{`{"unknown":null}`, false},
+		{`null`, false},
+	} {
+		if _, ok := genericCompanyListingHost(address, tc.config); ok != tc.want {
+			t.Errorf("config %s admitted=%t, want %t", tc.config, ok, tc.want)
+		}
+	}
+}
