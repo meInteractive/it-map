@@ -194,7 +194,7 @@ function ConnectionForm({ state, mode }: { state: FirecrawlState; mode: 'free' |
             mode,
           });
           setKey('');
-          setMessage(state.readOnly ? 'Ключ сохранён.' : 'Ключ сохранён. Проверьте подключение.');
+          setMessage('Ключ сохранён. Проверьте подключение.');
         }}
       >
         {(busy) => (
@@ -216,7 +216,7 @@ function ConnectionForm({ state, mode }: { state: FirecrawlState; mode: 'free' |
           </>
         )}
       </ActionForm>
-      {!state.readOnly && (
+      {(!state.readOnly || state.canUpdateKey) && (
         <ActionForm
           lockWhileBusy
           disabled={!profile.configured}
@@ -249,7 +249,7 @@ function ConnectionForm({ state, mode }: { state: FirecrawlState; mode: 'free' |
       <p className="resume-status" role="status">
         {message}
       </p>
-      {!state.readOnly && (
+      {(!state.readOnly || state.canUpdateKey) && (
         <p className="resume-hint">
           Проверка подключения не загружает сайты. Последняя проверка:{' '}
           {dateLabel(profile.checkedAt)}.
@@ -1189,17 +1189,19 @@ export default function FirecrawlSettings() {
             </p>
             {q.data.readOnly ? (
               <>
+                {q.data.canUpdateKey && <FirecrawlBudget mode={q.data.mode} />}
                 {q.data.canUpdateKey && (
                   <details>
-                    <summary>Обновить API-ключ Firecrawl</summary>
+                    <summary>Подключения и тариф Firecrawl</summary>
                     <div className="settings-grid">
+                      <ModeForm state={q.data} />
                       <ConnectionForm state={q.data} mode="free" />
                       <ConnectionForm state={q.data} mode="hobby" />
                     </div>
                   </details>
                 )}
                 <p className="resume-hint">
-                  Управление тарифом, проверка подключения и обновление расходов ещё переносятся.
+                  Параметры сканирования пока доступны только для просмотра.
                 </p>
               </>
             ) : (

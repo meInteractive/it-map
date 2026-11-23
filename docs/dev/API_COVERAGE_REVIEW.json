@@ -618,8 +618,8 @@
     {
       "id": "firecrawl",
       "implementation": "partial",
-      "level": "Go HTTP: административное чтение настроек и обновление ключа",
-      "gap": "Изменение тарифа и остальных настроек, расход, список источников и ручные проверки Firecrawl ещё не перенесены в Go HTTP.",
+      "level": "Go HTTP: настройки, ключ, тариф, проверка подключения и журнал кредитов",
+      "gap": "Редактирование параметров сканирования, список источников и ручные проверки вакансий Firecrawl ещё не перенесены.",
       "evidence": [
         {
           "file": "scripts/check-parser-settings-contract.mjs"
@@ -632,6 +632,10 @@
         },
         {
           "file": "internal/httpapi/firecrawl_key.go"
+        },
+        {
+          "file": "internal/httpapi/firecrawl_account_test.go",
+          "symbol": "TestFirecrawlAccountRefreshOnlyReadsCredits"
         }
       ]
     },
@@ -833,7 +837,7 @@
   ],
   "sourceHashes": {
     "frontend/api/client.ts": "bf28292cedd86d0446ede754335663b7eeb7db27cd284edd423bddffa74bbfa6",
-    "internal/httpapi/handler.go": "8d049a5c21222a5768b96bd8d33a7c38ddf8857e150fc8a4b5b6dafd52258740",
+    "internal/httpapi/handler.go": "b04099fdc9a10aa509d70b981a2d399799011368fc3c716ff75876c63195358e",
     "server/routes/index.js": "6134004f682975cb51ea13cd2ec4de8e85a5957deff6a5392fbad3fd70ccb1e4"
   },
   "clientExports": [
