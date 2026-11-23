@@ -290,7 +290,7 @@ func (r RunRepository) selectEligibleJob(ctx context.Context, tx *sql.Tx, now in
 	}
 	query := "SELECT " + jobColumns + " FROM scheduler_jobs WHERE generation=? AND status='pending' AND run_after<=? AND type IN (" + strings.TrimSuffix(strings.Repeat("?,", len(kinds)), ",") + ")"
 	if options.CompanyWorkerOnly {
-		query += " AND source_id='companySite' AND JSON_EXTRACT(payload,'$.firecrawlVersion')=1"
+		query += " AND source_id IN ('companySite','getmatch') AND JSON_EXTRACT(payload,'$.firecrawlVersion')=1"
 	}
 	rows, e := tx.QueryContext(ctx, query, args...)
 	if e != nil {

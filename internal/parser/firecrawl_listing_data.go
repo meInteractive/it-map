@@ -14,6 +14,15 @@ import (
 var errFirecrawlListing = errors.New("Firecrawl listing has no verified vacancy links")
 
 var companyListingLink = regexp.MustCompile(`!?\[([^\]\r\n]+)\]\(<?([^\s<>)]+)>?\)`)
+var getmatchVacancyPath = regexp.MustCompile(`^/vacancies/[A-Za-z0-9_-]+/?$`)
+
+func firecrawlVacancyPath(source, path string) bool {
+	if source == "getmatch" {
+		return getmatchVacancyPath.MatchString(path)
+	}
+	return companyVacancyPath.MatchString(path)
+}
+
 var companyVacancyPath = regexp.MustCompile(`(?i)/(vacancy|vacancies|jobs?|positions?|openings?)/[^/]+/?$`)
 var companyListingNavigation = regexp.MustCompile(`(?i)^(главная|вакансии|все вакансии|подробнее|откликнуться|home|careers|jobs|apply|learn more)$`)
 
@@ -22,7 +31,7 @@ type companyListingCard struct {
 	URL   string
 }
 
-func companyListingCards(markdown, page string) ([]companyListingCard, error) {
+func firecrawlListingCards(source, markdown, page string) ([]companyListingCard, error) {
 	base, err := url.Parse(page)
 	if err != nil || base.Hostname() == "" {
 		return nil, errFirecrawlListing
@@ -46,7 +55,7 @@ func companyListingCards(markdown, page string) ([]companyListingCard, error) {
 		}
 		u, err := base.Parse(html.UnescapeString(pair[2]))
 		if err != nil || u.User != nil || u.Port() != "" || !strings.EqualFold(u.Hostname(), base.Hostname()) ||
-			(u.Scheme != "https" && u.Scheme != "http") || !companyVacancyPath.MatchString(u.Path) {
+			(u.Scheme != "https" && u.Scheme != "http") || !firecrawlVacancyPath(source, u.Path) {
 			continue
 		}
 		_, slug := path.Split(strings.TrimRight(u.Path, "/"))

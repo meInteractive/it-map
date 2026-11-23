@@ -42,10 +42,10 @@ func (e HHImportExecutor) Execute(ctx context.Context, lease *JobLease) (result 
 		return result, ErrJobInput
 	}
 	job := lease.Job()
-	if job.Type != "import_vacancy" || job.CandidateID == nil || job.CompanyID == nil || job.AgencyID != nil || job.SourceID == nil || (*job.SourceID != "hh" && *job.SourceID != "companySite") {
+	if job.Type != "import_vacancy" || job.CandidateID == nil || job.CompanyID == nil || job.AgencyID != nil || job.SourceID == nil || (*job.SourceID != "hh" && !isFirecrawlSource(*job.SourceID)) {
 		return result, ErrJobInput
 	}
-	companySite := *job.SourceID == "companySite"
+	companySite := isFirecrawlSource(*job.SourceID)
 	if companySite {
 		var origin companyScanPayload
 		if json.Unmarshal(job.Payload, &origin) != nil || origin.Version != 1 {
@@ -78,7 +78,7 @@ func (e HHImportExecutor) Execute(ctx context.Context, lease *JobLease) (result 
 		if err = tx.QueryRowContext(ctx, "SELECT vacancy_url,canonical_url,source_url,source_namespace,external_job_id FROM vacancy_candidates WHERE id=? FOR UPDATE", job.CandidateID).Scan(&url, &canonical, &sourceURL, &namespace, &external); err != nil {
 			return ErrCandidateChanged
 		}
-		if sourceURL != sourceURLExpected || canonical != url || !validImportURL(url, sourceURLExpected, companySite) {
+		if sourceURL != sourceURLExpected || canonical != url || !validImportURL(url, sourceURLExpected, *job.SourceID) {
 			return ErrCandidateChanged
 		}
 		if err = tx.QueryRowContext(ctx, "SELECT company_name FROM company_identity WHERE id=? FOR UPDATE", job.CompanyID).Scan(&company); err != nil || company == "" {
@@ -145,12 +145,12 @@ func (e HHImportExecutor) importSourceURL(ctx context.Context, tx *sql.Tx, job J
 		}
 		return source.URL, nil
 	}
-	if !slices.Contains(settings.SourceIDs, "companySite") {
+	if !slices.Contains(settings.SourceIDs, *job.SourceID) {
 		return "", ErrCandidateChanged
 	}
 	var source string
 	err := tx.QueryRowContext(ctx, `SELECT source_url FROM vacancy_source_parsing
-		WHERE company_id=? AND source_id='companySite' AND enabled=1 FOR UPDATE`, job.CompanyID).Scan(&source)
+		WHERE company_id=? AND source_id=? AND enabled=1 FOR UPDATE`, job.CompanyID, *job.SourceID).Scan(&source)
 	if errors.Is(err, sql.ErrNoRows) {
 		return "", ErrCandidateChanged
 	}
@@ -160,8 +160,8 @@ func (e HHImportExecutor) importSourceURL(ctx context.Context, tx *sql.Tx, job J
 	return source, nil
 }
 
-func validImportURL(raw, source string, companySite bool) bool {
-	if !companySite {
+func validImportURL(raw, source, sourceID string) bool {
+	if sourceID == "hh" {
 		return importHHIdentity(raw) != ""
 	}
 	target, err := url.Parse(raw)
@@ -170,7 +170,7 @@ func validImportURL(raw, source string, companySite bool) bool {
 		(target.Scheme == "https" || target.Scheme == "http") && target.Hostname() != "" &&
 		strings.EqualFold(target.Hostname(), listing.Hostname()) &&
 		strings.TrimRight(target.Path, "/") != strings.TrimRight(listing.Path, "/") &&
-		companyVacancyPath.MatchString(target.Path)
+		firecrawlVacancyPath(sourceID, target.Path)
 }
 
 func acquireImportGlobal(ctx context.Context, tx *sql.Tx, job Job) (string, error) {

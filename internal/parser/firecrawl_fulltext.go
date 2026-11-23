@@ -55,7 +55,7 @@ func (e firecrawlFullTextExecutor) read(ctx context.Context, tx *sql.Tx, job Job
 	if main.Valid {
 		return plan, ErrCandidateChanged
 	}
-	err = tx.QueryRowContext(ctx, `SELECT source_url,revision FROM vacancy_source_parsing WHERE company_id=? AND source_id='companySite' AND enabled=1 FOR UPDATE`, job.CompanyID).Scan(&plan.Listing, &plan.SourceRevision)
+	err = tx.QueryRowContext(ctx, `SELECT source_url,revision FROM vacancy_source_parsing WHERE company_id=? AND source_id=? AND enabled=1 FOR UPDATE`, job.CompanyID, *job.SourceID).Scan(&plan.Listing, &plan.SourceRevision)
 	if errors.Is(err, sql.ErrNoRows) {
 		return plan, ErrCandidateChanged
 	}
@@ -65,7 +65,7 @@ func (e firecrawlFullTextExecutor) read(ctx context.Context, tx *sql.Tx, job Job
 	listing, lErr := url.Parse(plan.Listing)
 	detail, dErr := url.Parse(plan.URL)
 	if lErr != nil || dErr != nil || listing.Hostname() == "" || !strings.EqualFold(listing.Hostname(), detail.Hostname()) ||
-		sameFirecrawlPage(plan.Listing, plan.URL) {
+		sameFirecrawlPage(plan.Listing, plan.URL) || !firecrawlVacancyPath(*job.SourceID, detail.Path) {
 		return plan, ErrCandidateChanged
 	}
 	plan.Host = listing.Hostname()
@@ -76,7 +76,7 @@ func (e firecrawlFullTextExecutor) read(ctx context.Context, tx *sql.Tx, job Job
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return plan, storageError(ctx)
 	}
-	cached, err := ReadRawSnapshot(ctx, tx, *job.CandidateID, plan.URL, "companySite")
+	cached, err := ReadRawSnapshot(ctx, tx, *job.CandidateID, plan.URL, *job.SourceID)
 	if errors.Is(err, ErrSnapshotMissing) || errors.Is(err, ErrSnapshotInvalid) || errors.Is(err, ErrSnapshotAmbiguous) {
 		return plan, nil
 	}
@@ -102,7 +102,7 @@ func sameFirecrawlPage(a, b string) bool {
 func (e firecrawlFullTextExecutor) Execute(ctx context.Context, lease *JobLease) (HHFullTextResult, error) {
 	job := lease.Job()
 	if e.scrape == nil || job.Type != "fetch_full_text" || job.CompanyID == nil || job.AgencyID != nil ||
-		job.CandidateID == nil || job.SourceID == nil || *job.SourceID != "companySite" {
+		job.CandidateID == nil || job.SourceID == nil || !isFirecrawlSource(*job.SourceID) {
 		return HHFullTextResult{}, ErrJobInput
 	}
 	var plan firecrawlTextPlan
