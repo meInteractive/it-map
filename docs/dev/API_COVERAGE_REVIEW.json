@@ -617,15 +617,18 @@
     },
     {
       "id": "firecrawl",
-      "implementation": "unported",
-      "level": "Source settings/budget primitives",
-      "gap": "Settings/key/mode/usage/sources/test/run save-resume HTTP и provider stages ещё не подключены.",
+      "implementation": "partial",
+      "level": "Go HTTP: административное чтение настроек",
+      "gap": "Изменение настроек, ключа и тарифа, расход, список источников и ручные проверки Firecrawl ещё не перенесены в Go HTTP.",
       "evidence": [
         {
           "file": "scripts/check-parser-settings-contract.mjs"
         },
         {
           "file": "internal/httpapi/handler.go"
+        },
+        {
+          "file": "internal/httpapi/firecrawl_settings_read.go"
         }
       ]
     },
@@ -827,7 +830,7 @@
   ],
   "sourceHashes": {
     "frontend/api/client.ts": "bf28292cedd86d0446ede754335663b7eeb7db27cd284edd423bddffa74bbfa6",
-    "internal/httpapi/handler.go": "a4480e8fb848b6ae3424b5e6d20ca1a915694675128b88d4b3705a7c9069aa44",
+    "internal/httpapi/handler.go": "02c0cc71563cd6eb1489cbc1f346bd430a1c658e833e32195b34bd96784c64d5",
     "server/routes/index.js": "6134004f682975cb51ea13cd2ec4de8e85a5957deff6a5392fbad3fd70ccb1e4"
   },
   "clientExports": [

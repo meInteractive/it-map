@@ -40,6 +40,7 @@ func httpHandler(logger *slog.Logger, db *sql.DB, manager *auth.Manager) http.Ha
 	opts := httpapi.Options{Auth: manager, WebDir: os.Getenv("WEB_DIST_DIR"), HHProfessionalRoles: hhpublic.New()}
 	if db != nil {
 		opts.DB = db
+		opts.FirecrawlSettingsDB = db
 		aiKeys := aiproviders.NewRepository(db, os.Getenv("SESSION_SECRET"), os.Getenv("OPENAI_API_KEY"))
 		openAI := aiproviders.NewOpenAIService(aiKeys)
 		router := aiproviders.NewRouterService(aiKeys)

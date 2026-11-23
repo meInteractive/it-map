@@ -6,6 +6,7 @@ import { useApi, mutate, request, onCacheEvent } from '../../api/client';
 import { ActionForm, ErrorText, Field, State, dateLabel } from '../../components/Common';
 import { useDirty } from '../../hooks/useDirty';
 export interface FirecrawlState {
+  readOnly?: boolean;
   mode: 'free' | 'hobby';
   profiles: Record<
     'free' | 'hobby',
@@ -1171,20 +1172,29 @@ export default function FirecrawlSettings() {
         {q.data && (
           <>
             <p>
-              {q.data.enabled ? 'Сбор включён' : 'Сбор выключен'} ·{' '}
+              {q.data.enabled ? 'Разрешено в настройках' : 'Запрещено в настройках'} ·{' '}
               {q.data.mode === 'hobby' ? 'Hobby' : 'Free'} ·{' '}
               {q.data.configured ? 'ключ сохранён' : 'ключ не настроен'}
             </p>
-            <FirecrawlBudget mode={q.data.mode || 'free'} />
-            <details>
-              <summary>Подключения, тариф и параметры Firecrawl</summary>
-              <div className="settings-grid">
-                <ModeForm state={q.data} />
-                <ConnectionForm state={q.data} mode="free" />
-                <ConnectionForm state={q.data} mode="hobby" />
-                <LimitsForm key={q.data.revision} state={q.data} />
-              </div>
-            </details>
+            {q.data.readOnly ? (
+              <p className="resume-hint">
+                В Go API пока доступен просмотр настроек. Изменение ключей, тарифа и обновление
+                расходов ещё переносятся.
+              </p>
+            ) : (
+              <>
+                <FirecrawlBudget mode={q.data.mode || 'free'} />
+                <details>
+                  <summary>Подключения, тариф и параметры Firecrawl</summary>
+                  <div className="settings-grid">
+                    <ModeForm state={q.data} />
+                    <ConnectionForm state={q.data} mode="free" />
+                    <ConnectionForm state={q.data} mode="hobby" />
+                    <LimitsForm key={q.data.revision} state={q.data} />
+                  </div>
+                </details>
+              </>
+            )}
           </>
         )}
       </State>
