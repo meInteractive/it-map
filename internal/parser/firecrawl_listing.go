@@ -52,21 +52,34 @@ func (e firecrawlListingExecutor) read(ctx context.Context, tx *sql.Tx, job Job)
 	if err != nil {
 		return plan, storageError(ctx)
 	}
-	// This executor handles the generic Markdown adapter only.
-	var config map[string]json.RawMessage
-	if json.Unmarshal([]byte(plan.config), &config) != nil || len(config) != 0 {
+	host, ok := genericCompanyListingHost(plan.url, plan.config)
+	if !ok {
 		return plan, ErrWorkerUnsupported
 	}
-	u, err := url.Parse(plan.url)
-	if err != nil || u.Hostname() == "" {
+	var payload companyScanPayload
+	if json.Unmarshal(job.Payload, &payload) != nil || payload.Version != 1 || payload.SourceRevision != plan.revision ||
+		payload.SourceURL != plan.url || payload.ScheduleRevision != settings.Revision {
 		return plan, ErrCandidateChanged
 	}
-	plan.host = strings.ToLower(u.Hostname())
-	switch plan.host {
-	case "jobs.yoomoney.ru", "selectel.ru":
-		return plan, ErrWorkerUnsupported
-	}
+	plan.host = host
 	return plan, nil
+}
+
+func genericCompanyListingHost(rawURL, rawConfig string) (string, bool) {
+	var config map[string]json.RawMessage
+	if json.Unmarshal([]byte(rawConfig), &config) != nil || config == nil || len(config) != 0 {
+		return "", false
+	}
+	u, err := url.Parse(rawURL)
+	if err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Hostname() == "" || u.User != nil || u.Port() != "" {
+		return "", false
+	}
+	host := strings.ToLower(strings.TrimSuffix(u.Hostname(), "."))
+	switch host {
+	case "jobs.yoomoney.ru", "selectel.ru", "www.selectel.ru":
+		return "", false
+	}
+	return host, true
 }
 
 func (e firecrawlListingExecutor) Execute(ctx context.Context, lease *JobLease) (HHListingProgress, error) {
