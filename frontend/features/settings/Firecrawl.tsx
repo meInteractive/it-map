@@ -7,6 +7,7 @@ import { ActionForm, ErrorText, Field, State, dateLabel } from '../../components
 import { useDirty } from '../../hooks/useDirty';
 export interface FirecrawlState {
   readOnly?: boolean;
+  canUpdateKey?: boolean;
   mode: 'free' | 'hobby';
   profiles: Record<
     'free' | 'hobby',
@@ -179,6 +180,11 @@ function ConnectionForm({ state, mode }: { state: FirecrawlState; mode: 'free' |
         {profile.keyMask && <> · {profile.keyMask}</>}
       </p>
       <ErrorText error={profile.lastError} />
+      {state.readOnly && mode === 'hobby' && state.mode === 'hobby' && (
+        <p className="resume-hint">
+          При замене активного ключа Hobby Firecrawl переключится на Free.
+        </p>
+      )}
       <ActionForm
         lockWhileBusy
         onSubmit={async () => {
@@ -188,7 +194,7 @@ function ConnectionForm({ state, mode }: { state: FirecrawlState; mode: 'free' |
             mode,
           });
           setKey('');
-          setMessage('Ключ сохранён. Проверьте подключение.');
+          setMessage(state.readOnly ? 'Ключ сохранён.' : 'Ключ сохранён. Проверьте подключение.');
         }}
       >
         {(busy) => (
@@ -210,40 +216,45 @@ function ConnectionForm({ state, mode }: { state: FirecrawlState; mode: 'free' |
           </>
         )}
       </ActionForm>
-      <ActionForm
-        lockWhileBusy
-        disabled={!profile.configured}
-        onSubmit={async () => {
-          try {
-            const response = await mutate<{ remainingCredits: number }>(
-              '/api/firecrawl/check',
-              'POST',
-              { mode },
-            );
-            setMessage(
-              'Подключение работает. Осталось кредитов: ' +
-                response.remainingCredits.toLocaleString('ru-RU') +
-                '.',
-            );
-          } catch (error) {
-            setMessage('');
-            q.reload();
-            throw error;
-          }
-        }}
-      >
-        {(busy) => (
-          <button className="settings-button secondary" disabled={busy || !profile.configured}>
-            {busy ? 'Проверяем…' : 'Проверить подключение'}
-          </button>
-        )}
-      </ActionForm>
+      {!state.readOnly && (
+        <ActionForm
+          lockWhileBusy
+          disabled={!profile.configured}
+          onSubmit={async () => {
+            try {
+              const response = await mutate<{ remainingCredits: number }>(
+                '/api/firecrawl/check',
+                'POST',
+                { mode },
+              );
+              setMessage(
+                'Подключение работает. Осталось кредитов: ' +
+                  response.remainingCredits.toLocaleString('ru-RU') +
+                  '.',
+              );
+            } catch (error) {
+              setMessage('');
+              q.reload();
+              throw error;
+            }
+          }}
+        >
+          {(busy) => (
+            <button className="settings-button secondary" disabled={busy || !profile.configured}>
+              {busy ? 'Проверяем…' : 'Проверить подключение'}
+            </button>
+          )}
+        </ActionForm>
+      )}
       <p className="resume-status" role="status">
         {message}
       </p>
-      <p className="resume-hint">
-        Проверка подключения не загружает сайты. Последняя проверка: {dateLabel(profile.checkedAt)}.
-      </p>
+      {!state.readOnly && (
+        <p className="resume-hint">
+          Проверка подключения не загружает сайты. Последняя проверка:{' '}
+          {dateLabel(profile.checkedAt)}.
+        </p>
+      )}
     </article>
   );
 }
@@ -1177,10 +1188,20 @@ export default function FirecrawlSettings() {
               {q.data.configured ? 'ключ сохранён' : 'ключ не настроен'}
             </p>
             {q.data.readOnly ? (
-              <p className="resume-hint">
-                В Go API пока доступен просмотр настроек. Изменение ключей, тарифа и обновление
-                расходов ещё переносятся.
-              </p>
+              <>
+                {q.data.canUpdateKey && (
+                  <details>
+                    <summary>Обновить API-ключ Firecrawl</summary>
+                    <div className="settings-grid">
+                      <ConnectionForm state={q.data} mode="free" />
+                      <ConnectionForm state={q.data} mode="hobby" />
+                    </div>
+                  </details>
+                )}
+                <p className="resume-hint">
+                  Управление тарифом, проверка подключения и обновление расходов ещё переносятся.
+                </p>
+              </>
             ) : (
               <>
                 <FirecrawlBudget mode={q.data.mode || 'free'} />

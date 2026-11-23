@@ -12,6 +12,7 @@ import (
 	"itmap/internal/auth"
 	"itmap/internal/catalog"
 	"itmap/internal/integrations/googlecalendar"
+	"itmap/internal/legacycrypto"
 )
 
 // DBChecker is only used to verify the active DB connection; the readiness gate
@@ -72,6 +73,7 @@ type Options struct {
 	ProfileSettings      ProfileSettingsStore
 	OpenAISettings       OpenAISettingsService
 	FirecrawlSettingsDB  *sql.DB
+	FirecrawlKeyCodec    *legacycrypto.Codec
 	ApifySettings        ApifySettingsService
 	ApifyAccountCheck    ApifyAccountChecker
 	ApifyUsage           ApifyUsageReader
@@ -136,7 +138,8 @@ func NewHandlerWithOptions(logger *slog.Logger, opts Options) http.Handler {
 		mux.HandleFunc("/api/openai", OpenAISettingsHandler(opts.Auth, opts.OpenAISettings, opts.AIConnectionTests))
 		mux.HandleFunc("/api/openai/", OpenAISettingsHandler(opts.Auth, opts.OpenAISettings, opts.AIConnectionTests))
 		mux.HandleFunc("/api/apify/", ApifySettingsHandler(opts.Auth, opts.ApifySettings, opts.ApifyAccountCheck, opts.ApifyUsage))
-		mux.HandleFunc("GET /api/firecrawl/settings", firecrawlSettingsRead(opts.Auth, opts.FirecrawlSettingsDB))
+		mux.HandleFunc("GET /api/firecrawl/settings", firecrawlSettingsRead(opts.Auth, opts.FirecrawlSettingsDB, opts.FirecrawlKeyCodec != nil))
+		mux.HandleFunc("PUT /api/firecrawl/key", firecrawlKeyWrite(opts.Auth, opts.FirecrawlSettingsDB, opts.FirecrawlKeyCodec))
 		mux.HandleFunc("/api/firecrawl/sources/", ApifySettingsHandler(opts.Auth, opts.ApifySettings, opts.ApifyAccountCheck, opts.ApifyUsage))
 		mux.HandleFunc("/api/openrouter", RouterSettingsHandler(opts.Auth, opts.RouterSettings, opts.AIConnectionTests))
 		mux.HandleFunc("/api/openrouter/", RouterSettingsHandler(opts.Auth, opts.RouterSettings, opts.AIConnectionTests))
