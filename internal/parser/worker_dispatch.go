@@ -43,7 +43,7 @@ func (d workerDispatch) execute(ctx context.Context, lease *JobLease) (workerDis
 	switch lease.Job().Type {
 	case "scan_source":
 		listing := d.listing
-		if source := lease.Job().SourceID; source != nil && *source == "companySite" {
+		if source := lease.Job().SourceID; source != nil && isFirecrawlSource(*source) {
 			listing = d.firecrawlListing
 		}
 		if listing == nil {
@@ -53,7 +53,7 @@ func (d workerDispatch) execute(ctx context.Context, lease *JobLease) (workerDis
 		return workerDispatchResult{pending: !result.Done, code: result.PartialCode}, err
 	case "fetch_full_text":
 		detail := d.detail
-		if source := lease.Job().SourceID; source != nil && *source == "companySite" {
+		if source := lease.Job().SourceID; source != nil && isFirecrawlSource(*source) {
 			detail = d.firecrawlDetail
 		}
 		if detail == nil {

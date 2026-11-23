@@ -16,20 +16,18 @@ import (
 	"itmap/internal/vacancies"
 )
 
-const ciFirecrawlListing = "https://careers.company.com/jobs"
-const ciFirecrawlVacancy = ciFirecrawlListing + "/42"
-
 type firecrawlAcceptanceProvider struct {
-	calls []string
+	calls            []string
+	listing, vacancy string
 }
 
 func (p *firecrawlAcceptanceProvider) Execute(_ context.Context, lease *parser.JobLease, step parser.FirecrawlScrapeStep) (firecrawl.ScrapeResult, error) {
 	kind := lease.Job().Type
 	p.calls = append(p.calls, kind)
 	switch {
-	case kind == "scan_source" && step.URL == ciFirecrawlListing:
-		return firecrawl.ScrapeResult{FinalURL: step.URL, TargetStatus: 200, Markdown: "[CI_TITLE](/jobs/42)"}, nil
-	case kind == "fetch_full_text" && step.URL == ciFirecrawlVacancy:
+	case kind == "scan_source" && step.URL == p.listing:
+		return firecrawl.ScrapeResult{FinalURL: step.URL, TargetStatus: 200, Markdown: "[CI_TITLE](" + p.vacancy + ")"}, nil
+	case kind == "fetch_full_text" && step.URL == p.vacancy:
 		return firecrawl.ScrapeResult{FinalURL: step.URL, TargetStatus: 200, Markdown: hhDetailBody()}, nil
 	default:
 		return firecrawl.ScrapeResult{}, fmt.Errorf("unexpected synthetic scrape: %s %s", kind, step.URL)
@@ -53,9 +51,19 @@ func (p firecrawlAcceptanceAI) Automatic(ctx context.Context, req aiproviders.Ge
 }
 
 func TestMariaDBFirecrawlWorkerDisposable(t *testing.T) {
+	t.Run("companySite", func(t *testing.T) {
+		testFirecrawlWorker(t, "companySite", "https://careers.company.com/jobs", "https://careers.company.com/jobs/42", `{}`)
+	})
+	t.Run("getmatch", func(t *testing.T) {
+		testFirecrawlWorker(t, "getmatch", "https://getmatch.ru/companies/ci", "https://getmatch.ru/vacancies/42", `{"adapter":"getmatch","html":false,"titleClass":"","detailPathPrefix":"","allowedHosts":[],"pagination":null,"useEnhancedProxy":false}`)
+	})
+}
+
+func testFirecrawlWorker(t *testing.T, source, listing, vacancyURL, config string) {
 	f := openSchedulerFixture(t)
 	f.exec(`UPDATE firecrawl_settings SET enabled=1,key_encrypted='CI_SYNTHETIC',favorites_only=0,
-		scheduler_json='{"enabled":true,"ownerName":"CI_OWNER","sourceIds":["companySite"],"intervalDays":1,"dayBudgetUsd":5,"monthBudgetUsd":5}' WHERE id=1`)
+		scheduler_json='{"enabled":true,"ownerName":"CI_OWNER","sourceIds":[],"intervalDays":1,"dayBudgetUsd":5,"monthBudgetUsd":5}' WHERE id=1`)
+	f.exec(`UPDATE firecrawl_settings SET scheduler_json=JSON_SET(scheduler_json,'$.sourceIds',JSON_ARRAY(?)) WHERE id=1`, source)
 	t.Cleanup(func() {
 		for _, query := range []string{
 			"DELETE FROM vacancy_import_operations WHERE candidate_id IN (SELECT id FROM vacancy_candidates WHERE company_id=94901)",
@@ -78,7 +86,7 @@ func TestMariaDBFirecrawlWorkerDisposable(t *testing.T) {
 	})
 	f.exec("INSERT INTO app_catalog(id,data_json) VALUES(1,?)", `{"companies":[{"name":"CI Firecrawl Pipeline"}],"agencies":[]}`)
 	f.exec("INSERT INTO company_identity(id,company_name) VALUES(94901,'CI Firecrawl Pipeline')")
-	f.exec("INSERT INTO vacancy_source_parsing(company_id,source_id,source_url,enabled,auto_enabled) VALUES(94901,'companySite',?,1,1)", ciFirecrawlListing)
+	f.exec("INSERT INTO vacancy_source_parsing(company_id,source_id,source_url,enabled,auto_enabled,config_json) VALUES(94901,?,?,1,1,?)", source, listing, config)
 	f.exec("INSERT INTO vacancy_roles(id,stable_key,name,sort_order) VALUES(94901,'ci-firecrawl-root','CI Engineering',0)")
 	f.exec("INSERT INTO vacancy_roles(id,stable_key,name,parent_id,sort_order) VALUES(94902,'ci-firecrawl-leaf','CI Engineer',94901,0)")
 	f.exec("INSERT INTO vacancy_role_classification(role_id,markdown,revision,parsing_enabled) VALUES(94901,'CI title prompt',1,1)")
@@ -94,7 +102,7 @@ func TestMariaDBFirecrawlWorkerDisposable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	provider := &firecrawlAcceptanceProvider{}
+	provider := &firecrawlAcceptanceProvider{listing: listing, vacancy: vacancyURL}
 	title := &storedTitleRunner{answers: map[string]struct{ Type, Choice string }{"role_94901": {"choice", "match"}}}
 	extraction := &extractionRunner{content: content}
 	roles := &leafStageRunner{content: json.RawMessage(`{"role_ids":[94902]}`), model: "gpt-6-luna", provider: "openai"}
@@ -112,7 +120,7 @@ func TestMariaDBFirecrawlWorkerDisposable(t *testing.T) {
 		if err != nil || result.Run.Status != "completed" || result.Processed != want {
 			t.Fatalf("%s: result=%+v err=%v", stage, result, err)
 		}
-		if stage != "idle" && f.count("SELECT COUNT(*) FROM scheduler_jobs WHERE source_id='companySite' AND type=? AND status='completed'", stage) != 1 {
+		if stage != "idle" && f.count("SELECT COUNT(*) FROM scheduler_jobs WHERE source_id=? AND type=? AND status='completed'", source, stage) != 1 {
 			t.Fatalf("stage %s lacks completion receipt", stage)
 		}
 	}
@@ -121,7 +129,7 @@ func TestMariaDBFirecrawlWorkerDisposable(t *testing.T) {
 		t.Fatalf("provider calls=%v title=%d extraction=%d roles=%d", provider.calls, title.calls, extraction.calls, roles.calls)
 	}
 	var vacancy int64
-	err = f.db.QueryRowContext(f.ctx, "SELECT id FROM company_vacancies WHERE company_name='CI Firecrawl Pipeline' AND url=?", ciFirecrawlVacancy).Scan(&vacancy)
+	err = f.db.QueryRowContext(f.ctx, "SELECT id FROM company_vacancies WHERE company_name='CI Firecrawl Pipeline' AND url=?", vacancyURL).Scan(&vacancy)
 	if err != nil {
 		t.Fatal("published vacancy:", err)
 	}
