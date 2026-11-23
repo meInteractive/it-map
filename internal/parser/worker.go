@@ -391,7 +391,7 @@ func (w Worker) cycleStep(ctx, bounded context.Context, stopClaims <-chan struct
 	case "companySite":
 		source = "companySite"
 		claim.CompanyWorkerOnly = true
-		claim.Types = []string{"scan_source", "classify_title", "fetch_full_text", "extract_vacancy", "assign_roles"}
+		claim.Types = []string{"scan_source", "classify_title", "fetch_full_text", "extract_vacancy", "assign_roles", "import_vacancy"}
 		claim.WorkerPipelineFairness = true
 	case "launch":
 		claim.Types = []string{"scan_source"}

@@ -44,8 +44,8 @@ func importNonempty(v string) any {
 	return v
 }
 
-func writeHHImport(ctx context.Context, tx *sql.Tx, j Job, company, url, canonical string, namespace, external sql.NullString, s leafSnapshot, leaf *leafCache) (HHImportResult, error) {
-	target, keys, err := readImportTarget(ctx, tx, *j.CandidateID, canonical)
+func writeVacancyImport(ctx context.Context, tx *sql.Tx, j Job, company, url, canonical string, namespace, external sql.NullString, s leafSnapshot, leaf *leafCache) (HHImportResult, error) {
+	target, keys, err := readImportTarget(ctx, tx, *j.CandidateID, canonical, *j.SourceID == "hh")
 	if err != nil {
 		return HHImportResult{}, err
 	}
@@ -60,7 +60,7 @@ func writeHHImport(ctx context.Context, tx *sql.Tx, j Job, company, url, canonic
 	if err != nil {
 		return HHImportResult{}, err
 	}
-	if target == 0 {
+	if target == 0 && *j.SourceID == "hh" {
 		target, err = readImportContentTarget(ctx, tx, company, canonical, input.Title, input.DescriptionMD)
 		if err != nil {
 			return HHImportResult{}, err

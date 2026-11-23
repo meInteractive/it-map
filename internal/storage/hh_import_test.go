@@ -22,6 +22,10 @@ import (
 )
 
 func hhImportFixture(t *testing.T) (*schedulerFixture, *parser.JobLease, int64, parser.HHImportExecutor) {
+	return vacancyImportFixture(t, false)
+}
+
+func vacancyImportFixture(t *testing.T, companySite bool) (*schedulerFixture, *parser.JobLease, int64, parser.HHImportExecutor) {
 	t.Helper()
 	_, s, detail, candidate := hhDetailFixture(t)
 	s.exec("UPDATE firecrawl_settings SET scheduler_json=JSON_SET(scheduler_json,'$.ownerName','CI_OWNER') WHERE id=1")
@@ -42,6 +46,22 @@ func hhImportFixture(t *testing.T) (*schedulerFixture, *parser.JobLease, int64, 
 	if err := detail.Finish(s.ctx, parser.FinishOptions{Status: "completed"}); err != nil {
 		t.Fatal("finish detail", err)
 	}
+	if companySite {
+		const listing = "https://careers.company.com/jobs"
+		const vacancy = listing + "/123"
+		s.exec(`UPDATE firecrawl_settings SET scheduler_json=JSON_SET(scheduler_json,'$.sourceIds',JSON_ARRAY('companySite')) WHERE id=1`)
+		s.exec("INSERT INTO vacancy_source_parsing(company_id,source_id,source_url,enabled,auto_enabled) VALUES(991302,'companySite',?,1,1)", listing)
+		t.Cleanup(func() {
+			if _, err := s.db.ExecContext(context.Background(), "DELETE FROM vacancy_source_parsing WHERE company_id=991302 AND source_id='companySite'"); err != nil {
+				t.Error(err)
+			}
+		})
+		s.exec("UPDATE vacancy_candidates SET source_id='companySite', source_url=?, vacancy_url=?, canonical_url=?,source_namespace=NULL,external_job_id=NULL WHERE id=?", listing, vacancy, vacancy, candidate)
+		s.exec("DELETE FROM vacancy_candidate_identities WHERE candidate_id=?", candidate)
+		s.exec("UPDATE vacancy_raw_snapshots SET source_url=?,final_url=? WHERE candidate_id=?", vacancy, vacancy, candidate)
+		s.exec("UPDATE scheduler_jobs SET source_id='companySite',payload=JSON_SET(payload,'$.firecrawlVersion',1) WHERE candidate_id=? AND type='extract_vacancy'", candidate)
+	}
+
 	claim := func(kind string) *parser.JobLease {
 		var job, run string
 		if err := s.db.QueryRowContext(s.ctx, "SELECT id FROM scheduler_jobs WHERE candidate_id=? AND type=?", candidate, kind).Scan(&job); err != nil {
@@ -74,6 +94,27 @@ func hhImportFixture(t *testing.T) (*schedulerFixture, *parser.JobLease, int64, 
 		t.Fatal("roles", err)
 	}
 	return s, claim("import_vacancy"), candidate, parser.HHImportExecutor{Settings: apifysettings.NewRepository(s.db, "CI_SECRET"), Owner: "CI_OWNER"}
+}
+
+func TestMariaDBCompanySiteImportDisposable(t *testing.T) {
+	s, lease, candidate, executor := vacancyImportFixture(t, true)
+	s.exec("UPDATE vacancy_source_parsing SET enabled=0 WHERE company_id=991302 AND source_id='companySite'")
+	if _, err := executor.Execute(s.ctx, lease); err == nil {
+		t.Fatal("disabled company site admitted publication")
+	}
+	s.exec("UPDATE vacancy_source_parsing SET enabled=1 WHERE company_id=991302 AND source_id='companySite'")
+	first, err := executor.Execute(s.ctx, lease)
+	if err != nil || first.Action != "create" || first.VacancyID == 0 {
+		t.Fatalf("company site import: %+v %v", first, err)
+	}
+	replayed, err := executor.Execute(s.ctx, lease)
+	if err != nil || !replayed.Reused || replayed.VacancyID != first.VacancyID {
+		t.Fatalf("company site replay: %+v %v", replayed, err)
+	}
+	if s.count("SELECT COUNT(*) FROM company_vacancies WHERE company_name='CI Apify Runtime'") != 1 ||
+		s.count("SELECT COUNT(*) FROM vacancy_publication_sources WHERE candidate_id=? AND vacancy_id=?", candidate, first.VacancyID) != 1 {
+		t.Fatal("company site retry did not preserve exactly one publication")
+	}
 }
 
 func TestMariaDBHHImportDisposable(t *testing.T) {
