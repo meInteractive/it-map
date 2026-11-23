@@ -41,7 +41,7 @@ func New(key string, transport http.RoundTripper) (*Client, error) {
 	}
 	return &Client{key: key, http: http.Client{
 		Transport:     transport,
-		Timeout:       47 * time.Second,
+		Timeout:       62 * time.Second,
 		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
 	}}, nil
 }
@@ -83,7 +83,7 @@ type ScrapeResult struct {
 
 // Scrape expects a target that has passed public DNS and redirect preflight.
 func (c *Client) Scrape(ctx context.Context, target string, options ScrapeOptions) (ScrapeResult, error) {
-	if !allowedURL(target, options.AllowedHosts) || options.Timeout < time.Millisecond || options.Timeout > 45*time.Second {
+	if !allowedURL(target, options.AllowedHosts) || options.Timeout < time.Millisecond || options.Timeout > 60*time.Second {
 		return ScrapeResult{}, ErrInput
 	}
 	formats := []string{"markdown"}

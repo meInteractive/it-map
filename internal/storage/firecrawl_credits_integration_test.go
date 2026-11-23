@@ -3,12 +3,15 @@
 package storage
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
-	"strings"
+	"net/http"
 	"testing"
 	"time"
 
 	"itmap/internal/integrations/firecrawl"
+	"itmap/internal/legacycrypto"
 	"itmap/internal/parser"
 )
 
@@ -23,13 +26,31 @@ func TestMariaDBFirecrawlCreditsDisposable(t *testing.T) {
 		f.exec("DELETE FROM firecrawl_usage_events")
 		f.exec("DELETE FROM firecrawl_usage_periods")
 	})
-	hash := strings.Repeat("a", 64)
-	f.exec("UPDATE firecrawl_settings SET enabled=1,key_encrypted='CI_SYNTHETIC',free_key_hash=?,revision=5 WHERE id=1", hash)
+	const key = "CI_SYNTHETIC_FIRECRAWL_KEY"
+	codec, err := legacycrypto.New("CI_SYNTHETIC_SESSION_SECRET", legacycrypto.Firecrawl)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ciphertext, err := codec.Encrypt(key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	digest := sha256.Sum256([]byte(key))
+	hash := hex.EncodeToString(digest[:])
+	f.exec("UPDATE firecrawl_settings SET enabled=1,key_encrypted=?,free_key_hash=?,revision=5 WHERE id=1", ciphertext, hash)
 	run := f.begin("CI_FIRECRAWL_CREDITS")
 	jobID := "CI_FIRECRAWL_JOB"
 	schedulerSeedJob(f, jobID, nil)
 	f.exec("UPDATE scheduler_jobs SET type='scan_source',source_id='companySite' WHERE id=?", jobID)
 	lease := schedulerRequireLease(t, f, run, jobID)
+	executor := parser.FirecrawlScrapeExecutor{Codec: codec, Transport: rejectFirecrawlTransport{t}}
+	step := parser.FirecrawlScrapeStep{ID: "listing", URL: "https://jobs.company.com", AllowedHosts: []string{"different.company.com"}}
+	if _, err := executor.Execute(f.ctx, lease, step); !errors.Is(err, firecrawl.ErrInput) {
+		t.Fatalf("unapproved source was not rejected before contacting Firecrawl: %v", err)
+	}
+	if n := f.count("SELECT COUNT(*) FROM firecrawl_usage_events"); n != 0 {
+		t.Fatalf("unapproved source reserved credits: %d", n)
+	}
 	now := time.UnixMilli(schedulerClock(t, f.db)).Add(-time.Second)
 	plan, remaining := float64(1000), float64(995)
 	snapshot := parser.FirecrawlCreditSnapshot{ObservedAt: now, Usage: firecrawl.CreditUsage{
@@ -70,4 +91,11 @@ func TestMariaDBFirecrawlCreditsDisposable(t *testing.T) {
 	if f.count("SELECT COUNT(*) FROM firecrawl_usage_periods WHERE provider_used_high=999") != 1 {
 		t.Fatal("denied reservation lost provider high-water mark")
 	}
+}
+
+type rejectFirecrawlTransport struct{ t *testing.T }
+
+func (r rejectFirecrawlTransport) RoundTrip(*http.Request) (*http.Response, error) {
+	r.t.Error("unapproved source contacted Firecrawl")
+	return nil, errors.New("unexpected provider request")
 }
