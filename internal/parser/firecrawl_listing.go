@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
@@ -66,8 +67,7 @@ func (e firecrawlListingExecutor) read(ctx context.Context, tx *sql.Tx, job Job)
 }
 
 func genericCompanyListingHost(rawURL, rawConfig string) (string, bool) {
-	var config map[string]json.RawMessage
-	if json.Unmarshal([]byte(rawConfig), &config) != nil || config == nil || len(config) != 0 {
+	if !genericCompanyListingConfig(rawConfig) {
 		return "", false
 	}
 	u, err := url.Parse(rawURL)
@@ -80,6 +80,39 @@ func genericCompanyListingHost(rawURL, rawConfig string) (string, bool) {
 		return "", false
 	}
 	return host, true
+}
+
+// Accept both the empty object and the explicit defaults saved by Sites.
+func genericCompanyListingConfig(raw string) bool {
+	var fields map[string]json.RawMessage
+	if json.Unmarshal([]byte(raw), &fields) != nil || fields == nil {
+		return false
+	}
+	for key, value := range fields {
+		var canonical bytes.Buffer
+		if json.Compact(&canonical, value) != nil {
+			return false
+		}
+		var expected string
+		switch key {
+		case "adapter":
+			expected = `"generic"`
+		case "html", "useEnhancedProxy":
+			expected = "false"
+		case "titleClass", "detailPathPrefix":
+			expected = `""`
+		case "allowedHosts":
+			expected = "[]"
+		case "pagination":
+			expected = "null"
+		default:
+			return false
+		}
+		if canonical.String() != expected {
+			return false
+		}
+	}
+	return true
 }
 
 func (e firecrawlListingExecutor) Execute(ctx context.Context, lease *JobLease) (HHListingProgress, error) {

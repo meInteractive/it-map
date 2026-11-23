@@ -27,7 +27,7 @@ func TestMariaDBFirecrawlScheduleDisposable(t *testing.T) {
 	f.exec(`INSERT INTO company_user_state(company_name,user_name,favorite) VALUES
 		('CI Firecrawl Due','CI_OWNER',1),('CI Firecrawl Unsupported','CI_OWNER',1)`)
 	f.exec(`INSERT INTO vacancy_source_parsing(company_id,source_id,source_url,enabled,auto_enabled,config_json) VALUES
-		(94801,'companySite','https://careers.company.com/jobs',1,1,'{}'),
+		(94801,'companySite','https://careers.company.com/jobs',1,1,'{"adapter":"generic","html":false,"titleClass":"","detailPathPrefix":"","allowedHosts":[],"pagination":null,"useEnhancedProxy":false}'),
 		(94802,'companySite','https://careers.company.com/jobs',1,1,'{"adapter":"selectel"}'),
 		(94803,'companySite','https://careers.company.com/jobs',1,1,'{}')`)
 	run := f.begin("CI_FIRECRAWL_SCHEDULE")
