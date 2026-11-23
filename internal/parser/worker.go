@@ -280,8 +280,13 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 		ai:       AIStageDispatcher{Owner: owner, Generator: w.Generator, Classifier: w.Classifier, DeferUnspentBudget: w.DeferUnspentBudget, StopClaims: options.StopClaims},
 	}
 	if options.QueueProfile == "companySite" {
-		d.firecrawlListing = firecrawlListingExecutor{owner: owner, scrape: w.Firecrawl}
-		d.firecrawlDetail = firecrawlFullTextExecutor{owner: owner, scrape: w.Firecrawl}
+		scraper := w.Firecrawl
+		if executor, ok := scraper.(FirecrawlScrapeExecutor); ok {
+			executor.stopClaims = options.StopClaims
+			scraper = executor
+		}
+		d.firecrawlListing = firecrawlListingExecutor{owner: owner, scrape: scraper}
+		d.firecrawlDetail = firecrawlFullTextExecutor{owner: owner, scrape: scraper}
 	}
 	if err := w.Runs.reportCycle(bounded, start.Run.ID, 0, true); err != nil {
 		status = "partial"

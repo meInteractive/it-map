@@ -77,11 +77,15 @@ func (e Engine) profiles(stop context.Context, config workerconfig.Config) []wor
 			},
 		}
 	}
-	return []workerloop.Profile{
+	profiles := []workerloop.Profile{
 		makeProfile(workerloop.Launch, config.LaunchIdle),
 		makeProfile(workerloop.Reconcile, config.ReconcileIdle),
 		makeProfile(workerloop.Pipeline, config.IdleDelay),
 	}
+	if e.Worker.Firecrawl != nil {
+		profiles = append(profiles, makeProfile(workerloop.CompanySite, config.LaunchIdle))
+	}
+	return profiles
 }
 
 func (e Engine) runProfile(ctx, stop context.Context, name workerloop.ProfileName, maxJobs int) (worked bool, err error) {
@@ -122,9 +126,18 @@ func (e Engine) cycle(ctx context.Context, stopClaims <-chan struct{}, profile w
 	// Launch также планирует источники и восстанавливает leases, поэтому его
 	// нельзя пропускать только из-за отсутствия готового задания. Остальные
 	// профили избегают пустого run; снимок не заменяет атомарный claim.
-	if profile == workerloop.Launch {
+	if profile == workerloop.CompanySite && e.Worker.Firecrawl == nil {
+		return false, ErrCycle
+	}
+	if profile == workerloop.Launch || profile == workerloop.CompanySite {
 		enabled, err := e.Worker.Runs.SchedulerEnabledSnapshot(ctx)
-		if err != nil || !enabled {
+		if err != nil {
+			return false, ErrCycle
+		}
+		if !enabled {
+			if profile == workerloop.CompanySite {
+				return false, nil
+			}
 			return false, ErrCycle
 		}
 	} else {
@@ -159,7 +172,7 @@ func (e Engine) cycle(ctx context.Context, stopClaims <-chan struct{}, profile w
 	// Резервируем минуту перед любым новым pipeline job, включая первый.
 	// Долгие AI-вызовы всё ещё могут превысить дедлайн.
 	var minRemaining time.Duration
-	if profile == workerloop.Pipeline {
+	if profile == workerloop.Pipeline || profile == workerloop.CompanySite {
 		minRemaining = 60 * time.Second
 	}
 	result, err := worker.Cycle(ctx, parser.WorkerOptions{

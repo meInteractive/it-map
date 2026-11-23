@@ -97,6 +97,17 @@ func TestMariaDBWorkerReleaseLedgerDisposable(t *testing.T) {
 	if err != nil || base.Count != 1 || len(base.Digest) != 64 {
 		t.Fatal("old ledger evidence unavailable", base, err)
 	}
+	f.exec(`INSERT INTO firecrawl_usage_events(id,key_hash,profile,period_start,period_end,operation,reserved_credits,outcome,started_at,active_until,generation)
+		VALUES('CI_FC_RELEASE','CI_HASH','free','CI_START','CI_END','scrape',4,'uncertain',1,?,?)`,
+		schedulerClock(t, f.db)+60000, f.repo.Generation)
+	t.Cleanup(func() { f.exec("DELETE FROM firecrawl_usage_events WHERE id='CI_FC_RELEASE'") })
+	if _, err := paidrecovery.ReadReleaseLedgerWithFirecrawl(f.ctx, f.db, f.repo.Generation); err == nil {
+		t.Fatal("active Firecrawl reservation did not defer release")
+	}
+	f.exec("UPDATE firecrawl_usage_events SET active_until=0 WHERE id='CI_FC_RELEASE'")
+	if ledger, err := paidrecovery.ReadReleaseLedgerWithFirecrawl(f.ctx, f.db, f.repo.Generation); err != nil || ledger != base {
+		t.Fatal("expired Firecrawl reservation still blocks release", ledger, err)
+	}
 	f.exec("UPDATE scheduler_attempts SET reserved_usd=0.01 WHERE id='CI_ledger_attempt'")
 	changed, err := paidrecovery.ReadReleaseLedger(f.ctx, f.db, f.repo.Generation)
 	if err != nil || changed.Count != base.Count || changed.Digest == base.Digest {
