@@ -30,7 +30,7 @@ func increment(v *uint64) {
 
 // Record игнорирует неизвестные значения и не хранит ошибки или данные job.
 func (c *ProfileCounters) Record(name ProfileName, outcome ProfileOutcome) {
-	if c == nil || (name != Launch && name != Reconcile && name != Pipeline) {
+	if c == nil || (name != Launch && name != Reconcile && name != Pipeline && name != CompanySite) {
 		return
 	}
 	c.mu.Lock()
@@ -68,6 +68,9 @@ func (c *ProfileCounters) Snapshot() []ProfileStats {
 	for _, name := range []ProfileName{Launch, Reconcile, Pipeline} {
 		v := c.values[name]
 		v.Name = name
+		result = append(result, v)
+	}
+	if v, ok := c.values[CompanySite]; ok {
 		result = append(result, v)
 	}
 	return result

@@ -69,3 +69,28 @@ func TestProfilePaidStartPolicy(t *testing.T) {
 		}
 	}
 }
+
+func TestCompanySiteProfileRequiresFirecrawlExecutor(t *testing.T) {
+	engine := Engine{}
+	config := workerconfig.Defaults()
+	ctx := context.Background()
+	if profiles := engine.profiles(ctx, config); len(profiles) != 3 {
+		t.Fatalf("default profile count = %d", len(profiles))
+	}
+	engine.Worker.Firecrawl = parser.FirecrawlScrapeExecutor{}
+	profiles := engine.profiles(ctx, config)
+	if len(profiles) != 4 || profiles[3].Name != workerloop.CompanySite {
+		t.Fatalf("Firecrawl profile missing: %v", profiles)
+	}
+	if err := workerloop.ValidateProfiles(profiles); err != nil {
+		t.Fatal(err)
+	}
+	pause := NewPauseGate()
+	if _, err := pause.Pause("ci-release"); err != nil {
+		t.Fatal(err)
+	}
+	engine.Pause = pause
+	if worked, err := engine.runProfile(ctx, ctx, workerloop.CompanySite, 1); worked || err != nil {
+		t.Fatalf("paused Firecrawl profile ran: %t, %v", worked, err)
+	}
+}

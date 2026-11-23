@@ -11,9 +11,10 @@ import (
 type ProfileName string
 
 const (
-	Launch    ProfileName = "launch"
-	Reconcile ProfileName = "reconcile"
-	Pipeline  ProfileName = "pipeline"
+	Launch      ProfileName = "launch"
+	Reconcile   ProfileName = "reconcile"
+	Pipeline    ProfileName = "pipeline"
+	CompanySite ProfileName = "companySite"
 )
 
 // Границы локального polling не являются provider rate limit или SLA.
@@ -62,13 +63,13 @@ type profilePlan struct {
 }
 
 func newProfilePlan(profiles []Profile) (*profilePlan, error) {
-	if len(profiles) == 0 || len(profiles) > 3 {
+	if len(profiles) == 0 || len(profiles) > 4 {
 		return nil, ErrConfig
 	}
 	seen := make(map[ProfileName]bool, len(profiles))
 	p := &profilePlan{}
 	for _, v := range profiles {
-		if (v.Name != Launch && v.Name != Reconcile && v.Name != Pipeline) || seen[v.Name] || v.Step == nil || v.WorkDelay < minProfileDelay || v.WorkDelay > maxProfileDelay || v.IdleDelay < minProfileDelay || v.IdleDelay > maxProfileDelay || v.ErrorMin < minProfileDelay || v.ErrorMax < v.ErrorMin || v.ErrorMax > maxProfileDelay || v.StepTimeout < minProfileDelay || v.StepTimeout > maxProfileStep {
+		if (v.Name != Launch && v.Name != Reconcile && v.Name != Pipeline && v.Name != CompanySite) || seen[v.Name] || v.Step == nil || v.WorkDelay < minProfileDelay || v.WorkDelay > maxProfileDelay || v.IdleDelay < minProfileDelay || v.IdleDelay > maxProfileDelay || v.ErrorMin < minProfileDelay || v.ErrorMax < v.ErrorMin || v.ErrorMax > maxProfileDelay || v.StepTimeout < minProfileDelay || v.StepTimeout > maxProfileStep {
 			return nil, ErrConfig
 		}
 		seen[v.Name] = true

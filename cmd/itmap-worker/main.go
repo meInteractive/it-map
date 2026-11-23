@@ -15,6 +15,7 @@ import (
 
 	"itmap/internal/aiproviders"
 	"itmap/internal/apifysettings"
+	"itmap/internal/legacycrypto"
 	"itmap/internal/paidrecovery"
 	"itmap/internal/parser"
 	"itmap/internal/storage"
@@ -33,6 +34,7 @@ type settings struct {
 	password, secret, openAIKey string
 	health                      bool
 	releaseControl              bool
+	firecrawl                   bool
 }
 
 // load проверяет все допуски до открытия соединения. Значения учётных данных
@@ -55,6 +57,13 @@ func load(getenv func(string) string) (settings, error) {
 	if control != "" && control != "0" && (control != "1" || getenv("APP_ENV") != "production") {
 		return settings{}, errConfig
 	}
+	firecrawl := getenv("ITMAP_WORKER_FIRECRAWL_ENABLED")
+	if firecrawl != "" && firecrawl != "0" && firecrawl != "1" {
+		return settings{}, errConfig
+	}
+	if firecrawl == "1" && getenv("APP_ENV") == "production" && control != "1" {
+		return settings{}, errConfig
+	}
 	switch getenv("APP_ENV") {
 	case "staging":
 		if getenv("ITMAP_WORKER_STAGING_REAL_PROVIDERS") != "1" || database.Host != "127.0.0.1" || database.Port != "3306" || database.Database != "itmap_worker_staging" || database.User != "itmap_worker_app" {
@@ -75,7 +84,7 @@ func load(getenv func(string) string) (settings, error) {
 		return settings{}, errConfig
 	}
 	return settings{runtime: runtime, database: database, password: password,
-		secret: getenv("SESSION_SECRET"), openAIKey: getenv("OPENAI_API_KEY"), health: health == "1", releaseControl: control == "1"}, nil
+		secret: getenv("SESSION_SECRET"), openAIKey: getenv("OPENAI_API_KEY"), health: health == "1", releaseControl: control == "1", firecrawl: firecrawl == "1"}, nil
 }
 
 type opener func(context.Context, storage.Settings, string) (*sql.DB, error)
@@ -139,6 +148,13 @@ func runWorker(ctx context.Context, db *sql.DB, s settings) error {
 	if err != nil {
 		return errStartup
 	}
+	if s.firecrawl {
+		codec, err := legacycrypto.New(s.secret, legacycrypto.Firecrawl)
+		if err != nil {
+			return errStartup
+		}
+		w.Firecrawl = parser.FirecrawlScrapeExecutor{Codec: codec}
+	}
 	monitor := workerengine.NewMonitor(workerengine.MonitorMaxAge(s.runtime))
 	defer monitor.Stop()
 	workerCtx, stop := context.WithCancel(ctx)
@@ -150,6 +166,9 @@ func runWorker(ctx context.Context, db *sql.DB, s settings) error {
 	var pause *workerengine.PauseGate
 	if s.releaseControl {
 		control, listener, gate, err := openReleaseControl(func(active context.Context) (paidrecovery.ReleaseLedger, error) {
+			if s.firecrawl {
+				return paidrecovery.ReadReleaseLedgerWithFirecrawl(active, db, generation)
+			}
 			return paidrecovery.ReadReleaseLedger(active, db, generation)
 		})
 		if err != nil {

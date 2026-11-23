@@ -158,3 +158,20 @@ func TestProductionServiceHasNoEmbeddedSecretsOrEnableFlags(t *testing.T) {
 		t.Fatal("service embeds activation or secret")
 	}
 }
+
+func TestFirecrawlWorkerOptIn(t *testing.T) {
+	env := productionEnvironment()
+	config, err := load(getter(env))
+	if err != nil || config.firecrawl {
+		t.Fatalf("default Firecrawl configuration: enabled=%t, err=%v", config.firecrawl, err)
+	}
+	env["ITMAP_WORKER_FIRECRAWL_ENABLED"] = "1"
+	if _, err := load(getter(env)); !errors.Is(err, errConfig) {
+		t.Fatalf("Firecrawl requires release control in production: %v", err)
+	}
+	env["ITMAP_WORKER_RELEASE_CONTROL_ENABLED"] = "1"
+	config, err = load(getter(env))
+	if err != nil || !config.firecrawl {
+		t.Fatalf("explicit Firecrawl configuration: enabled=%t, err=%v", config.firecrawl, err)
+	}
+}

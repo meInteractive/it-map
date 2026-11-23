@@ -19,6 +19,15 @@ type ReleaseLedger struct {
 // ReadReleaseLedger под блокировкой поколения фиксирует состав и состояние
 // закрытых локально попыток. Стоимость этих попыток остаётся неизвестной.
 func ReadReleaseLedger(ctx context.Context, db *sql.DB, generation string) (ReleaseLedger, error) {
+	return readReleaseLedger(ctx, db, generation, false)
+}
+
+// ReadReleaseLedgerWithFirecrawl also checks the paid scrape concurrency window.
+func ReadReleaseLedgerWithFirecrawl(ctx context.Context, db *sql.DB, generation string) (ReleaseLedger, error) {
+	return readReleaseLedger(ctx, db, generation, true)
+}
+
+func readReleaseLedger(ctx context.Context, db *sql.DB, generation string, checkFirecrawl bool) (ReleaseLedger, error) {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 	tx, err := db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
@@ -29,6 +38,14 @@ func ReadReleaseLedger(ctx context.Context, db *sql.DB, generation string) (Rele
 	var actual string
 	if err = tx.QueryRowContext(ctx, "SELECT generation FROM app_runtime_generation WHERE id=1 FOR UPDATE").Scan(&actual); err != nil || actual != generation {
 		return ReleaseLedger{}, ErrUnavailable
+	}
+	if checkFirecrawl {
+		var firecrawlActive bool
+		err = tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM firecrawl_usage_events
+		WHERE active_until > CAST(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000 AS SIGNED))`).Scan(&firecrawlActive)
+		if err != nil || firecrawlActive {
+			return ReleaseLedger{}, ErrUnavailable
+		}
 	}
 	rows, err := tx.QueryContext(ctx, `SELECT SHA2(JSON_ARRAY(a.id,a.job_id,a.run_id,a.type,a.provider,a.model,
 		a.status,a.reason_code,a.started_at,a.finished_at,a.reserved_usd,a.credits,

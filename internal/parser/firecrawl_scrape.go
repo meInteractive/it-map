@@ -18,8 +18,9 @@ var ErrFirecrawlSettings = errors.New("Firecrawl settings or key unavailable")
 // FirecrawlScrapeExecutor performs one paid step of a claimed job. The caller
 // supplies the stable step name and the URL and hosts from its source plan.
 type FirecrawlScrapeExecutor struct {
-	Codec     *legacycrypto.Codec
-	Transport http.RoundTripper
+	stopClaims <-chan struct{}
+	Codec      *legacycrypto.Codec
+	Transport  http.RoundTripper
 }
 
 type FirecrawlScrapeStep struct {
@@ -61,7 +62,16 @@ func (e FirecrawlScrapeExecutor) Execute(ctx context.Context, lease *JobLease, s
 	if err != nil {
 		return firecrawl.ScrapeResult{}, err
 	}
-	reservation, err := lease.reserveFirecrawlCredits(ctx, step.ID, settings.hash, settings.mode, settings.revision, FirecrawlCreditSnapshot{Usage: usage, ObservedAt: checkedAt}, step.validate)
+	validate := func(ctx context.Context, tx *sql.Tx) error {
+		if claimsStopped(e.stopClaims) {
+			return ErrWorkerDrainBeforePaid
+		}
+		if step.validate != nil {
+			return step.validate(ctx, tx)
+		}
+		return nil
+	}
+	reservation, err := lease.reserveFirecrawlCredits(ctx, step.ID, settings.hash, settings.mode, settings.revision, FirecrawlCreditSnapshot{Usage: usage, ObservedAt: checkedAt}, validate)
 	if err != nil {
 		return firecrawl.ScrapeResult{}, err
 	}
