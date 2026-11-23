@@ -1470,11 +1470,11 @@ jobs:
           set -euo pipefail
           result_file="$(mktemp)"
           trap 'rm -f "$result_file"' EXIT
-          go test -race -tags mariadb,schedulerwrites,schedulerbilling ./internal/storage -run '^TestMariaDB(HH|CompanySite)ImportDisposable$' -count=1 -json | tee "$result_file"
+          go test -race -tags mariadb,schedulerwrites,schedulerbilling ./internal/storage -run '^TestMariaDB((HH|CompanySite)Import|FirecrawlWorker)Disposable$' -count=1 -json | tee "$result_file"
           python3 - "$result_file" <<'PYCODE'
           import json,sys
           events=[json.loads(line) for line in open(sys.argv[1],encoding='utf8')]
-          for target in ['TestMariaDBHHImportDisposable','TestMariaDBCompanySiteImportDisposable']:
+          for target in ['TestMariaDBHHImportDisposable','TestMariaDBCompanySiteImportDisposable','TestMariaDBFirecrawlWorkerDisposable']:
               assert any(e.get('Test')==target and e.get('Action')=='pass' for e in events), f'import gate did not pass: {target}'
           assert not any(e.get('Action')=='skip' for e in events), 'vacancy import gate skipped'
           PYCODE
