@@ -35,6 +35,10 @@ type FirecrawlCreditReservation struct {
 // ReserveFirecrawlCredits records one scrape per stable job and step. An
 // existing reservation, even after its active window, never authorizes a POST.
 func (j *JobLease) ReserveFirecrawlCredits(ctx context.Context, step, keyHash, mode string, revision int64, snapshot FirecrawlCreditSnapshot) (*FirecrawlCreditReservation, error) {
+	return j.reserveFirecrawlCredits(ctx, step, keyHash, mode, revision, snapshot, nil)
+}
+
+func (j *JobLease) reserveFirecrawlCredits(ctx context.Context, step, keyHash, mode string, revision int64, snapshot FirecrawlCreditSnapshot, validate func(context.Context, *sql.Tx) error) (*FirecrawlCreditReservation, error) {
 	if !validFirecrawlStep(j, step) || !validFirecrawlKeyHash(keyHash) || revision < 0 {
 		return nil, ErrJobInput
 	}
@@ -48,6 +52,12 @@ func (j *JobLease) ReserveFirecrawlCredits(ctx context.Context, step, keyHash, m
 	plan, remaining, start, end, cap, rate, ok := firecrawlCreditPeriod(mode, snapshot, time.UnixMilli(now))
 	if !ok {
 		return nil, ErrFirecrawlCreditSnapshot
+	}
+
+	if validate != nil {
+		if err := validate(ctx, tx); err != nil {
+			return nil, err
+		}
 	}
 
 	var enabled int
