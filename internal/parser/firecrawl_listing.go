@@ -39,21 +39,21 @@ func (e firecrawlListingExecutor) read(ctx context.Context, tx *sql.Tx, job Job)
 		return plan, err
 	}
 	var settings Settings
-	if json.Unmarshal(view.PublicJSON(), &settings) != nil || !settings.Enabled || e.owner != settings.OwnerName || !slices.Contains(settings.SourceIDs, "companySite") {
+	if json.Unmarshal(view.PublicJSON(), &settings) != nil || !settings.Enabled || e.owner != settings.OwnerName || !slices.Contains(settings.SourceIDs, *job.SourceID) {
 		return plan, ErrSettingsChanged
 	}
 	err = tx.QueryRowContext(ctx, `SELECT c.company_name,s.source_url,s.config_json,s.revision
 		FROM company_identity c JOIN vacancy_source_parsing s ON s.company_id=c.id
-		WHERE c.id=? AND s.source_id='companySite' AND s.enabled=1 AND s.auto_enabled=1
+		WHERE c.id=? AND s.source_id=? AND s.enabled=1 AND s.auto_enabled=1
 		AND (?=0 OR EXISTS(SELECT 1 FROM company_user_state u WHERE u.company_name=c.company_name AND u.user_name=? AND u.favorite=1))
-		FOR UPDATE`, job.CompanyID, row.favorite, e.owner).Scan(&plan.name, &plan.url, &plan.config, &plan.revision)
+		FOR UPDATE`, job.CompanyID, *job.SourceID, row.favorite, e.owner).Scan(&plan.name, &plan.url, &plan.config, &plan.revision)
 	if errors.Is(err, sql.ErrNoRows) {
 		return plan, ErrCandidateChanged
 	}
 	if err != nil {
 		return plan, storageError(ctx)
 	}
-	host, ok := genericCompanyListingHost(plan.url, plan.config)
+	host, ok := firecrawlListingHost(*job.SourceID, plan.url, plan.config)
 	if !ok {
 		return plan, ErrWorkerUnsupported
 	}
@@ -66,8 +66,29 @@ func (e firecrawlListingExecutor) read(ctx context.Context, tx *sql.Tx, job Job)
 	return plan, nil
 }
 
+func isFirecrawlSource(source string) bool {
+	return source == "companySite" || source == "getmatch"
+}
+
+func firecrawlListingHost(source, address, config string) (string, bool) {
+	if source == "companySite" {
+		return genericCompanyListingHost(address, config)
+	}
+	if source != "getmatch" {
+		return "", false
+	}
+	u, err := url.Parse(address)
+	if err != nil || u.Scheme != "https" || u.User != nil || u.Port() != "" {
+		return "", false
+	}
+	host := strings.ToLower(strings.TrimSuffix(u.Hostname(), "."))
+	// The legacy Getmatch adapter uses Markdown and accepts only Getmatch URLs.
+	return host, (host == "getmatch.ru" || strings.HasSuffix(host, ".getmatch.ru")) &&
+		genericListingConfig(config, "getmatch")
+}
+
 func genericCompanyListingHost(rawURL, rawConfig string) (string, bool) {
-	if !genericCompanyListingConfig(rawConfig) {
+	if !genericListingConfig(rawConfig, "generic") {
 		return "", false
 	}
 	u, err := url.Parse(rawURL)
@@ -83,7 +104,7 @@ func genericCompanyListingHost(rawURL, rawConfig string) (string, bool) {
 }
 
 // Accept both the empty object and the explicit defaults saved by Sites.
-func genericCompanyListingConfig(raw string) bool {
+func genericListingConfig(raw, adapter string) bool {
 	var fields map[string]json.RawMessage
 	if json.Unmarshal([]byte(raw), &fields) != nil || fields == nil {
 		return false
@@ -96,7 +117,10 @@ func genericCompanyListingConfig(raw string) bool {
 		var expected string
 		switch key {
 		case "adapter":
-			expected = `"generic"`
+			if adapter == "getmatch" && string(value) == `"generic"` {
+				continue
+			}
+			expected = `"` + adapter + `"`
 		case "html", "useEnhancedProxy":
 			expected = "false"
 		case "titleClass", "detailPathPrefix":
@@ -118,7 +142,7 @@ func genericCompanyListingConfig(raw string) bool {
 func (e firecrawlListingExecutor) Execute(ctx context.Context, lease *JobLease) (HHListingProgress, error) {
 	job := lease.Job()
 	if e.scrape == nil || job.Type != "scan_source" || job.CompanyID == nil || job.AgencyID != nil ||
-		job.CandidateID != nil || job.SourceID == nil || *job.SourceID != "companySite" {
+		job.CandidateID != nil || job.SourceID == nil || !isFirecrawlSource(*job.SourceID) {
 		return HHListingProgress{}, ErrJobInput
 	}
 	var plan firecrawlListingPlan
@@ -149,7 +173,7 @@ func (e firecrawlListingExecutor) Execute(ctx context.Context, lease *JobLease) 
 	if doc.TargetStatus < 200 || doc.TargetStatus >= 300 {
 		return HHListingProgress{}, errFirecrawlListing
 	}
-	cards, err := companyListingCards(doc.Markdown, doc.FinalURL)
+	cards, err := firecrawlListingCards(*job.SourceID, doc.Markdown, doc.FinalURL)
 	if err != nil {
 		return HHListingProgress{}, err
 	}
@@ -202,9 +226,9 @@ func insertCompanyListingCandidate(ctx context.Context, tx *sql.Tx, job Job, pla
 	inserted, err := tx.ExecContext(ctx, `INSERT INTO vacancy_candidates
 		(creation_token,company_id,company_name_raw,title_raw,title_hash,vacancy_url,canonical_url,
 		source_url,source_id,acquisition_method,first_seen_at,last_seen_at,created_at,updated_at)
-		VALUES(?,?,?,?,?,?,?,?,'companySite','site',?,?,?,?)`,
+		VALUES(?,?,?,?,?,?,?,?,?,'site',?,?,?,?)`,
 		token, job.CompanyID, plan.name, card.Title, stageHash(card.Title), card.URL, card.URL,
-		plan.url, now, now, now, now)
+		plan.url, *job.SourceID, now, now, now, now)
 	if err != nil {
 		return 0, storageError(ctx)
 	}
@@ -215,7 +239,7 @@ func insertCompanyListingCandidate(ctx context.Context, tx *sql.Tx, job Job, pla
 	if _, err := tx.ExecContext(ctx, "INSERT INTO vacancy_candidate_identities(identity_key,candidate_id) VALUES(?,?)", identity, id); err != nil {
 		return 0, storageError(ctx)
 	}
-	if _, err := tx.ExecContext(ctx, "INSERT INTO parser_candidate_intakes(candidate_token,parser,source_id,received_at) VALUES(?,'firecrawl','companySite',?)", token, now); err != nil {
+	if _, err := tx.ExecContext(ctx, "INSERT INTO parser_candidate_intakes(candidate_token,parser,source_id,received_at) VALUES(?,'firecrawl',?,?)", token, *job.SourceID, now); err != nil {
 		return 0, storageError(ctx)
 	}
 	return id, nil

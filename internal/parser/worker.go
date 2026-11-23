@@ -394,7 +394,7 @@ func (w Worker) cycleStep(ctx, bounded context.Context, stopClaims <-chan struct
 	claim := ClaimOptions{Types: workerTypes, SourceID: &source, Lease: jobDuration, AllowApify: &allowHH, VerifiedHHOnly: w.ScheduleSources || w.VerifiedHHOnly}
 	switch phase {
 	case "companySite":
-		source = "companySite"
+		claim.SourceID = nil
 		claim.CompanyWorkerOnly = true
 		claim.Types = []string{"scan_source", "classify_title", "fetch_full_text", "extract_vacancy", "assign_roles", "import_vacancy"}
 		claim.WorkerPipelineFairness = true
@@ -590,7 +590,7 @@ func workerExecute(ctx context.Context, d workerDispatch, lease *JobLease, owner
 		var save func(*sql.Tx) error
 		if kind == "scan_source" && finish.Status == "completed" {
 			job := lease.Job()
-			if job.SourceID != nil && *job.SourceID == "companySite" {
+			if job.SourceID != nil && isFirecrawlSource(*job.SourceID) {
 				save = func(tx *sql.Tx) error { return completeCompanyScan(cleanup, tx, job) }
 			} else {
 				save = func(tx *sql.Tx) error { return completeScheduledHH(cleanup, tx, job, owner, out.code) }
