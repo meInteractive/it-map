@@ -25,6 +25,7 @@ type Worker struct {
 	Generator              AIStageGenerator
 	Classifier             AIStageClassifier
 	ScheduleSources        bool
+	Firecrawl              companyFirecrawlScraper
 	VerifiedHHOnly         bool
 	ContinueOnStageFailure bool
 	ResumePreviousDataset  bool
@@ -108,6 +109,10 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 		return result, context.Canceled
 	}
 	switch options.QueueProfile {
+	case "companySite":
+		if w.Firecrawl == nil || w.ScheduleSources || options.Run.Trigger != "automatic" {
+			return result, ErrRunInput
+		}
 	case "", "balanced", "launch", "reconcile", "pipeline":
 	default:
 		return result, ErrRunInput
@@ -162,6 +167,12 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 	owner := settings.OwnerName
 	if w.ScheduleSources {
 		if err := scheduleHH(bounded, w.Runs, w.Settings, start.Run.ID, owner); err != nil {
+			status = "partial"
+			return result, err
+		}
+	}
+	if options.QueueProfile == "companySite" {
+		if err := w.Runs.ScheduleCompanySites(bounded, start.Run.ID, owner); err != nil {
 			status = "partial"
 			return result, err
 		}
@@ -268,6 +279,10 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 		importer: HHImportExecutor{Settings: w.Settings, Owner: owner},
 		ai:       AIStageDispatcher{Owner: owner, Generator: w.Generator, Classifier: w.Classifier, DeferUnspentBudget: w.DeferUnspentBudget, StopClaims: options.StopClaims},
 	}
+	if options.QueueProfile == "companySite" {
+		d.firecrawlListing = firecrawlListingExecutor{owner: owner, scrape: w.Firecrawl}
+		d.firecrawlDetail = firecrawlFullTextExecutor{owner: owner, scrape: w.Firecrawl}
+	}
 	if err := w.Runs.reportCycle(bounded, start.Run.ID, 0, true); err != nil {
 		status = "partial"
 		return result, err
@@ -282,6 +297,8 @@ func (w Worker) Cycle(ctx context.Context, options WorkerOptions) (result Worker
 	for _, phase := range phases {
 		phaseLimit := options.MaxJobs
 		switch phase {
+		case "companySite":
+			phaseLimit = 1
 		case "launch":
 			phaseLimit = 1
 		case "reconcile":
@@ -361,7 +378,7 @@ func (w Worker) cycleStep(ctx, bounded context.Context, stopClaims <-chan struct
 	// или безопасное завершение attempt/job при отмене контекста провайдера.
 	// Run и job lease продолжают жить до исходной границы bounded.
 	workDeadline := deadline
-	if phase == "pipeline" {
+	if phase == "pipeline" || phase == "companySite" {
 		var admissible bool
 		workDeadline, admissible = pipelineWorkDeadline(time.Now(), deadline)
 		if !admissible {
@@ -371,6 +388,11 @@ func (w Worker) cycleStep(ctx, bounded context.Context, stopClaims <-chan struct
 	allowHH := *hhStages < 5
 	claim := ClaimOptions{Types: workerTypes, SourceID: &source, Lease: jobDuration, AllowApify: &allowHH, VerifiedHHOnly: w.ScheduleSources || w.VerifiedHHOnly}
 	switch phase {
+	case "companySite":
+		source = "companySite"
+		claim.CompanyWorkerOnly = true
+		claim.Types = []string{"scan_source", "classify_title", "fetch_full_text", "extract_vacancy", "assign_roles"}
+		claim.WorkerPipelineFairness = true
 	case "launch":
 		claim.Types = []string{"scan_source"}
 		claim.HHScanPhase = "launch"
@@ -562,7 +584,12 @@ func workerExecute(ctx context.Context, d workerDispatch, lease *JobLease, owner
 	} else {
 		var save func(*sql.Tx) error
 		if kind == "scan_source" && finish.Status == "completed" {
-			save = func(tx *sql.Tx) error { return completeScheduledHH(cleanup, tx, lease.Job(), owner, out.code) }
+			job := lease.Job()
+			if job.SourceID != nil && *job.SourceID == "companySite" {
+				save = func(tx *sql.Tx) error { return completeCompanyScan(cleanup, tx, job) }
+			} else {
+				save = func(tx *sql.Tx) error { return completeScheduledHH(cleanup, tx, job, owner, out.code) }
+			}
 		}
 		err = attempt.FinishWithin(cleanup, AttemptFinish{Job: finish}, save)
 	}

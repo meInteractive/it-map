@@ -82,6 +82,20 @@ func (h *CandidateHandoff) Enqueue(ctx context.Context, tx *sql.Tx, job Job) err
 		return ErrJobInput
 	}
 	storedStagePayload := payload
+	if next.SourceID == "companySite" {
+		var origin companyScanPayload
+		if json.Unmarshal(job.Payload, &origin) == nil && origin.Version == 1 {
+			var fields map[string]json.RawMessage
+			if json.Unmarshal(payload, &fields) != nil || fields == nil {
+				return ErrJobInput
+			}
+			fields["firecrawlVersion"] = json.RawMessage("1")
+			payload, e = json.Marshal(fields)
+			if e != nil {
+				return ErrJobInput
+			}
+		}
+	}
 	if next.SourceID == "hh" && publishedAt > 0 && publishedAt <= now {
 		payload, e = addHHJobPublication(payload, publishedAt)
 		if e != nil {
@@ -100,7 +114,7 @@ func (h *CandidateHandoff) Enqueue(ctx context.Context, tx *sql.Tx, job Job) err
 	var kind, source string
 	var company, agency, candidate sql.NullInt64
 	var storedPayload []byte
-	e = tx.QueryRowContext(ctx, `SELECT type,company_id,agency_id,candidate_id,source_id,CASE WHEN source_id='hh' THEN JSON_REMOVE(payload,'$.hhPublishedAtMs') ELSE payload END FROM scheduler_jobs WHERE generation=? AND dedupe_key=? FOR UPDATE`, job.Generation, dedupe).Scan(&kind, &company, &agency, &candidate, &source, &storedPayload)
+	e = tx.QueryRowContext(ctx, `SELECT type,company_id,agency_id,candidate_id,source_id,CASE WHEN source_id='hh' THEN JSON_REMOVE(payload,'$.hhPublishedAtMs') WHEN source_id='companySite' THEN JSON_REMOVE(payload,'$.firecrawlVersion') ELSE payload END FROM scheduler_jobs WHERE generation=? AND dedupe_key=? FOR UPDATE`, job.Generation, dedupe).Scan(&kind, &company, &agency, &candidate, &source, &storedPayload)
 	if errors.Is(e, sql.ErrNoRows) {
 		return ErrSettingsStorage
 	}
