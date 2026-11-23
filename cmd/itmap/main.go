@@ -29,6 +29,7 @@ import (
 	"itmap/internal/integrations/hhpublic"
 	"itmap/internal/integrations/googlecalendar"
 	"itmap/internal/parser"
+	"itmap/internal/legacycrypto"
 	"itmap/internal/profiles"
 	"itmap/internal/roles"
 	"itmap/internal/storage"
@@ -41,6 +42,7 @@ func httpHandler(logger *slog.Logger, db *sql.DB, manager *auth.Manager) http.Ha
 	if db != nil {
 		opts.DB = db
 		opts.FirecrawlSettingsDB = db
+		opts.FirecrawlKeyCodec, _ = legacycrypto.New(os.Getenv("SESSION_SECRET"), legacycrypto.Firecrawl)
 		aiKeys := aiproviders.NewRepository(db, os.Getenv("SESSION_SECRET"), os.Getenv("OPENAI_API_KEY"))
 		openAI := aiproviders.NewOpenAIService(aiKeys)
 		router := aiproviders.NewRouterService(aiKeys)

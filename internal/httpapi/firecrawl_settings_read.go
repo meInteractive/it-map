@@ -16,7 +16,7 @@ type firecrawlConnectionView struct {
 	CheckedAt  *string `json:"checkedAt"`
 }
 
-func firecrawlSettingsRead(manager *auth.Manager, db *sql.DB) http.HandlerFunc {
+func firecrawlSettingsRead(manager *auth.Manager, db *sql.DB, canUpdateKey bool) http.HandlerFunc {
 	return RequireSession(manager, func(w http.ResponseWriter, r *http.Request) {
 		user, ok := sessionFromRequest(manager, r)
 		if !ok || !user.IsAdmin {
@@ -50,7 +50,7 @@ func firecrawlSettingsRead(manager *auth.Manager, db *sql.DB) http.HandlerFunc {
 			proxy, enhanced = "basic", false
 		}
 		jsonReply(w, http.StatusOK, map[string]any{
-			"readOnly": true, "configured": selected.Configured, "connectionStatus": selected.Status, "checkedAt": selected.CheckedAt,
+			"readOnly": true, "canUpdateKey": canUpdateKey, "configured": selected.Configured, "connectionStatus": selected.Status, "checkedAt": selected.CheckedAt,
 			"mode": mode, "enabled": enabled, "favoritesOnly": favorites, "revision": revision, "maxPages": pages,
 			"concurrency": 1, "timeoutMs": timeout, "proxy": proxy, "enhancedAllowed": enhanced,
 			"profiles": map[string]firecrawlConnectionView{"free": free, "hobby": hobby},
