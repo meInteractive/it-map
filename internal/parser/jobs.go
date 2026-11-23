@@ -41,6 +41,7 @@ type ClaimOptions struct {
 	JobID, SourceID               *string
 	ScanScope                     *ScanCandidateScope
 	VerifiedHHOnly                bool
+	CompanyWorkerOnly             bool
 	HHScanPhase                   string // launch / reconcile; пусто — прежняя общая очередь
 	WorkerPipelineFairness        bool   // только внутренний порядок eligible pipeline jobs
 }
@@ -288,6 +289,9 @@ func (r RunRepository) selectEligibleJob(ctx context.Context, tx *sql.Tx, now in
 		args = append(args, kind)
 	}
 	query := "SELECT " + jobColumns + " FROM scheduler_jobs WHERE generation=? AND status='pending' AND run_after<=? AND type IN (" + strings.TrimSuffix(strings.Repeat("?,", len(kinds)), ",") + ")"
+	if options.CompanyWorkerOnly {
+		query += " AND source_id='companySite' AND JSON_EXTRACT(payload,'$.firecrawlVersion')=1"
+	}
 	rows, e := tx.QueryContext(ctx, query, args...)
 	if e != nil {
 		return nil, storageError(ctx)

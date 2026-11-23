@@ -143,3 +143,21 @@ func enqueueCompanyScan(ctx context.Context, tx *sql.Tx, generation string, sour
 	}
 	return nil
 }
+
+func completeCompanyScan(ctx context.Context, tx *sql.Tx, job Job) error {
+	var payload companyScanPayload
+	if job.CompanyID == nil || json.Unmarshal(job.Payload, &payload) != nil || payload.Version != 1 {
+		return ErrJobInput
+	}
+	now, err := runClock(ctx, tx)
+	if err != nil {
+		return storageError(ctx)
+	}
+	_, err = tx.ExecContext(ctx, `UPDATE vacancy_source_parsing SET last_success_at=?, last_attempt_at=?, last_error='',last_result='success'
+		WHERE company_id=? AND source_id='companySite' AND revision=? AND source_url=? AND enabled=1`,
+		time.UnixMilli(now).UTC().Format(firecrawlPeriodFormat), now, job.CompanyID, payload.SourceRevision, payload.SourceURL)
+	if err != nil {
+		return storageError(ctx)
+	}
+	return nil
+}

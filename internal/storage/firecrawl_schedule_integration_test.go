@@ -2,7 +2,14 @@
 
 package storage
 
-import "testing"
+import (
+	"context"
+	"testing"
+
+	"itmap/internal/apifysettings"
+	"itmap/internal/integrations/firecrawl"
+	"itmap/internal/parser"
+)
 
 func TestMariaDBFirecrawlScheduleDisposable(t *testing.T) {
 	f := openSchedulerFixture(t)
@@ -36,4 +43,53 @@ func TestMariaDBFirecrawlScheduleDisposable(t *testing.T) {
 	if f.count("SELECT COUNT(*) FROM vacancy_source_parsing WHERE company_id=94801 AND next_run_at>?", schedulerClock(t, f.db)) != 1 {
 		t.Fatal("scan admission did not advance its schedule")
 	}
+	f.finish(run)
+	f.exec("INSERT INTO vacancy_roles(id,stable_key,name,sort_order) VALUES(94801,'CI_FIRECRAWL_ROLE','CI Engineering',0)")
+	t.Cleanup(func() {
+		f.exec("DELETE FROM vacancy_role_classification WHERE role_id=94801")
+		f.exec("DELETE FROM vacancy_roles WHERE id=94801")
+	})
+	f.exec("INSERT INTO vacancy_role_classification(role_id,markdown,revision,parsing_enabled) VALUES(94801,'CI Engineering rules',1,1)")
+	t.Cleanup(func() {
+		f.exec("DELETE FROM parser_candidate_intakes WHERE source_id='companySite' AND candidate_token IN (SELECT creation_token FROM vacancy_candidates WHERE company_id=94801)")
+		f.exec("DELETE FROM vacancy_candidate_identities WHERE candidate_id IN (SELECT id FROM vacancy_candidates WHERE company_id=94801)")
+		f.exec("DELETE FROM vacancy_candidates WHERE company_id=94801")
+	})
+	schedulerSeedJob(f, "CI_FIRECRAWL_LEGACY", nil)
+	f.exec("UPDATE scheduler_jobs SET type='scan_source',source_id='companySite',priority=100 WHERE id='CI_FIRECRAWL_LEGACY'")
+	schedulerSeedJob(f, "CI_FIRECRAWL_HH", nil)
+	f.exec("UPDATE scheduler_jobs SET type='scan_source',source_id='hh',priority=100 WHERE id='CI_FIRECRAWL_HH'")
+	provider := &syntheticFirecrawlListing{t: t}
+	worker := parser.Worker{Runs: f.repo, Settings: apifysettings.Repository{DB: f.db}, Firecrawl: provider}
+	result, err := worker.Cycle(f.ctx, parser.WorkerOptions{
+		Run:          parser.RunOptions{RequestID: "CI_FIRECRAWL_PROFILE", Trigger: "automatic"},
+		QueueProfile: "companySite", MaxJobs: 3,
+	})
+	if err != nil || result.Run.Status != "completed" || result.Processed != 1 || provider.calls != 1 {
+		t.Fatalf("company worker cycle: status=%s processed=%d calls=%d err=%v", result.Run.Status, result.Processed, provider.calls, err)
+	}
+	if f.count("SELECT COUNT(*) FROM scheduler_jobs WHERE id IN ('CI_FIRECRAWL_LEGACY','CI_FIRECRAWL_HH') AND status='pending'") != 2 {
+		t.Fatal("company worker touched another queue")
+	}
+	if f.count("SELECT COUNT(*) FROM vacancy_candidates WHERE company_id=94801 AND source_id='companySite' AND title_raw='Senior Go Engineer'") != 1 ||
+		f.count("SELECT COUNT(*) FROM vacancy_source_parsing WHERE company_id=94801 AND last_result='success'") != 1 {
+		t.Fatal("company worker did not save the candidate and source receipt")
+	}
+	if f.count("SELECT COUNT(*) FROM scheduler_jobs WHERE source_id='companySite' AND type='classify_title' AND JSON_EXTRACT(payload,'$.firecrawlVersion')=1") != 1 {
+		t.Fatal("company worker did not queue the next stage")
+	}
+
+}
+
+type syntheticFirecrawlListing struct {
+	t     *testing.T
+	calls int
+}
+
+func (f *syntheticFirecrawlListing) Execute(_ context.Context, lease *parser.JobLease, step parser.FirecrawlScrapeStep) (firecrawl.ScrapeResult, error) {
+	f.calls++
+	if lease.Job().Type != "scan_source" || step.URL != "https://careers.company.com/jobs" {
+		f.t.Errorf("unexpected Firecrawl step: %s", step.ID)
+	}
+	return firecrawl.ScrapeResult{FinalURL: step.URL, TargetStatus: 200, Markdown: "[Senior Go Engineer](/jobs/42)"}, nil
 }
