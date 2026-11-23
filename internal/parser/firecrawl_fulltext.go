@@ -16,9 +16,7 @@ var ErrFirecrawlContent = errors.New("Firecrawl did not return a verified vacanc
 
 type firecrawlFullTextExecutor struct {
 	owner  string
-	scrape interface {
-		Execute(context.Context, *JobLease, FirecrawlScrapeStep) (firecrawl.ScrapeResult, error)
-	}
+	scrape companyFirecrawlScraper
 }
 
 type firecrawlTextPlan struct {
