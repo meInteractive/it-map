@@ -20,8 +20,8 @@ type companyScanPayload struct {
 }
 
 type dueCompanySite struct {
-	id, revision, due int64
-	url, config       string
+	id, revision, due     int64
+	url, config, sourceID string
 }
 
 // ScheduleCompanySites queues one bounded batch under an active worker run.
@@ -50,7 +50,7 @@ func (r RunRepository) ScheduleCompanySites(ctx context.Context, runID, owner st
 	if json.Unmarshal(view.PublicJSON(), &settings) != nil {
 		return ErrSettingsStorage
 	}
-	if !settings.Enabled || settings.OwnerName != owner || !slices.Contains(settings.SourceIDs, "companySite") {
+	if !settings.Enabled || settings.OwnerName != owner || (!slices.Contains(settings.SourceIDs, "companySite") && !slices.Contains(settings.SourceIDs, "getmatch")) {
 		return nil
 	}
 	var enabled bool
@@ -66,18 +66,18 @@ func (r RunRepository) ScheduleCompanySites(ctx context.Context, runID, owner st
 	}
 	var pending int
 	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM scheduler_jobs WHERE generation=? AND type='scan_source'
-		AND source_id='companySite' AND status IN ('pending','running')
+		AND source_id IN ('companySite','getmatch') AND status IN ('pending','running')
 		AND JSON_EXTRACT(payload,'$.firecrawlVersion')=1`, r.Generation).Scan(&pending); err != nil {
 		return storageError(ctx)
 	}
 	if pending >= companyScanBacklog {
 		return nil
 	}
-	rows, err := tx.QueryContext(ctx, `SELECT c.id,s.revision,COALESCE(s.next_run_at,0),s.source_url,s.config_json
+	rows, err := tx.QueryContext(ctx, `SELECT c.id,s.revision,COALESCE(s.next_run_at,0),s.source_url,s.config_json,s.source_id
 		FROM vacancy_source_parsing s JOIN company_identity c ON c.id=s.company_id
-		WHERE s.source_id='companySite' AND s.enabled=1 AND s.auto_enabled=1 AND COALESCE(s.next_run_at,0)<=?
+		WHERE s.source_id IN ('companySite','getmatch') AND s.enabled=1 AND s.auto_enabled=1 AND COALESCE(s.next_run_at,0)<=?
 		AND (?=0 OR EXISTS(SELECT 1 FROM company_user_state u WHERE u.company_name=c.company_name AND u.user_name=? AND u.favorite=1))
-		AND NOT EXISTS(SELECT 1 FROM scheduler_jobs j WHERE j.generation=? AND j.company_id=c.id AND j.source_id='companySite'
+		AND NOT EXISTS(SELECT 1 FROM scheduler_jobs j WHERE j.generation=? AND j.company_id=c.id AND j.source_id=s.source_id
 			AND j.type='scan_source' AND j.status IN ('pending','running'))
 		ORDER BY COALESCE(s.next_run_at,0), COALESCE(s.last_attempt_at,0), c.id FOR UPDATE`, now, row.favorite, owner, r.Generation)
 	if err != nil {
@@ -86,10 +86,10 @@ func (r RunRepository) ScheduleCompanySites(ctx context.Context, runID, owner st
 	var selected []dueCompanySite
 	for rows.Next() {
 		var source dueCompanySite
-		if err = rows.Scan(&source.id, &source.revision, &source.due, &source.url, &source.config); err != nil {
+		if err = rows.Scan(&source.id, &source.revision, &source.due, &source.url, &source.config, &source.sourceID); err != nil {
 			break
 		}
-		if _, ok := genericCompanyListingHost(source.url, source.config); ok {
+		if _, ok := firecrawlListingHost(source.sourceID, source.url, source.config); ok && slices.Contains(settings.SourceIDs, source.sourceID) {
 			selected = append(selected, source)
 		}
 		if len(selected) >= companyScanBacklog-pending {
@@ -129,16 +129,20 @@ func enqueueCompanyScan(ctx context.Context, tx *sql.Tx, generation string, sour
 	if err != nil {
 		return err
 	}
-	key := stageHash(fmt.Sprintf("firecrawl:scan:%d:%d:%d:%d", source.id, source.revision, settings.Revision, source.due))
+	keyPrefix := "firecrawl:scan:"
+	if source.sourceID == "getmatch" {
+		keyPrefix += "getmatch:"
+	}
+	key := stageHash(fmt.Sprintf("%s%d:%d:%d:%d", keyPrefix, source.id, source.revision, settings.Revision, source.due))
 	if _, err := tx.ExecContext(ctx, `INSERT INTO scheduler_jobs
 		(id,generation,dedupe_key,type,company_id,source_id,payload,priority,run_after,max_attempts,created_at,updated_at)
-		VALUES(?,?,?,'scan_source',?,'companySite',?,?,?,1,?,?) ON DUPLICATE KEY UPDATE id=id`,
-		id, generation, key, source.id, string(payload), priority, now, now, now); err != nil {
+		VALUES(?,?,?,'scan_source',?,?,?,?,?,1,?,?) ON DUPLICATE KEY UPDATE id=id`,
+		id, generation, key, source.id, source.sourceID, string(payload), priority, now, now, now); err != nil {
 		return storageError(ctx)
 	}
 	next := now + int64(settings.IntervalDays)*int64(24*time.Hour/time.Millisecond)
 	if _, err := tx.ExecContext(ctx, `UPDATE vacancy_source_parsing SET interval_days=?,next_run_at=?
-		WHERE company_id=? AND source_id='companySite' AND revision=? AND source_url=?`, settings.IntervalDays, next, source.id, source.revision, source.url); err != nil {
+		WHERE company_id=? AND source_id=? AND revision=? AND source_url=?`, settings.IntervalDays, next, source.id, source.sourceID, source.revision, source.url); err != nil {
 		return storageError(ctx)
 	}
 	return nil
@@ -154,8 +158,8 @@ func completeCompanyScan(ctx context.Context, tx *sql.Tx, job Job) error {
 		return storageError(ctx)
 	}
 	_, err = tx.ExecContext(ctx, `UPDATE vacancy_source_parsing SET last_success_at=?, last_attempt_at=?, last_error='',last_result='success'
-		WHERE company_id=? AND source_id='companySite' AND revision=? AND source_url=? AND enabled=1`,
-		time.UnixMilli(now).UTC().Format(firecrawlPeriodFormat), now, job.CompanyID, payload.SourceRevision, payload.SourceURL)
+		WHERE company_id=? AND source_id=? AND revision=? AND source_url=? AND enabled=1`,
+		time.UnixMilli(now).UTC().Format(firecrawlPeriodFormat), now, job.CompanyID, job.SourceID, payload.SourceRevision, payload.SourceURL)
 	if err != nil {
 		return storageError(ctx)
 	}
