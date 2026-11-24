@@ -143,6 +143,8 @@ async function fixture(page: Page, options: {
     }
     if (path === '/api/session')
       return json(route, { name: state.user, isAdmin: true });
+    if (path === '/api/profile/resumes')
+      return json(route, { primary: 1, items: [{ id: 1, name: 'CI Основное' }, { id: 2, name: 'CI Второе' }] });
     if (path === '/api/vacancy-roles') return json(route, roles);
     if (path === '/api/channels') return json(route, { channels: [] });
     if (path === '/api/vacancies/list')
@@ -286,6 +288,7 @@ test('S11-B05-21/23: форма вакансии создаёт отклик с 
 test('S11-B05-24: после 503 с COMMIT повтор отправляет тот же receipt и не дублирует отклик', async ({ page }) => {
   const state = await fixture(page, { failCreateOnce: true });
   const dialog = await applicationTab(page);
+  await dialog.getByRole('combobox', { name: 'Резюме', exact: true }).selectOption('2');
   await dialog.getByRole('checkbox', { name: 'HH.ru' }).check();
   await dialog.getByRole('textbox', { name: 'Комментарий' }).fill('CI неизменный черновик');
   const save = dialog.getByRole('button', { name: 'Сохранить', exact: true });
@@ -300,6 +303,7 @@ test('S11-B05-24: после 503 с COMMIT повтор отправляет т�
     .toHaveValue('CI неизменный черновик');
   const posts = state.writes.filter((w) => w.method === 'POST');
   expect(posts).toHaveLength(2);
+  expect(posts.map((post) => post.body?.resumeId)).toEqual([2, 2]);
   expect(posts[0].body?.idempotencyKey).toBe(posts[1].body?.idempotencyKey);
   expect(posts[0].body?.creationContext).toBe(posts[1].body?.creationContext);
   expect(state.createContextReads).toBe(1);
