@@ -4,6 +4,7 @@ package storage
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"os"
@@ -107,6 +108,32 @@ func TestMariaDBApplicationReceiptsDisposable(t *testing.T) {
 	}
 	if selected := created.Records[0].Resume; selected == nil || selected.ID != 2 || selected.Name != "CI Product" {
 		t.Fatal("application did not store selected resume")
+	}
+	var previousDescription sql.NullString
+	if err := db.QueryRowContext(ctx, "SELECT description_md FROM company_vacancies WHERE id=?", vacancy).Scan(&previousDescription); err != nil {
+		t.Fatal("read test vacancy description", err)
+	}
+	t.Cleanup(func() {
+		if _, err := db.ExecContext(context.Background(), "UPDATE company_vacancies SET description_md=? WHERE id=?", previousDescription, vacancy); err != nil {
+			t.Error("restore test vacancy description", err)
+		}
+	})
+	const fullDescription = "# CI Vacancy\n\nFull synthetic description 😀"
+	if _, err := db.ExecContext(ctx, "UPDATE company_vacancies SET description_md=? WHERE id=?", fullDescription, vacancy); err != nil {
+		t.Fatal("seed test vacancy description", err)
+	}
+	exported, err := repo.Export(ctx, user)
+	if err != nil || len(exported.Applications) != 1 || len(exported.Vacancies) != 1 || len(exported.Resumes) != 2 {
+		t.Fatal("candidate export scope failed", err)
+	}
+	if row := exported.Applications[0]; row.Resume.ID != 2 || row.Resume.Name != "CI Product" ||
+		row.VacancyID != exported.Vacancies[0].ID || row.Date == "" ||
+		exported.Vacancies[0].Description != fullDescription || exported.Resumes[1].Markdown != "# CI Resume" {
+		t.Fatal("export omitted links, dates or full text")
+	}
+	historical, err := repo.Export(ctx, "Eugene")
+	if err != nil || len(historical.Applications) == 0 || historical.Applications[0].Resume.ID != 1 {
+		t.Fatal("historical application must link to first resume", err)
 	}
 	assertCounts(1, 1, 1)
 	replayed, err := repo.CreateWithReceipt(ctx, user, input)

@@ -35,7 +35,7 @@ const ResumesMetadataPrefix = "resumes:"
 const Resume2Prefix = "resume2:"
 const Resume3Prefix = "resume3:"
 
-func readResumes(ctx context.Context, q profileRowQueryer, user string) (Resumes, error) {
+func ReadResumeCollection(ctx context.Context, q profileRowQueryer, user string) (Resumes, error) {
 	var out Resumes
 	var metadata string
 	var texts [3]string
@@ -70,11 +70,11 @@ func (r Repository) ReadResumes(ctx context.Context, user string) (Resumes, erro
 	if r.DB == nil || user == "" {
 		return Resumes{}, ErrUnavailable
 	}
-	return readResumes(ctx, r.DB, user)
+	return ReadResumeCollection(ctx, r.DB, user)
 }
 
 func ResolveResume(ctx context.Context, q profileRowQueryer, user string, id int) (NamedResume, error) {
-	list, err := readResumes(ctx, q, user)
+	list, err := ReadResumeCollection(ctx, q, user)
 	if err != nil {
 		return NamedResume{}, err
 	}
@@ -117,7 +117,7 @@ func (r Repository) SaveResumes(ctx context.Context, user string, list Resumes) 
 			return Resumes{}, err
 		}
 	}
-	current, err := readResumes(ctx, tx, user)
+	current, err := ReadResumeCollection(ctx, tx, user)
 	if err != nil {
 		return Resumes{}, err
 	}
@@ -137,7 +137,7 @@ func (r Repository) SaveResumes(ctx context.Context, user string, list Resumes) 
 	if _, err = tx.ExecContext(ctx, `UPDATE user_profiles SET resume_md=?,revision=revision+1,updated_at=UTC_TIMESTAMP() WHERE user_name=?`, string(metadata), ResumesMetadataPrefix+user); err != nil {
 		return Resumes{}, err
 	}
-	saved, err := readResumes(ctx, tx, user)
+	saved, err := ReadResumeCollection(ctx, tx, user)
 	if err != nil {
 		return Resumes{}, err
 	}

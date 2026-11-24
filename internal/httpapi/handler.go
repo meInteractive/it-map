@@ -246,6 +246,9 @@ func NewHandlerWithOptions(logger *slog.Logger, opts Options) http.Handler {
 		}
 		if opts.Applications != nil {
 			mux.HandleFunc("GET /api/crm/applications", ApplicationsCRMHandler(opts.Auth, opts.Applications))
+			if exporter, ok := opts.Applications.(applicationExporter); ok {
+				mux.HandleFunc("GET /api/applications/export", applicationsExportHandler(opts.Auth, exporter))
+			}
 			mux.HandleFunc("GET /api/applications/{id}", ApplicationDetailHandler(opts.Auth, opts.Applications))
 		}
 		if opts.ApplicationCreates != nil {
