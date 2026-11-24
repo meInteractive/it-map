@@ -37,12 +37,15 @@ func (p *firecrawlAcceptanceProvider) Execute(_ context.Context, lease *parser.J
 type firecrawlAcceptanceAI struct {
 	extraction *extractionRunner
 	roles      *leafStageRunner
+	relevance  *relevanceRunner
 }
 
 func (p firecrawlAcceptanceAI) Automatic(ctx context.Context, req aiproviders.GenerationRequest, model profiles.ModelInput, billing aiproviders.Billing) (aiproviders.AIResult, error) {
 	switch req.Task {
 	case "vacancy_extraction":
 		return p.extraction.Automatic(ctx, req, model, billing)
+	case "relevance":
+		return p.relevance.Automatic(ctx, req, model, billing)
 	case "vacancy_role":
 		return p.roles.Automatic(ctx, req, model, billing)
 	default:
@@ -78,6 +81,10 @@ func testFirecrawlWorker(t *testing.T, source, listing, vacancyURL, config strin
 			"DELETE FROM vacancy_roles WHERE id=94901",
 			"DELETE FROM vacancy_detail_settings WHERE id=1",
 			"DELETE FROM vacancy_role_settings WHERE id=1",
+			"DELETE FROM user_profiles WHERE user_name='CI_OWNER'",
+			"DELETE FROM system_prompts WHERE kind='relevance'",
+			"DELETE FROM prompt_model_settings WHERE kind='relevance'",
+			"DELETE FROM openrouter_settings WHERE id=1",
 		} {
 			if _, err := f.db.ExecContext(context.Background(), query); err != nil {
 				t.Errorf("firecrawl fixture cleanup %q: %v", query, err)
@@ -93,6 +100,10 @@ func testFirecrawlWorker(t *testing.T, source, listing, vacancyURL, config strin
 	f.exec("INSERT INTO vacancy_detail_settings(id,markdown,prompt_revision,provider,openai_model,reasoning_effort,model_revision) VALUES(1,'CI extraction prompt',1,'openai','gpt-6-luna','medium',1)")
 	f.exec("INSERT INTO vacancy_role_settings(id,markdown,prompt_revision,provider,openai_model,openrouter_model,reasoning_effort,model_revision) VALUES(1,'CI roles prompt',1,'openai','gpt-6-luna','best_free','medium',1)")
 
+	f.exec("INSERT INTO user_profiles(user_name,resume_md,revision) VALUES('CI_OWNER','CI synthetic resume',1)")
+	f.exec("INSERT INTO system_prompts(kind,markdown,revision) VALUES('relevance','CI relevance prompt',1)")
+	f.exec("INSERT INTO prompt_model_settings(kind,provider,openai_model,openrouter_model,reasoning_effort,revision) VALUES('relevance','openrouter','','jev','medium',1)")
+	f.exec("INSERT INTO openrouter_settings(id,revision) VALUES(1,1)")
 	data := map[string]any{"title": "CI_TITLE", "description_md": hhDetailBody()}
 	for _, field := range []string{"employer_name", "location", "work_format", "employment_type", "level", "salary_from", "salary_to", "salary_currency", "salary_period", "salary_tax_type", "responsibilities", "requirements", "conditions", "published_at", "language"} {
 		data[field] = nil
@@ -106,9 +117,10 @@ func testFirecrawlWorker(t *testing.T, source, listing, vacancyURL, config strin
 	title := &storedTitleRunner{answers: map[string]struct{ Type, Choice string }{"role_94901": {"choice", "match"}}}
 	extraction := &extractionRunner{content: content}
 	roles := &leafStageRunner{content: json.RawMessage(`{"role_ids":[94902]}`), model: "gpt-6-luna", provider: "openai"}
+	relevance := &relevanceRunner{}
 	worker := parser.Worker{Runs: f.repo, Settings: apifysettings.Repository{DB: f.db}, Firecrawl: provider,
-		Classifier: title, Generator: firecrawlAcceptanceAI{extraction: extraction, roles: roles}}
-	for i, stage := range []string{"scan_source", "classify_title", "fetch_full_text", "extract_vacancy", "assign_roles", "import_vacancy", "idle"} {
+		Classifier: title, Generator: firecrawlAcceptanceAI{extraction: extraction, roles: roles, relevance: relevance}}
+	for i, stage := range []string{"scan_source", "classify_title", "fetch_full_text", "extract_vacancy", "assign_roles", "import_vacancy", "score_relevance", "idle"} {
 		result, err := worker.Cycle(f.ctx, parser.WorkerOptions{
 			Run:          parser.RunOptions{RequestID: fmt.Sprintf("CI_FIRECRAWL_BUNDLE_%d", i), Trigger: "automatic"},
 			QueueProfile: "companySite", MaxJobs: 1,
@@ -125,7 +137,7 @@ func testFirecrawlWorker(t *testing.T, source, listing, vacancyURL, config strin
 		}
 	}
 	if len(provider.calls) != 2 || provider.calls[0] != "scan_source" || provider.calls[1] != "fetch_full_text" ||
-		title.calls != 1 || extraction.calls != 1 || roles.calls != 1 {
+		title.calls != 1 || extraction.calls != 1 || roles.calls != 1 || relevance.calls != 1 {
 		t.Fatalf("provider calls=%v title=%d extraction=%d roles=%d", provider.calls, title.calls, extraction.calls, roles.calls)
 	}
 	var vacancy int64
@@ -136,6 +148,9 @@ func testFirecrawlWorker(t *testing.T, source, listing, vacancyURL, config strin
 	detail, err := (vacancies.Repository{DB: f.db}).DetailByID(f.ctx, "CI_OWNER", vacancy)
 	if err != nil || detail.Vacancy.Title != "CI_TITLE" || detail.Vacancy.DescriptionMD == "" || len(detail.Vacancy.PublicationSources) != 1 {
 		t.Fatalf("published vacancy readback: %v", err)
+	}
+	if f.count("SELECT COUNT(*) FROM company_vacancy_user_state WHERE vacancy_id=? AND user_name='CI_OWNER' AND relevance IS NOT NULL", vacancy) != 1 {
+		t.Fatal("owner relevance was not saved")
 	}
 	if f.count("SELECT COUNT(*) FROM vacancy_import_operations WHERE vacancy_id=? AND status='success' AND action='create'", vacancy) != 1 {
 		t.Fatal("expected a single publication receipt")

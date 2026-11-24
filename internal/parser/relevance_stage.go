@@ -104,8 +104,8 @@ func (s RelevanceStageStore) Abort(_ context.Context, _ *sql.Tx, _ Job, plan AIS
 	return nil
 }
 
-// enqueueHHRelevance вызывается после импорта в той же транзакции.
-func enqueueHHRelevance(ctx context.Context, tx *sql.Tx, j Job, owner string) error {
+// enqueueVacancyRelevance вызывается после импорта в той же транзакции.
+func enqueueVacancyRelevance(ctx context.Context, tx *sql.Tx, j Job, owner string) error {
 	x, err := readRelevanceSnapshot(ctx, tx, j, owner)
 	if err != nil {
 		return err
@@ -129,7 +129,11 @@ func enqueueHHRelevance(ctx context.Context, tx *sql.Tx, j Job, owner string) er
 	if !ok || priority < 0 || priority > 100 {
 		return ErrSettingsStorage
 	}
-	payload, err := json.Marshal(map[string]any{"vacancyId": x.VacancyID, "ownerName": owner})
+	fields := map[string]any{"vacancyId": x.VacancyID, "ownerName": owner}
+	if isFirecrawlSource(*j.SourceID) {
+		fields["firecrawlVersion"] = 1
+	}
+	payload, err := json.Marshal(fields)
 	if err != nil {
 		return ErrJobInput
 	}
@@ -146,7 +150,7 @@ func enqueueHHRelevance(ctx context.Context, tx *sql.Tx, j Job, owner string) er
 		return ErrSettingsStorage
 	}
 	dedupe := stageHash(x.Key)
-	_, err = tx.ExecContext(ctx, `INSERT INTO scheduler_jobs(id,generation,dedupe_key,type,company_id,agency_id,candidate_id,source_id,payload,priority,run_after,max_attempts,created_at,updated_at) VALUES(?,?,?,'score_relevance',?,NULL,?,'hh',?,?,?,4,?,?) ON DUPLICATE KEY UPDATE id=id`, id, j.Generation, dedupe, j.CompanyID, j.CandidateID, string(payload), priority, now, now, now)
+	_, err = tx.ExecContext(ctx, `INSERT INTO scheduler_jobs(id,generation,dedupe_key,type,company_id,agency_id,candidate_id,source_id,payload,priority,run_after,max_attempts,created_at,updated_at) VALUES(?,?,?,'score_relevance',?,NULL,?,?,?,?,?,4,?,?) ON DUPLICATE KEY UPDATE id=id`, id, j.Generation, dedupe, j.CompanyID, j.CandidateID, *j.SourceID, string(payload), priority, now, now, now)
 	if err != nil {
 		return ErrSettingsStorage
 	}
@@ -158,8 +162,28 @@ func enqueueHHRelevance(ctx context.Context, tx *sql.Tx, j Job, owner string) er
 	if err != nil {
 		return ErrSettingsStorage
 	}
+	// One vacancy may be linked by both providers. Existing scoring for the
+	// same vacancy and owner can satisfy the other publication's handoff.
+	if source != *j.SourceID && (source == "hh" || isFirecrawlSource(source)) &&
+		kind == "score_relevance" && company.Valid && company.Int64 == x.CompanyID && !agency.Valid && candidate.Valid {
+		var existing struct {
+			VacancyID int64  `json:"vacancyId"`
+			Owner     string `json:"ownerName"`
+		}
+		var linked bool
+		if json.Unmarshal(stored, &existing) == nil && existing.VacancyID == x.VacancyID && existing.Owner == owner {
+			err = tx.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM vacancy_candidates WHERE id=? AND company_id=? AND source_id=? AND main_vacancy_id=?)",
+				candidate.Int64, x.CompanyID, source, x.VacancyID).Scan(&linked)
+			if err != nil {
+				return ErrSettingsStorage
+			}
+			if linked {
+				return nil
+			}
+		}
+	}
 	stored, err = backup.StringifyParsedJSON(stored)
-	if err != nil || kind != "score_relevance" || !company.Valid || company.Int64 != x.CompanyID || agency.Valid || !candidate.Valid || candidate.Int64 != x.CandidateID || source != "hh" || string(stored) != string(payload) {
+	if err != nil || kind != "score_relevance" || !company.Valid || company.Int64 != x.CompanyID || agency.Valid || !candidate.Valid || candidate.Int64 != x.CandidateID || source != *j.SourceID || string(stored) != string(payload) {
 		return ErrRelevanceChanged
 	}
 	return nil

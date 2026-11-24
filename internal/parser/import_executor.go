@@ -69,7 +69,7 @@ func (e HHImportExecutor) Execute(ctx context.Context, lease *JobLease) (result 
 		if json.Unmarshal(settingsView.PublicJSON(), &settings) != nil || !settings.Enabled || settings.OwnerName != e.Owner {
 			return ErrCandidateChanged
 		}
-		sourceURLExpected, err := e.importSourceURL(ctx, tx, job, settings)
+		sourceURLExpected, err := importSourceURL(ctx, tx, job, settings)
 		if err != nil {
 			return err
 		}
@@ -118,10 +118,8 @@ func (e HHImportExecutor) Execute(ctx context.Context, lease *JobLease) (result 
 				return err
 			}
 		}
-		if !companySite {
-			if err = enqueueHHRelevance(ctx, tx, job, e.Owner); err != nil {
-				return err
-			}
+		if err = enqueueVacancyRelevance(ctx, tx, job, e.Owner); err != nil {
+			return err
 		}
 		if _, err = tx.ExecContext(ctx, "DELETE FROM vacancy_detail_leases WHERE lease_key='import:global' AND generation=? AND owner_token=?", job.Generation, token); err != nil {
 			return ErrSettingsStorage
@@ -134,9 +132,9 @@ func (e HHImportExecutor) Execute(ctx context.Context, lease *JobLease) (result 
 	return result, nil
 }
 
-func (e HHImportExecutor) importSourceURL(ctx context.Context, tx *sql.Tx, job Job, settings Settings) (string, error) {
+func importSourceURL(ctx context.Context, tx *sql.Tx, job Job, settings Settings) (string, error) {
 	if *job.SourceID == "hh" {
-		source, err := e.Settings.ReadHHSourceTx(ctx, tx, *job.CompanyID)
+		source, err := (apifysettings.Repository{}).ReadHHSourceTx(ctx, tx, *job.CompanyID)
 		if err != nil {
 			return "", err
 		}

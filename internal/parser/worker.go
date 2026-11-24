@@ -396,7 +396,7 @@ func (w Worker) cycleStep(ctx, bounded context.Context, stopClaims <-chan struct
 	case "companySite":
 		claim.SourceID = nil
 		claim.CompanyWorkerOnly = true
-		claim.Types = []string{"scan_source", "classify_title", "fetch_full_text", "extract_vacancy", "assign_roles", "import_vacancy"}
+		claim.Types = []string{"scan_source", "classify_title", "fetch_full_text", "extract_vacancy", "assign_roles", "import_vacancy", "score_relevance"}
 		claim.WorkerPipelineFairness = true
 	case "launch":
 		claim.Types = []string{"scan_source"}
@@ -537,7 +537,7 @@ func workerExecute(ctx context.Context, d workerDispatch, lease *JobLease, owner
 				finish = FinishOptions{Status: "pending", Code: "deferred", Delay: 30 * time.Second, Deferred: true}
 			}
 			if onlyAdmissionCause(executeErr, apifyruns.ErrBudget) {
-				finish = FinishOptions{Status: "pending", Code: "budget", Delay: 30 * time.Minute, Deferred: true}
+				finish = FinishOptions{Status: "pending", Code: "budget", Delay: 5 * time.Minute, Deferred: true}
 			}
 		}
 		// Провайдер может отклонить GET из-за бюджета; это не разрешает

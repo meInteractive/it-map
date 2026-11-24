@@ -6,8 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 
-	"itmap/internal/apifysettings"
 	"itmap/internal/profiles"
 )
 
@@ -49,7 +49,7 @@ func sqlNullableInt(v sql.NullInt64) any {
 // readRelevanceSnapshot повторно определяет scope из БД, не из payload задания.
 func readRelevanceSnapshot(ctx context.Context, tx *sql.Tx, job Job, owner string) (relevanceSnapshot, error) {
 	var x relevanceSnapshot
-	if tx == nil || owner == "" || job.CandidateID == nil || job.CompanyID == nil || job.AgencyID != nil || job.SourceID == nil || *job.SourceID != "hh" {
+	if tx == nil || owner == "" || job.CandidateID == nil || job.CompanyID == nil || job.AgencyID != nil || job.SourceID == nil || (*job.SourceID != "hh" && !isFirecrawlSource(*job.SourceID)) {
 		return x, ErrJobInput
 	}
 	x.Owner = owner
@@ -69,30 +69,23 @@ func readRelevanceSnapshot(ctx context.Context, tx *sql.Tx, job Job, owner strin
 	if json.Unmarshal(view.PublicJSON(), &settings) != nil || !settings.Enabled || settings.OwnerName != owner {
 		return x, ErrCandidateChanged
 	}
-	selected := false
-	for _, source := range settings.SourceIDs {
-		selected = selected || source == "hh"
-	}
-	if !selected {
+	if !slices.Contains(settings.SourceIDs, *job.SourceID) {
 		return x, ErrCandidateChanged
 	}
-	source, err := (apifysettings.Repository{}).ReadHHSourceTx(ctx, tx, x.CompanyID)
+	sourceURL, err := importSourceURL(ctx, tx, job, settings)
 	if err != nil {
 		return x, err
-	}
-	if !source.Enabled || !source.Supported {
-		return x, apifysettings.ErrDisabled
 	}
 	var candidateCompany sql.NullInt64
 	var candidateAgency sql.NullInt64
 	var candidateSource, candidateSourceURL sql.NullString
 	var vacancy sql.NullInt64
 	err = tx.QueryRowContext(ctx, "SELECT company_id,agency_id,source_id,source_url,main_vacancy_id FROM vacancy_candidates WHERE id=? FOR UPDATE", x.CandidateID).Scan(&candidateCompany, &candidateAgency, &candidateSource, &candidateSourceURL, &vacancy)
-	if err != nil || !candidateCompany.Valid || candidateCompany.Int64 != x.CompanyID || candidateAgency.Valid || !candidateSource.Valid || candidateSource.String != "hh" || !candidateSourceURL.Valid || candidateSourceURL.String != source.URL || !vacancy.Valid || vacancy.Int64 <= 0 {
+	if err != nil || !candidateCompany.Valid || candidateCompany.Int64 != x.CompanyID || candidateAgency.Valid || !candidateSource.Valid || candidateSource.String != *job.SourceID || !candidateSourceURL.Valid || candidateSourceURL.String != sourceURL || !vacancy.Valid || vacancy.Int64 <= 0 {
 		return x, ErrCandidateChanged
 	}
 	x.VacancyID = vacancy.Int64
-	x.SourceURL = source.URL
+	x.SourceURL = sourceURL
 	var company string
 	if tx.QueryRowContext(ctx, "SELECT company_name FROM company_identity WHERE id=? FOR UPDATE", x.CompanyID).Scan(&company) != nil || company == "" {
 		return x, ErrCandidateChanged
