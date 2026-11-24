@@ -52,7 +52,7 @@ func TestMariaDBFirecrawlCreditsDisposable(t *testing.T) {
 		t.Fatalf("unapproved source reserved credits: %d", n)
 	}
 	now := time.UnixMilli(schedulerClock(t, f.db)).Add(-time.Second)
-	plan, remaining := float64(1000), float64(995)
+	plan, remaining := float64(1000), float64(1025)
 	snapshot := parser.FirecrawlCreditSnapshot{ObservedAt: now, Usage: firecrawl.CreditUsage{
 		PlanCredits: &plan, RemainingCredits: &remaining,
 		PeriodStart: now.Add(-24 * time.Hour).Format(time.RFC3339Nano),
@@ -88,7 +88,7 @@ func TestMariaDBFirecrawlCreditsDisposable(t *testing.T) {
 	if _, err = reserve("page-2", 5); !errors.Is(err, parser.ErrFirecrawlCreditLimit) {
 		t.Fatalf("insufficient provider credits: %v", err)
 	}
-	if f.count("SELECT COUNT(*) FROM firecrawl_usage_periods WHERE provider_used_high=999") != 1 {
+	if f.count("SELECT COUNT(*) FROM firecrawl_usage_periods WHERE provider_used_high=1024") != 1 {
 		t.Fatal("denied reservation lost provider high-water mark")
 	}
 }

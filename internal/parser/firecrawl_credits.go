@@ -93,7 +93,7 @@ func (j *JobLease) reserveFirecrawlCredits(ctx context.Context, step, keyHash, m
 		remaining_credits=IF(checked_at<=VALUES(checked_at),VALUES(remaining_credits),remaining_credits),
 		plan_credits=IF(checked_at<=VALUES(checked_at),VALUES(plan_credits),plan_credits),
 		checked_at=GREATEST(checked_at,VALUES(checked_at))`,
-		keyHash, start, end, plan-remaining, remaining, plan, snapshot.ObservedAt.UnixMilli())
+		keyHash, start, end, firecrawl.ProviderCreditsUsed(int64(plan), int64(remaining)), remaining, plan, snapshot.ObservedAt.UnixMilli())
 	if err != nil {
 		return nil, storageError(ctx)
 	}
@@ -190,9 +190,9 @@ func validFirecrawlKeyHash(value string) bool {
 func firecrawlCreditPeriod(mode string, snapshot FirecrawlCreditSnapshot, now time.Time) (plan, remaining int, start, end string, cap, rate int, ok bool) {
 	switch mode {
 	case "free":
-		cap, rate = 1000, 10
+		cap, rate = firecrawl.FreeCreditLimit, 10
 	case "hobby":
-		cap, rate = 5000, 100
+		cap, rate = firecrawl.HobbyCreditLimit, 100
 	default:
 		return
 	}
@@ -202,8 +202,7 @@ func firecrawlCreditPeriod(mode string, snapshot FirecrawlCreditSnapshot, now ti
 		return
 	}
 	p, left := *u.PlanCredits, *u.RemainingCredits
-	if (p != 1000 && p != 5000) || (mode == "hobby" && p != 5000) ||
-		math.IsNaN(left) || left < 0 || left > p || math.Trunc(left) != left {
+	if math.Trunc(p) != p || math.Trunc(left) != left || !firecrawl.SupportsCreditBalance(mode, int64(p), int64(left)) {
 		return
 	}
 	a, aErr := time.Parse(time.RFC3339Nano, u.PeriodStart)

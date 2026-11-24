@@ -267,7 +267,7 @@ function ModeForm({ state }: { state: FirecrawlState }) {
       <p>
         {hobby
           ? 'Возможности и лимиты Hobby, приблизительно $19 в месяц и до 5000 кредитов. Требуется заранее оформленная подписка Firecrawl.'
-          : 'Бесплатный режим Firecrawl. Лимит до 1000 кредитов за расчётный месяц. Платные возможности и повышенные лимиты отключены.'}
+          : 'Бесплатный режим Firecrawl. Лимит до 1025 кредитов за расчётный месяц. Платные возможности и повышенные лимиты отключены.'}
       </p>
       <ActionForm
         lockWhileBusy
@@ -377,10 +377,10 @@ export function FirecrawlBudget({ mode }: { mode: 'free' | 'hobby' }) {
                   {view.budget.providerRemaining}. Использование по разнице баланса:{' '}
                   {view.budget.providerUsedEstimate ?? 'неизвестно'} (оценка).
                 </p>
-                {mode === 'free' && view.budget.providerPlanCredits !== 1000 && (
+                {mode === 'free' && view.budget.providerPlanCredits > view.limits.credits && (
                   <p className="resume-hint">
                     Ключ относится к пакету {view.budget.providerPlanCredits} кредитов. Профиль Free
-                    ограничивает it-map до 1000 и не отменяет подписку Firecrawl.
+                    ограничивает it-map до {view.limits.credits} и не отменяет подписку Firecrawl.
                   </p>
                 )}
                 <p>

@@ -127,7 +127,7 @@ func (s firecrawlAccountService) save(ctx context.Context, v firecrawlAccountSet
  VALUES(?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE provider_used_high=GREATEST(provider_used_high,VALUES(provider_used_high)),
  remaining_credits=IF(checked_at<=VALUES(checked_at),VALUES(remaining_credits),remaining_credits),
  plan_credits=IF(checked_at<=VALUES(checked_at),VALUES(plan_credits),plan_credits),checked_at=GREATEST(checked_at,VALUES(checked_at))`,
-			v.hash, account.Start, account.End, max(0, account.Plan-account.Remaining), account.Remaining, account.Plan, account.Checked); err != nil {
+			v.hash, account.Start, account.End, firecrawl.ProviderCreditsUsed(account.Plan, account.Remaining), account.Remaining, account.Plan, account.Checked); err != nil {
 			return err
 		}
 	}
@@ -141,9 +141,9 @@ func (s firecrawlAccountService) save(ctx context.Context, v firecrawlAccountSet
 }
 
 func (s firecrawlAccountService) budget(ctx context.Context, v firecrawlAccountSettings) (map[string]any, error) {
-	limit, rate, browsers := 1000, 10, 2
+	limit, rate, browsers := firecrawl.FreeCreditLimit, 10, 2
 	if v.mode == "hobby" {
-		limit, rate, browsers = 5000, 100, 5
+		limit, rate, browsers = firecrawl.HobbyCreditLimit, 100, 5
 	}
 	result := map[string]any{"mode": v.mode, "limits": map[string]int{"credits": limit, "scrapePerMinute": rate, "browsers": browsers, "appConcurrency": 1},
 		"status": "unknown", "reason": "Актуальная статистика недоступна. Обновите её.", "checkedAt": nil, "fresh": false, "budget": nil,
@@ -168,21 +168,19 @@ func (s firecrawlAccountService) budget(ctx context.Context, v firecrawlAccountS
 	err := s.db.QueryRowContext(ctx, `SELECT COALESCE((SELECT provider_used_high FROM firecrawl_usage_periods WHERE key_hash=? AND period_start=? AND period_end=?),?),
  COALESCE(SUM(charged_credits),0),COALESCE(SUM(IF(charged_credits IS NULL,reserved_credits,0)),0),
  COALESCE(SUM(IF(outcome='reserved' AND active_until>?,reserved_credits,0)),0)
- FROM firecrawl_usage_events WHERE period_start=? AND period_end=? AND (profile=? OR key_hash=?)`, v.hash, account.Start, account.End, max(0, account.Plan-account.Remaining),
+ FROM firecrawl_usage_events WHERE period_start=? AND period_end=? AND (profile=? OR key_hash=?)`, v.hash, account.Start, account.End, firecrawl.ProviderCreditsUsed(account.Plan, account.Remaining),
 		now.UnixMilli(), account.Start, account.End, v.mode, v.hash).Scan(&high, &reported, &estimated, &reserved)
 	if err != nil {
 		return nil, err
 	}
 	effective := high + reported + estimated
 	remaining := max(0, min(float64(limit)-effective, float64(account.Remaining)-reserved))
-	var providerEstimate any = max(0, account.Plan-account.Remaining)
+	var providerEstimate any = firecrawl.ProviderCreditsUsed(account.Plan, account.Remaining)
 	reason := ""
 	switch {
-	case account.Remaining > account.Plan || (account.Plan != 1000 && account.Plan != 5000):
+	case !firecrawl.SupportsCreditBalance(v.mode, account.Plan, account.Remaining):
 		providerEstimate = nil
 		reason = "API не подтвердил включённый бюджет Firecrawl."
-	case v.mode == "hobby" && account.Plan != 5000:
-		reason = "API не подтвердил пакет 5000 кредитов для Hobby."
 	case v.mode != v.selected:
 		reason = "Этот профиль не выбран."
 	case !v.enabled:
@@ -196,7 +194,7 @@ func (s firecrawlAccountService) budget(ctx context.Context, v firecrawlAccountS
 		result["status"] = "blocked"
 	}
 	result["reason"] = reason
-	result["accountPlanConfirmed"] = v.mode == "hobby" && account.Plan == 5000 && account.Remaining <= account.Plan
+	result["accountPlanConfirmed"] = v.mode == "hobby" && firecrawl.SupportsCreditBalance(v.mode, account.Plan, account.Remaining)
 	result["budget"] = map[string]any{"providerRemaining": account.Remaining, "providerPlanCredits": account.Plan, "providerUsedEstimate": providerEstimate,
 		"localReported": reported, "localEstimated": estimated, "reserved": reserved, "effectiveUsed": effective, "remaining": remaining,
 		"periodStart": account.Start, "periodEnd": account.End, "minimumReserve": 4}
@@ -264,7 +262,7 @@ func firecrawlAccountHandler(manager *auth.Manager, s firecrawlAccountService) h
 				firecrawlAccountError(w, err)
 				return
 			}
-			if switching && (fresh.Plan != 5000 || fresh.Remaining > fresh.Plan) {
+			if switching && !firecrawl.SupportsCreditBalance("hobby", fresh.Plan, fresh.Remaining) {
 				firecrawlAccountError(w, errFirecrawlAccountInput)
 				return
 			}
