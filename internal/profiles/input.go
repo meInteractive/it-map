@@ -117,11 +117,19 @@ func revisionField(object map[string]json.RawMessage) (int64, bool) {
 	return int64(*number), true
 }
 func ValidateResume(input TextInput) error {
+	return validateProfileText(input, false)
+}
+
+func validateProfileText(input TextInput, portfolio bool) error {
+	label, title := "резюме", "Резюме"
+	if portfolio {
+		label, title = "портфолио", "Портфолио"
+	}
 	if !utf8.ValidString(input.Text) || strings.ContainsRune(input.Text, 0) || utf8.RuneCountInString(input.Text) > MaxResumeLength {
-		return invalid(400, "Резюме должно содержать не более 20 000 символов без нулевого символа.")
+		return invalid(400, title+" должно содержать не более 20 000 символов без нулевого символа.")
 	}
 	if input.Revision < 0 || input.Revision > MaxSafeRevision {
-		return invalid(400, "Сначала загрузите текущую версию резюме.")
+		return invalid(400, "Сначала загрузите текущую версию "+label+".")
 	}
 	return nil
 }
@@ -238,4 +246,19 @@ func ParseModel(kind string, body []byte, declaredLength int64) (ModelInput, err
 	}
 	input := ModelInput{Provider: provider, OpenAIModel: model, OpenRouterModel: router, ReasoningEffort: effort, Revision: revision}
 	return input, ValidateModel(kind, input)
+}
+
+func ParsePortfolio(body []byte, declaredLength int64) (TextInput, error) {
+	const message = "Передайте portfolioMd и revision своего портфолио."
+	object, err := decodeObject(body, declaredLength, ResumeBodyLimit, []string{"portfolioMd", "revision"}, message)
+	if err != nil {
+		return TextInput{}, err
+	}
+	text, hasText := textField(object, "portfolioMd")
+	revision, hasRevision := revisionField(object)
+	if !hasText || !hasRevision {
+		return TextInput{}, invalid(400, message)
+	}
+	input := TextInput{Text: text, Revision: revision}
+	return input, validateProfileText(input, true)
 }

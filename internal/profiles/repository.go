@@ -109,3 +109,27 @@ func (r Repository) Generation(ctx context.Context) (string, error) {
 	}
 	return g, nil
 }
+
+// PortfolioProfileKey резервирует отдельную запись Markdown в user_profiles.
+// Имена с этим префиксом не выдаются авторизованным пользователям. Запись
+// использует существующие ограничения, независимую версию и экспорт профилей.
+func PortfolioProfileKey(user string) string {
+	return "portfolio:" + user
+}
+
+func (r Repository) ReadPortfolio(ctx context.Context, user string) (Resume, error) {
+	if strings.TrimSpace(user) == "" {
+		return Resume{}, ErrUnavailable
+	}
+	return r.ReadResume(ctx, PortfolioProfileKey(user))
+}
+
+func (r Repository) SavePortfolio(ctx context.Context, user string, input TextInput) (Resume, error) {
+	if err := validateProfileText(input, true); err != nil {
+		return Resume{}, err
+	}
+	if strings.TrimSpace(user) == "" {
+		return Resume{}, ErrUnavailable
+	}
+	return r.SaveResume(ctx, PortfolioProfileKey(user), input)
+}

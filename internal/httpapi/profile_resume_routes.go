@@ -42,32 +42,64 @@ func profileInputError(w http.ResponseWriter, err error) {
 	}
 	jsonReply(w, 400, map[string]string{"error": "Некорректные данные профиля."})
 }
+
+type PortfolioStore interface {
+	ReadPortfolio(context.Context, string) (profiles.Resume, error)
+	SavePortfolio(context.Context, string, profiles.TextInput) (profiles.Resume, error)
+}
+
+type profileTextHandlers struct {
+	name, title string
+	read        func(context.Context, string) (profiles.Resume, error)
+	save        func(context.Context, string, profiles.TextInput) (profiles.Resume, error)
+	parse       func([]byte, int64) (profiles.TextInput, error)
+	response    func(profiles.Resume) any
+}
+
 func ProfileResumeHandler(manager *auth.Manager, store ResumeStore) http.HandlerFunc {
+	editor := profileTextHandlers{name: "резюме", title: "Резюме", parse: profiles.ParseResume, response: func(result profiles.Resume) any { return result }}
+	if store != nil {
+		editor.read, editor.save = store.ReadResume, store.SaveResume
+	}
+	return profileTextHandler(manager, editor)
+}
+
+func profilePortfolioHandler(manager *auth.Manager, store PortfolioStore) http.HandlerFunc {
+	editor := profileTextHandlers{name: "портфолио", title: "Портфолио", parse: profiles.ParsePortfolio, response: func(result profiles.Resume) any {
+		return map[string]any{"portfolioMd": result.ResumeMD, "revision": result.Revision, "updatedAt": result.UpdatedAt, "maxLength": result.MaxLength}
+	}}
+	if store != nil {
+		editor.read, editor.save = store.ReadPortfolio, store.SavePortfolio
+	}
+	return profileTextHandler(manager, editor)
+}
+
+func profileTextHandler(manager *auth.Manager, editor profileTextHandlers) http.HandlerFunc {
 	return RequireSession(manager, func(w http.ResponseWriter, r *http.Request) {
 		user, ok := sessionFromRequest(manager, r)
 		if !ok {
 			jsonReply(w, 401, map[string]string{"error": "Требуется авторизация."})
 			return
 		}
-		status := profiles.AccessStatus("resume", "", r.Method, true, user.IsAdmin, store != nil)
+		status := profiles.AccessStatus("resume", "", r.Method, true, user.IsAdmin, editor.read != nil)
 		if status == 405 {
 			w.Header().Set("Allow", "GET, PUT")
 			jsonReply(w, status, map[string]string{"error": "Метод не поддерживается."})
 			return
 		}
 		if status != 200 {
-			jsonReply(w, status, map[string]string{"error": "Хранилище резюме пока не подключено."})
+			jsonReply(w, status, map[string]string{"error": "Хранилище " + editor.name + " пока не подключено."})
 			return
 		}
 		ctx, cancel := context.WithTimeout(r.Context(), 12*time.Second)
 		defer cancel()
 		if r.Method == "GET" {
-			result, err := store.ReadResume(ctx, user.Name)
+			result, err := editor.read(ctx, user.Name)
 			if err != nil {
-				jsonReply(w, 503, map[string]string{"error": "Не удалось прочитать резюме."})
+				jsonReply(w, 503, map[string]string{"error": "Не удалось прочитать " + editor.name + "."})
 				return
 			}
-			jsonReply(w, 200, result)
+			jsonReply(w, 200, editor.response(result))
 			return
 		}
 		if !writeSameOrigin(r) {
@@ -79,24 +111,24 @@ func ProfileResumeHandler(manager *auth.Manager, store ResumeStore) http.Handler
 			profileInputError(w, err)
 			return
 		}
-		input, err := profiles.ParseResume(body, r.ContentLength)
+		input, err := editor.parse(body, r.ContentLength)
 		if err != nil {
 			profileInputError(w, err)
 			return
 		}
-		saved, err := store.SaveResume(ctx, user.Name, input)
+		saved, err := editor.save(ctx, user.Name, input)
 		switch {
 		case errors.Is(err, profiles.ErrConflict):
-			jsonReply(w, 409, map[string]string{"error": "Резюме изменено в другой вкладке. Скопируйте свой текст и обновите страницу перед повторным сохранением."})
+			jsonReply(w, 409, map[string]string{"error": editor.title + " изменено в другой вкладке. Скопируйте свой текст и обновите страницу перед повторным сохранением."})
 		case err != nil:
 			var invalid *profiles.InputError
 			if errors.As(err, &invalid) {
 				profileInputError(w, err)
 				return
 			}
-			jsonReply(w, 503, map[string]string{"error": "Не удалось сохранить резюме."})
+			jsonReply(w, 503, map[string]string{"error": "Не удалось сохранить " + editor.name + "."})
 		default:
-			jsonReply(w, 200, saved)
+			jsonReply(w, 200, editor.response(saved))
 		}
 	})
 }

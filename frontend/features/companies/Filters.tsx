@@ -95,8 +95,7 @@ export function matchesEntity(e: Entity, f: Filters) {
   return (
     f[key] &&
     (!e.hidden || f.showHidden) &&
-    (f.favorites === 'all' ||
-      (f.favorites === 'favorites' ? !!e.favorite : !e.favorite)) &&
+    (f.favorites === 'all' || (f.favorites === 'favorites' ? !!e.favorite : !e.favorite)) &&
     (!f.vacanciesOnly || !!e.hasVacancies) &&
     (!f.applicationsOnly || !!e.hasApplications)
   );

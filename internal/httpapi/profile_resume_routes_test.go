@@ -116,3 +116,47 @@ func TestProfileResumeRouteContract(t *testing.T) {
 		}
 	}
 }
+
+type portfolioProbe struct{ resumeProbe }
+
+func (p *portfolioProbe) ReadPortfolio(ctx context.Context, user string) (profiles.Resume, error) {
+	return p.ReadResume(ctx, user)
+}
+
+func (p *portfolioProbe) SavePortfolio(ctx context.Context, user string, input profiles.TextInput) (profiles.Resume, error) {
+	return p.SaveResume(ctx, user, input)
+}
+
+func TestProfilePortfolioRoute(t *testing.T) {
+	manager, err := auth.NewManager(strings.Repeat("s", 64), map[string]string{"eugene": "CI_ADMIN_PASSWORD", "demo": "CI_PASSWORD"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	user, _ := manager.Authenticate("demo", "CI_PASSWORD")
+	token, err := manager.Issue(user, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	probe := &portfolioProbe{}
+	handler := NewHandlerWithOptions(nil, Options{Auth: manager, Resumes: probe})
+	put := func(markdown string, signedIn bool) *httptest.ResponseRecorder {
+		req := httptest.NewRequest("PUT", "https://itmap.test/api/profile/portfolio?userName=Eugene",
+			strings.NewReader(`{"portfolioMd":"`+markdown+`","revision":0}`))
+		if signedIn {
+			req.AddCookie(&http.Cookie{Name: auth.CookieName, Value: token})
+		}
+		res := httptest.NewRecorder()
+		handler.ServeHTTP(res, req)
+		return res
+	}
+	if res := put("CI draft", false); res.Code != 401 || probe.writes != 0 {
+		t.Fatal("anonymous portfolio update")
+	}
+	if res := put(strings.Repeat("😀", 20001), true); res.Code != 400 || probe.writes != 0 {
+		t.Fatal("portfolio limit not applied")
+	}
+	if res := put(strings.Repeat("😀", 20000), true); res.Code != 200 || probe.user != "Demo" ||
+		probe.writes != 1 || !strings.Contains(res.Body.String(), `"portfolioMd":`) {
+		t.Fatal("portfolio boundary or session ownership failed")
+	}
+}

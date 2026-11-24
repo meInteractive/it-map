@@ -1461,7 +1461,7 @@
     {
       "id": "75529e05bf679188",
       "file": "frontend/features/settings/Profile.tsx",
-      "line": 49,
+      "line": 50,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
@@ -1475,7 +1475,7 @@
     {
       "id": "c790d4fb5de69484",
       "file": "frontend/features/settings/Profile.tsx",
-      "line": 102,
+      "line": 103,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -1489,9 +1489,25 @@
       "dynamicURL": false
     },
     {
+      "id": "bf4e046f44f9346a",
+      "file": "frontend/features/settings/Profile.tsx",
+      "line": 124,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/profile/portfolio'",
+      "literalFragments": [
+        "/api/profile/portfolio"
+      ],
+      "families": [
+        "profile"
+      ],
+      "dynamicURL": false
+    },
+    {
       "id": "34ee6deb8ebf2d2a",
       "file": "frontend/features/settings/Profile.tsx",
-      "line": 120,
+      "line": 144,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -1507,7 +1523,7 @@
     {
       "id": "40a12987fdc5ee54",
       "file": "frontend/features/settings/Profile.tsx",
-      "line": 123,
+      "line": 147,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -2575,7 +2591,7 @@
     {
       "id": "d1292ace96d8234d",
       "file": "frontend/features/settings/Profile.tsx",
-      "line": 107,
+      "line": 109,
       "call": "prop:RevisionEditor",
       "method": "BOUND",
       "methodExpression": "component transport",
@@ -2589,9 +2605,25 @@
       "dynamicURL": false
     },
     {
+      "id": "59adcbdebd8a5015",
+      "file": "frontend/features/settings/Profile.tsx",
+      "line": 129,
+      "call": "prop:RevisionEditor",
+      "method": "BOUND",
+      "methodExpression": "component transport",
+      "urlExpression": "\"/api/profile/portfolio\"",
+      "literalFragments": [
+        "/api/profile/portfolio"
+      ],
+      "families": [
+        "profile"
+      ],
+      "dynamicURL": false
+    },
+    {
       "id": "f3d91c7483ddece9",
       "file": "frontend/features/settings/Profile.tsx",
-      "line": 139,
+      "line": 163,
       "call": "prop:RevisionEditor",
       "method": "BOUND",
       "methodExpression": "component transport",

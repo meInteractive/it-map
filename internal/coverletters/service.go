@@ -37,7 +37,7 @@ func (s Service) Generate(ctx context.Context,user string,id int64,regenerate bo
 			return Letter{},ErrNotRegenerable
 		}
 	}
-	instructions,state,err:=messages(in.Prompt,in.Resume,in.Title,in.Description)
+	instructions,state,err:=messages(in.Prompt,in.Resume,in.Portfolio,in.Title,in.Description)
 	if err!=nil{return Letter{},err}
 	// OpenRouter остаётся строго бесплатным. Платный OpenAI допускается
 	// только через отдельный durable admission; никакой тихой смены модели.
