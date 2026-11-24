@@ -70,7 +70,7 @@ const inputSQL = `SELECT g.generation,v.title,COALESCE(v.description_md,''),
  COALESCE(v.cover_letter_subject,''),COALESCE(v.cover_letter_md,''),
  COALESCE(v.created_at,''),COALESCE(v.updated_at,''),
  COALESCE(p.resume_md,''),COALESCE(p.revision,0),
- COALESCE(portfolio.resume_md,''),COALESCE(portfolio.revision,0),
+  ` + profiles.PortfolioTextSQL + `,COALESCE(portfolio.revision,0),
  COALESCE(sp.markdown,''),COALESCE(sp.revision,0),
  COALESCE(pm.provider,'openrouter'),COALESCE(pm.openai_model,''),
  COALESCE(pm.openrouter_model,'best_free'),COALESCE(pm.reasoning_effort,'medium'),
@@ -79,7 +79,7 @@ const inputSQL = `SELECT g.generation,v.title,COALESCE(v.description_md,''),
  FROM company_vacancies v
  CROSS JOIN app_runtime_generation g
  LEFT JOIN user_profiles p ON p.user_name=?
- LEFT JOIN user_profiles portfolio ON portfolio.user_name=?
+ LEFT JOIN user_profiles portfolio ON portfolio.user_name=?` + profiles.PortfolioPartsSQL + `
  LEFT JOIN system_prompts sp ON sp.kind='cover_letter'
  LEFT JOIN prompt_model_settings pm ON pm.kind='cover_letter'
  LEFT JOIN openai_settings k ON k.id=1

@@ -10,6 +10,7 @@ interface RevisionText {
   updatedAt: string;
   resumeMd?: string;
   portfolioMd?: string;
+  maxLength?: number;
   markdown?: string;
 }
 export function RevisionEditor({
@@ -130,7 +131,7 @@ function Portfolio() {
             initial={q.data}
             url="/api/profile/portfolio"
             field="portfolioMd"
-            limit={20000}
+            limit={q.data.maxLength ?? 50000}
             title="Портфолио"
             description="Описание реализованных проектов для сопроводительных писем. Для каждого проекта используйте подзаголовки «Название», «Предметная область», «Технические детали» и «Описание»."
           />
