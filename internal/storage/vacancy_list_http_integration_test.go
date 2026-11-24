@@ -137,17 +137,7 @@ func TestMariaDBVacancyListHTTPSourceDisposable(t *testing.T) {
 					t.Fatal("invalid vacancy list JSON")
 				}
 				if frame.Status == http.StatusOK {
-					// The native list adds the stored primary URL to the legacy DTO.
-					for _, value := range want.(map[string]any)["vacancies"].([]any) {
-						row := value.(map[string]any)
-						var url string
-						if err := f.db.QueryRowContext(f.ctx, "SELECT COALESCE(url,'') FROM company_vacancies WHERE id=?", row["id"]).Scan(&url); err != nil {
-							t.Fatal("source URL fixture:", err)
-						}
-						if url != "" {
-							row["url"] = url
-						}
-					}
+					addExpectedVacancyURLs(t, f, want.(map[string]any)["vacancies"].([]any))
 				}
 				if !reflect.DeepEqual(got, want) {
 					t.Fatalf("native full source DTO differs: got %s want %s", out.Body.String(), frame.ResponseBody)
@@ -171,4 +161,19 @@ func TestMariaDBVacancyListHTTPSourceDisposable(t *testing.T) {
 		t.Fatal("required vacancy HTTP cases missing", count)
 	}
 	t.Log("PASS: source vacancy HTTP176 full DTO/status cases, period/query/users/noDB, SELECT-only and 72 tables unchanged")
+}
+
+// The native list adds the primary URL to the otherwise unchanged legacy DTO.
+func addExpectedVacancyURLs(t *testing.T, f *settingsSQLFixture, rows []any) {
+	t.Helper()
+	for _, value := range rows {
+		row := value.(map[string]any)
+		var url string
+		if err := f.db.QueryRowContext(f.ctx, "SELECT COALESCE(url,'') FROM company_vacancies WHERE id=?", row["id"]).Scan(&url); err != nil {
+			t.Fatal("source URL fixture:", err)
+		}
+		if url != "" {
+			row["url"] = url
+		}
+	}
 }
