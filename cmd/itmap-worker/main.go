@@ -35,6 +35,7 @@ type settings struct {
 	health                      bool
 	releaseControl              bool
 	firecrawl                   bool
+	trustFreeApifyLimit         bool
 }
 
 // load проверяет все допуски до открытия соединения. Значения учётных данных
@@ -64,6 +65,10 @@ func load(getenv func(string) string) (settings, error) {
 	if firecrawl == "1" && getenv("APP_ENV") == "production" && control != "1" {
 		return settings{}, errConfig
 	}
+	trustFreeLimit := getenv("ITMAP_APIFY_TRUST_FREE_HARD_LIMIT")
+	if trustFreeLimit != "" && trustFreeLimit != "0" && trustFreeLimit != "1" {
+		return settings{}, errConfig
+	}
 	switch getenv("APP_ENV") {
 	case "staging":
 		if getenv("ITMAP_WORKER_STAGING_REAL_PROVIDERS") != "1" || database.Host != "127.0.0.1" || database.Port != "3306" || database.Database != "itmap_worker_staging" || database.User != "itmap_worker_app" {
@@ -84,7 +89,8 @@ func load(getenv func(string) string) (settings, error) {
 		return settings{}, errConfig
 	}
 	return settings{runtime: runtime, database: database, password: password,
-		secret: getenv("SESSION_SECRET"), openAIKey: getenv("OPENAI_API_KEY"), health: health == "1", releaseControl: control == "1", firecrawl: firecrawl == "1"}, nil
+		secret: getenv("SESSION_SECRET"), openAIKey: getenv("OPENAI_API_KEY"), health: health == "1", releaseControl: control == "1", firecrawl: firecrawl == "1",
+		trustFreeApifyLimit: trustFreeLimit == "1" || trustFreeLimit == "" && getenv("APP_ENV") == "production"}, nil
 }
 
 type opener func(context.Context, storage.Settings, string) (*sql.DB, error)
@@ -148,6 +154,7 @@ func runWorker(ctx context.Context, db *sql.DB, s settings) error {
 	if err != nil {
 		return errStartup
 	}
+	w.TrustFreeProviderLimit = s.trustFreeApifyLimit
 	if s.firecrawl {
 		codec, err := legacycrypto.New(s.secret, legacycrypto.Firecrawl)
 		if err != nil {

@@ -151,7 +151,7 @@ func (e firecrawlListingExecutor) Execute(ctx context.Context, lease *JobLease) 
 		plan, err = e.read(ctx, tx, job)
 		return err
 	}); err != nil {
-		return HHListingProgress{}, err
+		return HHListingProgress{}, firecrawlFailure("firecrawl_source", err)
 	}
 	validate := func(ctx context.Context, tx *sql.Tx) error {
 		current, err := e.read(ctx, tx, job)
@@ -171,11 +171,11 @@ func (e firecrawlListingExecutor) Execute(ctx context.Context, lease *JobLease) 
 		return HHListingProgress{}, err
 	}
 	if doc.TargetStatus < 200 || doc.TargetStatus >= 300 {
-		return HHListingProgress{}, errFirecrawlListing
+		return HHListingProgress{}, firecrawlFailure("firecrawl_target", errFirecrawlListing)
 	}
 	cards, err := firecrawlListingCards(*job.SourceID, doc.Markdown, doc.FinalURL)
 	if err != nil {
-		return HHListingProgress{}, err
+		return HHListingProgress{}, firecrawlFailure("firecrawl_listing", err)
 	}
 	result := HHListingProgress{Done: true, Page: 1}
 	err = lease.WithinOwned(ctx, func(tx *sql.Tx) error {
@@ -202,7 +202,7 @@ func (e firecrawlListingExecutor) Execute(ctx context.Context, lease *JobLease) 
 		return nil
 	})
 	if err != nil {
-		return HHListingProgress{}, err
+		return HHListingProgress{}, firecrawlFailure("firecrawl_save", err)
 	}
 	return result, nil
 }

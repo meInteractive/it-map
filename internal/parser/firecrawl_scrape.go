@@ -47,20 +47,20 @@ func (e FirecrawlScrapeExecutor) Execute(ctx context.Context, lease *JobLease, s
 	}
 	settings, err := e.settings(ctx, lease)
 	if err != nil {
-		return firecrawl.ScrapeResult{}, err
+		return firecrawl.ScrapeResult{}, firecrawlFailure("firecrawl_key", err)
 	}
 	target, err := firecrawl.Preflight(ctx, step.URL, step.AllowedHosts)
 	if err != nil {
-		return firecrawl.ScrapeResult{}, err
+		return firecrawl.ScrapeResult{}, firecrawlFailure("firecrawl_preflight", err)
 	}
 	client, err := firecrawl.New(settings.key, e.Transport)
 	if err != nil {
-		return firecrawl.ScrapeResult{}, ErrFirecrawlSettings
+		return firecrawl.ScrapeResult{}, firecrawlFailure("firecrawl_key", ErrFirecrawlSettings)
 	}
 	checkedAt := time.Now()
 	usage, err := client.CreditUsage(ctx)
 	if err != nil {
-		return firecrawl.ScrapeResult{}, err
+		return firecrawl.ScrapeResult{}, firecrawlFailure("firecrawl_balance", err)
 	}
 	validate := func(ctx context.Context, tx *sql.Tx) error {
 		if claimsStopped(e.stopClaims) {
@@ -73,7 +73,14 @@ func (e FirecrawlScrapeExecutor) Execute(ctx context.Context, lease *JobLease, s
 	}
 	reservation, err := lease.reserveFirecrawlCredits(ctx, step.ID, settings.hash, settings.mode, settings.revision, FirecrawlCreditSnapshot{Usage: usage, ObservedAt: checkedAt}, validate)
 	if err != nil {
-		return firecrawl.ScrapeResult{}, err
+		code := "firecrawl_reserve"
+		switch {
+		case errors.Is(err, ErrFirecrawlCreditLimit), errors.Is(err, ErrFirecrawlCreditSnapshot):
+			code = "firecrawl_budget"
+		case errors.Is(err, ErrFirecrawlAlreadyReserved):
+			code = "firecrawl_reserved"
+		}
+		return firecrawl.ScrapeResult{}, firecrawlFailure(code, err)
 	}
 	result, scrapeErr := client.Scrape(ctx, target, firecrawl.ScrapeOptions{
 		AllowedHosts: step.AllowedHosts, Timeout: settings.timeout, MarkdownOnly: step.MarkdownOnly,
@@ -81,7 +88,7 @@ func (e FirecrawlScrapeExecutor) Execute(ctx context.Context, lease *JobLease, s
 	})
 	cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
 	defer cancel()
-	return result, errors.Join(scrapeErr, reservation.Settle(cleanup, result, scrapeErr))
+	return result, errors.Join(firecrawlFailure("firecrawl_settlement", reservation.Settle(cleanup, result, scrapeErr)), firecrawlFailure("firecrawl_scrape", scrapeErr))
 }
 
 func (e FirecrawlScrapeExecutor) settings(ctx context.Context, lease *JobLease) (firecrawlScrapeSettings, error) {

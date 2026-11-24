@@ -175,3 +175,25 @@ func TestFirecrawlWorkerOptIn(t *testing.T) {
 		t.Fatalf("explicit Firecrawl configuration: enabled=%t, err=%v", config.firecrawl, err)
 	}
 }
+
+func TestProductionApifyFreeHardLimit(t *testing.T) {
+	env := productionEnvironment()
+	for _, tc := range []struct {
+		value string
+		want  bool
+	}{
+		{"", true},
+		{"0", false},
+		{"1", true},
+	} {
+		env["ITMAP_APIFY_TRUST_FREE_HARD_LIMIT"] = tc.value
+		config, err := load(getter(env))
+		if err != nil || config.trustFreeApifyLimit != tc.want {
+			t.Fatalf("setting %q: enabled=%t err=%v", tc.value, config.trustFreeApifyLimit, err)
+		}
+	}
+	env["ITMAP_APIFY_TRUST_FREE_HARD_LIMIT"] = "invalid"
+	if _, err := load(getter(env)); !errors.Is(err, errConfig) {
+		t.Fatalf("invalid Apify limit setting: %v", err)
+	}
+}

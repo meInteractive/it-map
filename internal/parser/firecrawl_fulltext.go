@@ -134,7 +134,7 @@ func (e firecrawlFullTextExecutor) Execute(ctx context.Context, lease *JobLease)
 			return HHFullTextResult{}, err
 		}
 		if !sameFirecrawlPage(plan.URL, document.FinalURL) || len(CheckFulltextContent(document.Markdown, document.TargetStatus)) != 0 {
-			return HHFullTextResult{}, ErrFirecrawlContent
+			return HHFullTextResult{}, firecrawlFailure("firecrawl_content", ErrFirecrawlContent)
 		}
 	}
 	result := HHFullTextResult{SnapshotID: plan.SnapshotID, Reused: plan.Cached}
@@ -152,7 +152,7 @@ func (e firecrawlFullTextExecutor) Execute(ctx context.Context, lease *JobLease)
 		handoff := CandidateHandoff{Planner: SQLCandidateHandoffPlanner{Owner: e.owner}}
 		return handoff.Enqueue(ctx, tx, job)
 	})
-	return result, err
+	return result, firecrawlFailure("firecrawl_save", err)
 }
 
 func storeFirecrawlFullText(ctx context.Context, tx *sql.Tx, job Job, plan firecrawlTextPlan, doc firecrawl.ScrapeResult, started time.Time) (string, error) {
