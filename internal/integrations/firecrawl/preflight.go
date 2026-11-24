@@ -2,6 +2,8 @@ package firecrawl
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"net"
 	"net/http"
 	"net/netip"
@@ -24,6 +26,9 @@ var excludedNetworks = [...]netip.Prefix{
 	netip.MustParsePrefix("2002::/16"),
 	netip.MustParsePrefix("3fff::/20"),
 }
+
+var ErrPreflightDNS = fmt.Errorf("source DNS lookup failed: %w", ErrNetwork)
+var ErrPreflightConnection = fmt.Errorf("could not establish source connection: %w", ErrNetwork)
 
 var globalIPv6 = netip.MustParsePrefix("2000::/3")
 
@@ -65,7 +70,7 @@ func probeTarget(ctx context.Context, target *url.URL, lookup lookupIP, dial dia
 	defer cancel()
 	addresses, err := lookup(ctx, "ip", target.Hostname())
 	if err != nil || len(addresses) == 0 {
-		return "", ErrNetwork
+		return "", ErrPreflightDNS
 	}
 	for _, address := range addresses {
 		if !publicAddress(address.Unmap()) {
@@ -88,7 +93,7 @@ func probeTarget(ctx context.Context, target *url.URL, lookup lookupIP, dial dia
 					return conn, nil
 				}
 			}
-			return nil, ErrNetwork
+			return nil, ErrPreflightConnection
 		},
 	}
 	defer transport.CloseIdleConnections()
@@ -102,6 +107,9 @@ func probeTarget(ctx context.Context, target *url.URL, lookup lookupIP, dial dia
 	}
 	reply, err := client.Do(req)
 	if err != nil {
+		if errors.Is(err, ErrPreflightConnection) {
+			return "", ErrPreflightConnection
+		}
 		return "", ErrNetwork
 	}
 	defer reply.Body.Close()

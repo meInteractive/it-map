@@ -69,3 +69,23 @@ func TestGetmatchListingUsesGetmatchVacancyPaths(t *testing.T) {
 		t.Fatalf("cards=%+v err=%v", cards, err)
 	}
 }
+
+func TestGetmatchExplicitEmptyAndUnavailable(t *testing.T) {
+	const page = "https://getmatch.ru/companies/ci"
+	for _, tc := range []struct {
+		markdown string
+		want     int
+		err      error
+	}{
+		{"# Вакансии компании CI\n\n**Вакансий пока нет.**", 0, nil},
+		{"# Вакансии компании CI\n\n[Вакансии](/vacancies?s=menu)", 0, errFirecrawlListing},
+		{"# Вакансии компании CI\n\nВ Талантиксе нет открытых вакансий.", 0, errFirecrawlListing},
+		{"# Не смогли загрузить данные\n\nВакансий пока нет.", 0, errGetmatchListingUnavailable},
+		{"[Go Engineer](</vacancies/42> \"Job title\")", 1, nil},
+	} {
+		cards, err := firecrawlListingCards("getmatch", tc.markdown, page)
+		if !errors.Is(err, tc.err) || len(cards) != tc.want {
+			t.Errorf("listing %q: cards=%v err=%v", tc.markdown, cards, err)
+		}
+	}
+}

@@ -92,3 +92,24 @@ func TestPreflightRejectsForeignRedirectBeforeLookup(t *testing.T) {
 		t.Fatalf("got %v", err)
 	}
 }
+
+func TestPreflightDistinguishesDNSAndConnectionFailures(t *testing.T) {
+	networkError := errors.New("synthetic network failure")
+	dial := func(context.Context, string, string) (net.Conn, error) {
+		return nil, networkError
+	}
+	for _, tc := range []struct {
+		lookup lookupIP
+		want   error
+	}{
+		{func(context.Context, string, string) ([]netip.Addr, error) { return nil, networkError }, ErrPreflightDNS},
+		{func(context.Context, string, string) ([]netip.Addr, error) {
+			return []netip.Addr{netip.MustParseAddr("8.8.8.8")}, nil
+		}, ErrPreflightConnection},
+	} {
+		_, err := preflight(context.Background(), "https://jobs.company.com/", []string{"jobs.company.com"}, tc.lookup, dial)
+		if !errors.Is(err, tc.want) || !errors.Is(err, ErrNetwork) {
+			t.Errorf("got %v, want %v", err, tc.want)
+		}
+	}
+}

@@ -12,8 +12,14 @@ import (
 )
 
 var errFirecrawlListing = errors.New("Firecrawl listing has no verified vacancy links")
+var errGetmatchListingUnavailable = errors.New("Getmatch did not load company vacancies")
 
-var companyListingLink = regexp.MustCompile(`!?\[([^\]\r\n]+)\]\(<?([^\s<>)]+)>?\)`)
+// Match visible standalone status text, not translations or sentences about
+// another employer. An ordinary page shell is not evidence of an empty list.
+var getmatchEmptyLine = regexp.MustCompile(`(?mi)^[ 	#*_>-]*(?:нет (?:открытых |актуальных |доступных )?вакансий|вакансий (?:пока )?нет|no (?:open |current |available )?(?:jobs|vacancies|positions)(?: available| found)?)[.!*_ 	]*$`)
+var getmatchUnavailableLine = regexp.MustCompile(`(?mi)^[ 	#*_>-]*не смогли загрузить данные[.!*_ 	]*$`)
+
+var companyListingLink = regexp.MustCompile(`!?\[([^\]\r\n]+)\]\(<?([^\s<>)]+)>?(?:[ \t]+"[^"\r\n]*")?\)`)
 var getmatchVacancyPath = regexp.MustCompile(`^/vacancies/[A-Za-z0-9_-]+/?$`)
 
 func firecrawlVacancyPath(source, path string) bool {
@@ -35,6 +41,9 @@ func firecrawlListingCards(source, markdown, page string) ([]companyListingCard,
 	base, err := url.Parse(page)
 	if err != nil || base.Hostname() == "" {
 		return nil, errFirecrawlListing
+	}
+	if source == "getmatch" && getmatchUnavailableLine.MatchString(markdown) {
+		return nil, errGetmatchListingUnavailable
 	}
 	pairs := companyListingLink.FindAllStringSubmatch(markdown, 10001)
 	if len(pairs) > 10000 {
@@ -100,6 +109,9 @@ func firecrawlListingCards(source, markdown, page string) ([]companyListingCard,
 		}
 	}
 	if len(cards) == 0 {
+		if source == "getmatch" && len(order) == 0 && getmatchEmptyLine.MatchString(markdown) {
+			return cards, nil
+		}
 		return nil, errFirecrawlListing
 	}
 	return cards, nil
