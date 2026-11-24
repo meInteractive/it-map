@@ -190,6 +190,8 @@ func NewHandlerWithOptions(logger *slog.Logger, opts Options) http.Handler {
 			mux.HandleFunc(entry.path+"/", handler)
 		}
 		mux.HandleFunc("/api/profile/resume", ProfileResumeHandler(opts.Auth, opts.Resumes))
+		namedResumes, _ := opts.Resumes.(namedResumeStore)
+		mux.HandleFunc("/api/profile/resumes", profileResumesHandler(opts.Auth, namedResumes))
 		portfolio, _ := opts.Resumes.(PortfolioStore)
 		mux.HandleFunc("/api/profile/portfolio", profilePortfolioHandler(opts.Auth, portfolio))
 		if opts.Catalog != nil {

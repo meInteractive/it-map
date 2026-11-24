@@ -148,6 +148,7 @@ export interface ApplicationCreationResult extends ApplicationsResponse {
   replayed: boolean;
 }
 export interface ApplicationRecord {
+  resume?: { id: number; name: string };
   id: number;
   revision: string;
   companyName: string;

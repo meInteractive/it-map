@@ -28,6 +28,8 @@ type Input struct {
 	VacancyUpdated string
 	Resume string
 	ResumeRevision int64
+	ResumeID int `json:",omitempty"`
+	ResumeSelection int `json:"-"`
 	Portfolio string `json:",omitempty"`
 	PortfolioRevision int64 `json:",omitempty"`
 	Prompt string
@@ -69,7 +71,6 @@ type queryRow interface {QueryRowContext(context.Context,string,...any)*sql.Row}
 const inputSQL = `SELECT g.generation,v.title,COALESCE(v.description_md,''),
  COALESCE(v.cover_letter_subject,''),COALESCE(v.cover_letter_md,''),
  COALESCE(v.created_at,''),COALESCE(v.updated_at,''),
- COALESCE(p.resume_md,''),COALESCE(p.revision,0),
   ` + profiles.PortfolioTextSQL + `,COALESCE(portfolio.revision,0),
  COALESCE(sp.markdown,''),COALESCE(sp.revision,0),
  COALESCE(pm.provider,'openrouter'),COALESCE(pm.openai_model,''),
@@ -78,7 +79,6 @@ const inputSQL = `SELECT g.generation,v.title,COALESCE(v.description_md,''),
  personal.subject,personal.markdown,personal.override_shared,personal.revision
  FROM company_vacancies v
  CROSS JOIN app_runtime_generation g
- LEFT JOIN user_profiles p ON p.user_name=?
  LEFT JOIN user_profiles portfolio ON portfolio.user_name=?` + profiles.PortfolioPartsSQL + `
  LEFT JOIN system_prompts sp ON sp.kind='cover_letter'
  LEFT JOIN prompt_model_settings pm ON pm.kind='cover_letter'
@@ -87,20 +87,26 @@ const inputSQL = `SELECT g.generation,v.title,COALESCE(v.description_md,''),
  WHERE g.id=1 AND v.id=?
  ORDER BY personal.revision DESC,personal.created_at DESC LIMIT 1`
 
-func readInput(ctx context.Context, q queryRow, user string, id int64) (Input,error) {
+func readInput(ctx context.Context, q queryRow, user string, id int64, selection int) (Input,error) {
 	var in Input
 	in.VacancyID=id
 	var subject,body sql.NullString
 	var override,revision sql.NullInt64
-	err:=q.QueryRowContext(ctx,inputSQL,user,profiles.PortfolioProfileKey(user),user,id).Scan(
+	err:=q.QueryRowContext(ctx,inputSQL,profiles.PortfolioProfileKey(user),user,id).Scan(
 		&in.Generation,&in.Title,&in.Description,&in.SharedSubject,&in.SharedMD,
-		&in.VacancyCreated,&in.VacancyUpdated,&in.Resume,&in.ResumeRevision,&in.Portfolio,&in.PortfolioRevision,
+		&in.VacancyCreated,&in.VacancyUpdated,&in.Portfolio,&in.PortfolioRevision,
 		&in.Prompt,&in.PromptRevision,&in.Config.Provider,&in.Config.OpenAIModel,
 		&in.Config.OpenRouterModel,&in.Config.ReasoningEffort,&in.Config.Revision,
 		&in.OpenAIKeyRevision,&subject,&body,&override,&revision,
 	)
 	if errors.Is(err,sql.ErrNoRows){return Input{},ErrMissing}
 	if err!=nil{return Input{},ErrUnavailable}
+	resume, err := profiles.ResolveResume(ctx,q,user,selection)
+	if err!=nil{return Input{},err}
+	in.ResumeSelection=selection
+	in.Resume=resume.Markdown
+	in.ResumeRevision=resume.Version
+	if resume.ID != 1 {in.ResumeID=resume.ID}
 	in.HasPersonal=subject.Valid && body.Valid
 	if in.HasPersonal{
 		in.PersonalSubject=subject.String
@@ -111,9 +117,14 @@ func readInput(ctx context.Context, q queryRow, user string, id int64) (Input,er
 	return in,nil
 }
 
-func (r Repository) Read(ctx context.Context,user string,id int64)(Input,error){
+func (r Repository) Read(ctx context.Context,user string,id int64,resumeIDs ...int)(Input,error){
 	if r.DB==nil||user==""||id<=0{return Input{},ErrUnavailable}
-	return readInput(ctx,r.DB,user,id)
+	return readInput(ctx,r.DB,user,id,resumeSelection(resumeIDs))
+}
+
+func resumeSelection(ids []int) int {
+	if len(ids)==0{return 0}
+	return ids[0]
 }
 
 func newToken()(string,error){
@@ -130,6 +141,7 @@ type Lease struct {
 	Generation string
 	InputHash string
 	Token string
+	ResumeSelection int
 }
 
 const leaseDuration=90*time.Second
@@ -145,7 +157,7 @@ func (r Repository) Claim(ctx context.Context, user string, in Input, regenerate
 		if errors.Is(e,sql.ErrNoRows){return Lease{},ErrMissing}
 		return Lease{},ErrUnavailable
 	}
-	current,e:=readInput(ctx,tx,user,in.VacancyID)
+	current,e:=readInput(ctx,tx,user,in.VacancyID,in.ResumeSelection)
 	if e!=nil{return Lease{},e}
 	if current.Hash()!=in.Hash(){return Lease{},ErrChanged}
 	if old,has:=current.Effective();has&&!regenerate&&strings.TrimSpace(old.CoverLetterMD)!=""{return Lease{},ErrChanged}
@@ -170,7 +182,7 @@ func (r Repository) Claim(ctx context.Context, user string, in Input, regenerate
 	}
 	if e!=nil{return Lease{},ErrUnavailable}
 	if e=tx.Commit();e!=nil{return Lease{},ErrUnavailable}
-	return Lease{user,in.VacancyID,in.Generation,in.Hash(),token},nil
+	return Lease{user,in.VacancyID,in.Generation,in.Hash(),token,in.ResumeSelection},nil
 }
 
 func (r Repository) Check(ctx context.Context,l Lease)error{
@@ -183,7 +195,7 @@ func (r Repository) Check(ctx context.Context,l Lease)error{
 	if e!=nil||generation!=l.Generation||hash!=l.InputHash||token!=l.Token||expiry<=time.Now().UnixMilli(){
 		return ErrChanged
 	}
-	input,e:=r.Read(ctx,l.User,l.VacancyID)
+	input,e:=r.Read(ctx,l.User,l.VacancyID,l.ResumeSelection)
 	if e!=nil||input.Generation!=l.Generation||input.Hash()!=l.InputHash{return ErrChanged}
 	return nil
 }
@@ -229,7 +241,7 @@ func (r Repository) Save(ctx context.Context,l Lease,in Input,answer Parsed,rege
 		if e:=tx.QueryRowContext(ctx,`SELECT owner_token,input_hash,expires_at FROM cover_letter_generation_leases WHERE
 		  user_name=? AND vacancy_id=? AND generation=? FOR UPDATE`,l.User,l.VacancyID,l.Generation).
 		  Scan(&token,&hash,&expiry);e!=nil||token!=l.Token||hash!=l.InputHash||expiry<=time.Now().UnixMilli(){return ErrChanged}
-		current,e:=readInput(ctx,tx,l.User,l.VacancyID)
+		current,e:=readInput(ctx,tx,l.User,l.VacancyID,l.ResumeSelection)
 		if e!=nil{return e}
 		if current.Hash()!=in.Hash(){return ErrChanged}
 		if previous,has:=current.Effective();has&&!regenerate&&strings.TrimSpace(previous.CoverLetterMD)!=""{return ErrChanged}

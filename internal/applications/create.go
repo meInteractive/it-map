@@ -13,6 +13,8 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+
+	"itmap/internal/profiles"
 )
 
 // ErrCreationContextRequired is returned when a request is missing either the
@@ -47,6 +49,7 @@ type CreateInput struct {
 	ApplicationSources   []string `json:"applicationSources"`
 	IdempotencyKey       string   `json:"idempotencyKey"`
 	CreationContext      string   `json:"creationContext"`
+	ResumeID             *int     `json:"resumeId,omitempty"`
 }
 
 type CreationResult struct {
@@ -57,7 +60,7 @@ type CreationResult struct {
 
 func (in CreateInput) normalize() (CreateInput, error) {
 	in.CompanyName = trimLegacyText(in.CompanyName)
-	if in.CompanyName == "" || !uuidV4.MatchString(in.IdempotencyKey) {
+	if in.CompanyName == "" || in.ResumeID != nil && (*in.ResumeID < 0 || *in.ResumeID > 3) || !uuidV4.MatchString(in.IdempotencyKey) {
 		return in, ErrInvalidInput
 	}
 	normalized, err := (UpdateInput{Revision: strings.Repeat("0", 64), VacancyID: in.VacancyID, Status: in.Status, Comment: in.Comment, RecruiterName: in.RecruiterName, RecruiterPhone: in.RecruiterPhone, RecruiterEmail: in.RecruiterEmail, RecruiterContactType: in.RecruiterContactType, ApplicationSources: in.ApplicationSources}).normalize()
@@ -91,7 +94,11 @@ func jsJSON(v any) ([]byte, error) {
 	return data, nil
 }
 func (in CreateInput) intentHash() (string, error) {
-	data, err := jsJSON([]any{in.CompanyName, in.VacancyID, in.Status, in.Comment, in.RecruiterName, in.RecruiterPhone, in.RecruiterEmail, in.RecruiterContactType, in.ApplicationSources})
+	fields := []any{in.CompanyName, in.VacancyID, in.Status, in.Comment, in.RecruiterName, in.RecruiterPhone, in.RecruiterEmail, in.RecruiterContactType, in.ApplicationSources}
+	if in.ResumeID != nil {
+		fields = append(fields, *in.ResumeID)
+	}
+	data, err := jsJSON(fields)
 	if err != nil {
 		return "", err
 	}
@@ -346,6 +353,21 @@ func (r Repository) createWithReceipt(ctx context.Context, user string, raw Crea
 	id, err := result.LastInsertId()
 	if err != nil || id < 1 {
 		return CreationResult{}, ErrIncompleteReceipt
+	}
+	if in.ResumeID != nil {
+		resume, err := profiles.ResolveResume(ctx, tx, user, *in.ResumeID)
+		if errors.Is(err, profiles.ErrResumeSelection) {
+			return CreationResult{}, ErrInvalidInput
+		}
+		if err != nil {
+			return CreationResult{}, err
+		}
+		if _, err = tx.ExecContext(ctx, `INSERT INTO user_profiles(user_name,resume_md)
+			SELECT ?,JSON_OBJECT('id',?,'name',?,'applicationCreatedAt',created_at)
+			FROM company_applications WHERE id=? AND user_name=?
+			ON DUPLICATE KEY UPDATE resume_md=VALUES(resume_md)`, applicationResumeKey(user, id), resume.ID, resume.Name, id, user); err != nil {
+			return CreationResult{}, err
+		}
 	}
 	if in.Status != "" {
 		if _, err = tx.ExecContext(ctx, `INSERT INTO company_application_status_history(application_id,from_status,to_status) VALUES(?,'',?)`, id, in.Status); err != nil {

@@ -18,7 +18,7 @@ type delayedCoverLetterGenerator struct {
 	delay time.Duration
 }
 
-func (g delayedCoverLetterGenerator) Generate(ctx context.Context, _ string, _ int64, _ bool, _ string, progress coverletters.Progress) (coverletters.Letter, error) {
+func (g delayedCoverLetterGenerator) Generate(ctx context.Context, _ string, _ int64, _ bool, _ string, progress coverletters.Progress,_ ...int) (coverletters.Letter, error) {
 	if progress != nil {
 		progress("model")
 	}
@@ -112,7 +112,7 @@ type canceledCoverLetterGenerator struct {
 	done    chan struct{}
 }
 
-func (g canceledCoverLetterGenerator) Generate(ctx context.Context, _ string, _ int64, _ bool, _ string, _ coverletters.Progress) (coverletters.Letter, error) {
+func (g canceledCoverLetterGenerator) Generate(ctx context.Context, _ string, _ int64, _ bool, _ string, _ coverletters.Progress,_ ...int) (coverletters.Letter, error) {
 	close(g.started)
 	<-ctx.Done()
 	close(g.done)

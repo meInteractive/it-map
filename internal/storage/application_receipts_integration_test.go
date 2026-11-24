@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"itmap/internal/applications"
+	"itmap/internal/profiles"
 )
 
 // This business test deliberately has an additional tag: the complete storage
@@ -54,6 +55,7 @@ func TestMariaDBApplicationReceiptsDisposable(t *testing.T) {
 			{"DELETE FROM application_creation_receipts WHERE user_name=? AND idempotency_key LIKE ?", []any{user, "00000000-0000-4000-8000-%"}},
 			{"DELETE h FROM company_application_status_history h JOIN company_applications a ON a.id=h.application_id WHERE a.user_name=? AND a.company_name=?", []any{user, company}},
 			{"DELETE FROM company_applications WHERE user_name=? AND company_name=?", []any{user, company}},
+			{"DELETE FROM user_profiles WHERE user_name IN ('Demo','resumes:Demo','resume2:Demo') OR user_name LIKE 'application-resume:%:Demo'", nil},
 		}
 		for _, q := range queries {
 			if _, err := db.ExecContext(cleanup, q.query, q.args...); err != nil {
@@ -77,10 +79,20 @@ func TestMariaDBApplicationReceiptsDisposable(t *testing.T) {
 	if err != nil {
 		t.Fatal("cannot issue synthetic creation context")
 	}
+	profilesRepo := profiles.Repository{DB: db}
+	list, err := profilesRepo.ReadResumes(ctx, user)
+	if err != nil || list.Revision != 0 || list.LegacyRevision != 0 || list.Items[0].Markdown != "" {
+		t.Fatal("expected empty synthetic resume profile", err)
+	}
+	list.Items = append(list.Items, profiles.NamedResume{ID: 2, Name: "CI Product", Markdown: "# CI Resume"})
+	if _, err = profilesRepo.SaveResumes(ctx, user, list); err != nil {
+		t.Fatal("save named resumes", err)
+	}
+	resumeID := 2
 	vacancy := int64(1)
 	input := applications.CreateInput{CompanyName: company, VacancyID: &vacancy, Status: "Откликнулся",
 		Comment: "CI synthetic receipt", ApplicationSources: []string{"site"},
-		IdempotencyKey: key(1), CreationContext: token}
+		IdempotencyKey: key(1), CreationContext: token, ResumeID: &resumeID}
 	assertCounts := func(apps, receipts, history int) {
 		t.Helper()
 		if count("SELECT COUNT(*) FROM company_applications WHERE user_name=?", user) != apps ||
@@ -92,6 +104,9 @@ func TestMariaDBApplicationReceiptsDisposable(t *testing.T) {
 	created, err := repo.CreateWithReceipt(ctx, user, input)
 	if err != nil || created.Replayed || created.CreatedApplicationID <= 1 || len(created.Records) != 1 || created.Limit != 10 {
 		t.Fatalf("first durable creation failed: %T", err)
+	}
+	if selected := created.Records[0].Resume; selected == nil || selected.ID != 2 || selected.Name != "CI Product" {
+		t.Fatal("application did not store selected resume")
 	}
 	assertCounts(1, 1, 1)
 	replayed, err := repo.CreateWithReceipt(ctx, user, input)

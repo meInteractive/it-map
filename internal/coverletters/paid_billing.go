@@ -86,7 +86,7 @@ func (b *paidBilling) Run(ctx context.Context, request json.RawMessage, work fun
 	if inputHash != b.lease.InputHash || token != b.lease.Token || expires <= time.Now().UnixMilli() {
 		return nil, ErrChanged
 	}
-	current, err := readInput(ctx, tx, b.lease.User, b.lease.VacancyID)
+	current, err := readInput(ctx, tx, b.lease.User, b.lease.VacancyID, b.lease.ResumeSelection)
 	if err != nil || current.Hash() != b.lease.InputHash {
 		return nil, ErrChanged
 	}
