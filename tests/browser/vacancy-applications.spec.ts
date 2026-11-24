@@ -1,5 +1,6 @@
 import { test, expect, type Page, type Route } from '@playwright/test';
 import { build } from 'esbuild';
+import { readFile } from 'node:fs/promises';
 import type { ApplicationRecord, VacancyDetail } from '../../shared/contracts';
 
 // Настоящий React, изолированные HTTP-ответы и отдельные личные данные пользователей.
@@ -161,6 +162,13 @@ async function fixture(page: Page, options: {
     if (path === '/api/companies/detail')
       return json(route, { company });
     if (path === '/api/crm') return json(route, { status: '', comment: '', history: [] });
+    if (path === '/api/applications/export')
+      return json(route, {
+        applications: [{ id: '1001', date: '2026-11-24', status: 'Откликнулся', company: company.name,
+          vacancyId: '91', vacancyTitle: 'CI Вакансия', resume: { id: 1, name: 'CI Основное' } }],
+        vacancies: [{ id: '91', title: 'CI Вакансия', description: 'x'.repeat(32766) + '😀Конец описания' }],
+        resumes: [{ id: 1, name: 'CI Основное', markdown: '# Полный текст резюме' }],
+      });
     if (path === '/api/applications/create-context') {
       state.createContextReads++;
       return json(route, { creationContext: signedContext });
@@ -442,4 +450,22 @@ test('S11-B05-30: если DELETE не применён, повторный GET 
     'DELETE /api/applications/1001',
   ]);
   expect(state.records['CI Alice']).toHaveLength(0);
+});
+
+test('GO-453: скачивает три листа Excel и сохраняет длинное описание', async ({ page }) => {
+  await fixture(page);
+  await mount(page, '/applications');
+  const downloading = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Выгрузить в Excel' }).click();
+  const file = await downloading;
+  expect(file.suggestedFilename()).toBe('applications.xlsx');
+  const archive = await readFile((await file.path())!);
+  expect(archive.subarray(0, 4).toString('hex')).toBe('504b0304');
+  const xml = archive.toString('utf8');
+  expect(xml).toContain('<sheet name="Отклики"');
+  expect(xml).toContain('<sheet name="Вакансии"');
+  expect(xml).toContain('<sheet name="Резюме"');
+  expect(xml).toContain('Описание вакансии — часть 2');
+  expect(xml).toContain('😀Конец описания');
+  expect(xml).toContain('# Полный текст резюме');
 });

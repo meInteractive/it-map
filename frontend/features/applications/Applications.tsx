@@ -755,6 +755,26 @@ export function CompanyApplications({
     </>
   );
 }
+function ApplicationsExport() {
+  return (
+    <ActionForm
+      onSubmit={async () => {
+        const { downloadApplications } = await import('./export');
+        const data = await request<Parameters<typeof downloadApplications>[0]>(
+          '/api/applications/export',
+        );
+        downloadApplications(data);
+      }}
+    >
+      {(busy) => (
+        <button className="company-application-new" type="submit" disabled={busy}>
+          {busy ? 'Готовим Excel…' : 'Выгрузить в Excel'}
+        </button>
+      )}
+    </ActionForm>
+  );
+}
+
 export default function Applications({ nav }: { nav: Navigation }) {
   const q = useApi<ApplicationsResponse>('/api/crm/applications'),
     [type, setType] = useSectionState<EntityType>('applications:type', 'company'),
@@ -801,6 +821,7 @@ export default function Applications({ nav }: { nav: Navigation }) {
           </select>
         </label>
         <span className="applications-count">{records.length}</span>
+        <ApplicationsExport />
       </Heading>
       <div className="applications-card">
         <State loading={!q.data && q.loading} error={q.data ? undefined : q.error}>
