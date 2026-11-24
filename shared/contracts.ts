@@ -73,6 +73,7 @@ export interface Vacancy {
   entityType: EntityType;
   realCompanyName: string;
   title: string;
+  url?: string;
   salaryFrom: number | null;
   salaryTo: number | null;
   role: string;

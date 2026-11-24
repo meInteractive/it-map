@@ -124,8 +124,12 @@ func TestMariaDBVacancyRowOrderSourceDisposable(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
-					var actual, want any
-					if json.Unmarshal(encoded, &actual) != nil || json.Unmarshal(expected.Expected[name], &want) != nil || !reflect.DeepEqual(actual, want) {
+					var actual, want []any
+					if json.Unmarshal(encoded, &actual) != nil || json.Unmarshal(expected.Expected[name], &want) != nil {
+						t.Fatal("invalid vacancy row-order JSON")
+					}
+					addExpectedVacancyURLs(t, f, want)
+					if !reflect.DeepEqual(actual, want) {
 						t.Fatal("native order/raw date projection/period/user state differs from source SQLite")
 					}
 					if before != dashboardFingerprint(f) {

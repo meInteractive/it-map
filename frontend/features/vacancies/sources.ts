@@ -19,6 +19,15 @@ export function httpVacancySource(value: unknown): string | undefined {
   }
 }
 
+export function vacancySourceLabel(href: string): string {
+  const host = new URL(href).hostname.replace(/^www\./, '').replace(/\.$/, '');
+  const on = (domain: string) => host === domain || host.endsWith('.' + domain);
+  if (on('hh.ru')) return 'HH';
+  if (on('getmatch.ru')) return 'Getmatch';
+  if (on('t.me') || on('telegram.me')) return 'Telegram';
+  return host;
+}
+
 export function vacancySourceLinks(v: VacancyDetail): VacancySourceLink[] {
   const links: VacancySourceLink[] = [];
   const seen = new Set<string>();
