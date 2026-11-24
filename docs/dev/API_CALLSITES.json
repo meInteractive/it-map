@@ -120,7 +120,7 @@
     {
       "id": "d8a0e318e518dd82",
       "file": "frontend/features/applications/Applications.tsx",
-      "line": 643,
+      "line": 645,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -136,7 +136,7 @@
     {
       "id": "e40516acc87fa58c",
       "file": "frontend/features/applications/Applications.tsx",
-      "line": 747,
+      "line": 755,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",

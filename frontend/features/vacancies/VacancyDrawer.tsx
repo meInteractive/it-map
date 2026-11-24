@@ -110,6 +110,16 @@ export default function VacancyDrawer({
     context = v && vacancyContext(v, view),
     salary = v && vacancySalary(v, q.data?.entities || [], view),
     sourceLinks = v ? vacancySourceLinks(v) : [];
+  const sourceAction = sourceLinks[0] && (
+    <a
+      className="vacancy-source-button"
+      href={sourceLinks[0].href}
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      Открыть источник
+    </a>
+  );
   return (
     <Drawer
       title={v?.title || (q.error ? 'Вакансия недоступна' : 'Загрузка вакансии…')}
@@ -208,10 +218,21 @@ export default function VacancyDrawer({
                   />
                 </>
               ) : tab === 'letter' ? (
-                <CoverLetter key={v.id} v={v} admin={admin} ready={!q.loading && !q.error} />
+                <CoverLetter
+                  key={v.id}
+                  v={v}
+                  admin={admin}
+                  ready={!q.loading && !q.error}
+                  sourceAction={sourceAction}
+                />
               ) : tab === 'application' ? (
                 <div className="vacancy-application-form">
-                  <CompanyApplications companyName={v.companyName} vacancyId={v.id} />
+                  <CompanyApplications
+                    key={v.id}
+                    companyName={v.companyName}
+                    vacancyId={v.id}
+                    sourceAction={sourceAction}
+                  />
                 </div>
               ) : tab === 'tasks' ? (
                 <Tasks companyName={v.companyName} vacancyId={v.id} nav={nav} />
