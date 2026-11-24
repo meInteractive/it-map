@@ -692,12 +692,17 @@
     },
     {
       "id": "relevance",
-      "implementation": "unported",
-      "level": "Stored relevance fields in CRUD/read only",
-      "gap": "POST relevance provider flow и idempotency/result acceptance ещё не реализованы.",
+      "implementation": "partial",
+      "level": "Go HTTP: ручной расчёт персональной релевантности",
+      "gap": "Полный дифференциальный контракт и эксплуатационная проверка реального провайдера остаются открыты.",
       "evidence": [
         {
           "file": "internal/httpapi/handler.go"
+        },
+        {
+          "file": "internal/storage/hh_relevance_test.go",
+          "symbol": "TestMariaDBHHRelevanceDisposable",
+          "required": true
         }
       ]
     },
@@ -837,7 +842,7 @@
   ],
   "sourceHashes": {
     "frontend/api/client.ts": "bf28292cedd86d0446ede754335663b7eeb7db27cd284edd423bddffa74bbfa6",
-    "internal/httpapi/handler.go": "ae5df5757c1e97acbef728eeaf4e74a1b68f9c38147ea2f059f4d1c2f7450fbf",
+    "internal/httpapi/handler.go": "37f754a5d48a058b9b53da0b58f2e4432988b03fe1f4ffb19b01efe78515a65a",
     "server/routes/index.js": "6134004f682975cb51ea13cd2ec4de8e85a5957deff6a5392fbad3fd70ccb1e4"
   },
   "clientExports": [
