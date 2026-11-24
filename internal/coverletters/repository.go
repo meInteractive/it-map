@@ -28,6 +28,8 @@ type Input struct {
 	VacancyUpdated string
 	Resume string
 	ResumeRevision int64
+	Portfolio string `json:",omitempty"`
+	PortfolioRevision int64 `json:",omitempty"`
 	Prompt string
 	PromptRevision int64
 	Config profiles.ModelInput
@@ -68,6 +70,7 @@ const inputSQL = `SELECT g.generation,v.title,COALESCE(v.description_md,''),
  COALESCE(v.cover_letter_subject,''),COALESCE(v.cover_letter_md,''),
  COALESCE(v.created_at,''),COALESCE(v.updated_at,''),
  COALESCE(p.resume_md,''),COALESCE(p.revision,0),
+ COALESCE(portfolio.resume_md,''),COALESCE(portfolio.revision,0),
  COALESCE(sp.markdown,''),COALESCE(sp.revision,0),
  COALESCE(pm.provider,'openrouter'),COALESCE(pm.openai_model,''),
  COALESCE(pm.openrouter_model,'best_free'),COALESCE(pm.reasoning_effort,'medium'),
@@ -76,6 +79,7 @@ const inputSQL = `SELECT g.generation,v.title,COALESCE(v.description_md,''),
  FROM company_vacancies v
  CROSS JOIN app_runtime_generation g
  LEFT JOIN user_profiles p ON p.user_name=?
+ LEFT JOIN user_profiles portfolio ON portfolio.user_name=?
  LEFT JOIN system_prompts sp ON sp.kind='cover_letter'
  LEFT JOIN prompt_model_settings pm ON pm.kind='cover_letter'
  LEFT JOIN openai_settings k ON k.id=1
@@ -88,9 +92,9 @@ func readInput(ctx context.Context, q queryRow, user string, id int64) (Input,er
 	in.VacancyID=id
 	var subject,body sql.NullString
 	var override,revision sql.NullInt64
-	err:=q.QueryRowContext(ctx,inputSQL,user,user,id).Scan(
+	err:=q.QueryRowContext(ctx,inputSQL,user,profiles.PortfolioProfileKey(user),user,id).Scan(
 		&in.Generation,&in.Title,&in.Description,&in.SharedSubject,&in.SharedMD,
-		&in.VacancyCreated,&in.VacancyUpdated,&in.Resume,&in.ResumeRevision,
+		&in.VacancyCreated,&in.VacancyUpdated,&in.Resume,&in.ResumeRevision,&in.Portfolio,&in.PortfolioRevision,
 		&in.Prompt,&in.PromptRevision,&in.Config.Provider,&in.Config.OpenAIModel,
 		&in.Config.OpenRouterModel,&in.Config.ReasoningEffort,&in.Config.Revision,
 		&in.OpenAIKeyRevision,&subject,&body,&override,&revision,

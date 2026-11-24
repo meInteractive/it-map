@@ -20,6 +20,7 @@ type letterMockGenerator struct{
 	Sends int
 	Fail bool
 	Output string
+	Portfolio string
 	Before func()
 	After func()
 }
@@ -27,6 +28,12 @@ func(g *letterMockGenerator)Automatic(ctx context.Context,request aiproviders.Ge
 	g.Calls++
 	if request.Task!="cover_letter"||len(request.Messages)!=2{
 		return aiproviders.AIResult{},errors.New("invalid generated configuration")
+	}
+	if g.Portfolio != "" {
+		var state map[string]string
+		if json.Unmarshal([]byte(request.Messages[1].Content), &state) != nil || state["portfolioMd"] != g.Portfolio {
+			return aiproviders.AIResult{}, errors.New("portfolio missing from candidate data")
+		}
 	}
 	if config.Provider!="openai"&&(config.Provider!="openrouter"||config.OpenRouterModel!="best_free"){
 		return aiproviders.AIResult{},errors.New("invalid provider configuration")
@@ -70,7 +77,7 @@ func TestMariaDBCoverLetterGenerationDisposable(t *testing.T){
 			"DELETE FROM vacancy_cover_letters WHERE user_name='ci-letter-candidate'",
 			"DELETE FROM openrouter_ai_logs WHERE task='cover_letter' AND requested_primary_model='ci/mock:free'",
 			"DELETE FROM openrouter_ai_logs WHERE task='openai_cover_letter' AND requested_primary_model='gpt-6-luna'",
-			"DELETE FROM user_profiles WHERE user_name='ci-letter-candidate'",
+			"DELETE FROM user_profiles WHERE user_name IN ('ci-letter-candidate','portfolio:ci-letter-candidate')",
 			"DELETE FROM system_prompts WHERE kind='cover_letter'",
 			"DELETE FROM prompt_model_settings WHERE kind='cover_letter'",
 			"DELETE FROM company_vacancies WHERE id=190018",
@@ -84,14 +91,25 @@ func TestMariaDBCoverLetterGenerationDisposable(t *testing.T){
 	f.exec("INSERT INTO user_profiles(user_name,resume_md,revision) VALUES(?, 'CI Резюме руководителя',1)",user)
 	f.exec("INSERT INTO system_prompts(kind,markdown,revision) VALUES('cover_letter','CI Пиши краткое письмо',1)")
 	f.exec("INSERT INTO prompt_model_settings(kind,provider,openrouter_model,revision) VALUES('cover_letter','openrouter','best_free',1)")
+	const portfolio = "### Название\nCI Проект\n### Описание\nCI Результат"
+	profile := profiles.Repository{DB: f.db}
+	if saved, err := profile.SavePortfolio(f.ctx, user, profiles.TextInput{Text: portfolio}); err != nil || saved.Revision != 1 {
+		t.Fatal("portfolio save failed", err)
+	}
+	if _, err := profile.SavePortfolio(f.ctx, user, profiles.TextInput{Text: "stale"}); !errors.Is(err, profiles.ErrConflict) {
+		t.Fatal("stale portfolio save was not rejected", err)
+	}
+	if other, err := profile.ReadPortfolio(f.ctx, "Demo"); err != nil || other.ResumeMD != "" {
+		t.Fatal("portfolio leaked to another candidate", err)
+	}
 	repo:=coverletters.Repository{DB:f.db}
 	before:=dashboardFingerprint(f)
 	input,err:=repo.Read(f.ctx,user,vacancyID)
-	if err!=nil||input.Resume!="CI Резюме руководителя"||input.PromptRevision!=1{
+	if err!=nil||input.Resume!="CI Резюме руководителя"||input.PromptRevision!=1 || input.Portfolio!=portfolio || input.PortfolioRevision!=1{
 		t.Fatal("source snapshot incorrect",err)
 	}
 	if before!=dashboardFingerprint(f){t.Fatal("read of cover letter mutated SQL")}
-	mock:=&letterMockGenerator{Output:`{"subject":"CI Head","markdown":"CI персональный текст."}`}
+	mock:=&letterMockGenerator{Portfolio:portfolio,Output:`{"subject":"CI Head","markdown":"CI персональный текст."}`}
 	svc:=coverletters.Service{Repository:repo,Generator:mock}
 	first,err:=svc.Generate(f.ctx,user,vacancyID,false,nil)
 	if err!=nil||first.Source!="personal"||first.CoverLetterSubject!="CI Head"||mock.Calls!=1{

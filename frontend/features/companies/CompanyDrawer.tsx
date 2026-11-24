@@ -454,8 +454,8 @@ export function ReviewDrawer({ c, onClose }: { c: Entity; onClose: () => void })
             role="tab"
             aria-selected={tab === key}
             onClick={() => {
-                    if (key === tab || confirmNavigation()) setTab(key);
-                  }}
+              if (key === tab || confirmNavigation()) setTab(key);
+            }}
           >
             {label}
           </button>

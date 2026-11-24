@@ -9,6 +9,7 @@ interface RevisionText {
   revision: number;
   updatedAt: string;
   resumeMd?: string;
+  portfolioMd?: string;
   markdown?: string;
 }
 export function RevisionEditor({
@@ -25,7 +26,7 @@ export function RevisionEditor({
   defaultValue?: string;
   initial: RevisionText;
   url: string;
-  field: 'resumeMd' | 'markdown';
+  field: 'resumeMd' | 'portfolioMd' | 'markdown';
   limit: number;
   title: string;
   description: string;
@@ -70,7 +71,7 @@ export function RevisionEditor({
                   className="settings-button"
                   disabled={busy || value === saved || Array.from(value).length > limit}
                 >
-                  {field === 'resumeMd' ? 'Сохранить резюме' : 'Сохранить'}
+                  {field === 'markdown' ? 'Сохранить' : 'Сохранить ' + title.toLowerCase()}
                 </button>
               }
             />
@@ -101,19 +102,42 @@ export function RevisionEditor({
 export function Resume() {
   const q = useApi<RevisionText>('/api/profile/resume');
   return (
-    <State loading={!q.data && q.loading} error={q.error}>
-      {q.error && <button onClick={q.reload}>Повторить</button>}
-      {q.data && (
-        <RevisionEditor
-          initial={q.data}
-          url="/api/profile/resume"
-          field="resumeMd"
-          limit={20000}
-          title="Резюме"
-          description="Ваше личное резюме в Markdown. Используется для оценки релевантности вакансий и сопроводительных писем."
-        />
-      )}
-    </State>
+    <>
+      <State loading={!q.data && q.loading} error={q.error}>
+        {q.error && <button onClick={q.reload}>Повторить</button>}
+        {q.data && (
+          <RevisionEditor
+            initial={q.data}
+            url="/api/profile/resume"
+            field="resumeMd"
+            limit={20000}
+            title="Резюме"
+            description="Ваше личное резюме в Markdown. Используется для оценки релевантности вакансий и сопроводительных писем."
+          />
+        )}
+      </State>
+      <Portfolio />
+    </>
+  );
+}
+function Portfolio() {
+  const q = useApi<RevisionText>('/api/profile/portfolio');
+  return (
+    <>
+      <State loading={!q.data && q.loading} error={q.error}>
+        {q.data && (
+          <RevisionEditor
+            initial={q.data}
+            url="/api/profile/portfolio"
+            field="portfolioMd"
+            limit={20000}
+            title="Портфолио"
+            description="Описание реализованных проектов для сопроводительных писем. Для каждого проекта используйте подзаголовки «Название», «Предметная область», «Технические детали» и «Описание»."
+          />
+        )}
+      </State>
+      {q.error && <button onClick={q.reload}>Повторить загрузку портфолио</button>}
+    </>
   );
 }
 export function Prompts() {

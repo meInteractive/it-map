@@ -190,6 +190,8 @@ func NewHandlerWithOptions(logger *slog.Logger, opts Options) http.Handler {
 			mux.HandleFunc(entry.path+"/", handler)
 		}
 		mux.HandleFunc("/api/profile/resume", ProfileResumeHandler(opts.Auth, opts.Resumes))
+		portfolio, _ := opts.Resumes.(PortfolioStore)
+		mux.HandleFunc("/api/profile/portfolio", profilePortfolioHandler(opts.Auth, portfolio))
 		if opts.Catalog != nil {
 			mux.HandleFunc("/api/companies/search", RequireSession(opts.Auth, CompanySearchHandler(opts.Catalog)))
 			// v316 agencies/search is an alias to the company name search.
