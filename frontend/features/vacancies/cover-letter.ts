@@ -42,7 +42,7 @@ onCacheEvent((event) => {
     emit(e, { ...empty, running: !!e.promise });
   }
 });
-export function generateLetter(id: number, { regenerate = false } = {}) {
+export function generateLetter(id: number, { regenerate = false, customPrompt = '' } = {}) {
   const e = entry(id);
   if (e.promise) return e.promise;
   const generation = e.generation,
@@ -56,7 +56,11 @@ export function generateLetter(id: number, { regenerate = false } = {}) {
         {
           method: 'POST',
           credentials: 'same-origin',
-          headers: { accept: 'application/x-ndjson' },
+          headers: {
+            accept: 'application/x-ndjson',
+            ...(customPrompt ? { 'content-type': 'application/json' } : {}),
+          },
+          body: customPrompt ? JSON.stringify({ customPrompt }) : undefined,
           signal: controller.signal,
         },
       );

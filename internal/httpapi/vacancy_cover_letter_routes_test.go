@@ -18,10 +18,11 @@ type coverLetterProbe struct{
 	Calls int
 	User string
 	Regenerate bool
+	CustomPrompt string
 	Err error
 }
-func(p *coverLetterProbe)Generate(_ context.Context,user string,id int64,regenerate bool,progress coverletters.Progress)(coverletters.Letter,error){
-	p.Calls++;p.User=user;p.Regenerate=regenerate
+func(p *coverLetterProbe)Generate(_ context.Context,user string,id int64,regenerate bool,customPrompt string,progress coverletters.Progress)(coverletters.Letter,error){
+	p.Calls++;p.User=user;p.Regenerate=regenerate;p.CustomPrompt=customPrompt
 	if id!=123{return coverletters.Letter{},coverletters.ErrMissing}
 	if progress!=nil{progress("model");progress("saving")}
 	if p.Err!=nil{return coverletters.Letter{},p.Err}
@@ -53,6 +54,8 @@ func TestVacancyCoverLetterHTTPNoProviderCalls(t *testing.T){
 		{"eugene","POST","/api/vacancies/0/cover-letter","","","",400},
 		{"eugene","POST","/api/vacancies/123/cover-letter","","",`{"resume":"injected"}`,400},
 		{"eugene","POST","/api/vacancies/123/cover-letter","","","x",400},
+		{"demo","POST","/api/vacancies/123/cover-letter","","",`{"customPrompt":"CI"}`,403},
+		{"eugene","POST","/api/vacancies/123/cover-letter","","",`{"customPrompt":"`+strings.Repeat("😀",5001)+`"}`,400},
 		{"eugene","POST","/api/vacancies/99/cover-letter","","","",404},
 	}{
 		w:=call(tc.who,tc.method,tc.path,tc.origin,tc.accept,tc.body)
@@ -65,8 +68,8 @@ func TestVacancyCoverLetterHTTPNoProviderCalls(t *testing.T){
 		var letter coverletters.Letter
 		if json.Unmarshal(w.Body.Bytes(),&letter)!=nil||letter.Source!="personal"{t.Fatal("response contract",w.Body.String())}
 	}
-	w:=call("eugene","POST","/api/vacancies/123/cover-letter/regenerate","","application/x-ndjson","")
-	if w.Code!=200||!p.Regenerate||!strings.Contains(w.Header().Get("Content-Type"),"application/x-ndjson"){t.Fatal("stream route failed",w.Code)}
+	w:=call("eugene","POST","/api/vacancies/123/cover-letter/regenerate","","application/x-ndjson",`{"customPrompt":"  CI case  "}`)
+	if w.Code!=200||!p.Regenerate||p.CustomPrompt!="CI case"||!strings.Contains(w.Header().Get("Content-Type"),"application/x-ndjson"){t.Fatal("stream route failed",w.Code)}
 	rows:=strings.Split(strings.TrimSpace(w.Body.String()),"\n")
 	if len(rows)!=4{t.Fatalf("wrong stream events (%d): %s",len(rows),w.Body.String())}
 	for _,line:=range rows{

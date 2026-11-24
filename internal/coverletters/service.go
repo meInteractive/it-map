@@ -24,20 +24,29 @@ type Service struct{
 	Generator Runner
 }
 
-func (s Service) Generate(ctx context.Context,user string,id int64,regenerate bool,progress Progress)(Letter,error){
+const MaxCustomPromptLength = 5000
+
+func (s Service) Generate(ctx context.Context,user string,id int64,regenerate bool,customPrompt string,progress Progress)(Letter,error){
 	if ctx.Err()!=nil{return Letter{},ctx.Err()}
 	in,err:=s.Repository.Read(ctx,user,id)
 	if err!=nil{return Letter{},err}
 	if saved,ok:=in.Effective();ok&&!regenerate&&strings.TrimSpace(saved.CoverLetterMD)!=""{
-		return saved,nil
+		if customPrompt == "" {
+			return saved,nil
+		}
+		regenerate = true
 	}
 	if regenerate{
 		saved,ok:=in.Effective()
-		if !ok||strings.TrimSpace(saved.CoverLetterSubject)==""||strings.TrimSpace(saved.CoverLetterMD)==""{
+		if !ok||(customPrompt==""&&strings.TrimSpace(saved.CoverLetterSubject)=="")||strings.TrimSpace(saved.CoverLetterMD)==""{
 			return Letter{},ErrNotRegenerable
 		}
 	}
-	instructions,state,err:=messages(in.Prompt,in.Resume,in.Portfolio,in.Title,in.Description)
+	prompt := in.Prompt
+	if customPrompt != "" && strings.TrimSpace(prompt) != "" {
+		prompt += "\n\nДополнительные указания пользователя для этого письма. Используй их, чтобы выбрать акценты и найти нужные кейсы в резюме и портфолио:\n" + customPrompt
+	}
+	instructions,state,err:=messages(prompt,in.Resume,in.Portfolio,in.Title,in.Description)
 	if err!=nil{return Letter{},err}
 	// OpenRouter остаётся строго бесплатным. Платный OpenAI допускается
 	// только через отдельный durable admission; никакой тихой смены модели.
@@ -47,10 +56,10 @@ func (s Service) Generate(ctx context.Context,user string,id int64,regenerate bo
 	if s.Generator==nil{return Letter{},ErrUnavailable}
 	if progress!=nil{progress("preparing")}
 	lease,err:=s.Repository.Claim(ctx,user,in,regenerate)
-	if errors.Is(err,ErrBusy){
+	if errors.Is(err,ErrBusy) && customPrompt == "" {
 		return s.wait(ctx,user,id,in,progress)
 	}
-	if errors.Is(err,ErrChanged){
+	if errors.Is(err,ErrChanged) && customPrompt == "" {
 		// Другой запрос мог сохранить письмо между первоначальным Read
 		// и Claim. Не запускаем модель повторно и возвращаем только
 		// действительно новую сохранённую версию.
@@ -99,7 +108,7 @@ func (s Service) Generate(ctx context.Context,user string,id int64,regenerate bo
 	if err!=nil{return Letter{},err}
 	if progress!=nil{progress("saving")}
 	letter,err:=s.Repository.Save(ctx,lease,in,answer,regenerate)
-	if errors.Is(err,ErrChanged){
+	if errors.Is(err,ErrChanged) && customPrompt == "" {
 		// Только действительно заменённое другим запросом письмо может
 		// считаться успехом. Изменение резюме/промта/модели не означает, что
 		// устаревшая генерация завершилась успешно.

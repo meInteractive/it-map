@@ -21,6 +21,7 @@ type letterMockGenerator struct{
 	Fail bool
 	Output string
 	Portfolio string
+	CustomPrompt string
 	Before func()
 	After func()
 }
@@ -34,6 +35,9 @@ func(g *letterMockGenerator)Automatic(ctx context.Context,request aiproviders.Ge
 		if json.Unmarshal([]byte(request.Messages[1].Content), &state) != nil || state["portfolioMd"] != g.Portfolio {
 			return aiproviders.AIResult{}, errors.New("portfolio missing from candidate data")
 		}
+	}
+	if g.CustomPrompt != "" && (!strings.Contains(request.Messages[0].Content, "CI Пиши краткое письмо") || !strings.Contains(request.Messages[0].Content, g.CustomPrompt)) {
+		return aiproviders.AIResult{}, errors.New("shared or custom instructions missing")
 	}
 	if config.Provider!="openai"&&(config.Provider!="openrouter"||config.OpenRouterModel!="best_free"){
 		return aiproviders.AIResult{},errors.New("invalid provider configuration")
@@ -114,18 +118,20 @@ func TestMariaDBCoverLetterGenerationDisposable(t *testing.T){
 	if before!=dashboardFingerprint(f){t.Fatal("read of cover letter mutated SQL")}
 	mock:=&letterMockGenerator{Portfolio:portfolio,Output:`{"subject":"CI Head","markdown":"CI персональный текст."}`}
 	svc:=coverletters.Service{Repository:repo,Generator:mock}
-	first,err:=svc.Generate(f.ctx,user,vacancyID,false,nil)
+	first,err:=svc.Generate(f.ctx,user,vacancyID,false, "",nil)
 	if err!=nil||first.Source!="personal"||first.CoverLetterSubject!="CI Head"||mock.Calls!=1{
 		t.Fatalf("initial generation failed: %+v %v calls=%d",first,err,mock.Calls)
 	}
-	second,err:=svc.Generate(f.ctx,user,vacancyID,false,nil)
+	second,err:=svc.Generate(f.ctx,user,vacancyID,false, "",nil)
 	if err!=nil||second!=first||mock.Calls!=1{t.Fatal("saved letter was regenerated",err)}
 	var rows,revision,override int
 	if err=f.db.QueryRowContext(f.ctx,"SELECT COUNT(*),MAX(revision),MAX(override_shared) FROM vacancy_cover_letters WHERE user_name=? AND vacancy_id=?",user,vacancyID).Scan(&rows,&revision,&override);err!=nil||rows!=1||revision!=0||override!=0{
 		t.Fatal("initial letter not stored exactly once",err,rows,revision,override)
 	}
 	mock.Output=`{"subject":"CI New","markdown":"CI Новое письмо."}`
-	third,err:=svc.Generate(f.ctx,user,vacancyID,true,nil)
+	mock.CustomPrompt = "CI Уточни опыт платежей"
+	third,err:=svc.Generate(f.ctx,user,vacancyID,true, mock.CustomPrompt,nil)
+	mock.CustomPrompt = ""
 	if err!=nil||third.CoverLetterSubject!="CI New"||mock.Calls!=2{
 		t.Fatal("regenerate did not replace personal result",err)
 	}
@@ -135,7 +141,7 @@ func TestMariaDBCoverLetterGenerationDisposable(t *testing.T){
 	// Изменение промта после отправки запрещает сохранение устаревшего результата.
 	mock.Before=func(){f.exec("UPDATE system_prompts SET markdown='CI изменённый промт',revision=revision+1 WHERE kind='cover_letter'")}
 	mock.Output=`{"subject":"CI Stale","markdown":"CI Устаревший текст."}`
-	_,err=svc.Generate(f.ctx,user,vacancyID,true,nil)
+	_,err=svc.Generate(f.ctx,user,vacancyID,true, "",nil)
 	if !errors.Is(err,coverletters.ErrChanged){t.Fatal("stale generated answer committed",err)}
 	after,err:=repo.Read(f.ctx,user,vacancyID)
 	if err!=nil||after.PersonalSubject!="CI New"{t.Fatal("stale result modified saved personal text",err)}
@@ -148,7 +154,7 @@ func TestMariaDBCoverLetterGenerationDisposable(t *testing.T){
 	mock.Before=nil
 	mock.After=func(){f.exec("UPDATE system_prompts SET markdown='CI changed after provider',revision=revision+1 WHERE kind='cover_letter'")}
 	mock.Output=`{"subject":"CI Uncommitted","markdown":"CI Не сохранено."}`
-	_,err=svc.Generate(f.ctx,user,vacancyID,true,nil)
+	_,err=svc.Generate(f.ctx,user,vacancyID,true, "",nil)
 	if !errors.Is(err,coverletters.ErrChanged){t.Fatal("stale prompt was misreported as successful regeneration",err)}
 	stillSaved,err:=repo.Read(f.ctx,user,vacancyID)
 	if err!=nil||stillSaved.PersonalSubject!="CI New"{t.Fatal("stale regeneration modified previous letter",err)}
@@ -156,7 +162,7 @@ func TestMariaDBCoverLetterGenerationDisposable(t *testing.T){
 	// возвращаем победивший результат, не повторяя вызов модели.
 	mock.After=func(){f.exec("UPDATE vacancy_cover_letters SET subject='CI Winner',markdown='CI Winner content',revision=revision+1 WHERE user_name=? AND vacancy_id=?",user,vacancyID)}
 	mock.Output=`{"subject":"CI Lost Race","markdown":"CI Lost content."}`
-	winner,err:=svc.Generate(f.ctx,user,vacancyID,true,nil)
+	winner,err:=svc.Generate(f.ctx,user,vacancyID,true, "",nil)
 	if err!=nil||winner.CoverLetterSubject!="CI Winner"||winner.CoverLetterMD!="CI Winner content"{
 		t.Fatal("newer personal letter not returned after concurrent update",winner,err)
 	}
@@ -165,7 +171,7 @@ func TestMariaDBCoverLetterGenerationDisposable(t *testing.T){
 	// не подменяться бесплатной и не запускаться при чтении готового письма.
 	callsBeforePaid,sendsBeforePaid:=mock.Calls,mock.Sends
 	f.exec("UPDATE prompt_model_settings SET provider='openai',openai_model='gpt-6-luna',revision=revision+1 WHERE kind='cover_letter'")
-	paidLetter,err:=svc.Generate(f.ctx,user,vacancyID,true,nil)
+	paidLetter,err:=svc.Generate(f.ctx,user,vacancyID,true, "",nil)
 	if err!=nil||mock.Calls!=callsBeforePaid+1||mock.Sends!=sendsBeforePaid+1||
 		paidLetter.CoverLetterMD==""||paidLetter.Source!="personal"{
 		t.Fatal("paid OpenAI mock was not saved exactly once",err,mock.Calls,mock.Sends)
@@ -173,7 +179,7 @@ func TestMariaDBCoverLetterGenerationDisposable(t *testing.T){
 	if count("SELECT COUNT(*) FROM openrouter_ai_logs WHERE task='openai_cover_letter' AND requested_primary_model='gpt-6-luna' AND success=1 AND error_code LIKE 'paid_response:%'")!=1{
 		t.Fatal("paid OpenAI invocation missing durable response evidence")
 	}
-	cached,err:=svc.Generate(f.ctx,user,vacancyID,false,nil)
+	cached,err:=svc.Generate(f.ctx,user,vacancyID,false, "",nil)
 	if err!=nil||cached!=paidLetter||mock.Sends!=sendsBeforePaid+1{
 		t.Fatal("saved paid letter was regenerated without explicit request",cached,err)
 	}
@@ -182,7 +188,7 @@ func TestMariaDBCoverLetterGenerationDisposable(t *testing.T){
 	// vacancy lock. An updated prompt must yield a conflict, not the old letter.
 	f.exec("UPDATE prompt_model_settings SET provider='openrouter',openai_model='',openrouter_model='best_free',revision=revision+1 WHERE kind='cover_letter'")
 	callsBeforeRace:=mock.Calls
-	_,err=svc.Generate(f.ctx,user,vacancyID,true,func(stage string){
+	_,err=svc.Generate(f.ctx,user,vacancyID,true, "",func(stage string){
 		if stage=="preparing"{
 			f.exec("UPDATE system_prompts SET markdown='CI pre-claim update',revision=revision+1 WHERE kind='cover_letter'")
 		}
@@ -193,7 +199,7 @@ func TestMariaDBCoverLetterGenerationDisposable(t *testing.T){
 	// However, an actually newer personal letter saved between Read and
 	// Claim should be returned to the other tab without a provider request.
 	var preclaimWinner coverletters.Letter
-	preclaimWinner,err=svc.Generate(f.ctx,user,vacancyID,true,func(stage string){
+	preclaimWinner,err=svc.Generate(f.ctx,user,vacancyID,true, "",func(stage string){
 		if stage=="preparing"{
 			f.exec("UPDATE vacancy_cover_letters SET subject='CI Preclaim Winner',markdown='CI Newer preclaim letter',revision=revision+1 WHERE user_name=? AND vacancy_id=?",user,vacancyID)
 		}
@@ -211,7 +217,7 @@ func TestMariaDBCoverLetterGenerationDisposable(t *testing.T){
 	waiting:=make(chan struct{},1)
 	waitResult:=make(chan error,1)
 	go func(){
-		_,e:=svc.Generate(waitCtx,user,vacancyID,true,func(stage string){
+		_,e:=svc.Generate(waitCtx,user,vacancyID,true, "",func(stage string){
 			if stage=="waiting"{select{case waiting<-struct{}{}:default:}}
 		})
 		waitResult<-e
@@ -237,7 +243,7 @@ func TestMariaDBCoverLetterGenerationDisposable(t *testing.T){
 	cancelLease,err:=repo.Claim(f.ctx,user,currentInput,true)
 	if err!=nil{t.Fatal("CI setup failed to claim cancellation lease",err)}
 	cancelCtx,cancelWaiting:=context.WithCancel(f.ctx)
-	_,err=svc.Generate(cancelCtx,user,vacancyID,true,func(stage string){
+	_,err=svc.Generate(cancelCtx,user,vacancyID,true, "",func(stage string){
 		if stage=="waiting"{cancelWaiting()}
 	})
 	cancelWaiting()
