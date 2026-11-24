@@ -502,6 +502,9 @@ func workerExecute(ctx context.Context, d workerDispatch, lease *JobLease, owner
 	finish := FinishOptions{Status: "completed", Code: out.code}
 	if executeErr != nil {
 		finish = FinishOptions{Status: "failed", Code: "stage_failed", Message: "Не удалось выполнить этап обработки."}
+		if code, message := firecrawlFailureDetails(executeErr); code != "" {
+			finish.Code, finish.Message = code, message
+		}
 		// Публичный GET безопасно повторить. Временный сбой не должен
 		// превращаться в новый платный fallback или расходовать попытку.
 		if kind == "fetch_full_text" && onlyTemporaryPublicHH(executeErr) {
