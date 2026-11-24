@@ -133,7 +133,23 @@ func TestMariaDBVacancyListHTTPSourceDisposable(t *testing.T) {
 			}
 			var got, want any
 			if json.Valid([]byte(frame.ResponseBody)) {
-				if json.Unmarshal(out.Body.Bytes(), &got) != nil || json.Unmarshal([]byte(frame.ResponseBody), &want) != nil || !reflect.DeepEqual(got, want) {
+				if json.Unmarshal(out.Body.Bytes(), &got) != nil || json.Unmarshal([]byte(frame.ResponseBody), &want) != nil {
+					t.Fatal("invalid vacancy list JSON")
+				}
+				if frame.Status == http.StatusOK {
+					// The native list adds the stored primary URL to the legacy DTO.
+					for _, value := range want.(map[string]any)["vacancies"].([]any) {
+						row := value.(map[string]any)
+						var url string
+						if err := f.db.QueryRowContext(f.ctx, "SELECT COALESCE(url,'') FROM company_vacancies WHERE id=?", row["id"]).Scan(&url); err != nil {
+							t.Fatal("source URL fixture:", err)
+						}
+						if url != "" {
+							row["url"] = url
+						}
+					}
+				}
+				if !reflect.DeepEqual(got, want) {
 					t.Fatalf("native full source DTO differs: got %s want %s", out.Body.String(), frame.ResponseBody)
 				}
 			} else if strings.TrimSuffix(out.Body.String(), "\n") != frame.ResponseBody {

@@ -26,6 +26,7 @@ type Vacancy struct {
 	EntityType        string           `json:"entityType"`
 	RealCompanyName   string           `json:"realCompanyName"`
 	Title             string           `json:"title"`
+	URL               string           `json:"url,omitempty"`
 	SalaryFrom        *int64           `json:"salaryFrom"`
 	SalaryTo          *int64           `json:"salaryTo"`
 	Role              string           `json:"role"`
@@ -217,7 +218,7 @@ func (r Repository) List(ctx context.Context, user string, period *Period, now t
     SELECT v.id,v.company_name,v.entity_type,v.real_company_name,v.title,
       v.salary_from,v.salary_to,v.role,v.level,s.relevance,
       COALESCE(s.favorite,0),COALESCE(s.hidden,0),v.published_at,v.loaded_at,
-      v.archived,v.created_at,a.id,COALESCE(a.status,'')
+      v.archived,v.created_at,a.id,COALESCE(a.status,''),COALESCE(v.url,'')
     FROM company_vacancies v
     LEFT JOIN latest_state s ON s.vacancy_id=v.id AND s.rn=1
     LEFT JOIN latest_app a ON a.vacancy_id=v.id AND a.rn=1`
@@ -231,7 +232,7 @@ func (r Repository) List(ctx context.Context, user string, period *Period, now t
 		err = rows.Scan(&s.ID, &s.CompanyName, &s.EntityType, &s.RealCompanySQL, &s.Title,
 			&s.SalaryFromSQL, &s.SalaryToSQL, &s.Role, &s.Level, &s.RelevanceSQL,
 			&s.FavoriteSQL, &s.HiddenSQL, &s.PublishedSQL, &s.LoadedSQL, &s.ArchivedSQL,
-			&s.CreatedAt, &s.ApplicationIDSQL, &s.ApplicationStatus)
+			&s.CreatedAt, &s.ApplicationIDSQL, &s.ApplicationStatus, &s.URL)
 		if err != nil {
 			break
 		}

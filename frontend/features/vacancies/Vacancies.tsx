@@ -1,5 +1,6 @@
 import { publicationPeriods, type PublicationPeriod } from '../../../shared/publication-period';
 import { VacancyRelevance } from './Relevance';
+import { httpVacancySource, vacancySourceLabel } from './sources';
 import { useSectionState } from '../../hooks/useSectionState';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -245,6 +246,7 @@ export function VacancyTable({
     'Релевантность',
     'Статус отклика',
     'Дата публикации',
+    'Источник',
     'Действия',
   ];
   return (
@@ -260,6 +262,7 @@ export function VacancyTable({
           'relevance',
           'status',
           'date',
+          'source',
           'actions',
         ].map((key) => (
           <col key={key} className={'vacancy-col-' + key} />
@@ -268,7 +271,9 @@ export function VacancyTable({
       <thead>
         <tr>
           {headers.map((h) => (
-            <th key={h}>{h}</th>
+            <th key={h} scope="col" aria-label={h === 'Релевантность' ? h : undefined}>
+              {h === 'Релевантность' ? null : h}
+            </th>
           ))}
         </tr>
       </thead>
@@ -276,7 +281,8 @@ export function VacancyTable({
         {records.map((v) => {
           const company = employerName(v),
             salary = vacancySalary(v, entities, type),
-            roleLabel = vacancyRoleText(v);
+            roleLabel = vacancyRoleText(v),
+            source = httpVacancySource(v.url);
           return (
             <tr key={v.id} className={isMisassigned(v) ? 'vacancy-misassigned' : ''}>
               <td data-label="Вакансия">
@@ -339,7 +345,7 @@ export function VacancyTable({
                   {v.level || '—'}
                 </span>
               </td>
-              <td data-label="Релевантность">
+              <td data-label="Релевантность" className="vacancy-relevance-cell">
                 <VacancyRelevance id={v.id} value={v.relevance} title={v.title} />
               </td>
               <td data-label="Статус">
@@ -351,6 +357,20 @@ export function VacancyTable({
                 </div>
               </td>
               <td data-label="Дата">{publicationLabel(v)}</td>
+              <td data-label="Источник">
+                {source ? (
+                  <a
+                    className="vacancy-table-source"
+                    href={source}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {vacancySourceLabel(source)}
+                  </a>
+                ) : (
+                  v.telegramSources?.[0]?.channelName || '—'
+                )}
+              </td>
               <td data-label="Действия" className="vacancy-delete-cell">
                 <VacancyActions v={v} entities={entities} admin={admin} nav={nav} />
               </td>
