@@ -49,6 +49,7 @@ type PortfolioStore interface {
 }
 
 type profileTextHandlers struct {
+	bodyLimit   int
 	name, title string
 	read        func(context.Context, string) (profiles.Resume, error)
 	save        func(context.Context, string, profiles.TextInput) (profiles.Resume, error)
@@ -57,7 +58,7 @@ type profileTextHandlers struct {
 }
 
 func ProfileResumeHandler(manager *auth.Manager, store ResumeStore) http.HandlerFunc {
-	editor := profileTextHandlers{name: "резюме", title: "Резюме", parse: profiles.ParseResume, response: func(result profiles.Resume) any { return result }}
+	editor := profileTextHandlers{bodyLimit: profiles.ResumeBodyLimit, name: "резюме", title: "Резюме", parse: profiles.ParseResume, response: func(result profiles.Resume) any { return result }}
 	if store != nil {
 		editor.read, editor.save = store.ReadResume, store.SaveResume
 	}
@@ -65,7 +66,7 @@ func ProfileResumeHandler(manager *auth.Manager, store ResumeStore) http.Handler
 }
 
 func profilePortfolioHandler(manager *auth.Manager, store PortfolioStore) http.HandlerFunc {
-	editor := profileTextHandlers{name: "портфолио", title: "Портфолио", parse: profiles.ParsePortfolio, response: func(result profiles.Resume) any {
+	editor := profileTextHandlers{bodyLimit: profiles.PortfolioBodyLimit, name: "портфолио", title: "Портфолио", parse: profiles.ParsePortfolio, response: func(result profiles.Resume) any {
 		return map[string]any{"portfolioMd": result.ResumeMD, "revision": result.Revision, "updatedAt": result.UpdatedAt, "maxLength": result.MaxLength}
 	}}
 	if store != nil {
@@ -106,7 +107,7 @@ func profileTextHandler(manager *auth.Manager, editor profileTextHandlers) http.
 			jsonReply(w, 403, map[string]string{"error": "Недопустимый источник запроса."})
 			return
 		}
-		body, err := profileInputBody(w, r, profiles.ResumeBodyLimit)
+		body, err := profileInputBody(w, r, editor.bodyLimit)
 		if err != nil {
 			profileInputError(w, err)
 			return

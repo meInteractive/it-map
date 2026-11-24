@@ -124,7 +124,9 @@ func (p *portfolioProbe) ReadPortfolio(ctx context.Context, user string) (profil
 }
 
 func (p *portfolioProbe) SavePortfolio(ctx context.Context, user string, input profiles.TextInput) (profiles.Resume, error) {
-	return p.SaveResume(ctx, user, input)
+	result, err := p.SaveResume(ctx, user, input)
+	result.MaxLength = profiles.MaxPortfolioLength
+	return result, err
 }
 
 func TestProfilePortfolioRoute(t *testing.T) {
@@ -152,11 +154,11 @@ func TestProfilePortfolioRoute(t *testing.T) {
 	if res := put("CI draft", false); res.Code != 401 || probe.writes != 0 {
 		t.Fatal("anonymous portfolio update")
 	}
-	if res := put(strings.Repeat("😀", 20001), true); res.Code != 400 || probe.writes != 0 {
+	if res := put(strings.Repeat("😀", 50001), true); res.Code != 400 || probe.writes != 0 {
 		t.Fatal("portfolio limit not applied")
 	}
-	if res := put(strings.Repeat("😀", 20000), true); res.Code != 200 || probe.user != "Demo" ||
-		probe.writes != 1 || !strings.Contains(res.Body.String(), `"portfolioMd":`) {
+	if res := put(strings.Repeat(`\ud83d\ude00`, 50000), true); res.Code != 200 || probe.user != "Demo" ||
+		probe.writes != 1 || !strings.Contains(res.Body.String(), `"portfolioMd":`) || !strings.Contains(res.Body.String(), `"maxLength":50000`) {
 		t.Fatal("portfolio boundary or session ownership failed")
 	}
 }

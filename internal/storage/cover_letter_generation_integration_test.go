@@ -77,7 +77,7 @@ func TestMariaDBCoverLetterGenerationDisposable(t *testing.T){
 			"DELETE FROM vacancy_cover_letters WHERE user_name='ci-letter-candidate'",
 			"DELETE FROM openrouter_ai_logs WHERE task='cover_letter' AND requested_primary_model='ci/mock:free'",
 			"DELETE FROM openrouter_ai_logs WHERE task='openai_cover_letter' AND requested_primary_model='gpt-6-luna'",
-			"DELETE FROM user_profiles WHERE user_name IN ('ci-letter-candidate','portfolio:ci-letter-candidate')",
+			"DELETE FROM user_profiles WHERE user_name IN ('ci-letter-candidate','portfolio:ci-letter-candidate','portfolio:ci-letter-candidate:2','portfolio:ci-letter-candidate:3')",
 			"DELETE FROM system_prompts WHERE kind='cover_letter'",
 			"DELETE FROM prompt_model_settings WHERE kind='cover_letter'",
 			"DELETE FROM company_vacancies WHERE id=190018",
@@ -91,13 +91,16 @@ func TestMariaDBCoverLetterGenerationDisposable(t *testing.T){
 	f.exec("INSERT INTO user_profiles(user_name,resume_md,revision) VALUES(?, 'CI Резюме руководителя',1)",user)
 	f.exec("INSERT INTO system_prompts(kind,markdown,revision) VALUES('cover_letter','CI Пиши краткое письмо',1)")
 	f.exec("INSERT INTO prompt_model_settings(kind,provider,openrouter_model,revision) VALUES('cover_letter','openrouter','best_free',1)")
-	const portfolio = "### Название\nCI Проект\n### Описание\nCI Результат"
+	portfolio := strings.Repeat("я", 20000) + strings.Repeat("😀", 20000) + strings.Repeat("z", 10000)
 	profile := profiles.Repository{DB: f.db}
 	if saved, err := profile.SavePortfolio(f.ctx, user, profiles.TextInput{Text: portfolio}); err != nil || saved.Revision != 1 {
 		t.Fatal("portfolio save failed", err)
 	}
 	if _, err := profile.SavePortfolio(f.ctx, user, profiles.TextInput{Text: "stale"}); !errors.Is(err, profiles.ErrConflict) {
 		t.Fatal("stale portfolio save was not rejected", err)
+	}
+	if loaded, err := profile.ReadPortfolio(f.ctx, user); err != nil || loaded.ResumeMD != portfolio || loaded.MaxLength != 50000 {
+		t.Fatal("portfolio read failed", err)
 	}
 	if other, err := profile.ReadPortfolio(f.ctx, "Demo"); err != nil || other.ResumeMD != "" {
 		t.Fatal("portfolio leaked to another candidate", err)
@@ -241,6 +244,14 @@ func TestMariaDBCoverLetterGenerationDisposable(t *testing.T){
 	repo.Release(cancelLease)
 	if !errors.Is(err,context.Canceled)||mock.Calls!=callsBeforeRace{
 		t.Fatal("cancelled waiting request called provider or lost cancellation",err,mock.Calls,callsBeforeRace)
+	}
+	saved, err := profile.SavePortfolio(f.ctx, user, profiles.TextInput{Text: "# Short", Revision: 1})
+	if err != nil || saved.ResumeMD != "# Short" || saved.Revision != 2 {
+		t.Fatal("shortening portfolio failed", err)
+	}
+	loaded, err := profile.ReadPortfolio(f.ctx, user)
+	if err != nil || loaded.ResumeMD != "# Short" || count("SELECT COUNT(*) FROM user_profiles WHERE user_name IN (?,?)", profiles.PortfolioProfileKey(user)+":2", profiles.PortfolioProfileKey(user)+":3") != 0 {
+		t.Fatal("shortening portfolio left obsolete parts", err)
 	}
 	if strings.Contains(mock.Output,"PRIVATE"){t.Fatal("invalid mock fixture")}
 	t.Log("PASS: saved/personal/regenerate, CAS input, durable paid OpenAI admission, no automatic repeats, read-only GET")

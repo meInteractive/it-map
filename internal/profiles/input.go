@@ -12,6 +12,8 @@ import (
 )
 
 const MaxResumeLength = 20000
+const MaxPortfolioLength = 50000
+const PortfolioBodyLimit = 640 << 10
 const ResumeBodyLimit = 256 << 10
 const MaxSafeRevision int64 = 9007199254740991
 
@@ -121,12 +123,12 @@ func ValidateResume(input TextInput) error {
 }
 
 func validateProfileText(input TextInput, portfolio bool) error {
-	label, title := "резюме", "Резюме"
+	label, title, limit, displayLimit := "резюме", "Резюме", MaxResumeLength, "20 000"
 	if portfolio {
-		label, title = "портфолио", "Портфолио"
+		label, title, limit, displayLimit = "портфолио", "Портфолио", MaxPortfolioLength, "50 000"
 	}
-	if !utf8.ValidString(input.Text) || strings.ContainsRune(input.Text, 0) || utf8.RuneCountInString(input.Text) > MaxResumeLength {
-		return invalid(400, title+" должно содержать не более 20 000 символов без нулевого символа.")
+	if !utf8.ValidString(input.Text) || strings.ContainsRune(input.Text, 0) || utf8.RuneCountInString(input.Text) > limit {
+		return invalid(400, title+" должно содержать не более "+displayLimit+" символов без нулевого символа.")
 	}
 	if input.Revision < 0 || input.Revision > MaxSafeRevision {
 		return invalid(400, "Сначала загрузите текущую версию "+label+".")
@@ -250,7 +252,7 @@ func ParseModel(kind string, body []byte, declaredLength int64) (ModelInput, err
 
 func ParsePortfolio(body []byte, declaredLength int64) (TextInput, error) {
 	const message = "Передайте portfolioMd и revision своего портфолио."
-	object, err := decodeObject(body, declaredLength, ResumeBodyLimit, []string{"portfolioMd", "revision"}, message)
+	object, err := decodeObject(body, declaredLength, PortfolioBodyLimit, []string{"portfolioMd", "revision"}, message)
 	if err != nil {
 		return TextInput{}, err
 	}

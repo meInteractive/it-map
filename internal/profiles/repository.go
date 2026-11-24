@@ -57,10 +57,10 @@ func (r Repository) SaveResume(ctx context.Context, user string, input TextInput
 	}
 	// Повторяем целую транзакцию только после подтверждённого MariaDB deadlock rollback.
 	// Исходная revision повторно проверяется под блокировкой на каждой попытке.
-	return dbretry.Run(ctx, func() (Resume, error) { return r.saveResumeOnce(ctx, user, input) })
+	return dbretry.Run(ctx, func() (Resume, error) { return r.saveResumeOnce(ctx, user, input, nil) })
 }
 
-func (r Repository) saveResumeOnce(ctx context.Context, user string, input TextInput) (Resume, error) {
+func (r Repository) saveResumeOnce(ctx context.Context, user string, input TextInput, portfolioParts []string) (Resume, error) {
 	tx, err := r.DB.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
 	if err != nil {
 		return Resume{}, err
@@ -89,12 +89,28 @@ func (r Repository) saveResumeOnce(ctx context.Context, user string, input TextI
 	if count != 1 {
 		return Resume{}, ErrConflict
 	}
+	for i, part := range portfolioParts {
+		key := user + portfolioSuffixes[i]
+		if part == "" {
+			_, err = tx.ExecContext(ctx, "DELETE FROM user_profiles WHERE user_name=?", key)
+		} else {
+			_, err = tx.ExecContext(ctx, `INSERT INTO user_profiles(user_name,resume_md,revision) VALUES(?,?,?)
+				ON DUPLICATE KEY UPDATE resume_md=VALUES(resume_md),revision=VALUES(revision)`, key, part, revision+1)
+		}
+		if err != nil {
+			return Resume{}, err
+		}
+	}
 	saved, err := readResumeRow(ctx, tx, user)
 	if err != nil {
 		return Resume{}, err
 	}
 	if err = tx.Commit(); err != nil {
 		return Resume{}, err
+	}
+	if portfolioParts != nil {
+		saved.ResumeMD += strings.Join(portfolioParts, "")
+		saved.MaxLength = MaxPortfolioLength
 	}
 	return saved, nil
 }
@@ -117,19 +133,56 @@ func PortfolioProfileKey(user string) string {
 	return "portfolio:" + user
 }
 
+// Для длинного портфолио дополнительные строки сохраняются в той же
+// транзакции. Начальная строка сохраняет существующие данные и версию.
+const portfolioPart2 = ":2"
+const portfolioPart3 = ":3"
+
+var portfolioSuffixes = [...]string{portfolioPart2, portfolioPart3}
+
+// PortfolioTextSQL и PortfolioPartsSQL используют алиас portfolio для
+// основной записи и собирают все части в одном SQL-снимке.
+const PortfolioTextSQL = "CONCAT(COALESCE(portfolio.resume_md,''),COALESCE(portfolio2.resume_md,''),COALESCE(portfolio3.resume_md,''))"
+const PortfolioPartsSQL = `
+ LEFT JOIN user_profiles portfolio2 ON portfolio2.user_name=CONCAT(portfolio.user_name,'` + portfolioPart2 + `') AND portfolio2.revision=portfolio.revision
+ LEFT JOIN user_profiles portfolio3 ON portfolio3.user_name=CONCAT(portfolio.user_name,'` + portfolioPart3 + `') AND portfolio3.revision=portfolio.revision`
+
 func (r Repository) ReadPortfolio(ctx context.Context, user string) (Resume, error) {
-	if strings.TrimSpace(user) == "" {
+	if r.DB == nil || strings.TrimSpace(user) == "" {
 		return Resume{}, ErrUnavailable
 	}
-	return r.ReadResume(ctx, PortfolioProfileKey(user))
+	result := Resume{MaxLength: MaxPortfolioLength}
+	var updated sql.NullString
+	err := r.DB.QueryRowContext(ctx, "SELECT "+PortfolioTextSQL+",portfolio.revision,portfolio.updated_at FROM user_profiles portfolio"+PortfolioPartsSQL+" WHERE portfolio.user_name=?", PortfolioProfileKey(user)).Scan(&result.ResumeMD, &result.Revision, &updated)
+	if errors.Is(err, sql.ErrNoRows) {
+		return result, nil
+	}
+	if err != nil {
+		return Resume{}, err
+	}
+	if updated.Valid {
+		result.UpdatedAt = &updated.String
+	}
+	return result, nil
 }
 
 func (r Repository) SavePortfolio(ctx context.Context, user string, input TextInput) (Resume, error) {
 	if err := validateProfileText(input, true); err != nil {
 		return Resume{}, err
 	}
-	if strings.TrimSpace(user) == "" {
+	if r.DB == nil || strings.TrimSpace(user) == "" {
 		return Resume{}, ErrUnavailable
 	}
-	return r.SaveResume(ctx, PortfolioProfileKey(user), input)
+	text := []rune(input.Text)
+	var overflow [len(portfolioSuffixes)]string
+	for i := range overflow {
+		start := (i + 1) * MaxResumeLength
+		if start < len(text) {
+			overflow[i] = string(text[start:min(start+MaxResumeLength, len(text))])
+		}
+	}
+	input.Text = string(text[:min(MaxResumeLength, len(text))])
+	return dbretry.Run(ctx, func() (Resume, error) {
+		return r.saveResumeOnce(ctx, PortfolioProfileKey(user), input, overflow[:])
+	})
 }

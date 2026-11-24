@@ -1461,7 +1461,7 @@
     {
       "id": "75529e05bf679188",
       "file": "frontend/features/settings/Profile.tsx",
-      "line": 50,
+      "line": 51,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
@@ -1475,7 +1475,7 @@
     {
       "id": "c790d4fb5de69484",
       "file": "frontend/features/settings/Profile.tsx",
-      "line": 103,
+      "line": 104,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -1491,7 +1491,7 @@
     {
       "id": "bf4e046f44f9346a",
       "file": "frontend/features/settings/Profile.tsx",
-      "line": 124,
+      "line": 125,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -1507,7 +1507,7 @@
     {
       "id": "34ee6deb8ebf2d2a",
       "file": "frontend/features/settings/Profile.tsx",
-      "line": 144,
+      "line": 145,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -1523,7 +1523,7 @@
     {
       "id": "40a12987fdc5ee54",
       "file": "frontend/features/settings/Profile.tsx",
-      "line": 147,
+      "line": 148,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -2591,7 +2591,7 @@
     {
       "id": "d1292ace96d8234d",
       "file": "frontend/features/settings/Profile.tsx",
-      "line": 109,
+      "line": 110,
       "call": "prop:RevisionEditor",
       "method": "BOUND",
       "methodExpression": "component transport",
@@ -2607,7 +2607,7 @@
     {
       "id": "59adcbdebd8a5015",
       "file": "frontend/features/settings/Profile.tsx",
-      "line": 129,
+      "line": 130,
       "call": "prop:RevisionEditor",
       "method": "BOUND",
       "methodExpression": "component transport",
@@ -2623,7 +2623,7 @@
     {
       "id": "f3d91c7483ddece9",
       "file": "frontend/features/settings/Profile.tsx",
-      "line": 163,
+      "line": 164,
       "call": "prop:RevisionEditor",
       "method": "BOUND",
       "methodExpression": "component transport",
