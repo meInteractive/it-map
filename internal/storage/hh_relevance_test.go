@@ -6,7 +6,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"itmap/internal/auth"
+	"itmap/internal/httpapi"
+	"net/http"
+	"net/http/httptest"
 	"testing"
+	"time"
 
 	"itmap/internal/aiproviders"
 	"itmap/internal/parser"
@@ -97,6 +103,44 @@ func hhRelevanceFixture(t *testing.T) (*schedulerFixture, *parser.JobLease, int6
 }
 
 func TestMariaDBHHRelevanceDisposable(t *testing.T) {
+	t.Run("manual button refreshes only the signed-in user's score", func(t *testing.T) {
+		s, _, _, vacancy := hhRelevanceFixture(t)
+		s.exec("INSERT INTO user_profiles(user_name,resume_md,revision) VALUES('Demo','CI manual resume',1)")
+		t.Cleanup(func() {
+			s.exec("DELETE FROM user_profiles WHERE user_name='Demo'")
+			s.exec("DELETE FROM openrouter_ai_logs WHERE task='manual_relevance'")
+		})
+		s.exec("INSERT INTO company_vacancy_user_state(user_name,vacancy_id,relevance) VALUES('Demo',?,12),('CI_OWNER',?,85)", vacancy, vacancy)
+		runner := &relevanceRunner{}
+		manager, err := auth.NewManager("CI_SYNTHETIC_MANUAL_RELEVANCE_SECRET", map[string]string{"demo": "CI_password", "eugene": "CI_admin_password"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		user, ok := manager.Authenticate("demo", "CI_password")
+		if !ok || user.Name != "Demo" {
+			t.Fatalf("unexpected test user: %s", user.Name)
+		}
+		token, err := manager.Issue(user, time.Now())
+		if err != nil {
+			t.Fatal(err)
+		}
+		handler := httpapi.NewHandlerWithOptions(nil, httpapi.Options{Auth: manager, VacancyRelevance: parser.ManualRelevanceService{DB: s.db, Generator: runner}})
+		req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/api/vacancies/%d/relevance", vacancy), nil)
+		req.AddCookie(&http.Cookie{Name: auth.CookieName, Value: token})
+		res := httptest.NewRecorder()
+		handler.ServeHTTP(res, req)
+		var body parser.ManualRelevanceResult
+		if res.Code != http.StatusOK || json.Unmarshal(res.Body.Bytes(), &body) != nil || body.VacancyID != vacancy || body.Relevance != 67 || runner.calls != 1 {
+			t.Fatalf("manual route status=%d response=%s calls=%d", res.Code, res.Body.String(), runner.calls)
+		}
+		if s.count("SELECT COUNT(*) FROM company_vacancy_user_state WHERE vacancy_id=? AND ((user_name='Demo' AND relevance=67) OR (user_name='CI_OWNER' AND relevance=85))", vacancy) != 2 {
+			t.Fatal("manual calculation changed another user's score")
+		}
+		if s.count("SELECT COUNT(*) FROM openrouter_ai_logs WHERE task='manual_relevance' AND success=1") != 1 {
+			t.Fatal("manual request did not save its provider receipt")
+		}
+	})
+
 	t.Run("score is personal and import schedules it", func(t *testing.T) {
 		s, lease, candidate, vacancy := hhRelevanceFixture(t)
 		s.exec("INSERT INTO company_vacancy_user_state(user_name,vacancy_id,relevance) VALUES('CI_OTHER',?,14)", vacancy)
