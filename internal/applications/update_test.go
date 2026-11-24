@@ -108,6 +108,8 @@ func (c updateConn) ExecContext(_ context.Context, q string, args []driver.Named
 		}
 		s.updateCount++
 		return updateResult(1), nil
+	case strings.Contains(q, "DELETE FROM user_profiles"):
+		return updateResult(1), nil
 	case strings.Contains(q, "DELETE FROM company_application_status_history"):
 		return updateResult(1), nil
 	case strings.Contains(q, "DELETE FROM company_applications"):
@@ -254,7 +256,7 @@ func TestDeleteUserScopedAtomic(t *testing.T) {
 	r, closeDB := testRepo(s)
 	defer closeDB()
 	company, err := r.Delete(context.Background(), "Demo", 4)
-	if err != nil || company != "Example" || !s.committed || s.rolledBack || len(s.queries) != 3 {
+	if err != nil || company != "Example" || !s.committed || s.rolledBack || len(s.queries) != 4 {
 		t.Fatal(company, err, s)
 	}
 	if !strings.Contains(s.queries[0], "FOR UPDATE") || !strings.Contains(s.queries[1], "DELETE FROM company_application_status_history") || !strings.Contains(s.queries[2], "user_name=?") {

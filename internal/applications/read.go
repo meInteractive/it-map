@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"strconv"
 	"strings"
 )
 
@@ -20,22 +21,34 @@ type StatusChange struct {
 	ChangedAt  string `json:"changedAt"`
 }
 
+type ResumeReference struct {
+	ID   int    `json:"id"`
+	Name string `json:"name"`
+}
+
+const applicationResumePrefix = "application-resume:"
+
+func applicationResumeKey(user string, id int64) string {
+	return applicationResumePrefix + strconv.FormatInt(id, 10) + ":" + user
+}
+
 type Record struct {
-	ID                   int64          `json:"id"`
-	Revision             string         `json:"revision"`
-	CompanyName          string         `json:"companyName"`
-	VacancyID            *int64         `json:"vacancyId"`
-	VacancyTitle         string         `json:"vacancyTitle"`
-	Status               string         `json:"status"`
-	Comment              string         `json:"comment"`
-	RecruiterName        string         `json:"recruiterName"`
-	RecruiterPhone       string         `json:"recruiterPhone"`
-	RecruiterEmail       string         `json:"recruiterEmail"`
-	RecruiterContactType string         `json:"recruiterContactType"`
-	ApplicationSources   []string       `json:"applicationSources"`
-	CreatedAt            string         `json:"createdAt"`
-	UpdatedAt            string         `json:"updatedAt"`
-	History              []StatusChange `json:"history"`
+	Resume               *ResumeReference `json:"resume,omitempty"`
+	ID                   int64            `json:"id"`
+	Revision             string           `json:"revision"`
+	CompanyName          string           `json:"companyName"`
+	VacancyID            *int64           `json:"vacancyId"`
+	VacancyTitle         string           `json:"vacancyTitle"`
+	Status               string           `json:"status"`
+	Comment              string           `json:"comment"`
+	RecruiterName        string           `json:"recruiterName"`
+	RecruiterPhone       string           `json:"recruiterPhone"`
+	RecruiterEmail       string           `json:"recruiterEmail"`
+	RecruiterContactType string           `json:"recruiterContactType"`
+	ApplicationSources   []string         `json:"applicationSources"`
+	CreatedAt            string           `json:"createdAt"`
+	UpdatedAt            string           `json:"updatedAt"`
+	History              []StatusChange   `json:"history"`
 }
 
 type Entity struct {
@@ -173,9 +186,10 @@ func (r Repository) read(ctx context.Context, user, company string, id *int64, w
 	const fields = `a.id,a.company_name,a.vacancy_id,COALESCE(v.title,''),
  COALESCE(a.status,''),COALESCE(a.comment_md,''),COALESCE(a.recruiter_name,''),
  COALESCE(a.recruiter_phone,''),COALESCE(a.recruiter_email,''),COALESCE(a.recruiter_contact_type,''),
- COALESCE(a.application_sources,''),a.created_at,a.updated_at,`
+ COALESCE(a.application_sources,''),a.created_at,a.updated_at,COALESCE(resume.resume_md,''),`
 	query := `SELECT ` + fields + recordSnapshotColumns + ` FROM company_applications a
  LEFT JOIN company_vacancies v ON v.id=a.vacancy_id
+ LEFT JOIN user_profiles resume ON resume.user_name=CONCAT('` + applicationResumePrefix + `',a.id,':',a.user_name)
  WHERE ` + where + ` ORDER BY a.updated_at DESC,a.id DESC`
 	rows, err := tx.QueryContext(ctx, query, args...)
 	if err != nil {
@@ -186,16 +200,28 @@ func (r Repository) read(ctx context.Context, user, company string, id *int64, w
 	for rows.Next() {
 		var rec Record
 		var vacancy sql.NullInt64
-		var sources, snapshot string
+		var sources, snapshot, resume string
 		err = rows.Scan(&rec.ID, &rec.CompanyName, &vacancy, &rec.VacancyTitle, &rec.Status, &rec.Comment,
 			&rec.RecruiterName, &rec.RecruiterPhone, &rec.RecruiterEmail, &rec.RecruiterContactType,
-			&sources, &rec.CreatedAt, &rec.UpdatedAt, &snapshot)
+			&sources, &rec.CreatedAt, &rec.UpdatedAt, &resume, &snapshot)
 		if err != nil {
 			break
 		}
 		if vacancy.Valid {
 			n := vacancy.Int64
 			rec.VacancyID = &n
+		}
+		if resume != "" {
+			var ref struct {
+				ResumeReference
+				ApplicationCreatedAt string `json:"applicationCreatedAt"`
+			}
+			if err = json.Unmarshal([]byte(resume), &ref); err != nil {
+				break
+			}
+			if ref.ApplicationCreatedAt == rec.CreatedAt {
+				rec.Resume = &ref.ResumeReference
+			}
 		}
 		rec.ApplicationSources = AllowedSources(sources)
 		rec.Revision = Fingerprint(snapshot)

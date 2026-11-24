@@ -3,6 +3,7 @@ import type { VacancyDetail } from '../../../shared/contracts';
 import { ErrorText, Icon } from '../../components/Common';
 import { Markdown } from '../../components/Markdown';
 import { renderedClipboard, writeRichClipboard } from '../../lib/clipboard';
+import { useResumeSelection } from '../settings/ResumeSelect';
 import { generateLetter, useCoverLetter } from './cover-letter';
 
 export function CopyLetterButton({
@@ -69,6 +70,7 @@ export default function CoverLetter({
   sourceAction?: ReactNode;
 }) {
   const state = useCoverLetter(v.id);
+  const resume = useResumeSelection();
   const [customPrompt, setCustomPrompt] = useState('');
   const promptLength = Array.from(customPrompt).length;
   const canGenerate = ready && !state.running && (!admin || promptLength <= customPromptLimit);
@@ -76,6 +78,7 @@ export default function CoverLetter({
     if (!canGenerate) return;
     void generateLetter(v.id, {
       regenerate: !!v.coverLetterSubject?.trim() && !!v.coverLetterMd?.trim(),
+      resumeId: resume.id,
       customPrompt: admin ? customPrompt.trim() : '',
     });
   }
@@ -85,6 +88,7 @@ export default function CoverLetter({
     text = useRef<HTMLDivElement>(null);
   return (
     <section className="cover-letter">
+      {resume.control}
       {admin && (
         <label className="cover-letter-prompt">
           <span>Пользовательский промт</span>

@@ -42,7 +42,16 @@ onCacheEvent((event) => {
     emit(e, { ...empty, running: !!e.promise });
   }
 });
-export function generateLetter(id: number, { regenerate = false, customPrompt = '' } = {}) {
+export function generateLetter(
+  id: number,
+  {
+    regenerate = false,
+    customPrompt = '',
+    resumeId,
+  }: { regenerate?: boolean; customPrompt?: string; resumeId?: number } = {},
+) {
+  const payload =
+    customPrompt || resumeId ? { customPrompt: customPrompt || undefined, resumeId } : undefined;
   const e = entry(id);
   if (e.promise) return e.promise;
   const generation = e.generation,
@@ -58,9 +67,9 @@ export function generateLetter(id: number, { regenerate = false, customPrompt = 
           credentials: 'same-origin',
           headers: {
             accept: 'application/x-ndjson',
-            ...(customPrompt ? { 'content-type': 'application/json' } : {}),
+            ...(payload ? { 'content-type': 'application/json' } : {}),
           },
-          body: customPrompt ? JSON.stringify({ customPrompt }) : undefined,
+          body: payload ? JSON.stringify(payload) : undefined,
           signal: controller.signal,
         },
       );

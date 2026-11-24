@@ -14,6 +14,7 @@ import {
   dateLabel,
   rank,
 } from '../../components/Common';
+import { useResumeSelection } from '../settings/ResumeSelect';
 import { Markdown, MarkdownEditor } from '../../components/Markdown';
 import {
   statuses,
@@ -102,6 +103,7 @@ export function ApplicationForm({
   const [base, setBase] = useState(record);
   const [target] = useState({ companyName, vacancyId });
   const creation = useCreationIntent(!base);
+  const resume = useResumeSelection(!base);
   const [value, setValue] = useState({ ...blank, ...record, ...(vacancyId ? { vacancyId } : {}) });
   const [conflicted, setConflicted] = useState(false);
   const [formEpoch, setFormEpoch] = useState(0);
@@ -129,7 +131,7 @@ export function ApplicationForm({
             {
               ...value,
               companyName: target.companyName,
-              ...(!base ? creation.value() : {}),
+              ...(!base ? { ...creation.value(), resumeId: resume.id ?? 0 } : {}),
             },
           );
           const savedId = base?.id ?? response.createdApplicationId;
@@ -160,6 +162,8 @@ export function ApplicationForm({
           ) : (
             <h3 className="crm-form-title">{base ? 'Редактировать отклик' : 'Новый отклик'}</h3>
           )}
+          {base?.resume && <p>Резюме: {base.resume.name}</p>}
+          {!base && resume.control}
           {!target.vacancyId && (
             <label className="crm-field">
               <span>Вакансия</span>

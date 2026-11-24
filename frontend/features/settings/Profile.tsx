@@ -4,6 +4,7 @@ import { useApi, mutate } from '../../api/client';
 import { ActionForm, State, dateLabel } from '../../components/Common';
 import { MarkdownEditor } from '../../components/Markdown';
 import { PromptModel, type PromptModelSettings } from './PromptModel';
+import type { Resumes } from './ResumeSelect';
 import { useDirty } from '../../hooks/useDirty';
 interface RevisionText {
   revision: number;
@@ -101,24 +102,124 @@ export function RevisionEditor({
   );
 }
 export function Resume() {
-  const q = useApi<RevisionText>('/api/profile/resume');
+  const q = useApi<Resumes>('/api/profile/resumes');
   return (
     <>
       <State loading={!q.data && q.loading} error={q.error}>
-        {q.error && <button onClick={q.reload}>Повторить</button>}
-        {q.data && (
-          <RevisionEditor
-            initial={q.data}
-            url="/api/profile/resume"
-            field="resumeMd"
-            limit={20000}
-            title="Резюме"
-            description="Ваше личное резюме в Markdown. Используется для оценки релевантности вакансий и сопроводительных писем."
-          />
-        )}
+        {q.data && <ResumeCollection initial={q.data} />}
       </State>
+      {q.error && <button onClick={q.reload}>Повторить загрузку резюме</button>}
       <Portfolio />
     </>
+  );
+}
+function ResumeCollection({ initial }: { initial: Resumes }) {
+  const [saved, setSaved] = useState(initial);
+  const [draft, setDraft] = useState(initial);
+  const [active, setActive] = useState(initial.primary);
+  const [message, setMessage] = useState('');
+  const item = draft.items.find((resume) => resume.id === active) ?? draft.items[0];
+  const dirty = draft !== saved;
+  const invalid = draft.items.some(
+    (resume) =>
+      !resume.name.trim() ||
+      Array.from(resume.name).length > 120 ||
+      Array.from(resume.markdown).length > 20000,
+  );
+  useDirty(dirty);
+  function changeItem(patch: Partial<Pick<Resumes['items'][number], 'name' | 'markdown'>>) {
+    setMessage('');
+    setDraft({
+      ...draft,
+      items: draft.items.map((resume) => (resume.id === active ? { ...resume, ...patch } : resume)),
+    });
+  }
+  return (
+    <article className="resume-card">
+      <h2>Резюме</h2>
+      <ActionForm
+        lockWhileBusy
+        className="resume-form"
+        onSubmit={async () => {
+          if (invalid) throw new Error('Проверьте названия и объём резюме.');
+          const result = await mutate<Resumes>('/api/profile/resumes', 'PUT', draft);
+          setSaved(result);
+          setDraft(result);
+          setMessage('Сохранено.');
+        }}
+      >
+        {(busy) => (
+          <>
+            <label className="crm-field">
+              <span>Редактируемое резюме</span>
+              <select value={item.id} onChange={(event) => setActive(Number(event.target.value))}>
+                {draft.items.map((resume) => (
+                  <option key={resume.id} value={resume.id}>
+                    {resume.name || 'Без названия'}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              className="settings-button secondary"
+              disabled={busy || draft.items.length >= 3}
+              onClick={() => {
+                const id = draft.items.length + 1;
+                setDraft({
+                  ...draft,
+                  items: [...draft.items, { id, name: 'Резюме ' + id, markdown: '' }],
+                });
+                setActive(id);
+                setMessage('');
+              }}
+            >
+              Добавить резюме
+            </button>
+            <label className="crm-field">
+              <span>Название</span>
+              <input
+                value={item.name}
+                onChange={(event) => changeItem({ name: event.target.value })}
+              />
+            </label>
+            <label>
+              <input
+                type="radio"
+                checked={draft.primary === item.id}
+                onChange={() => {
+                  setDraft({ ...draft, primary: item.id });
+                  setMessage('');
+                }}
+              />{' '}
+              Основное резюме
+            </label>
+            <MarkdownEditor
+              key={item.id}
+              label="Текст резюме"
+              value={item.markdown}
+              onChange={(markdown) => changeItem({ markdown })}
+              limit={20000}
+              className="resume-editor"
+              footer={
+                <button
+                  type="submit"
+                  className="settings-button"
+                  disabled={busy || !dirty || invalid}
+                >
+                  Сохранить резюме
+                </button>
+              }
+            />
+            {message && (
+              <div className="resume-status success" role="status">
+                {message}
+              </div>
+            )}
+          </>
+        )}
+      </ActionForm>
+    </article>
   );
 }
 function Portfolio() {

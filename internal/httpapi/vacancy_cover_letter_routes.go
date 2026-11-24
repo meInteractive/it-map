@@ -16,15 +16,18 @@ import (
 	"itmap/internal/auth"
 	"itmap/internal/coverletters"
 	"itmap/internal/integrations/aihttp"
+	"itmap/internal/profiles"
 )
 
 // Интерфейс позволяет подменить весь генератор в синтетических HTTP-тестах.
 type VacancyCoverLetterGenerator interface {
-	Generate(context.Context,string,int64,bool,string,coverletters.Progress)(coverletters.Letter,error)
+	Generate(context.Context,string,int64,bool,string,coverletters.Progress,...int)(coverletters.Letter,error)
 }
 
 func letterFailure(err error)(int,string){
 	switch {
+	case errors.Is(err,profiles.ErrResumeSelection):
+		return 400,"Выбранное резюме недоступно."
 	case errors.Is(err,coverletters.ErrMissing):
 		return 404,"Вакансия не найдена."
 	case errors.Is(err,coverletters.ErrNoResume):
@@ -65,9 +68,9 @@ func VacancyCoverLetterHandler(m *auth.Manager,service VacancyCoverLetterGenerat
 		if e!=nil||id<=0||id>9007199254740991{
 			jsonReply(w,400,map[string]string{"error":"Некорректный ID вакансии."});return
 		}
-		customPrompt, status := readLetterPrompt(w, r, user.IsAdmin)
+		customPrompt, resumeID, status := readLetterPrompt(w, r, user.IsAdmin)
 		if status != 0 {
-			message := "Передайте пользовательский промт длиной до 5 000 символов."
+			message := "Проверьте выбор резюме и пользовательский промт длиной до 5 000 символов."
 			if status == http.StatusForbidden {
 				message = "Пользовательский промт доступен администратору."
 			}
@@ -84,7 +87,7 @@ func VacancyCoverLetterHandler(m *auth.Manager,service VacancyCoverLetterGenerat
 		ctx,cancel:=context.WithTimeout(r.Context(),generationTimeout)
 		defer cancel()
 		if !strings.Contains(strings.ToLower(r.Header.Get("Accept")),"application/x-ndjson"){
-			letter,err:=service.Generate(ctx,user.Name,id,regenerate,customPrompt,nil)
+			letter,err:=service.Generate(ctx,user.Name,id,regenerate,customPrompt,nil,resumeID)
 			if err!=nil{
 				status,message:=letterFailure(err)
 				jsonReply(w,status,map[string]string{"error":message})
@@ -133,7 +136,7 @@ func VacancyCoverLetterHandler(m *auth.Manager,service VacancyCoverLetterGenerat
 				}
 			}
 		}()
-		letter,err:=service.Generate(ctx,user.Name,id,regenerate,customPrompt,report)
+		letter,err:=service.Generate(ctx,user.Name,id,regenerate,customPrompt,report,resumeID)
 		close(stopped)
 		heartbeat.Wait()
 		if err!=nil{
@@ -145,33 +148,42 @@ func VacancyCoverLetterHandler(m *auth.Manager,service VacancyCoverLetterGenerat
 	})
 }
 
-func readLetterPrompt(w http.ResponseWriter, r *http.Request, admin bool) (string, int) {
+func readLetterPrompt(w http.ResponseWriter, r *http.Request, admin bool) (string, int, int) {
 	if r.Body == nil {
-		return "", 0
+		return "", 0, 0
 	}
 	// Учитываем до 12 байт на символ при JSON-экранировании суррогатной пары.
 	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 64<<10))
 	if err != nil {
 		var tooLarge *http.MaxBytesError
 		if errors.As(err, &tooLarge) {
-			return "", http.StatusRequestEntityTooLarge
+			return "", 0, http.StatusRequestEntityTooLarge
 		}
-		return "", http.StatusBadRequest
+		return "", 0, http.StatusBadRequest
 	}
 	if len(body) == 0 {
-		return "", 0
-	}
-	if !admin {
-		return "", http.StatusForbidden
+		return "", 0, 0
 	}
 	var input struct {
 		CustomPrompt *string `json:"customPrompt"`
+		ResumeID *int `json:"resumeId"`
 	}
 	decoder := json.NewDecoder(strings.NewReader(string(body)))
 	decoder.DisallowUnknownFields()
 	if !utf8.Valid(body) || decoder.Decode(&input) != nil || decoder.Decode(new(any)) != io.EOF ||
-		input.CustomPrompt == nil || utf8.RuneCountInString(*input.CustomPrompt) > coverletters.MaxCustomPromptLength {
-		return "", http.StatusBadRequest
+		(input.CustomPrompt == nil && input.ResumeID == nil) {
+		return "", 0, http.StatusBadRequest
 	}
-	return strings.TrimSpace(*input.CustomPrompt), 0
+	var prompt string
+	var resumeID int
+	if input.ResumeID!=nil {
+		resumeID=*input.ResumeID
+		if resumeID<1 || resumeID>3{return "",0,http.StatusBadRequest}
+	}
+	if input.CustomPrompt!=nil {
+		if !admin{return "",0,http.StatusForbidden}
+		if utf8.RuneCountInString(*input.CustomPrompt)>coverletters.MaxCustomPromptLength{return "",0,http.StatusBadRequest}
+		prompt=strings.TrimSpace(*input.CustomPrompt)
+	}
+	return prompt,resumeID,0
 }

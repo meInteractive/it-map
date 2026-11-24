@@ -44,6 +44,9 @@ func (r Repository) Delete(ctx context.Context, user string, id int64) (string, 
 	if affected != 1 {
 		return "", ErrConflict
 	}
+	if _, err = tx.ExecContext(ctx, "DELETE FROM user_profiles WHERE user_name=?", applicationResumeKey(user, id)); err != nil {
+		return "", err
+	}
 	if err = tx.Commit(); err != nil {
 		return "", err
 	}

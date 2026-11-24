@@ -1,7 +1,7 @@
 {
   "scope": "Current frontend/web direct transport sites and reviewed JSX/download bindings; no runtime/golden coverage inferred",
   "typescript": "5.9.3",
-  "files": 72,
+  "files": 73,
   "transportModule": "frontend/api/client.ts",
   "sites": [
     {
@@ -55,7 +55,7 @@
     {
       "id": "b1e282f4628a4715",
       "file": "frontend/features/applications/Applications.tsx",
-      "line": 126,
+      "line": 128,
       "call": "mutate",
       "method": "DYNAMIC",
       "methodExpression": "base ? 'PUT' : 'POST'",
@@ -72,7 +72,7 @@
     {
       "id": "93015b8a15941106",
       "file": "frontend/features/applications/Applications.tsx",
-      "line": 369,
+      "line": 373,
       "call": "request",
       "method": "GET",
       "methodExpression": "GET",
@@ -88,7 +88,7 @@
     {
       "id": "64aa30be5ee9c306",
       "file": "frontend/features/applications/Applications.tsx",
-      "line": 381,
+      "line": 385,
       "call": "mutate",
       "method": "DELETE",
       "methodExpression": "'DELETE'",
@@ -104,7 +104,7 @@
     {
       "id": "9a6930d78ebc4508",
       "file": "frontend/features/applications/Applications.tsx",
-      "line": 444,
+      "line": 448,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
@@ -120,7 +120,7 @@
     {
       "id": "d8a0e318e518dd82",
       "file": "frontend/features/applications/Applications.tsx",
-      "line": 645,
+      "line": 649,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -136,7 +136,7 @@
     {
       "id": "e40516acc87fa58c",
       "file": "frontend/features/applications/Applications.tsx",
-      "line": 755,
+      "line": 759,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -1461,7 +1461,7 @@
     {
       "id": "75529e05bf679188",
       "file": "frontend/features/settings/Profile.tsx",
-      "line": 51,
+      "line": 52,
       "call": "mutate",
       "method": "PUT",
       "methodExpression": "'PUT'",
@@ -1473,15 +1473,31 @@
       "dynamicURL": true
     },
     {
-      "id": "c790d4fb5de69484",
+      "id": "cbd09ec727fbf65a",
       "file": "frontend/features/settings/Profile.tsx",
-      "line": 104,
+      "line": 105,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
-      "urlExpression": "'/api/profile/resume'",
+      "urlExpression": "'/api/profile/resumes'",
       "literalFragments": [
-        "/api/profile/resume"
+        "/api/profile/resumes"
+      ],
+      "families": [
+        "profile"
+      ],
+      "dynamicURL": false
+    },
+    {
+      "id": "a326c622322121d8",
+      "file": "frontend/features/settings/Profile.tsx",
+      "line": 145,
+      "call": "mutate",
+      "method": "PUT",
+      "methodExpression": "'PUT'",
+      "urlExpression": "'/api/profile/resumes'",
+      "literalFragments": [
+        "/api/profile/resumes"
       ],
       "families": [
         "profile"
@@ -1491,7 +1507,7 @@
     {
       "id": "bf4e046f44f9346a",
       "file": "frontend/features/settings/Profile.tsx",
-      "line": 125,
+      "line": 226,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -1507,7 +1523,7 @@
     {
       "id": "34ee6deb8ebf2d2a",
       "file": "frontend/features/settings/Profile.tsx",
-      "line": 145,
+      "line": 246,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -1523,7 +1539,7 @@
     {
       "id": "40a12987fdc5ee54",
       "file": "frontend/features/settings/Profile.tsx",
-      "line": 148,
+      "line": 249,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
@@ -1578,6 +1594,22 @@
       "urlExpression": "'/api/profile/prompt-models/' + initial.kind",
       "literalFragments": [
         "/api/profile/prompt-models/"
+      ],
+      "families": [
+        "profile"
+      ],
+      "dynamicURL": true
+    },
+    {
+      "id": "64da3ff16f53b71a",
+      "file": "frontend/features/settings/ResumeSelect.tsx",
+      "line": 18,
+      "call": "useApi",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "enabled ? '/api/profile/resumes?view=options' : null",
+      "literalFragments": [
+        "/api/profile/resumes?view=options"
       ],
       "families": [
         "profile"
@@ -2573,7 +2605,7 @@
     {
       "id": "a1679a01d53c8d81",
       "file": "frontend/features/vacancies/cover-letter.ts",
-      "line": 54,
+      "line": 63,
       "call": "fetch",
       "method": "POST",
       "methodExpression": "'POST'",
@@ -2589,25 +2621,9 @@
   ],
   "bindings": [
     {
-      "id": "d1292ace96d8234d",
-      "file": "frontend/features/settings/Profile.tsx",
-      "line": 110,
-      "call": "prop:RevisionEditor",
-      "method": "BOUND",
-      "methodExpression": "component transport",
-      "urlExpression": "\"/api/profile/resume\"",
-      "literalFragments": [
-        "/api/profile/resume"
-      ],
-      "families": [
-        "profile"
-      ],
-      "dynamicURL": false
-    },
-    {
       "id": "59adcbdebd8a5015",
       "file": "frontend/features/settings/Profile.tsx",
-      "line": 130,
+      "line": 231,
       "call": "prop:RevisionEditor",
       "method": "BOUND",
       "methodExpression": "component transport",
@@ -2623,7 +2639,7 @@
     {
       "id": "f3d91c7483ddece9",
       "file": "frontend/features/settings/Profile.tsx",
-      "line": 164,
+      "line": 265,
       "call": "prop:RevisionEditor",
       "method": "BOUND",
       "methodExpression": "component transport",

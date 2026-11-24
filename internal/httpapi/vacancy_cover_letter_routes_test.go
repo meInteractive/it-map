@@ -19,10 +19,12 @@ type coverLetterProbe struct{
 	User string
 	Regenerate bool
 	CustomPrompt string
+	ResumeID int
 	Err error
 }
-func(p *coverLetterProbe)Generate(_ context.Context,user string,id int64,regenerate bool,customPrompt string,progress coverletters.Progress)(coverletters.Letter,error){
+func(p *coverLetterProbe)Generate(_ context.Context,user string,id int64,regenerate bool,customPrompt string,progress coverletters.Progress,resumeIDs ...int)(coverletters.Letter,error){
 	p.Calls++;p.User=user;p.Regenerate=regenerate;p.CustomPrompt=customPrompt
+	if len(resumeIDs)>0{p.ResumeID=resumeIDs[0]}
 	if id!=123{return coverletters.Letter{},coverletters.ErrMissing}
 	if progress!=nil{progress("model");progress("saving")}
 	if p.Err!=nil{return coverletters.Letter{},p.Err}
@@ -77,6 +79,8 @@ func TestVacancyCoverLetterHTTPNoProviderCalls(t *testing.T){
 		if json.Unmarshal([]byte(line),&event)!=nil||event["type"]==nil{t.Fatal("invalid NDJSON",line)}
 	}
 	if !strings.Contains(rows[len(rows)-1],`"type":"done"`){t.Fatal("missing done frame")}
+	w=call("demo","POST","/api/vacancies/123/cover-letter","","",`{"resumeId":2}`)
+	if w.Code!=200 || p.ResumeID!=2 || p.CustomPrompt!="" {t.Fatal("candidate resume selection failed",w.Code)}
 	p.Err=coverletters.ErrNoResume
 	w=call("eugene","POST","/api/vacancies/123/cover-letter","","","")
 	if w.Code!=409||!strings.Contains(w.Body.String(),"Резюме"){t.Fatal("wrong missing resume error",w.Code)}

@@ -26,19 +26,19 @@ type Service struct{
 
 const MaxCustomPromptLength = 5000
 
-func (s Service) Generate(ctx context.Context,user string,id int64,regenerate bool,customPrompt string,progress Progress)(Letter,error){
+func (s Service) Generate(ctx context.Context,user string,id int64,regenerate bool,customPrompt string,progress Progress,resumeIDs ...int)(Letter,error){
 	if ctx.Err()!=nil{return Letter{},ctx.Err()}
-	in,err:=s.Repository.Read(ctx,user,id)
+	in,err:=s.Repository.Read(ctx,user,id,resumeIDs...)
 	if err!=nil{return Letter{},err}
 	if saved,ok:=in.Effective();ok&&!regenerate&&strings.TrimSpace(saved.CoverLetterMD)!=""{
-		if customPrompt == "" {
+		if customPrompt == "" && resumeSelection(resumeIDs) == 0 {
 			return saved,nil
 		}
 		regenerate = true
 	}
 	if regenerate{
 		saved,ok:=in.Effective()
-		if !ok||(customPrompt==""&&strings.TrimSpace(saved.CoverLetterSubject)=="")||strings.TrimSpace(saved.CoverLetterMD)==""{
+		if !ok||(customPrompt==""&&resumeSelection(resumeIDs)==0&&strings.TrimSpace(saved.CoverLetterSubject)=="")||strings.TrimSpace(saved.CoverLetterMD)==""{
 			return Letter{},ErrNotRegenerable
 		}
 	}
@@ -56,14 +56,14 @@ func (s Service) Generate(ctx context.Context,user string,id int64,regenerate bo
 	if s.Generator==nil{return Letter{},ErrUnavailable}
 	if progress!=nil{progress("preparing")}
 	lease,err:=s.Repository.Claim(ctx,user,in,regenerate)
-	if errors.Is(err,ErrBusy) && customPrompt == "" {
+	if errors.Is(err,ErrBusy) && customPrompt == "" && resumeSelection(resumeIDs) == 0 {
 		return s.wait(ctx,user,id,in,progress)
 	}
-	if errors.Is(err,ErrChanged) && customPrompt == "" {
+	if errors.Is(err,ErrChanged) && customPrompt == "" && resumeSelection(resumeIDs) == 0 {
 		// Другой запрос мог сохранить письмо между первоначальным Read
 		// и Claim. Не запускаем модель повторно и возвращаем только
 		// действительно новую сохранённую версию.
-		current,e:=s.Repository.Read(ctx,user,id)
+		current,e:=s.Repository.Read(ctx,user,id,resumeIDs...)
 		if e==nil{
 			if saved,ok:=advancedLetter(in,current);ok{return saved,nil}
 		}
@@ -108,11 +108,11 @@ func (s Service) Generate(ctx context.Context,user string,id int64,regenerate bo
 	if err!=nil{return Letter{},err}
 	if progress!=nil{progress("saving")}
 	letter,err:=s.Repository.Save(ctx,lease,in,answer,regenerate)
-	if errors.Is(err,ErrChanged) && customPrompt == "" {
+	if errors.Is(err,ErrChanged) && customPrompt == "" && resumeSelection(resumeIDs) == 0 {
 		// Только действительно заменённое другим запросом письмо может
 		// считаться успехом. Изменение резюме/промта/модели не означает, что
 		// устаревшая генерация завершилась успешно.
-		current,e:=s.Repository.Read(ctx,user,id)
+		current,e:=s.Repository.Read(ctx,user,id,resumeIDs...)
 		if e==nil{
 			if saved,ok:=advancedLetter(in,current);ok{return saved,nil}
 		}

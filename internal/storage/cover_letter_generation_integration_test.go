@@ -22,6 +22,7 @@ type letterMockGenerator struct{
 	Output string
 	Portfolio string
 	CustomPrompt string
+	Resume string
 	Before func()
 	After func()
 }
@@ -30,9 +31,9 @@ func(g *letterMockGenerator)Automatic(ctx context.Context,request aiproviders.Ge
 	if request.Task!="cover_letter"||len(request.Messages)!=2{
 		return aiproviders.AIResult{},errors.New("invalid generated configuration")
 	}
-	if g.Portfolio != "" {
+	if g.Portfolio != "" || g.Resume != "" {
 		var state map[string]string
-		if json.Unmarshal([]byte(request.Messages[1].Content), &state) != nil || state["portfolioMd"] != g.Portfolio {
+		if json.Unmarshal([]byte(request.Messages[1].Content), &state) != nil || state["portfolioMd"] != g.Portfolio || g.Resume != "" && state["resumeMd"] != g.Resume {
 			return aiproviders.AIResult{}, errors.New("portfolio missing from candidate data")
 		}
 	}
@@ -81,7 +82,7 @@ func TestMariaDBCoverLetterGenerationDisposable(t *testing.T){
 			"DELETE FROM vacancy_cover_letters WHERE user_name='ci-letter-candidate'",
 			"DELETE FROM openrouter_ai_logs WHERE task='cover_letter' AND requested_primary_model='ci/mock:free'",
 			"DELETE FROM openrouter_ai_logs WHERE task='openai_cover_letter' AND requested_primary_model='gpt-6-luna'",
-			"DELETE FROM user_profiles WHERE user_name IN ('ci-letter-candidate','portfolio:ci-letter-candidate','portfolio:ci-letter-candidate:2','portfolio:ci-letter-candidate:3')",
+			"DELETE FROM user_profiles WHERE user_name IN ('ci-letter-candidate','portfolio:ci-letter-candidate','portfolio:ci-letter-candidate:2','portfolio:ci-letter-candidate:3','resumes:ci-letter-candidate','resume2:ci-letter-candidate','resume3:ci-letter-candidate')",
 			"DELETE FROM system_prompts WHERE kind='cover_letter'",
 			"DELETE FROM prompt_model_settings WHERE kind='cover_letter'",
 			"DELETE FROM company_vacancies WHERE id=190018",
@@ -259,6 +260,23 @@ func TestMariaDBCoverLetterGenerationDisposable(t *testing.T){
 	if err != nil || loaded.ResumeMD != "# Short" || count("SELECT COUNT(*) FROM user_profiles WHERE user_name IN (?,?)", profiles.PortfolioProfileKey(user)+":2", profiles.PortfolioProfileKey(user)+":3") != 0 {
 		t.Fatal("shortening portfolio left obsolete parts", err)
 	}
+	resumes, err := profile.ReadResumes(f.ctx,user)
+	if err!=nil || resumes.Primary!=1 || len(resumes.Items)!=1 || resumes.Items[0].Markdown!="CI Резюме руководителя" {
+		t.Fatal("legacy resume transition failed",err)
+	}
+	resumes.Items=append(resumes.Items,profiles.NamedResume{ID:2,Name:"CI Второе",Markdown:"CI Другой опыт"})
+	resumes.Primary=2
+	if _,err=profile.SaveResumes(f.ctx,user,resumes);err!=nil {t.Fatal("save named resumes",err)}
+	if _,err=profile.SaveResumes(f.ctx,user,resumes);!errors.Is(err,profiles.ErrConflict) {t.Fatal("resume collection lost CAS",err)}
+	primary,err:=repo.Read(f.ctx,user,vacancyID)
+	if err!=nil || primary.Resume!="CI Другой опыт" || primary.Portfolio!="# Short"{t.Fatal("primary resume or common portfolio lost",err)}
+	chosen,err:=repo.Read(f.ctx,user,vacancyID,1)
+	if err!=nil || chosen.Resume!="CI Резюме руководителя" || chosen.Portfolio!=primary.Portfolio{t.Fatal("explicit resume selection failed",err)}
+	mock.Resume=chosen.Resume
+	mock.Portfolio="# Short"
+	mock.Output=`{"subject":"CI Selected resume","markdown":"CI Letter based on selected resume."}`
+	letter,err:=svc.Generate(f.ctx,user,vacancyID,true,"",nil,1)
+	if err!=nil || letter.CoverLetterSubject!="CI Selected resume"{t.Fatal("generation ignored explicit resume selection",err)}
 	if strings.Contains(mock.Output,"PRIVATE"){t.Fatal("invalid mock fixture")}
 	t.Log("PASS: saved/personal/regenerate, CAS input, durable paid OpenAI admission, no automatic repeats, read-only GET")
 }
