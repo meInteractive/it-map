@@ -175,9 +175,16 @@ func (e firecrawlListingExecutor) Execute(ctx context.Context, lease *JobLease) 
 	}
 	cards, err := firecrawlListingCards(*job.SourceID, doc.Markdown, doc.FinalURL)
 	if err != nil {
-		return HHListingProgress{}, firecrawlFailure("firecrawl_listing", err)
+		code := "firecrawl_listing"
+		if errors.Is(err, errGetmatchListingUnavailable) {
+			code = "firecrawl_listing_unavailable"
+		}
+		return HHListingProgress{}, firecrawlFailure(code, err)
 	}
 	result := HHListingProgress{Done: true, Page: 1}
+	if len(cards) == 0 {
+		result.PartialCode = "firecrawl_empty_confirmed"
+	}
 	err = lease.WithinOwned(ctx, func(tx *sql.Tx) error {
 		if err := validate(ctx, tx); err != nil {
 			return err

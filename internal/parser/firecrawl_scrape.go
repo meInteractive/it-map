@@ -51,7 +51,14 @@ func (e FirecrawlScrapeExecutor) Execute(ctx context.Context, lease *JobLease, s
 	}
 	target, err := firecrawl.Preflight(ctx, step.URL, step.AllowedHosts)
 	if err != nil {
-		return firecrawl.ScrapeResult{}, firecrawlFailure("firecrawl_preflight", err)
+		code := "firecrawl_preflight"
+		switch {
+		case errors.Is(err, firecrawl.ErrPreflightDNS):
+			code = "firecrawl_preflight_dns"
+		case errors.Is(err, firecrawl.ErrPreflightConnection):
+			code = "firecrawl_preflight_connection"
+		}
+		return firecrawl.ScrapeResult{}, firecrawlFailure(code, err)
 	}
 	client, err := firecrawl.New(settings.key, e.Transport)
 	if err != nil {

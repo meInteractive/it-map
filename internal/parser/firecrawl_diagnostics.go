@@ -27,6 +27,12 @@ func firecrawlFailureDetails(err error) (code, message string) {
 		return stage.code, "Проверьте активный профиль и ключ Firecrawl."
 	case "firecrawl_preflight":
 		return stage.code, "Предварительная проверка адреса источника не прошла."
+	case "firecrawl_preflight_dns":
+		return stage.code, "DNS не вернул адрес сайта источника."
+	case "firecrawl_preflight_connection":
+		return stage.code, "Сервер воркера не смог установить соединение с сайтом источника."
+	case "firecrawl_listing_unavailable":
+		return stage.code, "Getmatch сообщает, что не удалось загрузить данные."
 	case "firecrawl_balance":
 		return stage.code, "Не удалось прочитать баланс Firecrawl."
 	case "firecrawl_budget":
