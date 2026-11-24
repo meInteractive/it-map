@@ -24,7 +24,10 @@ export function useResumeSelection(enabled = true) {
     control: items.length ? (
       <label className="crm-field">
         <span>Резюме</span>
-        <select value={id ?? data?.primary} onChange={(event) => setSelected(Number(event.target.value))}>
+        <select
+          value={id ?? data?.primary}
+          onChange={(event) => setSelected(Number(event.target.value))}
+        >
           {items.map((item) => (
             <option key={item.id} value={item.id}>
               {item.name}
