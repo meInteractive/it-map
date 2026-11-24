@@ -32,6 +32,23 @@ func applicationResumeKey(user string, id int64) string {
 	return applicationResumePrefix + strconv.FormatInt(id, 10) + ":" + user
 }
 
+func readResumeReference(raw, createdAt string) (*ResumeReference, error) {
+	if raw == "" {
+		return nil, nil
+	}
+	var ref struct {
+		ResumeReference
+		ApplicationCreatedAt string `json:"applicationCreatedAt"`
+	}
+	if err := json.Unmarshal([]byte(raw), &ref); err != nil {
+		return nil, err
+	}
+	if ref.ApplicationCreatedAt != createdAt || ref.ID < 1 || ref.ID > 3 {
+		return nil, nil
+	}
+	return &ref.ResumeReference, nil
+}
+
 type Record struct {
 	Resume               *ResumeReference `json:"resume,omitempty"`
 	ID                   int64            `json:"id"`
@@ -211,17 +228,9 @@ func (r Repository) read(ctx context.Context, user, company string, id *int64, w
 			n := vacancy.Int64
 			rec.VacancyID = &n
 		}
-		if resume != "" {
-			var ref struct {
-				ResumeReference
-				ApplicationCreatedAt string `json:"applicationCreatedAt"`
-			}
-			if err = json.Unmarshal([]byte(resume), &ref); err != nil {
-				break
-			}
-			if ref.ApplicationCreatedAt == rec.CreatedAt {
-				rec.Resume = &ref.ResumeReference
-			}
+		rec.Resume, err = readResumeReference(resume, rec.CreatedAt)
+		if err != nil {
+			break
 		}
 		rec.ApplicationSources = AllowedSources(sources)
 		rec.Revision = Fingerprint(snapshot)

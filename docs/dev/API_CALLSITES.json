@@ -1,7 +1,7 @@
 {
   "scope": "Current frontend/web direct transport sites and reviewed JSX/download bindings; no runtime/golden coverage inferred",
   "typescript": "5.9.3",
-  "files": 73,
+  "files": 74,
   "transportModule": "frontend/api/client.ts",
   "sites": [
     {
@@ -134,9 +134,25 @@
       "dynamicURL": true
     },
     {
+      "id": "eca04d45595059d8",
+      "file": "frontend/features/applications/Applications.tsx",
+      "line": 763,
+      "call": "request",
+      "method": "GET",
+      "methodExpression": "GET",
+      "urlExpression": "'/api/applications/export'",
+      "literalFragments": [
+        "/api/applications/export"
+      ],
+      "families": [
+        "applications"
+      ],
+      "dynamicURL": false
+    },
+    {
       "id": "e40516acc87fa58c",
       "file": "frontend/features/applications/Applications.tsx",
-      "line": 759,
+      "line": 779,
       "call": "useApi",
       "method": "GET",
       "methodExpression": "GET",
