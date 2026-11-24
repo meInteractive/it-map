@@ -86,6 +86,7 @@ func httpHandler(logger *slog.Logger, db *sql.DB, manager *auth.Manager) http.Ha
 		opts.VacancyCreates = vacancies.Repository{DB: db}
 		opts.VacancyDeletes = vacancies.Repository{DB: db}
 		opts.VacancyUpdates = vacancies.Repository{DB: db}
+		opts.CompanyVacancies = vacancies.Repository{DB: db}
 		opts.VacancyFlags = vacancies.Repository{DB: db}
 		opts.Calendar = &googlecalendar.Service{
 			DB: db,

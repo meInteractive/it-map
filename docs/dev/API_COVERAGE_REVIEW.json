@@ -100,7 +100,7 @@
     {
       "id": "vacancies",
       "implementation": "partial",
-      "level": "Required CRUD/flags SQL+HTTP; source read projections336–340; bounded GET list query HTTP176, native176 SELECT-only HTTP pass",
+      "level": "Required CRUD/flags SQL+HTTP; source read projections336–340; bounded GET list query HTTP176, native176 SELECT-only HTTP pass; company drawer GET",
       "gap": "GO-011: остальные read/API filters, полная HTTP matrix и методы отдельно. GO-032 agency часть не закрыта.",
       "evidence": [
         {
@@ -842,7 +842,7 @@
   ],
   "sourceHashes": {
     "frontend/api/client.ts": "bf28292cedd86d0446ede754335663b7eeb7db27cd284edd423bddffa74bbfa6",
-    "internal/httpapi/handler.go": "1da38a6f1884a77a5083c0696c71b8141745a3da11414e79e363b6a4f01173aa",
+    "internal/httpapi/handler.go": "37f754a5d48a058b9b53da0b58f2e4432988b03fe1f4ffb19b01efe78515a65a",
     "server/routes/index.js": "6134004f682975cb51ea13cd2ec4de8e85a5957deff6a5392fbad3fd70ccb1e4"
   },
   "clientExports": [

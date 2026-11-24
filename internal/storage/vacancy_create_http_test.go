@@ -32,7 +32,7 @@ func openVacancyCreateHTTP(f *vacancyCreateFixture, writer vacancies.Repository)
 		f.t.Fatal("cannot initialize synthetic vacancy creation auth")
 	}
 	h := &vacancyCreateHTTP{f: f, cookies: map[string]*http.Cookie{}}
-	h.handler = httpapi.NewHandlerWithOptions(slog.New(slog.NewTextHandler(io.Discard, nil)), httpapi.Options{DB: f.db, Auth: manager, Vacancies: f.repo, VacancyDetails: f.repo, VacancyCreates: writer})
+	h.handler = httpapi.NewHandlerWithOptions(slog.New(slog.NewTextHandler(io.Discard, nil)), httpapi.Options{DB: f.db, Auth: manager, Vacancies: f.repo, CompanyVacancies: f.repo, VacancyDetails: f.repo, VacancyCreates: writer})
 	for _, login := range []string{"eugene", "demo", "nastya"} {
 		form := url.Values{"login": {login}, "password": {"CI_SYNTHETIC_TASK_PASSWORD"}}
 		req := httptest.NewRequest("POST", "https://itmap.test/auth", strings.NewReader(form.Encode()))
@@ -151,6 +151,22 @@ func TestMariaDBVacancyCreateHTTPDisposable(t *testing.T) {
 			t.Fatal("admin creation 201 response contract changed")
 		}
 		createdID := reply.Vacancies[0].ID
+		companyPath := path + "?company=" + url.QueryEscape(input.CompanyName)
+		h.error(h.call("", "GET", companyPath, nil, 401))
+		h.error(h.call("demo", "GET", path+"?company=CI+unknown+owner", nil, 404))
+		for _, login := range []string{"eugene", "nastya"} {
+			list := vacancyCreateJSON[vacancies.CompanyListResponse](t, h.call(login, "GET", companyPath+"&userName=Eugene", nil, 200))
+			if list.CompanyName != input.CompanyName || len(list.Vacancies) != 1 || list.Vacancies[0].ID != createdID || len(list.Entities) == 0 {
+				t.Fatal("company drawer did not receive the vacancy and its directory")
+			}
+			v := list.Vacancies[0]
+			if v.URL != input.URL || len(v.Roles) != 1 || len(v.TelegramSources) != 1 {
+				t.Fatal("company drawer lost full vacancy fields")
+			}
+			if login == "eugene" && (v.Relevance == nil || *v.Relevance != 63) || login == "nastya" && v.Relevance != nil {
+				t.Fatal("company drawer did not isolate relevance by session")
+			}
+		}
 		own := vacancyCreateJSON[vacancies.DetailResponse](t, h.call("eugene", "GET", fmt.Sprintf("/api/vacancies/%d", createdID), nil, 200))
 		if own.Vacancy.Relevance == nil || *own.Vacancy.Relevance != 63 || len(own.Vacancy.Revision) != 64 {
 			t.Fatal("admin detail lost creation state/revision")

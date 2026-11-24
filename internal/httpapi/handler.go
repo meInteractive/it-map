@@ -53,6 +53,7 @@ type Options struct {
 	VacancyCreates       ManualVacancyCreator
 	VacancyDeletes       ManualVacancyDeleter
 	VacancyUpdates       ManualVacancyUpdater
+	CompanyVacancies     CompanyVacancyLister
 	VacancyFlags         VacancyFlagWriter
 	Applications         ApplicationReader
 	ApplicationCompanies ApplicationCompanyReader
@@ -267,6 +268,9 @@ func NewHandlerWithOptions(logger *slog.Logger, opts Options) http.Handler {
 		mux.HandleFunc("POST /api/vacancies/{id}/relevance", vacancyRelevanceHandler(opts.Auth, opts.VacancyRelevance))
 		mux.HandleFunc("POST /api/vacancies/{id}/cover-letter", VacancyCoverLetterHandler(opts.Auth, opts.VacancyCoverLetters, false))
 		mux.HandleFunc("POST /api/vacancies/{id}/cover-letter/regenerate", VacancyCoverLetterHandler(opts.Auth, opts.VacancyCoverLetters, true))
+		if opts.CompanyVacancies != nil {
+			mux.HandleFunc("GET /api/vacancies", companyVacanciesHandler(opts.Auth, opts.CompanyVacancies, unmigrated))
+		}
 		mux.HandleFunc("GET /api/vacancies/list", VacancyListHandler(opts.Auth, opts.Vacancies, time.Now))
 		if opts.VacancyCreates != nil {
 			mux.HandleFunc("POST /api/vacancies", ManualVacancyCreateHandler(opts.Auth, opts.VacancyCreates))
