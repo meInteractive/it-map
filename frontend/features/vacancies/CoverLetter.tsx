@@ -55,14 +55,47 @@ export function CopyLetterButton({
   );
 }
 
-export default function CoverLetter({ v, ready = true }: { v: VacancyDetail; ready?: boolean }) {
+const customPromptLimit = 5000;
+
+export default function CoverLetter({
+  v,
+  admin,
+  ready = true,
+}: {
+  v: VacancyDetail;
+  admin: boolean;
+  ready?: boolean;
+}) {
   const state = useCoverLetter(v.id);
+  const [customPrompt, setCustomPrompt] = useState('');
+  const promptLength = Array.from(customPrompt).length;
+  const canGenerate = ready && !state.running && (!admin || promptLength <= customPromptLimit);
+  function generate() {
+    if (!canGenerate) return;
+    void generateLetter(v.id, {
+      regenerate: !!v.coverLetterSubject?.trim() && !!v.coverLetterMd?.trim(),
+      customPrompt: admin ? customPrompt.trim() : '',
+    });
+  }
   // Saved text has one source: the current detail response, including empty text.
   const letter = v;
   const subject = useRef<HTMLDivElement>(null),
     text = useRef<HTMLDivElement>(null);
   return (
     <section className="cover-letter">
+      {admin && (
+        <label className="cover-letter-prompt">
+          <span>Пользовательский промт</span>
+          <textarea
+            rows={4}
+            value={customPrompt}
+            onChange={(event) => setCustomPrompt(event.target.value)}
+            placeholder="Укажите кейс из портфолио, на котором стоит сделать акцент"
+            aria-invalid={promptLength > customPromptLimit}
+          />
+          <small>{promptLength.toLocaleString('ru-RU')} / 5 000</small>
+        </label>
+      )}
       <div className="cover-letter-actions">
         <button
           className="vacancy-source-button"
@@ -73,12 +106,8 @@ export default function CoverLetter({ v, ready = true }: { v: VacancyDetail; rea
               : 'Создать сопроводительное письмо'
           }
           title="Создать письмо по текущим настройкам. При выборе OpenAI API-запрос может быть платным."
-          disabled={!ready || state.running}
-          onClick={() =>
-            void generateLetter(v.id, {
-              regenerate: !!letter.coverLetterSubject?.trim() && !!letter.coverLetterMd?.trim(),
-            })
-          }
+          disabled={!canGenerate}
+          onClick={generate}
         >
           Создать
         </button>
@@ -93,7 +122,12 @@ export default function CoverLetter({ v, ready = true }: { v: VacancyDetail; rea
       </div>
       <ErrorText error={state.error} />
       {state.error && !v.coverLetterMd && (
-        <button className="vacancy-source-button" onClick={() => void generateLetter(v.id)}>
+        <button
+          className="vacancy-source-button"
+          type="button"
+          disabled={!canGenerate}
+          onClick={generate}
+        >
           Повторить
         </button>
       )}

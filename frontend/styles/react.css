@@ -17,6 +17,10 @@ button,input,textarea,select{font-family:inherit}button{cursor:pointer}button:di
 /* Calendar occupies its own row in Settings. */
 .settings-grid>.google-calendar-card{grid-column:1/-1;align-self:start;min-width:0;margin-bottom:0}
 
+.cover-letter-prompt{display:grid;gap:6px;margin-bottom:12px;font-weight:600}
+.cover-letter-prompt textarea{box-sizing:border-box;width:100%;padding:10px;border:1px solid var(--border,#d1d9e4);border-radius:8px;resize:vertical;font:inherit;font-weight:400}
+.cover-letter-prompt small{justify-self:end;font-weight:400}
+.cover-letter-prompt textarea[aria-invalid=true]{border-color:#be123c}
 .cover-letter-actions{display:flex;justify-content:flex-end;margin-bottom:12px}
 
 /* Shared native select: same field geometry and focus as the existing CRM forms. */

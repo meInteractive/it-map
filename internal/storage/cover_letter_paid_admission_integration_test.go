@@ -53,7 +53,7 @@ func TestMariaDBCoverLetterPaidAdmissionDisposable(t *testing.T) {
 	svc := coverletters.Service{Repository: coverletters.Repository{DB: f.db}, Generator: mock}
 
 	// Ответ потерян после принятого synthetic POST: стоимость неизвестна.
-	_, err := svc.Generate(f.ctx, user, vacancyID, false, nil)
+	_, err := svc.Generate(f.ctx, user, vacancyID, false, "", nil)
 	if err == nil || mock.Sends != 1 || mock.Calls != 1 {
 		t.Fatal("lost provider ACK not reproduced", err, mock.Sends, mock.Calls)
 	}
@@ -62,14 +62,14 @@ func TestMariaDBCoverLetterPaidAdmissionDisposable(t *testing.T) {
 	}
 	// Ни исчезнувшая lease, ни новый запрос браузера не разрешают replay.
 	mock.Fail = false
-	_, err = svc.Generate(f.ctx, user, vacancyID, false, nil)
+	_, err = svc.Generate(f.ctx, user, vacancyID, false, "", nil)
 	if !errors.Is(err, coverletters.ErrPaidUncertain) || mock.Sends != 1 ||
 		count("SELECT COUNT(*) FROM openrouter_ai_logs WHERE task='openai_cover_letter'") != 1 {
 		t.Fatal("identical paid input was replayed", err, mock.Sends)
 	}
 	// Явное изменение входа создаёт новую операцию, старый unknown остаётся.
 	f.exec("UPDATE system_prompts SET markdown='CI New Synthetic Prompt',revision=revision+1 WHERE kind='cover_letter'")
-	letter, err := svc.Generate(f.ctx, user, vacancyID, false, nil)
+	letter, err := svc.Generate(f.ctx, user, vacancyID, false, "", nil)
 	if err != nil || letter.CoverLetterMD != "CI Paid body." || mock.Sends != 2 {
 		t.Fatal("new input failed independent paid operation", err, mock.Sends)
 	}
@@ -78,13 +78,13 @@ func TestMariaDBCoverLetterPaidAdmissionDisposable(t *testing.T) {
 		t.Fatal("unknown and acknowledged records were not preserved separately")
 	}
 	// Простое повторное открытие готового письма не отправляет оплачиваемый POST.
-	cached, err := svc.Generate(f.ctx, user, vacancyID, false, nil)
+	cached, err := svc.Generate(f.ctx, user, vacancyID, false, "", nil)
 	if err != nil || cached != letter || mock.Sends != 2 {
 		t.Fatal("saved paid letter generated again", err, mock.Sends)
 	}
 	cancelled, cancel := context.WithCancel(f.ctx)
 	cancel()
-	_, err = svc.Generate(cancelled, user, vacancyID, true, nil)
+	_, err = svc.Generate(cancelled, user, vacancyID, true, "", nil)
 	if !errors.Is(err, context.Canceled) || mock.Sends != 2 {
 		t.Fatal("cancelled paid request reached provider", err, mock.Sends)
 	}

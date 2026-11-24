@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"itmap/internal/aiproviders"
 	"itmap/internal/auth"
@@ -19,7 +20,7 @@ import (
 
 // Интерфейс позволяет подменить весь генератор в синтетических HTTP-тестах.
 type VacancyCoverLetterGenerator interface {
-	Generate(context.Context,string,int64,bool,coverletters.Progress)(coverletters.Letter,error)
+	Generate(context.Context,string,int64,bool,string,coverletters.Progress)(coverletters.Letter,error)
 }
 
 func letterFailure(err error)(int,string){
@@ -64,11 +65,14 @@ func VacancyCoverLetterHandler(m *auth.Manager,service VacancyCoverLetterGenerat
 		if e!=nil||id<=0||id>9007199254740991{
 			jsonReply(w,400,map[string]string{"error":"Некорректный ID вакансии."});return
 		}
-		if r.Body!=nil{
-			body,err:=io.ReadAll(http.MaxBytesReader(w,r.Body,16))
-			if err!=nil||len(body)>0{
-				jsonReply(w,400,map[string]string{"error":"Генерация использует сохранённые данные; тело запроса не требуется."});return
+		customPrompt, status := readLetterPrompt(w, r, user.IsAdmin)
+		if status != 0 {
+			message := "Передайте пользовательский промт длиной до 5 000 символов."
+			if status == http.StatusForbidden {
+				message = "Пользовательский промт доступен администратору."
 			}
+			jsonReply(w, status, map[string]string{"error": message})
+			return
 		}
 		if service==nil{jsonReply(w,503,map[string]string{"error":"Генератор писем не подключён."});return}
 		// Server.WriteTimeout is an absolute 60s response deadline. Heartbeat
@@ -80,7 +84,7 @@ func VacancyCoverLetterHandler(m *auth.Manager,service VacancyCoverLetterGenerat
 		ctx,cancel:=context.WithTimeout(r.Context(),generationTimeout)
 		defer cancel()
 		if !strings.Contains(strings.ToLower(r.Header.Get("Accept")),"application/x-ndjson"){
-			letter,err:=service.Generate(ctx,user.Name,id,regenerate,nil)
+			letter,err:=service.Generate(ctx,user.Name,id,regenerate,customPrompt,nil)
 			if err!=nil{
 				status,message:=letterFailure(err)
 				jsonReply(w,status,map[string]string{"error":message})
@@ -129,7 +133,7 @@ func VacancyCoverLetterHandler(m *auth.Manager,service VacancyCoverLetterGenerat
 				}
 			}
 		}()
-		letter,err:=service.Generate(ctx,user.Name,id,regenerate,report)
+		letter,err:=service.Generate(ctx,user.Name,id,regenerate,customPrompt,report)
 		close(stopped)
 		heartbeat.Wait()
 		if err!=nil{
@@ -139,4 +143,35 @@ func VacancyCoverLetterHandler(m *auth.Manager,service VacancyCoverLetterGenerat
 		}
 		send(map[string]any{"type":"done","letter":letter})
 	})
+}
+
+func readLetterPrompt(w http.ResponseWriter, r *http.Request, admin bool) (string, int) {
+	if r.Body == nil {
+		return "", 0
+	}
+	// Учитываем до 12 байт на символ при JSON-экранировании суррогатной пары.
+	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 64<<10))
+	if err != nil {
+		var tooLarge *http.MaxBytesError
+		if errors.As(err, &tooLarge) {
+			return "", http.StatusRequestEntityTooLarge
+		}
+		return "", http.StatusBadRequest
+	}
+	if len(body) == 0 {
+		return "", 0
+	}
+	if !admin {
+		return "", http.StatusForbidden
+	}
+	var input struct {
+		CustomPrompt *string `json:"customPrompt"`
+	}
+	decoder := json.NewDecoder(strings.NewReader(string(body)))
+	decoder.DisallowUnknownFields()
+	if !utf8.Valid(body) || decoder.Decode(&input) != nil || decoder.Decode(new(any)) != io.EOF ||
+		input.CustomPrompt == nil || utf8.RuneCountInString(*input.CustomPrompt) > coverletters.MaxCustomPromptLength {
+		return "", http.StatusBadRequest
+	}
+	return strings.TrimSpace(*input.CustomPrompt), 0
 }

@@ -208,7 +208,7 @@ export default function VacancyDrawer({
                   />
                 </>
               ) : tab === 'letter' ? (
-                <CoverLetter v={v} ready={!q.loading && !q.error} />
+                <CoverLetter key={v.id} v={v} admin={admin} ready={!q.loading && !q.error} />
               ) : tab === 'application' ? (
                 <div className="vacancy-application-form">
                   <CompanyApplications companyName={v.companyName} vacancyId={v.id} />
