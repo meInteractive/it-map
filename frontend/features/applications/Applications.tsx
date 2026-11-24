@@ -1,6 +1,6 @@
 import { useSectionState } from '../../hooks/useSectionState';
 import { confirmNavigation, useDirty } from '../../hooks/useDirty';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { ApplicationConflict, isApplicationConflict } from './ApplicationConflict';
 import { useCreationIntent } from './useCreationIntent';
 import { ApiError, invalidateMutation, mutate, request, useApi } from '../../api/client';
@@ -153,8 +153,8 @@ export function ApplicationForm({
           {target.vacancyId ? (
             !base && (
               <div className="vacancy-application-intro">
-                Отклик по этой вакансии ещё не создан. Заполните данные и нажмите «Сохранить», чтобы
-                связать отклик с вакансией.
+                Заполните данные нового отклика и нажмите «Сохранить», чтобы связать отклик с
+                вакансией.
               </div>
             )
           ) : (
@@ -636,23 +636,27 @@ function ApplicationRow({
 export function CompanyApplications({
   companyName,
   vacancyId,
+  sourceAction,
 }: {
   companyName: string;
   vacancyId?: number;
+  sourceAction?: ReactNode;
 }) {
   const q = useApi<ApplicationsResponse>(
       '/api/applications?company=' + encodeURIComponent(companyName),
     ),
-    [selected, setSelected] = useState<number | 'new' | null>(vacancyId ? 'new' : null);
+    [selected, setSelected] = useState<number | 'new' | null>(null);
   const [saving, setSaving] = useState(false),
     [deleting, setDeleting] = useState(false);
   const locked = saving || deleting;
   const records = (q.data?.records || []).filter((r) => !vacancyId || r.vacancyId === vacancyId);
   const [formRecord, setFormRecord] = useState<ApplicationRecord>();
   const current =
-    records.find((r) => r.id === selected) ||
-    (vacancyId ? records[0] : undefined) ||
-    (selected != null ? formRecord : undefined);
+    selected === 'new'
+      ? undefined
+      : records.find((record) => record.id === selected) ||
+        (selected == null ? (vacancyId ? records[0] : undefined) : formRecord);
+  const showNew = selected === 'new' || (!!vacancyId && !!q.data && records.length === 0);
   useEffect(() => {
     setFormRecord(current);
   }, [current?.id]);
@@ -663,6 +667,7 @@ export function CompanyApplications({
         <div className="company-applications-head">
           <h2>Отклики</h2>
           <div className="company-applications-actions">
+            {sourceAction}
             <span className="company-applications-limit">{q.data?.records.length || 0} из 10</span>
             <button
               className="company-application-new"
@@ -699,7 +704,7 @@ export function CompanyApplications({
                 onDeleted={() => {
                   if (current?.id !== r.id) return;
                   setFormRecord(undefined);
-                  setSelected(vacancyId ? 'new' : null);
+                  setSelected(null);
                 }}
               />
             </div>
@@ -710,7 +715,7 @@ export function CompanyApplications({
             Откликов пока нет. Можно создать до 10 записей.
           </div>
         )}
-        {(current || selected === 'new') && (
+        {(current || showNew) && (
           <>
             <ApplicationForm
               disabled={deleting}
@@ -736,9 +741,12 @@ export function CompanyApplications({
         )}
       </State>
       {q.error && (
-        <button type="button" disabled={q.loading} onClick={q.reload}>
-          Повторить загрузку откликов
-        </button>
+        <div className="company-applications-actions">
+          {!q.data && sourceAction}
+          <button type="button" disabled={q.loading} onClick={q.reload}>
+            Повторить загрузку откликов
+          </button>
+        </div>
       )}
     </>
   );

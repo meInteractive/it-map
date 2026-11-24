@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { VacancyDetail } from '../../../shared/contracts';
 import { ErrorText, Icon } from '../../components/Common';
 import { Markdown } from '../../components/Markdown';
@@ -61,10 +61,12 @@ export default function CoverLetter({
   v,
   admin,
   ready = true,
+  sourceAction,
 }: {
   v: VacancyDetail;
   admin: boolean;
   ready?: boolean;
+  sourceAction?: ReactNode;
 }) {
   const state = useCoverLetter(v.id);
   const [customPrompt, setCustomPrompt] = useState('');
@@ -97,6 +99,7 @@ export default function CoverLetter({
         </label>
       )}
       <div className="cover-letter-actions">
+        {sourceAction}
         <button
           className="vacancy-source-button"
           type="button"
