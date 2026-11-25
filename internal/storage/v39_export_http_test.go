@@ -55,8 +55,9 @@ func TestMariaDBV39ExportHTTPDisposable(t *testing.T) {
 		f := openProfileSettingsFixture(t)
 		const marker = "CI-large-backup:"
 		const owner = "CI large backup owner"
+		f.exec("INSERT INTO company_crm(company_name) VALUES (?)", owner)
 		t.Cleanup(func() {
-			if _, err := f.db.ExecContext(context.Background(), "DELETE FROM company_vacancies WHERE company_name=?", owner); err != nil {
+			if _, err := f.db.ExecContext(context.Background(), "DELETE FROM company_crm WHERE company_name=?", owner); err != nil {
 				t.Error("cannot clean synthetic large-backup rows")
 			}
 		})
