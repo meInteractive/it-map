@@ -46,7 +46,7 @@ function textTable(header: string[], rows: string[][], textColumn: string) {
 }
 
 export function applicationsWorkbook(data: ExportData) {
-  return buildXlsx([
+  const sheets = [
     {
       name: 'Отклики',
       rows: [
@@ -93,7 +93,8 @@ export function applicationsWorkbook(data: ExportData) {
       columns:
         '<col min="1" max="2" width="25" customWidth="1"/><col min="3" max="16384" width="80" customWidth="1"/>',
     },
-  ]);
+  ];
+  return buildXlsx(sheets, { wrapAndAlignTop: true });
 }
 
 export function downloadApplications(data: ExportData) {

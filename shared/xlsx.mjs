@@ -88,7 +88,7 @@ const packageRelationships = 'http://schemas.openxmlformats.org/package/2006/rel
 const contentTypes = 'http://schemas.openxmlformats.org/package/2006/content-types';
 const xlsxType = 'application/vnd.openxmlformats-officedocument.spreadsheetml';
 const xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
-const styles = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF1F2937"/><bgColor rgb="FF1F2937"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment vertical="center"/></xf></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
+const styles = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF1F2937"/><bgColor rgb="FF1F2937"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="4"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment vertical="center"/></xf><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
 
 function excelText(value) {
   return String(value ?? '')
@@ -97,11 +97,13 @@ function excelText(value) {
       (character) => '_x' + character.charCodeAt(0).toString(16).padStart(4, '0').toUpperCase() + '_');
 }
 
-export function buildXlsx(sheets) {
+export function buildXlsx(sheets, { wrapAndAlignTop = false } = {}) {
+  const headerStyle = wrapAndAlignTop ? 3 : 1;
+  const cellStyle = wrapAndAlignTop ? 2 : 0;
   const files = sheets.map(({ name, rows, numericColumns, columns, filterEndColumn }, index) => {
     const data = rows.map((row, rowIndex) =>
-      `<row r="${rowIndex + 1}"${rowIndex === 0 ? ' ht="30" customHeight="1"' : ''}>${row.map((value, column) =>
-        xlsxCell(xlsxColumnName(column + 1) + (rowIndex + 1), excelText(value), rowIndex === 0 ? 1 : 0,
+      `<row r="${rowIndex + 1}"${rowIndex === 0 && !wrapAndAlignTop ? ' ht="30" customHeight="1"' : ''}>${row.map((value, column) =>
+        xlsxCell(xlsxColumnName(column + 1) + (rowIndex + 1), excelText(value), rowIndex === 0 ? headerStyle : cellStyle,
           rowIndex > 0 && numericColumns?.has(column) && value !== '')
       ).join('')}</row>`
     ).join('');
