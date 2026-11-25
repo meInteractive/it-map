@@ -208,7 +208,7 @@ func verifyRestoreValues(ctx context.Context, tx *sql.Tx, actual map[string]sqlT
 	for _, t := range v39.Trusted().Tables {
 		defs[t.Name] = t
 	}
-	budget := &exportBudget{}
+	budget := &exportBudget{maxBytes: MaxBytes}
 	for _, t := range plan.Tables {
 		d := defs[t.Name]
 		counts := map[string]int{}

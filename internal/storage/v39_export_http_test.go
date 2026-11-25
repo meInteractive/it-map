@@ -3,8 +3,12 @@
 package storage
 
 import (
+	"bytes"
+	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -45,6 +49,37 @@ func TestMariaDBV39ExportHTTPDisposable(t *testing.T) {
 		}
 		if !found {
 			t.Fatal("admin export omitted private data")
+		}
+	})
+	t.Run("admin download exceeds upload size limit", func(t *testing.T) {
+		f := openProfileSettingsFixture(t)
+		const marker = "CI-large-backup:"
+		const owner = "CI large backup owner"
+		t.Cleanup(func() {
+			if _, err := f.db.ExecContext(context.Background(), "DELETE FROM company_vacancies WHERE company_name=?", owner); err != nil {
+				t.Error("cannot clean synthetic large-backup rows")
+			}
+		})
+		const rows = 26
+		for i := range rows {
+			f.exec("INSERT INTO company_vacancies(company_name,url,title,description_md) VALUES (?,?,?,CONCAT(?,REPEAT('x',1048576)))",
+				owner, "https://ci.invalid/jobs/"+strconv.Itoa(i), "CI vacancy", marker)
+		}
+		reader := exportReadOnlyPool(f)
+		h := openProfileHTTP(f.profileResumeFixture, f.repo, func(opts *httpapi.Options) {
+			opts.BackupExports = backup.Repository{DB: reader}
+		})
+		req := httptest.NewRequest("GET", "https://itmap.test/api/backup", nil).WithContext(f.ctx)
+		req.AddCookie(h.cookies["eugene"])
+		w := httptest.NewRecorder()
+		h.handler.ServeHTTP(w, req)
+		if w.Code != http.StatusOK || w.Body.Len() <= backup.MaxBytes ||
+			w.Header().Get("Content-Length") != strconv.Itoa(w.Body.Len()) ||
+			w.Header().Get("Content-Disposition") == "" {
+			t.Fatalf("large backup download status=%d bytes=%d", w.Code, w.Body.Len())
+		}
+		if !json.Valid(w.Body.Bytes()) || bytes.Count(w.Body.Bytes(), []byte(marker)) != rows {
+			t.Fatal("large backup omitted rows or produced invalid JSON")
 		}
 	})
 	t.Run("HTTP late query failure generic and no attachment or partial file", func(t *testing.T) {

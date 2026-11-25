@@ -143,6 +143,10 @@ func validateVersioned(data []byte, minimum, maximum int) (*Payload, error) {
 	if err != nil {
 		return nil, err
 	}
+	return validateVersionedRoot(root, minimum, maximum)
+}
+
+func validateVersionedRoot(root *jsonValue, minimum, maximum int) (*Payload, error) {
 	// Read exact property names. encoding/json struct matching is case-insensitive
 	// and would let an unrelated "Format" or "Name" override the real field.
 	nodeVersion := root.field("version")

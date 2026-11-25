@@ -71,7 +71,7 @@ func TestV39DownloadContract(t *testing.T) {
 	if w.Code != 503 || strings.Contains(w.Body.String(), store.err.Error()) || w.Header().Get("Content-Disposition") != "" {
 		t.Fatal("failed export leaked SQL or returned partial attachment")
 	}
-	store.err = &backup.InputError{Status: 413, Message: "Полный бэкап превышает 25 МБ."}
+	store.err = &backup.InputError{Status: 400, Message: "Структура базы изменилась во время экспорта."}
 	if w = call("eugene", "GET", true); w.Code != 400 {
 		t.Fatal("legacy download validation failures must be 400")
 	}

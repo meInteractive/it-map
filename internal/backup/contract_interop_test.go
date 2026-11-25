@@ -33,7 +33,7 @@ func TestLegacyV39Contract(t *testing.T) {
 			Type, Name, Body, Digest, BodySpec, Normalized, FormattedHash string
 			OK                                                            bool
 			Length                                                        int64
-			Status, EncodedStatus                                         int
+			Status                                                        int
 		}
 		err = decoder.Decode(&v)
 		if err == io.EOF {
@@ -87,15 +87,6 @@ func TestLegacyV39Contract(t *testing.T) {
 				}
 				if v.OK {
 					formatted, e := EncodeV39([]byte(v.Body))
-					if ErrorStatus(e) != v.EncodedStatus {
-						t.Fatalf("formatted export status differs: %d", ErrorStatus(e))
-					}
-					if v.EncodedStatus != 200 {
-						if len(formatted) != 0 {
-							t.Fatal("oversized export returned partial bytes")
-						}
-						return
-					}
 					if e != nil {
 						t.Fatalf("valid export formatting failed: %v", e)
 					}

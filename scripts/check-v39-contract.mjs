@@ -23,7 +23,7 @@ async function validation(name,change,want=true,after){
  let ok=true;try{await validateFullBackup(b);}catch{ok=false;}
  assert.equal(ok,want,name);const body=JSON.stringify(b);
  const formatted=JSON.stringify(b,null,2);
- emit({type:'validation',name,body,ok,digest:await backupDigest(b),encodedStatus:Buffer.byteLength(formatted)>MAX_BACKUP_BYTES?413:200,formattedHash:createHash('sha256').update(formatted).digest('hex')});
+ emit({type:'validation',name,body,ok,digest:await backupDigest(b),formattedHash:createHash('sha256').update(formatted).digest('hex')});
 }
 await validation('all 52 empty application sections');
 await validation('columns may reorder',b=>table(b,'user_profiles').columns.reverse());
@@ -79,7 +79,7 @@ await validation('wrong digest algorithm',null,false,b=>{b.integrity.algorithm='
 }
 await validation('maximum row count',b=>{const t=table(b,'agency_identity');t.rows=Array.from({length:MAX_BACKUP_ROWS},()=>({id:null,agency_name:null}));});
 await validation('row count above maximum',b=>{const t=table(b,'agency_identity');t.rows=Array.from({length:MAX_BACKUP_ROWS+1},()=>({id:null,agency_name:null}));},false);
-await validation('formatted export cap includes whitespace',null,true,async b=>{
+await validation('formatted download above upload limit',null,true,async b=>{
  b.metadata.schema=[''];const overhead=Buffer.byteLength(JSON.stringify(b));
  b.metadata.schema=['x'.repeat(MAX_BACKUP_BYTES-overhead)];b.integrity.digest=await backupDigest(b);
  assert.equal(Buffer.byteLength(JSON.stringify(b)),MAX_BACKUP_BYTES);

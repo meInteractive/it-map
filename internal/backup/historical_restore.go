@@ -35,7 +35,7 @@ func readPreserved(ctx context.Context, tx *sql.Tx, actual map[string]sqlTable, 
 		byName[t.Name] = t
 	}
 	out := []Table{}
-	budget := &exportBudget{}
+	budget := &exportBudget{maxBytes: MaxBytes}
 	// Same stable parent-first order for all restores. FOR UPDATE is a current
 	// read under RR and retains row/gap locks through DELETE/INSERT/COMMIT.
 	for _, name := range parentFirstTables() {
