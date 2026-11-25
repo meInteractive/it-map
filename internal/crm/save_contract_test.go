@@ -23,7 +23,7 @@ func TestCompanySaveLegacyContract(t *testing.T) {
 	if err = json.Unmarshal(data, &fixture); err != nil {
 		t.Fatal(err)
 	}
-	if len(fixture.Vectors) != 22 {
+	if len(fixture.Vectors) != 24 {
 		t.Fatal("CRM source-backed vectors missing")
 	}
 	for _, v := range fixture.Vectors {
