@@ -766,6 +766,50 @@
         ]
       },
       "hash": "0451d8adb76b910ca7e49e0753855bf99d0bcfb2318cf6dec556f9d4ebde7d75"
+    },
+    {
+      "name": "status-Резерв",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "status": "Резерв"
+      },
+      "valid": true,
+      "normalized": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "status": "Резерв",
+        "comment": "",
+        "recruiterName": "",
+        "recruiterPhone": "",
+        "recruiterEmail": "",
+        "recruiterContactType": "",
+        "applicationSources": [
+          "hh"
+        ]
+      },
+      "hash": "d60cef2022b3528639f6c90b31f3b0732a655e412b865d382624f947053b19db"
+    },
+    {
+      "name": "status-Нет ответа",
+      "input": {
+        "companyName": "CI Synthetic Employer",
+        "status": "Нет ответа"
+      },
+      "valid": true,
+      "normalized": {
+        "companyName": "CI Synthetic Employer",
+        "vacancyId": null,
+        "status": "Нет ответа",
+        "comment": "",
+        "recruiterName": "",
+        "recruiterPhone": "",
+        "recruiterEmail": "",
+        "recruiterContactType": "",
+        "applicationSources": [
+          "hh"
+        ]
+      },
+      "hash": "4ad545761b795c01fb14a2003dc76d9e9a467797842b0d6c258588ce7c0f3e46"
     }
   ]
 }

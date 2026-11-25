@@ -239,6 +239,30 @@
         "status": "Отказ",
         "comment": "CI synthetic status comment"
       }
+    },
+    {
+      "name": "status-Резерв",
+      "input": {
+        "status": "Резерв",
+        "comment": "CI synthetic status comment"
+      },
+      "valid": true,
+      "normalized": {
+        "status": "Резерв",
+        "comment": "CI synthetic status comment"
+      }
+    },
+    {
+      "name": "status-Нет ответа",
+      "input": {
+        "status": "Нет ответа",
+        "comment": "CI synthetic status comment"
+      },
+      "valid": true,
+      "normalized": {
+        "status": "Нет ответа",
+        "comment": "CI synthetic status comment"
+      }
     }
   ]
 }

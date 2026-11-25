@@ -17,7 +17,7 @@ export const USERS = Object.freeze({
   demo: { name: "Demo", role: "user", passwordEnvKey: "DEMO_PASSWORD" }
 });
 
-export const CRM_STATUSES = ["", "Откликнулся", "Получил ответ", "Скрининг", "Собес 2", "Собес 3", "Собес 4", "Офер", "Отказ"];
+export const CRM_STATUSES = ["", "Откликнулся", "Получил ответ", "Скрининг", "Собес 2", "Собес 3", "Собес 4", "Офер", "Отказ", "Резерв", "Нет ответа"];
 
 // Kept as a legacy export for integrations; the application uses vacancy_roles.
 export const VACANCY_ROLES = ["Менеджер проектов", "Менеджер продукта", "Руководитель разработки", "Директор по разработке"];

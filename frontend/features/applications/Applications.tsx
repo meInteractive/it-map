@@ -33,7 +33,7 @@ export function applicationMatchesStatusFilter(
     ? !record.status
     : filter
       ? record.status === filter
-      : record.status !== 'Отказ';
+      : !['Отказ', 'Резерв', 'Нет ответа'].includes(record.status);
 }
 export function StatusOptions() {
   return (
@@ -859,7 +859,7 @@ export default function Applications({ nav }: { nav: Navigation }) {
             <div className="applications-empty">
               {filter
                 ? 'Нет откликов с выбранным статусом.'
-                : 'Нет активных откликов. Выберите «Отказ» в фильтре, чтобы увидеть отказы.'}
+                : 'Нет активных откликов. Чтобы увидеть завершённые, выберите их статус в фильтре.'}
             </div>
           )}
         </State>
