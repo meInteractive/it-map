@@ -6,4 +6,5 @@ export function buildXlsx(
     columns?: string;
     filterEndColumn?: string;
   }[],
+  options?: { wrapAndAlignTop?: boolean },
 ): Uint8Array<ArrayBuffer>;
