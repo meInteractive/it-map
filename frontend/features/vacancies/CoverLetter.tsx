@@ -5,6 +5,7 @@ import { Markdown } from '../../components/Markdown';
 import { renderedClipboard, writeRichClipboard } from '../../lib/clipboard';
 import { useResumeSelection } from '../settings/ResumeSelect';
 import { generateLetter, useCoverLetter } from './cover-letter';
+import { createQuickApplyIntent, quickApply, type QuickApplyIntent } from './quick-apply';
 
 export function CopyLetterButton({
   content,
@@ -72,6 +73,37 @@ export default function CoverLetter({
   const state = useCoverLetter(v.id);
   const resume = useResumeSelection();
   const [customPrompt, setCustomPrompt] = useState('');
+  const [applying, setApplying] = useState(false);
+  const [applied, setApplied] = useState(false);
+  const [applyError, setApplyError] = useState<unknown>();
+  const applyIntent = useRef<QuickApplyIntent | undefined>(undefined);
+  const applyPending = useRef(false);
+  const active = useRef(false);
+  useEffect(() => {
+    active.current = true;
+    return () => {
+      active.current = false;
+    };
+  }, []);
+  const applicationCreated = applied || !!v.applicationId;
+  async function apply() {
+    if (!ready || applicationCreated || applyPending.current) return;
+    applyPending.current = true;
+    setApplying(true);
+    setApplyError(undefined);
+    try {
+      if (
+        await quickApply((applyIntent.current ??= createQuickApplyIntent(v)), () => active.current)
+      ) {
+        setApplied(true);
+      }
+    } catch (error) {
+      setApplyError(error);
+    } finally {
+      applyPending.current = false;
+      setApplying(false);
+    }
+  }
   const promptLength = Array.from(customPrompt).length;
   const canGenerate = ready && !state.running && (!admin || promptLength <= customPromptLimit);
   function generate() {
@@ -107,6 +139,14 @@ export default function CoverLetter({
         <button
           className="vacancy-source-button"
           type="button"
+          disabled={!ready || applying || applicationCreated}
+          onClick={() => void apply()}
+        >
+          {applicationCreated ? 'Отклик создан' : 'Откликнуться'}
+        </button>
+        <button
+          className="vacancy-source-button"
+          type="button"
           aria-label={
             letter.coverLetterMd
               ? 'Создать сопроводительное письмо заново'
@@ -127,6 +167,7 @@ export default function CoverLetter({
       >
         {state.message}
       </div>
+      <ErrorText error={applyError} />
       <ErrorText error={state.error} />
       {state.error && !v.coverLetterMd && (
         <button
