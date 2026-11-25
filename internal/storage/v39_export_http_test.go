@@ -51,7 +51,7 @@ func TestMariaDBV39ExportHTTPDisposable(t *testing.T) {
 			t.Fatal("admin export omitted private data")
 		}
 	})
-	t.Run("admin download exceeds upload size limit", func(t *testing.T) {
+	t.Run("admin downloads and validates backup larger than 25 MiB", func(t *testing.T) {
 		f := openProfileSettingsFixture(t)
 		const marker = "CI-large-backup:"
 		const owner = "CI large backup owner"
@@ -69,8 +69,9 @@ func TestMariaDBV39ExportHTTPDisposable(t *testing.T) {
 		reader := exportReadOnlyPool(f)
 		h := openProfileHTTP(f.profileResumeFixture, f.repo, func(opts *httpapi.Options) {
 			opts.BackupExports = backup.Repository{DB: reader}
+			opts.BackupRestores = backup.Repository{DB: f.db}
 		})
-		req := httptest.NewRequest("GET", "https://itmap.test/api/backup", nil).WithContext(f.ctx)
+		req := httptest.NewRequest("GET", "https://itmap.test/api/backup", nil)
 		req.AddCookie(h.cookies["eugene"])
 		w := httptest.NewRecorder()
 		h.handler.ServeHTTP(w, req)
@@ -82,8 +83,13 @@ func TestMariaDBV39ExportHTTPDisposable(t *testing.T) {
 		if !json.Valid(w.Body.Bytes()) || bytes.Count(w.Body.Bytes(), []byte(marker)) != rows {
 			t.Fatal("large backup omitted rows or produced invalid JSON")
 		}
-		if _, err := (backup.Repository{DB: f.db}).ValidateRestore(f.ctx, w.Body.Bytes()); err != nil {
-			t.Fatalf("large download rejected by restore validation: %v", err)
+		validate := httptest.NewRequest("POST", "https://itmap.test/api/backup/validate", bytes.NewReader(w.Body.Bytes()))
+		validate.Header.Set("Content-Type", "application/json")
+		validate.AddCookie(h.cookies["eugene"])
+		checked := httptest.NewRecorder()
+		h.handler.ServeHTTP(checked, validate)
+		if checked.Code != http.StatusOK {
+			t.Fatalf("large download rejected by restore validation: status=%d body=%s", checked.Code, checked.Body.String())
 		}
 	})
 	t.Run("HTTP late query failure generic and no attachment or partial file", func(t *testing.T) {
