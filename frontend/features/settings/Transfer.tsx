@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { mutate, clearCache } from '../../api/client';
+import { mutate, clearCache, request } from '../../api/client';
 import { ActionForm, ErrorText } from '../../components/Common';
 import { importHelp, backupRestoreHelp } from './TransferHelp';
 async function download(url: string, fallback: string) {
@@ -210,7 +210,6 @@ export function ImportCard({ vacancies = false }: { vacancies?: boolean }) {
 }
 export function BackupRestore() {
   const [file, setFile] = useState<File>(),
-    [payload, setPayload] = useState<unknown>(),
     [summary, setSummary] = useState<{
       tables: number;
       rows: number;
@@ -232,24 +231,21 @@ export function BackupRestore() {
           const f = e.target.files?.[0],
             generation = ++seq.current;
           setFile(f);
-          setPayload(undefined);
           setSummary(undefined);
           setError(undefined);
           if (!f) return;
-          if (f.size > 25 * 1024 * 1024) {
-            setError('Файл больше допустимых 25 МБ.');
-            return;
-          }
           setBusy(true);
           try {
-            const value: unknown = JSON.parse(await f.text()),
-              s = await mutate<{
-                tables: number;
-                rows: number;
-                warnings: string[];
-              }>('/api/backup/validate', 'POST', value);
+            const s = await request<{
+              tables: number;
+              rows: number;
+              warnings: string[];
+            }>('/api/backup/validate', {
+              method: 'POST',
+              body: f,
+              headers: { 'content-type': 'application/json' },
+            });
             if (generation === seq.current) {
-              setPayload(value);
               setSummary(s);
             }
           } catch (err) {
@@ -274,13 +270,18 @@ export function BackupRestore() {
       </div>
       <button
         className="settings-button restore"
-        disabled={busy || !payload}
+        disabled={busy || !file || !summary}
         onClick={async () => {
+          if (!file || !summary || busy) return;
           if (!confirm('Восстановить данные из выбранного бэкапа? Текущие данные будут заменены.'))
             return;
           setBusy(true);
           try {
-            await mutate('/api/backup', 'POST', payload);
+            await request('/api/backup', {
+              method: 'POST',
+              body: file,
+              headers: { 'content-type': 'application/json' },
+            });
             clearCache();
             location.reload();
           } catch (e) {

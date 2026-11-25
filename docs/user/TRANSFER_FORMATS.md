@@ -476,7 +476,7 @@ SQL0062 снимает прежний предел количества вака
 
 ### GO-099: admin HTTP v39 и границы crash proof
 
-`POST /api/backup/validate` строит проверенный план и читает подготовленную схему без DDL/ID/generation writes. `POST /api/backup` выполняет атомарный restore. Обе операции требуют подписанную admin session; cross-origin — 403, declared/actual stream свыше 25 MiB — 413, invalid input и SQL restore failure — 400 (как source, SQL details скрыты), отсутствие настроенного хранилища — 503. Ответы JSON/private/no-store; исходные summary/warnings сохранены. `/api/backup` GET продолжает безопасный export.
+`POST /api/backup/validate` строит проверенный план и читает подготовленную схему без DDL/ID/generation writes. `POST /api/backup` выполняет атомарный restore. Обе операции требуют подписанную admin session; cross-origin — 403, invalid input и SQL restore failure — 400 (как source, SQL details скрыты), отсутствие настроенного хранилища — 503. Ответы JSON/private/no-store; исходные summary/warnings сохранены. `GET /api/backup` скачивает полный JSON v39. Скачивание, проверка и восстановление JSON-бэкапа поддерживают файлы больше 25 MiB.
 
 Процессный тест останавливает отдельный Go writer непосредственно перед COMMIT, принудительно завершает его SIGKILL и повторяет операцию новым процессом. Это проверка client process/socket loss, **не** аварии MariaDB, ОС или физического носителя. Конкурентные receipt/create и scheduler mutations проверяют существующий generation fence. GO-099 принят на #54/1b12301: Public40464855878 и MariaDB40464855875 pass. Отдельная disposable job проверила crash/fresh process, receipts/concurrency, admin HTTP и late-result SQL boundary без skips. На этапе GO-099 historical restore ещё не был принят; v16–38 добавлены GO-100-B ниже, v14–15/bootstrap остаются открытыми.
 
@@ -500,7 +500,7 @@ Generic `Repository.ValidateRestore` / `Restore` подключены к пре�
 
 При записи предварительный plan использует только incoming/generated IDs; поднятие AUTO_INCREMENT завершается до data TX. Финальный plan строится заново после generation FOR UPDATE из актуальных source-preserve таблиц, прочитанных в постоянном parent-first порядке через SELECT FOR UPDATE. Row/gap locks удерживаются до replacement/verification/generation rotate/COMMIT; изменения между validate и restore не подменяются старой копией. Остальные operational receipts/spend не импортируются. DDL внутри data TX нет.
 
-Расширенный план (входные и сохраняемые строки) ограничен 200000 строками и 25 MiB row JSON; слишком большой combined plan отвергается без частичного восстановления, rollback может оставить безопасные counter gaps. Это дополнительная явная граница безопасного Go restore, а не обещание импорта произвольного объёма current state. Все physical values/FK проверяются до COMMIT.
+Расширенный план (входные и сохраняемые строки) ограничен 200000 строками; слишком большой combined plan отвергается без частичного восстановления, rollback может оставить безопасные counter gaps. Это дополнительная явная граница безопасного Go restore, а не обещание импорта произвольного объёма current state. Все physical values/FK проверяются до COMMIT.
 
 B-S принят на #58/code5b91bc5: Public40479135218 и MariaDB40479135520 полностью pass. Required historical job122104725668 выполнила каждую версию16–38, source SQL comparison/round-trip/counters, late faults/retry, оба порядка profile save/restore и actual signed admin HTTP; zero skips, весь прежний regression успешен. Настоящая MariaDB локально не запускалась, source oracle использует только SQLite :memory:. V14–15 и schema bootstrap остаются C/D, полный GO-100/042 не принят.
 
@@ -548,7 +548,7 @@ validation preview, отменить confirmation без restore POST, подт�
 и после reload увидеть восстановленные сохранённые данные.
 
 Required backup-browser-acceptance job запускает6 desktop/mobile сценариев:
-round-trip, malformed/oversize/невалидная структура и пользовательские роли.
+round-trip с файлом больше 25 MiB, ошибки синтаксиса и структуры и пользовательские роли.
 Каждый успешный restore меняет generation; validate и отказ прав его сохраняют.
 Проверяется ровно2 подтверждённых SQL restore и0 skips. Настоящие API responses
 не подменяются. Все browser requests ограничены loopback origin; trace/video/

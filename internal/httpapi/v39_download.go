@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strconv"
 	"time"
 
 	"itmap/internal/auth"
@@ -56,6 +57,7 @@ func BackupDownloadHandler(manager *auth.Manager, store BackupExporter) http.Han
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.Header().Set("Cache-Control", "private, no-store")
 		w.Header().Set("Content-Disposition", `attachment; filename="it-employers-backup-`+file.CreatedAt.UTC().Format("2006-01-02")+`.json"`)
+		w.Header().Set("Content-Length", strconv.Itoa(len(file.Bytes)))
 		w.WriteHeader(200)
 		_, _ = w.Write(file.Bytes)
 	})

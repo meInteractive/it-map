@@ -336,18 +336,11 @@ func DigestJSON(data []byte) (string, error) {
 	return digest(v), nil
 }
 
-// ReadRequest enforces both declared and streamed byte limits before parsing.
-// A UTF-8 BOM is consumed once, matching the legacy TextDecoder.
-func ReadRequest(r io.Reader, declaredLength int64) ([]byte, error) {
-	if declaredLength > MaxBytes {
-		return nil, &InputError{Status: 413, Message: "Файл бэкапа больше допустимых 25 МБ."}
-	}
-	data, err := io.ReadAll(io.LimitReader(r, MaxBytes+1))
+// ReadRequest нормализует JSON, включая UTF-8 BOM.
+func ReadRequest(r io.Reader) ([]byte, error) {
+	data, err := io.ReadAll(r)
 	if err != nil {
 		return nil, invalid("Не удалось прочитать файл бэкапа.")
-	}
-	if len(data) > MaxBytes {
-		return nil, &InputError{Status: 413, Message: "Файл бэкапа больше допустимых 25 МБ."}
 	}
 	data = bytes.TrimPrefix(data, []byte{0xef, 0xbb, 0xbf})
 	data = decodeUTF8(data)

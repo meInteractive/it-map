@@ -74,22 +74,13 @@ func validateRestoreScalars(plan *RestorePlan) error {
 	for _, t := range v39.Trusted().Tables {
 		definitions[t.Name] = t
 	}
-	rows, bytes := 0, 0
+	rows := 0
 	for _, t := range plan.Tables {
 		rows += len(t.Rows)
 		if rows > MaxRows {
 			return invalid("В плане восстановления слишком много записей.")
 		}
 		for _, row := range t.Rows {
-			raw, e := json.Marshal(row)
-			if e != nil {
-				return e
-			}
-			bytes += len(raw)
-			if bytes > MaxBytes {
-				return &InputError{Status: 413, Message: "План восстановления превышает 25 МБ."}
-			}
-
 			for _, c := range definitions[t.Name].Columns {
 				if _, e := restoreScalar(row[c.Name], c); e != nil {
 					return e

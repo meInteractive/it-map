@@ -91,8 +91,6 @@ func TestMariaDBV39RestoreHTTPDisposable(t *testing.T) {
 	if e = f.db.QueryRowContext(f.ctx, "SELECT AUTO_INCREMENT FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='company_vacancies'").Scan(&counterAfter); e != nil || counterAfter != counter {
 		t.Fatal("validation changed counter")
 	}
-	call("eugene", "POST", "/api/backup/validate", "", strings.NewReader(`{}`), backup.MaxBytes+1, 413)
-	call("eugene", "POST", "/api/backup/validate", "", io.LimitReader(strings.NewReader(strings.Repeat(" ", backup.MaxBytes+1)), backup.MaxBytes+1), -1, 413)
 	tampered := bytes.Replace(f.body, []byte("Synthetic company"), []byte("CI tampered company"), 1)
 	call("eugene", "POST", "/api/backup", "", bytes.NewReader(tampered), -1, 400)
 	if gen != f.generation() || !reflect.DeepEqual(before, f.snapshot()) {

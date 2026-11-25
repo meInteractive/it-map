@@ -21,13 +21,10 @@ func (v *jsonValue) set(name string, value *jsonValue) {
 }
 
 // EncodeV39 constructs manifest/integrity from the supplied snapshot document,
-// validates it, and applies the exact formatted-download size cap. It preserves
+// validates it, and formats it for download. It preserves
 // source JSON property order and scalar values. No partial file is returned.
 // This is for constructing an export, not verifying an uploaded checksum.
 func EncodeV39(snapshot []byte) ([]byte, error) {
-	if len(snapshot) > MaxBytes {
-		return nil, &InputError{Status: 413, Message: "Полный бэкап превышает 25 МБ."}
-	}
 	root, err := orderedJSON(snapshot)
 	if err != nil {
 		return nil, err
@@ -73,16 +70,12 @@ func EncodeV39(snapshot []byte) ([]byte, error) {
 		return nil, err
 	}
 	root.set("integrity", node)
-	compact := root.stringify(nil, false)
-	if _, err = ValidateV39(compact); err != nil {
+	if _, err = validateVersionedRoot(root, 39, 39); err != nil {
 		return nil, err
 	}
 	var formatted bytes.Buffer
-	if err = json.Indent(&formatted, compact, "", "  "); err != nil {
+	if err = json.Indent(&formatted, root.stringify(nil, false), "", "  "); err != nil {
 		return nil, err
-	}
-	if formatted.Len() > MaxBytes {
-		return nil, &InputError{Status: 413, Message: "Полный бэкап превышает 25 МБ."}
 	}
 	return formatted.Bytes(), nil
 }

@@ -12,9 +12,6 @@ import (
 // the source format and are deliberately not promoted into trusted plan fields.
 // This does not enable runtime restore; modern and v39 entry points stay strict.
 func ValidateLegacyBackup(data []byte) (*Payload, error) {
-	if len(data) > MaxBytes {
-		return nil, &InputError{Status: 413, Message: "Файл бэкапа больше допустимых 25 МБ."}
-	}
 	root, e := orderedJSON(data)
 	if e != nil {
 		return nil, e

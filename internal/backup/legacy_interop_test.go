@@ -120,12 +120,10 @@ func TestLegacyUnsignedFormat(t *testing.T) {
 	if _, e := (Repository{}).Restore(context.Background(), valid); e == nil || ErrorStatus(e) == 400 {
 		t.Fatal("runtime restore did not reach storage for valid legacy input")
 	}
-	// Request-size enforcement is shared with ReadRequest; source full-layout
-	// validation itself has no byte cap and cannot serve as an import boundary.
 	oversized := append(append([]byte(nil), valid[:len(valid)-1]...), []byte(`,"ignored":"`)...)
-	oversized = append(oversized, bytes.Repeat([]byte{'x'}, MaxBytes)...)
+	oversized = append(oversized, bytes.Repeat([]byte{'x'}, 25*1024*1024)...)
 	oversized = append(oversized, []byte(`"}`)...)
-	if _, e := ValidateLegacyBackup(oversized); ErrorStatus(e) != 413 {
-		t.Fatal("legacy direct byte cap missing")
+	if _, e := ValidateLegacyBackup(oversized); e != nil {
+		t.Fatal("valid legacy snapshot over 25 MiB rejected")
 	}
 }

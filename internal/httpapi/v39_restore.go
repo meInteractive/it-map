@@ -45,7 +45,7 @@ func BackupRestoreHandler(manager *auth.Manager, store BackupRestorer, validate 
 		ctx, cancel := context.WithTimeout(r.Context(), 45*time.Second)
 		defer cancel()
 		r = r.WithContext(ctx)
-		data, e := backup.ReadRequest(r.Body, r.ContentLength)
+		data, e := backup.ReadRequest(r.Body)
 		if e != nil {
 			backupRestoreError(w, e)
 			return
