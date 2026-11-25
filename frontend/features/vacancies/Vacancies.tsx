@@ -22,7 +22,6 @@ import type {
   VacancyDeletionResult,
   VacancyDetail,
   VacancyDetailResponse,
-  ApplicationCreationContext,
 } from '../../../shared/contracts';
 import type { Filters } from '../companies/Filters';
 import {
@@ -38,6 +37,7 @@ import {
   type VacancyFilters,
 } from './model';
 import { vacancyRoleText } from './RoleTree';
+import { createQuickApplyIntent, quickApply, type QuickApplyIntent } from './quick-apply';
 export function VacancyActions({
   v,
   entities,
@@ -56,9 +56,7 @@ export function VacancyActions({
   const pending = useRef(false),
     alive = useRef(true);
   const uncertainDeletion = useRef<{ id: number; archived: boolean } | undefined>(undefined);
-  const intent = useRef<
-    { id: number; companyName: string; key: string; context?: string } | undefined
-  >(undefined);
+  const intent = useRef<QuickApplyIntent | undefined>(undefined);
   useEffect(() => {
     alive.current = true;
     return () => {
@@ -73,32 +71,11 @@ export function VacancyActions({
     setError(undefined);
     let sentDelete = false;
     try {
-      let url = '/api/vacancies/' + v.id + path;
       if (path === '/apply') {
-        const current = (intent.current ??= {
-          id: v.id,
-          companyName: v.companyName,
-          key: crypto.randomUUID(),
-        });
-        if (!current.context) {
-          const data = await request<ApplicationCreationContext>(
-            '/api/applications/create-context',
-          );
-          if (!alive.current) return;
-          if (
-            typeof data?.creationContext !== 'string' ||
-            !/^ac1\.[A-Za-z0-9_-]{43}$/.test(data.creationContext)
-          )
-            throw new ApiError('Не удалось подготовить создание отклика.', 503);
-          current.context = data.creationContext;
-        }
-        url = '/api/vacancies/' + current.id + '/apply/create';
-        body = {
-          companyName: current.companyName,
-          idempotencyKey: current.key,
-          creationContext: current.context,
-        };
+        await quickApply((intent.current ??= createQuickApplyIntent(v)), () => alive.current);
+        return;
       }
+      const url = '/api/vacancies/' + v.id + path;
       // После неизвестного результата DELETE сначала выясняем, прошёл ли COMMIT.
       // Для linked-вакансии второй DELETE уже означает безвозвратное удаление.
       if (method === 'DELETE' && uncertainDeletion.current?.id === v.id) {

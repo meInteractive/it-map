@@ -520,3 +520,38 @@ test('S11-B05-19/20: два личных флага перечитываются
   ]);
   expect(v.revision).toBe('ci-revision');
 });
+
+test('быстрый отклик из письма повторяет запрос списка и обновляет обе кнопки', async ({ page }) => {
+  const vacancy = record(851, 'CI быстрый отклик');
+  const creationContext = 'ac1.' + 'A'.repeat(43);
+  const requests: unknown[] = [];
+  await fixture(page, { records: [vacancy] });
+  await page.route('**/api/applications/create-context', (route) =>
+    json(route, { creationContext }),
+  );
+  await page.route('**/api/vacancies/851/apply/create', async (route) => {
+    expect(route.request().method()).toBe('POST');
+    requests.push(route.request().postDataJSON());
+    if (requests.length === 1) return json(route, { error: 'CI повторите отклик' }, 503);
+    vacancy.applicationId = 91;
+    return json(route, { ok: true, vacancy });
+  });
+
+  await open(page, vacancy.title);
+  const dialog = page.getByRole('dialog');
+  await dialog.getByRole('tab', { name: 'Письмо' }).click();
+  const apply = dialog.getByRole('button', { name: 'Откликнуться' });
+  await expect(dialog.getByRole('link', { name: 'Открыть источник' })).toBeVisible();
+  await apply.click();
+  await expect(dialog.getByText('CI повторите отклик')).toBeVisible();
+  await apply.click();
+  await expect(dialog.getByRole('button', { name: 'Отклик создан' })).toBeDisabled();
+  await expect(page.locator('.vacancy-apply').getByText('Отклик создан')).toBeAttached();
+  expect(requests).toHaveLength(2);
+  expect(requests[0]).toEqual({
+    companyName: vacancy.companyName,
+    creationContext,
+    idempotencyKey: expect.stringMatching(/^[a-f0-9-]{36}$/),
+  });
+  expect(requests[1]).toEqual(requests[0]);
+});
