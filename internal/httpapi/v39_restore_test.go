@@ -75,7 +75,7 @@ func TestV39RestoreHTTPContract(t *testing.T) {
 			body   io.Reader
 			length int64
 			status int
-		}{{strings.NewReader(`{`), -1, 400}, {brokenRestoreBody{}, -1, 400}, {strings.NewReader(`{}`), backup.MaxBytes + 1, 413}, {io.LimitReader(zeroRestoreReader{}, backup.MaxBytes+1), -1, 413}} {
+		}{{strings.NewReader(`{`), -1, 400}, {brokenRestoreBody{}, -1, 400}} {
 			w := call("eugene", "POST", path, "", tc.body, tc.length)
 			if w.Code != tc.status {
 				t.Fatalf("body status=%d want=%d", w.Code, tc.status)
@@ -86,8 +86,8 @@ func TestV39RestoreHTTPContract(t *testing.T) {
 		t.Fatal("denied/invalid requests reached restore storage")
 	}
 	for _, path := range []string{"/api/backup", "/api/backup/validate"} {
-		w := call("eugene", "POST", path, "https://itmap.test", strings.NewReader("\ufeff{}"), -1)
-		if w.Code != 200 || string(p.body) != "{}" || !strings.Contains(w.Body.String(), `"ok":true`) {
+		w := call("eugene", "POST", path, "https://itmap.test", io.MultiReader(strings.NewReader("\ufeff"), strings.NewReader(strings.Repeat(" ", 25*1024*1024)), strings.NewReader("{}")), -1)
+		if w.Code != 200 || strings.TrimSpace(string(p.body)) != "{}" || !strings.Contains(w.Body.String(), `"ok":true`) {
 			t.Fatal("BOM/summary differs")
 		}
 		p.err = errors.New("CI_SQL_PRIVATE")
@@ -101,13 +101,4 @@ func TestV39RestoreHTTPContract(t *testing.T) {
 		}
 		p.err = nil
 	}
-}
-
-type zeroRestoreReader struct{}
-
-func (zeroRestoreReader) Read(p []byte) (int, error) {
-	for i := range p {
-		p[i] = ' '
-	}
-	return len(p), nil
 }

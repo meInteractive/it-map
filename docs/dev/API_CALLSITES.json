@@ -2061,10 +2061,10 @@
       "dynamicURL": true
     },
     {
-      "id": "6738fabbae525f6b",
+      "id": "f54310426e135eae",
       "file": "frontend/features/settings/Transfer.tsx",
-      "line": 246,
-      "call": "mutate",
+      "line": 239,
+      "call": "request",
       "method": "POST",
       "methodExpression": "'POST'",
       "urlExpression": "'/api/backup/validate'",
@@ -2077,10 +2077,10 @@
       "dynamicURL": false
     },
     {
-      "id": "b65ee00cd5254776",
+      "id": "9feca33222492086",
       "file": "frontend/features/settings/Transfer.tsx",
-      "line": 283,
-      "call": "mutate",
+      "line": 280,
+      "call": "request",
       "method": "POST",
       "methodExpression": "'POST'",
       "urlExpression": "'/api/backup'",

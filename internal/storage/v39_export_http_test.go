@@ -74,13 +74,16 @@ func TestMariaDBV39ExportHTTPDisposable(t *testing.T) {
 		req.AddCookie(h.cookies["eugene"])
 		w := httptest.NewRecorder()
 		h.handler.ServeHTTP(w, req)
-		if w.Code != http.StatusOK || w.Body.Len() <= backup.MaxBytes ||
+		if w.Code != http.StatusOK || w.Body.Len() <= 25*1024*1024 ||
 			w.Header().Get("Content-Length") != strconv.Itoa(w.Body.Len()) ||
 			w.Header().Get("Content-Disposition") == "" {
 			t.Fatalf("large backup download status=%d bytes=%d", w.Code, w.Body.Len())
 		}
 		if !json.Valid(w.Body.Bytes()) || bytes.Count(w.Body.Bytes(), []byte(marker)) != rows {
 			t.Fatal("large backup omitted rows or produced invalid JSON")
+		}
+		if _, err := (backup.Repository{DB: f.db}).ValidateRestore(f.ctx, w.Body.Bytes()); err != nil {
+			t.Fatalf("large download rejected by restore validation: %v", err)
 		}
 	})
 	t.Run("HTTP late query failure generic and no attachment or partial file", func(t *testing.T) {

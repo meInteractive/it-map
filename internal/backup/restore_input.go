@@ -15,11 +15,8 @@ func PrepareRestore(data []byte, current []Table, now time.Time) (*RestorePlan, 
 	return prepareHistoricalPayload(payload, current, now)
 }
 func validateRestoreInput(data []byte) (*Payload, error) {
-	// Bound input before the dispatch pass copies RawMessage values. A map keeps
+	// A map keeps
 	// property names case-sensitive and follows the source's last duplicate wins.
-	if len(data) > MaxBytes {
-		return nil, &InputError{Status: 413, Message: "Файл бэкапа больше допустимых 25 МБ."}
-	}
 	var root map[string]json.RawMessage
 	if json.Unmarshal(data, &root) == nil {
 		var version float64

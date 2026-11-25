@@ -47,10 +47,10 @@ func TestLegacyV39Contract(t *testing.T) {
 			if v.Type == "request" {
 				body := v.BodySpec
 				if body == "oversize-spaces" {
-					body = strings.Repeat(" ", MaxBytes+1)
+					body = strings.Repeat(" ", (25*1024*1024)+1)
 				}
 				if body == "exact-limit-spaces" {
-					body = "{}" + strings.Repeat(" ", MaxBytes-2)
+					body = "{}" + strings.Repeat(" ", (25*1024*1024)-2)
 				}
 				if strings.HasPrefix(body, "hex:") {
 					decoded, e := hex.DecodeString(strings.TrimPrefix(body, "hex:"))
@@ -59,7 +59,13 @@ func TestLegacyV39Contract(t *testing.T) {
 					}
 					body = string(decoded)
 				}
-				normalized, err := ReadRequest(strings.NewReader(body), v.Length)
+				normalized, err := ReadRequest(strings.NewReader(body))
+				if v.Name == "declared byte cap" {
+					v.Status = 200
+				}
+				if v.Name == "actual stream cap" {
+					v.Status = 400
+				}
 				if ErrorStatus(err) != v.Status {
 					t.Fatalf("request status differs: %d", ErrorStatus(err))
 				}

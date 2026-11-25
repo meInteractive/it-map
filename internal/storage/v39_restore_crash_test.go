@@ -65,8 +65,8 @@ func restoreCrashWorker(t *testing.T, mode string) {
 		t.Fatal("invalid disposable restore worker")
 	}
 	ctx, guard := openDisposableMariaDB(t)
-	body, e := io.ReadAll(io.LimitReader(os.Stdin, backup.MaxBytes+1))
-	if e != nil || len(body) > backup.MaxBytes {
+	body, e := io.ReadAll(os.Stdin)
+	if e != nil {
 		t.Fatal("invalid synthetic worker input")
 	}
 	repo := backup.Repository{DB: guard}

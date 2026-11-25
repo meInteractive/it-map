@@ -180,7 +180,7 @@ func encodeScalarText(s string) json.RawMessage {
 	return bytes.TrimSuffix(b.Bytes(), []byte("\n"))
 }
 
-type exportBudget struct{ bytes, rows, maxBytes int }
+type exportBudget struct{ rows int }
 
 func readRows(ctx context.Context, tx *sql.Tx, t sqlTable, names []string, budget *exportBudget, application bool) ([]json.RawMessage, int64, error) {
 	return readRowsMode(ctx, tx, t, names, budget, application, false)
@@ -241,12 +241,6 @@ func readRowsMode(ctx context.Context, tx *sql.Tx, t sqlTable, names []string, b
 			}
 		}
 		out = append(out, '}')
-		if budget.maxBytes > 0 {
-			if len(out) > budget.maxBytes-budget.bytes {
-				return nil, 0, &InputError{Status: 413, Message: "План восстановления превышает 25 МБ."}
-			}
-			budget.bytes += len(out)
-		}
 		result = append(result, out)
 	}
 	return result, maxID, rows.Err()

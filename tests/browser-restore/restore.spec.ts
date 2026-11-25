@@ -40,7 +40,7 @@ test('Бэкап: скачать, проверить, отменить и вос
   const card = restoreCard(page), button = card.getByRole('button', { name: 'Восстановить данные', exact: true });
   await expect(button).toBeDisabled();
   const validation = page.waitForResponse(r => new URL(r.url()).pathname === '/api/backup/validate' && r.request().method() === 'POST');
-  await card.locator('input[type=file]').setInputFiles({ name: 'CI-backup-v39.json', mimeType: 'application/json', buffer: body });
+  await card.locator('input[type=file]').setInputFiles({ name: 'CI-backup-v39.json', mimeType: 'application/json', buffer: Buffer.concat([body, Buffer.alloc(25 * 1024 * 1024, 32)]) });
   expect((await validation).status()).toBe(200);
   await expect(card.locator('.backup-preview')).toContainText('Разделов данных:');
   await expect(button).toBeEnabled();
@@ -64,7 +64,7 @@ test('Бэкап: скачать, проверить, отменить и вос
   expect((await favorites.json()).companyNames).toEqual([]);
 });
 
-test('Бэкап: невалидный и слишком большой файл не разрешают восстановление', async ({ page, activate }) => {
+test('Бэкап: невалидные файлы не разрешают восстановление', async ({ page, activate }) => {
   await login(page, activate);
   const card = restoreCard(page), input = card.locator('input[type=file]'), button = card.getByRole('button', { name: 'Восстановить данные', exact: true });
   let posts = 0;
@@ -73,7 +73,7 @@ test('Бэкап: невалидный и слишком большой файл
   await expect(card.getByRole('alert')).toBeVisible();
   await expect(button).toBeDisabled();
   await input.setInputFiles({ name: 'CI-large.json', mimeType: 'application/json', buffer: Buffer.alloc(25 * 1024 * 1024 + 1, 32) });
-  await expect(card).toContainText('Файл больше допустимых 25 МБ.');
+  await expect(card).toContainText('Некорректный JSON бэкапа.');
   await expect(button).toBeDisabled();
   const validation = page.waitForResponse(r => new URL(r.url()).pathname === '/api/backup/validate' && r.request().method() === 'POST');
   await input.setInputFiles({ name: 'CI-invalid-shape.json', mimeType: 'application/json', buffer: Buffer.from('{}') });

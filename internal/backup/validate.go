@@ -14,7 +14,6 @@ import (
 
 const Format = "moscow-it-employers-backup"
 const Version = 39
-const MaxBytes = 25 * 1024 * 1024
 const MaxRows = 200000
 const MaxTables = 52
 const maxSafeInteger = 9007199254740991
@@ -136,9 +135,6 @@ func ValidateV39(data []byte) (*Payload, error) { return validateVersioned(data,
 func ValidateModernBackup(data []byte) (*Payload, error) { return validateVersioned(data, 16, 39) }
 
 func validateVersioned(data []byte, minimum, maximum int) (*Payload, error) {
-	if len(data) > MaxBytes {
-		return nil, &InputError{Status: 413, Message: "Файл бэкапа больше допустимых 25 МБ."}
-	}
 	root, err := orderedJSON(data)
 	if err != nil {
 		return nil, err
