@@ -323,10 +323,10 @@ func loadCatalogState(ctx context.Context, tx *sql.Tx, user string) (catalogStat
 		return s, err
 	}
 	// The legacy rule prefers applications tied to a vacancy, then the status
-	// furthest along the application funnel ("Отказ" sorts below all others).
+	// furthest along the application funnel (terminal outcomes sort below active stages).
 	rows, err = tx.QueryContext(ctx, `SELECT company_name,status FROM company_applications WHERE user_name=?
   ORDER BY company_name,(vacancy_id IS NOT NULL) DESC,
-  CASE status WHEN 'Отказ' THEN 0 WHEN '' THEN -1 WHEN 'Откликнулся' THEN 1
+  CASE status WHEN 'Резерв' THEN 0.5 WHEN 'Отказ' THEN 0 WHEN 'Нет ответа' THEN -0.5 WHEN '' THEN -1 WHEN 'Откликнулся' THEN 1
    WHEN 'Получил ответ' THEN 2 WHEN 'Скрининг' THEN 3 WHEN 'Собес 2' THEN 4
    WHEN 'Собес 3' THEN 5 WHEN 'Собес 4' THEN 6 WHEN 'Офер' THEN 7 ELSE -1 END DESC,
   updated_at DESC,id DESC`, user)

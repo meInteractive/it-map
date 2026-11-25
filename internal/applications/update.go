@@ -47,7 +47,7 @@ func (in UpdateInput) normalize() (UpdateInput, error) {
 		return in, fmt.Errorf("%w: invalid vacancy ID", ErrInvalidInput)
 	}
 	knownStatus := false
-	for _, s := range []string{"", "Откликнулся", "Получил ответ", "Скрининг", "Собес 2", "Собес 3", "Собес 4", "Офер", "Отказ"} {
+	for _, s := range []string{"", "Откликнулся", "Получил ответ", "Скрининг", "Собес 2", "Собес 3", "Собес 4", "Офер", "Отказ", "Резерв", "Нет ответа"} {
 		if in.Status == s {
 			knownStatus = true
 			break

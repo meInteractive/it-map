@@ -62,10 +62,24 @@ response=await request('/api/applications/'+id,'PUT',{revision:(await response.c
 const history=sqlite.prepare('SELECT from_status, to_status FROM company_application_status_history WHERE application_id=? ORDER BY id').all(id);
 assert.deepEqual(history.map(row=>[row.from_status,row.to_status]),[['','Отказ'],['Отказ','Откликнулся'],['Откликнулся','Отказ']]);
 assert.equal(sqlite.prepare('SELECT status FROM company_applications WHERE id=?').get(id).status,'Отказ');
-const {applicationMatchesStatusFilter:matches,StatusOptions}=await moduleFor('frontend/features/applications/Applications.tsx');assert.match(render(StatusOptions),/<option value="Отказ">Отказ<\/option>/);
-for(const status of ['', 'Откликнулся','Офер','Отказ']){
- assert.equal(matches({status},''),status!=='Отказ','Default filter: '+status);
- assert.equal(matches({status},'Отказ'),status==='Отказ','Explicit rejection filter: '+status);
+let previous = 'Отказ';
+for (const status of ['Резерв','Нет ответа']) {
+  const current = (await response.json()).records.find(record => record.id === id);
+  response = await request('/api/applications/'+id,'PUT',{revision:current.revision,status,applicationSources:['hh']});
+  assert.equal(response.status,200,await response.clone().text());
+  const saved = (await response.clone().json()).records.find(record => record.id === id);
+  assert.equal(saved.status,status);
+  assert.equal(saved.history[0].fromStatus,previous);
+  assert.equal(saved.history[0].toStatus,status);
+  previous = status;
+}
+const {applicationMatchesStatusFilter:matches,StatusOptions}=await moduleFor('frontend/features/applications/Applications.tsx');
+const options = render(StatusOptions);
+assert.match(options,/<option value="Отказ">Отказ<\/option><option value="Резерв">Резерв<\/option><option value="Нет ответа">Нет ответа<\/option>/);
+const outcomes = ['Отказ','Резерв','Нет ответа'];
+for(const status of ['', 'Откликнулся','Офер',...outcomes]){
+ assert.equal(matches({status},''),!outcomes.includes(status),'Default filter: '+status);
+ for(const outcome of outcomes) assert.equal(matches({status},outcome),status===outcome,'Explicit outcome filter: '+status);
  assert.equal(matches({status},'__none__'),status==='','No-status filter: '+status);
 }
-console.log('Application rejection verified: POST/PUT, history, owner isolation, API preservation, both UI status controls and default/explicit filters.');
+console.log('Application outcomes verified: POST/PUT, history, owner isolation, API preservation and UI filters.');

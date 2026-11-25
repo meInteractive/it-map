@@ -197,6 +197,8 @@ export const statuses = [
   'Собес 4',
   'Офер',
   'Отказ',
+  'Резерв',
+  'Нет ответа',
 ];
 export const levels = ['Senior', 'Middle', 'Lead', 'Head'];
 export const sourceLabels: Record<string, string> = {

@@ -40,7 +40,7 @@ const cases = [
  ['email-nel-preserved', {recruiterEmail:'ci\u0085name@example.invalid'}],
  ['ecmascript-whitespace', {companyName:'\u0009\u000B\u000C\u000D\u0020\u00A0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u2028\u2029\u202F\u205F\u3000\uFEFFCI Synthetic Employer\n'}],
 ];
-for (const status of ['', 'Откликнулся','Получил ответ','Скрининг','Собес 2','Собес 3','Собес 4','Офер','Отказ']) cases.push(['status-'+(status||'empty'),{status}]);
+for (const status of ['', 'Откликнулся','Получил ответ','Скрининг','Собес 2','Собес 3','Собес 4','Офер','Отказ','Резерв','Нет ответа']) cases.push(['status-'+(status||'empty'),{status}]);
 const vectors=[];
 for (const [name,patch] of cases) {
  const input={...base,...patch};

@@ -20,7 +20,7 @@ type SaveInput struct {
 
 func (in SaveInput) Validate() error {
 	known := false
-	for _, status := range []string{"", "Откликнулся", "Получил ответ", "Скрининг", "Собес 2", "Собес 3", "Собес 4", "Офер", "Отказ"} {
+	for _, status := range []string{"", "Откликнулся", "Получил ответ", "Скрининг", "Собес 2", "Собес 3", "Собес 4", "Офер", "Отказ", "Резерв", "Нет ответа"} {
 		if in.Status == status {
 			known = true
 			break
