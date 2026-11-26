@@ -290,3 +290,12 @@ func unitsPrefix(text []uint16, prefix string) bool {
 	}
 	return true
 }
+
+// CatalogExportSource возвращает полный нормализованный каталог без записи рейтингов.
+func CatalogExportSource(data []byte) (json.RawMessage, error) {
+	root, err := storedReadCatalog(data)
+	if err != nil {
+		return nil, err
+	}
+	return rawValue(root), nil
+}
