@@ -290,3 +290,23 @@ func unitsPrefix(text []uint16, prefix string) bool {
 	}
 	return true
 }
+
+// NormalizeStoredCatalog применяет правила каталога и расчёт рейтинга без записи в БД.
+func NormalizeStoredCatalog(data []byte) (json.RawMessage, error) {
+	root, err := storedReadCatalog(data)
+	if err != nil {
+		return nil, err
+	}
+	return rawValue(root), nil
+}
+
+// CatalogAgencyOptions возвращает допустимые значения поля агентства.
+func CatalogAgencyOptions(field string) []string {
+	var options []string
+	if values := catalogPolicy().field("options").field(field); values != nil {
+		for _, value := range values.items {
+			options = append(options, stringFromUnits(value.text))
+		}
+	}
+	return options
+}
