@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/xml"
 	"io"
+	"itmap/internal/xlsx"
 	"strings"
 	"testing"
 )
@@ -29,12 +30,13 @@ func vacancyExportSheet(t *testing.T, file []byte) string {
 }
 
 func TestVacancyExportWorkbook(t *testing.T) {
-	book, err := newVacancyWorkbook()
+	book, err := xlsx.New("Вакансии")
 	if err != nil {
 		t.Fatal(err)
 	}
-	book.row(sql.NullInt64{Int64: 17, Valid: true}, "=1+1 < &", "Markdown\nтекст", sql.NullInt64{})
-	file, err := book.finish()
+	book.Sheet(exportHeaders, vacancyExportColumns)
+	book.Row(sql.NullInt64{Int64: 17, Valid: true}, "=1+1 < &", "Markdown\nтекст", sql.NullInt64{})
+	file, err := book.Finish()
 	if err != nil {
 		t.Fatal(err)
 	}
