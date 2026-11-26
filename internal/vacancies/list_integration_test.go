@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"errors"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -56,4 +57,16 @@ func TestMariaDBVacancyListReadOnlyIntegration(t *testing.T) {
 			}
 		}
 	}
+	t.Run("vacancy XLSX on read-only credentials", func(t *testing.T) {
+		file, err := (Repository{DB: db}).ExportXLSX(ctx, "Eugene")
+		if err != nil {
+			t.Fatalf("XLSX export failed: %v", err)
+		}
+		sheet := vacancyExportSheet(t, file)
+		if !strings.Contains(sheet, "Название вакансии") ||
+			(os.Getenv("ITMAP_TEST_SYNTHETIC_READS") == "1" && !strings.Contains(sheet, "CI Synthetic Vacancy")) {
+			t.Fatal("XLSX omitted headings or synthetic vacancy")
+		}
+	})
+
 }

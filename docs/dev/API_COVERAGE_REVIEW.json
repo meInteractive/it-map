@@ -761,9 +761,9 @@
     },
     {
       "id": "exports",
-      "implementation": "unported",
-      "level": "Reviewed JSX download bindings",
-      "gap": "Excel company/review/source/vacancy exports не равны реализованному JSON backup; Go routes отсутствуют.",
+      "implementation": "partial",
+      "level": "Go XLSX export вакансий, HTTP unit и MariaDB synthetic read",
+      "gap": "Excel-экспорт компаний, отзывов и источников ещё не перенесён.",
       "evidence": [
         {
           "file": "internal/httpapi/handler.go"
@@ -842,7 +842,7 @@
   ],
   "sourceHashes": {
     "frontend/api/client.ts": "bf28292cedd86d0446ede754335663b7eeb7db27cd284edd423bddffa74bbfa6",
-    "internal/httpapi/handler.go": "b6898a1670a243441db846ec9971da73a54f307108280a3efe6bd5ff908f3187",
+    "internal/httpapi/handler.go": "6d29f06bcd48328a9e49d7f3f37ffa709786ba9aabb1eb416c22b4f3f5962466",
     "server/routes/index.js": "6134004f682975cb51ea13cd2ec4de8e85a5957deff6a5392fbad3fd70ccb1e4"
   },
   "clientExports": [
