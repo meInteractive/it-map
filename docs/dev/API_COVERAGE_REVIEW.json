@@ -798,12 +798,13 @@
     },
     {
       "id": "docs",
-      "implementation": "unported",
-      "level": "Repository documentation exists",
-      "gap": "GET /api/docs manifest/section handler в Go отсутствует; файлы docs не являются HTTP реализацией.",
+      "implementation": "partial",
+      "level": "Go HTTP: манифест, восемь разделов и скачивание Markdown",
+      "gap": "Приёмка в опубликованном приложении ещё не выполнена.",
       "evidence": [
         {
-          "file": "internal/httpapi/handler.go"
+          "file": "internal/httpapi/documentation_test.go",
+          "symbol": "TestDocumentationRoutes"
         }
       ]
     },
@@ -851,7 +852,7 @@
   ],
   "sourceHashes": {
     "frontend/api/client.ts": "bf28292cedd86d0446ede754335663b7eeb7db27cd284edd423bddffa74bbfa6",
-    "internal/httpapi/handler.go": "63a14400fc66ef96feea7cd3bb23872660e02a8b3c9110dc8ec28a861a66654b",
+    "internal/httpapi/handler.go": "8d9f4b4039c727b653864cdac3fd878f76afd949741a5e4ea9e8795398dbac32",
     "server/routes/index.js": "6134004f682975cb51ea13cd2ec4de8e85a5957deff6a5392fbad3fd70ccb1e4"
   },
   "clientExports": [

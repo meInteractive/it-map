@@ -26,6 +26,7 @@ RUN --mount=type=secret,id=proxy_ca \
     go mod download && go mod verify
 COPY cmd/ cmd/
 COPY internal/ internal/
+COPY docs/user/ docs/user/
 RUN go build -mod=readonly -trimpath -tags mariadb -o /out/itmap ./cmd/itmap
 
 FROM scratch
