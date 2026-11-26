@@ -1934,12 +1934,12 @@ jobs:
           ITMAP_TEST_MARIADB_WRITE_DSN: 'itmap_ci:ci_only_disposable_writer@tcp(127.0.0.1:3306)/itmap_ci?parseTime=true&clientFoundRows=true&collation=utf8mb4_bin'
         run: |
           set -euo pipefail
-          go test -race -tags mariadb,catalogreads ./internal/storage -run '^TestMariaDBCatalogRead.*Disposable$' -count=1 -json | tee "$RUNNER_TEMP/catalog-reads.jsonl"
+          go test -race -tags mariadb,catalogreads ./internal/storage -run '^TestMariaDBCatalog(Read.*|Import)Disposable$' -count=1 -json | tee "$RUNNER_TEMP/catalog-reads.jsonl"
           python3 - "$RUNNER_TEMP/catalog-reads.jsonl" <<'PYTEST'
           import json,sys
           events=[json.loads(line) for line in open(sys.argv[1]) if line.startswith('{')]
           assert not any(e.get('Action')=='skip' for e in events), 'catalog acceptance must have zero skips'
-          for target in ['TestMariaDBCatalogReadSourceDisposable','TestMariaDBCatalogReadFailuresDisposable','TestMariaDBCatalogReadSnapshotDisposable']:
+          for target in ['TestMariaDBCatalogReadSourceDisposable','TestMariaDBCatalogReadFailuresDisposable','TestMariaDBCatalogReadSnapshotDisposable','TestMariaDBCatalogImportDisposable']:
               assert any(e.get('Test')==target and e.get('Action')=='pass' for e in events), f'required catalog parent did not pass/run: {target}'
           assert len([e for e in events if e.get('Action')=='pass' and e.get('Test','').startswith('TestMariaDBCatalogReadSourceDisposable/')])==12, 'missing source catalog frames'
           print('PASS: 2592 unchanged SQLite/router responses, SELECT-only account, full row immutability, private errors and actual snapshot concurrency; zero skips')
