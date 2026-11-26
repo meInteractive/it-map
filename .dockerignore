@@ -11,6 +11,11 @@
 !cmd/**
 !internal/
 !internal/**
+!docs/
+!docs/user/
+!docs/user/assets.go
+!docs/user/manifest.json
+!docs/user/*.md
 !web/
 !web/**
 !frontend/

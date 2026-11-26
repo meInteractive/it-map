@@ -302,6 +302,9 @@ func NewHandlerWithOptions(logger *slog.Logger, opts Options) http.Handler {
 		mux.HandleFunc("GET /api/vacancy-roles/roots", VacancyRoleHandler(opts.Auth, opts.Roles, "roots"))
 		mux.HandleFunc("GET /api/vacancy-roles/leaves", VacancyRoleHandler(opts.Auth, opts.Roles, "leaves"))
 		mux.HandleFunc("GET /api/vacancy-roles/{id}/descendants", VacancyRoleHandler(opts.Auth, opts.Roles, "descendants"))
+		docs := documentationHandler(opts.Auth)
+		mux.HandleFunc("/api/docs", docs)
+		mux.HandleFunc("/api/docs/", docs)
 		protected = RequireSession(opts.Auth, unmigrated)
 	}
 	mux.HandleFunc("/api/", protected)
