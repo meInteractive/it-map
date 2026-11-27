@@ -114,6 +114,11 @@
       "evidence": [
         {
           "file": "internal/storage/vacancy_create_http_test.go",
+          "symbol": "TestMariaDBVacancyImportHTTPDisposable",
+          "required": true
+        },
+        {
+          "file": "internal/storage/vacancy_create_http_test.go",
           "symbol": "TestMariaDBVacancyCreateHTTPDisposable",
           "required": true
         },
@@ -852,7 +857,7 @@
   ],
   "sourceHashes": {
     "frontend/api/client.ts": "bf28292cedd86d0446ede754335663b7eeb7db27cd284edd423bddffa74bbfa6",
-    "internal/httpapi/handler.go": "8d9f4b4039c727b653864cdac3fd878f76afd949741a5e4ea9e8795398dbac32",
+    "internal/httpapi/handler.go": "134b14fa4d2a271f7f04a0889f0d72074f2087adf90c30f3333ba2f63dbc69cc",
     "server/routes/index.js": "6134004f682975cb51ea13cd2ec4de8e85a5957deff6a5392fbad3fd70ccb1e4"
   },
   "clientExports": [

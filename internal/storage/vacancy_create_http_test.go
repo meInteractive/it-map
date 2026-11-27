@@ -4,6 +4,7 @@ package storage
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -32,7 +33,7 @@ func openVacancyCreateHTTP(f *vacancyCreateFixture, writer vacancies.Repository)
 		f.t.Fatal("cannot initialize synthetic vacancy creation auth")
 	}
 	h := &vacancyCreateHTTP{f: f, cookies: map[string]*http.Cookie{}}
-	h.handler = httpapi.NewHandlerWithOptions(slog.New(slog.NewTextHandler(io.Discard, nil)), httpapi.Options{DB: f.db, Auth: manager, Vacancies: f.repo, CompanyVacancies: f.repo, VacancyDetails: f.repo, VacancyCreates: writer})
+	h.handler = httpapi.NewHandlerWithOptions(slog.New(slog.NewTextHandler(io.Discard, nil)), httpapi.Options{DB: f.db, Auth: manager, Vacancies: f.repo, CompanyVacancies: f.repo, VacancyDetails: f.repo, VacancyCreates: writer, VacancyImports: writer})
 	for _, login := range []string{"eugene", "demo", "nastya"} {
 		form := url.Values{"login": {login}, "password": {"CI_SYNTHETIC_TASK_PASSWORD"}}
 		req := httptest.NewRequest("POST", "https://itmap.test/auth", strings.NewReader(form.Encode()))
@@ -204,4 +205,50 @@ func TestMariaDBVacancyCreateHTTPDisposable(t *testing.T) {
 			t.Fatal("HTTP creator retry failed")
 		}
 	})
+}
+
+func TestMariaDBVacancyImportHTTPDisposable(t *testing.T) {
+	f := openVacancyCreateFixture(t)
+	companyID := f.insert("INSERT INTO company_identity(company_name) VALUES(?)", crudCompany)
+	t.Cleanup(func() {
+		if _, err := f.db.ExecContext(context.Background(), "DELETE FROM company_identity WHERE id=?", companyID); err != nil {
+			t.Error(err)
+		}
+	})
+	h := openVacancyCreateHTTP(f, f.repo)
+	path := "/api/vacancies/import"
+	link := crudURLPrefix + "excel"
+	row := map[string]any{"companyId": companyID, "url": link, "title": "CI Excel vacancy", "role": "CI GO088 Root → CI GO088 Leaf", "level": "Senior", "coverLetterMd": "CI shared letter", "relevance": "63"}
+	h.call("demo", "POST", path, map[string]any{"rows": []any{row}}, 403)
+	h.call("eugene", "POST", path, map[string]any{"rows": []any{row}}, 403, http.Header{"Origin": []string{"https://other.invalid"}})
+	h.call("eugene", "POST", path, "{", 400)
+	run := func(mode string, rows ...any) vacancies.ImportResult {
+		t.Helper()
+		return vacancyCreateJSON[vacancies.ImportResult](t, h.call("eugene", "POST", path, map[string]any{"mode": mode, "rows": rows}, 200))
+	}
+	bad := map[string]any{"companyId": companyID, "url": crudURLPrefix + "bad-date", "publishedAt": "2026-02-30"}
+	result := run("create", row, bad, row)
+	if !result.OK || result.Imported != 1 || result.Invalid != 2 || len(result.Errors) != 2 || result.Errors[0].Row != 3 {
+		t.Fatalf("первый импорт: %+v", result)
+	}
+	id := f.id(link)
+	if v := f.detail("Eugene", id); v.Relevance == nil || *v.Relevance != 63 || len(v.Roles) != 1 {
+		t.Fatal("потеряна роль или личная оценка")
+	}
+	if v := f.detail("Demo", id); v.Relevance != nil {
+		t.Fatal("личная оценка доступна другому пользователю")
+	}
+	if result = run("create", row); result.Duplicates != 1 || result.Imported != 0 {
+		t.Fatalf("повторный импорт: %+v", result)
+	}
+	delete(row, "coverLetterMd")
+	row["title"], row["relevance"] = "CI Excel updated", "0"
+	missing := map[string]any{"companyId": companyID, "url": crudURLPrefix + "missing"}
+	if result = run("update", row, missing); result.Updated != 1 || result.MissingSkipped != 1 {
+		t.Fatalf("обновление: %+v", result)
+	}
+	updated := f.detail("Eugene", id)
+	if updated.Title != "CI Excel updated" || updated.CoverLetterMD != "CI shared letter" || updated.Relevance == nil || *updated.Relevance != 0 {
+		t.Fatal("потеряно письмо, заголовок или нулевая оценка")
+	}
 }

@@ -53,7 +53,7 @@ func (r Repository) CreateManual(ctx context.Context, user string, raw Input) ([
 	// All Go manual creates use the same connection-scoped lock, so two URLs
 	// or Telegram messages cannot be inserted concurrently by this endpoint.
 	var acquired sql.NullInt64
-	if err = conn.QueryRowContext(ctx, `SELECT GET_LOCK('itmap:manual-vacancy:create', 5)`).Scan(&acquired); err != nil {
+	if err = conn.QueryRowContext(ctx, `SELECT GET_LOCK('`+manualVacancyCreateLock+`', 5)`).Scan(&acquired); err != nil {
 		return nil, err
 	}
 	if !acquired.Valid || acquired.Int64 != 1 {
@@ -67,7 +67,7 @@ func (r Repository) CreateManual(ctx context.Context, user string, raw Input) ([
 		released = true
 		releaseCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
-		_, _ = conn.ExecContext(releaseCtx, `DO RELEASE_LOCK('itmap:manual-vacancy:create')`)
+		_, _ = conn.ExecContext(releaseCtx, `DO RELEASE_LOCK('`+manualVacancyCreateLock+`')`)
 	}
 	defer release()
 	tx, err := conn.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
