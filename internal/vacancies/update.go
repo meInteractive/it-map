@@ -313,16 +313,7 @@ func (r Repository) updateManualOnce(ctx context.Context, user string, id int64,
 		}
 	}
 	// Update all duplicate legacy user-state rows, preserving favorite/hidden.
-	var stateCount int64
-	if err = tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM company_vacancy_user_state WHERE user_name=? AND vacancy_id=?`, user, id).Scan(&stateCount); err != nil {
-		return nil, err
-	}
-	if stateCount > 0 {
-		_, err = tx.ExecContext(ctx, `UPDATE company_vacancy_user_state SET relevance=?,updated_at=CURRENT_TIMESTAMP WHERE user_name=? AND vacancy_id=?`, in.Relevance, user, id)
-	} else {
-		_, err = tx.ExecContext(ctx, `INSERT INTO company_vacancy_user_state(user_name,vacancy_id,relevance,updated_at) VALUES(?,?,?,CURRENT_TIMESTAMP)`, user, id, in.Relevance)
-	}
-	if err != nil {
+	if err = saveUserRelevance(ctx, tx, user, id, in.Relevance); err != nil {
 		return nil, err
 	}
 	if err = tx.Commit(); err != nil {
