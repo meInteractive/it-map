@@ -18,13 +18,18 @@ func (p *vacancyExportProbe) ExportXLSX(_ context.Context, user string) ([]byte,
 	return []byte("synthetic xlsx"), nil
 }
 
+func (p *vacancyExportProbe) ExportCompaniesXLSX(_ context.Context) ([]byte, error) {
+	p.users = append(p.users, "companies")
+	return []byte("synthetic xlsx"), nil
+}
+
 func TestVacancyExportRoute(t *testing.T) {
 	manager, err := auth.NewManager(strings.Repeat("k", 64), map[string]string{"eugene": "synthetic", "demo": "synthetic"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	exporter := &vacancyExportProbe{}
-	handler := NewHandlerWithOptions(nil, Options{Auth: manager, VacancyExports: exporter})
+	handler := NewHandlerWithOptions(nil, Options{Auth: manager, VacancyExports: exporter, CompanyExports: exporter})
 	for _, tc := range []struct {
 		user, method string
 		status       int
@@ -55,4 +60,27 @@ func TestVacancyExportRoute(t *testing.T) {
 	if len(exporter.users) != 1 || !strings.EqualFold(exporter.users[0], "eugene") {
 		t.Fatalf("неверная область экспорта: %v", exporter.users)
 	}
+	for _, tc := range []struct {
+		user   string
+		status int
+	}{{"", 401}, {"demo", 403}, {"eugene", 200}} {
+		req := httptest.NewRequest("GET", "/api/exports/companies", nil)
+		if tc.user != "" {
+			user, _ := manager.Authenticate(tc.user, "synthetic")
+			token, err := manager.Issue(user, time.Now())
+			if err != nil {
+				t.Fatal(err)
+			}
+			req.AddCookie(&http.Cookie{Name: auth.CookieName, Value: token})
+		}
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, req)
+		if w.Code != tc.status || (w.Code == 200 && !strings.Contains(w.Header().Get("Content-Disposition"), "it-employers-companies-")) {
+			t.Fatalf("экспорт компаний: статус %d, ожидается %d", w.Code, tc.status)
+		}
+	}
+	if len(exporter.users) != 2 || exporter.users[1] != "companies" {
+		t.Fatal("экспорт компаний вызван вне запроса администратора")
+	}
+
 }
