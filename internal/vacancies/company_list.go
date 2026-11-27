@@ -39,13 +39,50 @@ func (r Repository) ListForCompany(ctx context.Context, user, company string) (C
 	for _, row := range rows {
 		related = append(related, row.CompanyName, row.RealCompanyName)
 	}
-	raw, err := backup.PrepareVacancyEntities(catalog, related)
+	entities, err := relatedDirectory(catalog, related)
 	if err != nil {
 		return CompanyListResponse{}, err
 	}
+	return CompanyListResponse{CompanyName: company, Vacancies: rows, Entities: entities}, nil
+}
+
+type ChannelListResponse struct {
+	ChannelID int64             `json:"channelId"`
+	Vacancies []CompanyVacancy  `json:"vacancies"`
+	Entities  []DirectoryEntity `json:"entities"`
+}
+
+func (r Repository) ListForChannel(ctx context.Context, user string, channelID int64) (ChannelListResponse, error) {
+	if channelID <= 0 {
+		return ChannelListResponse{}, errors.New("invalid channel ID")
+	}
+	rows, err := r.relatedVacancies(ctx, user, "", channelID)
+	if err != nil {
+		return ChannelListResponse{}, err
+	}
+	var data []byte
+	if err = r.DB.QueryRowContext(ctx, "SELECT data_json FROM app_catalog WHERE id=1").Scan(&data); err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return ChannelListResponse{}, err
+	}
+	related := make([]string, 0, len(rows)*2)
+	for _, row := range rows {
+		related = append(related, row.CompanyName, row.RealCompanyName)
+	}
+	entities, err := relatedDirectory(data, related)
+	if err != nil {
+		return ChannelListResponse{}, err
+	}
+	return ChannelListResponse{ChannelID: channelID, Vacancies: rows, Entities: entities}, nil
+}
+
+func relatedDirectory(catalog []byte, related []string) ([]DirectoryEntity, error) {
+	raw, err := backup.PrepareVacancyEntities(catalog, related)
+	if err != nil {
+		return nil, err
+	}
 	var entities []DirectoryEntity
 	if err = json.Unmarshal(raw, &entities); err != nil {
-		return CompanyListResponse{}, err
+		return nil, err
 	}
-	return CompanyListResponse{CompanyName: company, Vacancies: rows, Entities: entities}, nil
+	return entities, nil
 }

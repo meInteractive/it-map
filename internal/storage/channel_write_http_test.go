@@ -4,6 +4,7 @@ package storage
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -11,6 +12,7 @@ import (
 	"itmap/internal/backup"
 	"itmap/internal/channels"
 	"itmap/internal/httpapi"
+	"itmap/internal/vacancies"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -91,6 +93,67 @@ func (h *channelHTTP) call(user, method, path, origin string, body []byte) (int,
 	return resp.StatusCode, data
 }
 func TestMariaDBChannelHTTPDisposable(t *testing.T) {
+	t.Run("linked vacancies in the channel drawer", func(t *testing.T) {
+		f := openChannelFixture(t)
+		channelID := f.create("CI linked", "@ci_linked")
+		emptyID := f.create("CI empty", "@ci_empty")
+		companyVacancy := f.vacancy("company")
+		channelVacancy := f.vacancy("channel")
+		f.link(companyVacancy, channelID)
+		f.link(channelVacancy, channelID)
+		applicationID := f.exec("INSERT INTO company_applications(company_name,vacancy_id,user_name,status) VALUES('CI Synthetic Channel Owner',?,'Eugene','Откликнулся')", companyVacancy)
+		t.Cleanup(func() {
+			if _, err := f.db.ExecContext(context.Background(), "DELETE FROM company_applications WHERE id=?", applicationID); err != nil {
+				t.Error(err)
+			}
+		})
+
+		h := openChannelHTTP(t, f, f.repo, func(opts *httpapi.Options) {
+			opts.ChannelVacancies = vacancies.Repository{DB: f.db}
+		})
+		path := fmt.Sprintf("/api/vacancies?channel=%d", channelID)
+		if status, _ := h.call("", "GET", path, "", nil); status != http.StatusUnauthorized {
+			t.Fatalf("anonymous request: %d", status)
+		}
+		if status, _ := h.call("demo", "GET", "/api/vacancies?channel=invalid", "", nil); status != http.StatusBadRequest {
+			t.Fatalf("invalid channel: %d", status)
+		}
+		status, body := h.call("demo", "GET", path, "", nil)
+		var result vacancies.ChannelListResponse
+		if status != http.StatusOK || json.Unmarshal(body, &result) != nil || result.ChannelID != channelID || len(result.Vacancies) != 2 {
+			t.Fatalf("linked vacancies: status=%d rows=%d", status, len(result.Vacancies))
+		}
+		ids := map[int64]bool{companyVacancy: true, channelVacancy: true}
+		for _, vacancy := range result.Vacancies {
+			if !ids[vacancy.ID] || len(vacancy.TelegramSources) != 1 || vacancy.TelegramSources[0].ChannelID != channelID ||
+				vacancy.TelegramSources[0].MessageURL == "" {
+				t.Fatal("invalid linked vacancy projection")
+			}
+			if vacancy.ApplicationID != nil || vacancy.ApplicationStatus != "" {
+				t.Fatal("чужой отклик виден участнику")
+			}
+			delete(ids, vacancy.ID)
+		}
+		status, body = h.call("eugene", "GET", path, "", nil)
+		if status != http.StatusOK || json.Unmarshal(body, &result) != nil {
+			t.Fatal("не удалось прочитать список владельца отклика")
+		}
+		foundApplication := false
+		for _, vacancy := range result.Vacancies {
+			if vacancy.ID == companyVacancy && vacancy.ApplicationID != nil && *vacancy.ApplicationID == applicationID && vacancy.ApplicationStatus == "Откликнулся" {
+				foundApplication = true
+			}
+		}
+		if !foundApplication {
+			t.Fatal("потерян личный статус отклика")
+		}
+		status, body = h.call("demo", "GET", fmt.Sprintf("/api/vacancies?channel=%d", emptyID), "", nil)
+		if status != http.StatusOK || json.Unmarshal(body, &result) != nil || result.Vacancies == nil || len(result.Vacancies) != 0 {
+			t.Fatal("empty channel must return an empty list")
+		}
+		f.assertCatalog()
+	})
+
 	t.Run("authenticated source scenario with actual SQL", func(t *testing.T) {
 		f := openChannelFixture(t)
 		h := openChannelHTTP(t, f, f.repo)
