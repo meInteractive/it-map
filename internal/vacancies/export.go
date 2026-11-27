@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"itmap/internal/roles"
+	"itmap/internal/xlsx"
 )
 
 var exportHeaders = []string{
@@ -76,10 +77,11 @@ func (r Repository) ExportXLSX(ctx context.Context, user string) ([]byte, error)
 		return nil, err
 	}
 	defer rows.Close()
-	book, err := newVacancyWorkbook()
+	book, err := xlsx.New("Вакансии")
 	if err != nil {
 		return nil, err
 	}
+	book.Sheet(exportHeaders, vacancyExportColumns)
 	for rows.Next() {
 		var id int64
 		var companyID, agencyID, realID, salaryFrom, salaryTo, relevance sql.NullInt64
@@ -101,7 +103,7 @@ func (r Repository) ExportXLSX(ctx context.Context, user string) ([]byte, error)
 		case "agency":
 			agency, ownerType = owner, "Агентство"
 		}
-		book.row(companyID, company, title, url, salaryFrom, salaryTo, level, role, relevance,
+		book.Row(companyID, company, title, url, salaryFrom, salaryTo, level, role, relevance,
 			published.String, loaded.String, description, ownerType, agencyID, agency, realID, realName.String, letterSubject, letter)
 	}
 	if err = rows.Err(); err != nil {
@@ -110,5 +112,7 @@ func (r Repository) ExportXLSX(ctx context.Context, user string) ([]byte, error)
 	if err = tx.Commit(); err != nil {
 		return nil, err
 	}
-	return book.finish()
+	return book.Finish()
 }
+
+const vacancyExportColumns = `<cols><col min="1" max="3" width="28" customWidth="1"/><col min="4" max="4" width="55" customWidth="1"/><col min="5" max="11" width="22" customWidth="1"/><col min="12" max="12" width="85" customWidth="1"/><col min="13" max="19" width="28" customWidth="1"/></cols>`

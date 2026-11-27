@@ -771,8 +771,8 @@
     {
       "id": "exports",
       "implementation": "partial",
-      "level": "Go XLSX export вакансий, HTTP unit и MariaDB synthetic read",
-      "gap": "Excel-экспорт компаний, отзывов и источников ещё не перенесён.",
+      "level": "Go XLSX export вакансий и компаний, HTTP unit и MariaDB synthetic read",
+      "gap": "Отдельные Excel-выгрузки источников и отзывов ещё не перенесены.",
       "evidence": [
         {
           "file": "internal/httpapi/handler.go"
@@ -853,7 +853,7 @@
   ],
   "sourceHashes": {
     "frontend/api/client.ts": "bf28292cedd86d0446ede754335663b7eeb7db27cd284edd423bddffa74bbfa6",
-    "internal/httpapi/handler.go": "0a9fe5e8c4fe59682a6d7fbf344d7b57023f11a56bc7b8aa746c8159bcfe2c3d",
+    "internal/httpapi/handler.go": "f6f0d1567507e301621bc27b5c7a6acd2646ba5efc6535b7b38c9d690563824f",
     "server/routes/index.js": "6134004f682975cb51ea13cd2ec4de8e85a5957deff6a5392fbad3fd70ccb1e4"
   },
   "clientExports": [

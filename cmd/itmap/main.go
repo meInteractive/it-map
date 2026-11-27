@@ -82,6 +82,7 @@ func httpHandler(logger *slog.Logger, db *sql.DB, manager *auth.Manager) http.Ha
 		opts.Vacancies = vacancies.Repository{DB: db}
 		opts.VacancyDetails = vacancies.Repository{DB: db}
 		opts.VacancyExports = vacancies.Repository{DB: db}
+		opts.CompanyExports = catalog.Repository{DB: db}
 		opts.CompanyImports = catalog.Repository{DB: db}
 		opts.CatalogRatings = catalog.Repository{DB: db}
 		opts.VacancyRelevance = parser.ManualRelevanceService{DB: db, Generator: aiproviders.NewGenerator(openAI, router)}
