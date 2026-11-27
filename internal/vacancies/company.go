@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 
 	"itmap/internal/roles"
@@ -30,8 +31,15 @@ type CompanyVacancy struct {
 // repeatable-read transaction; a separate immutable role directory supplies
 // display paths.
 func (r Repository) CompanyVacancies(ctx context.Context, user, company string) ([]CompanyVacancy, error) {
-	if r.DB == nil || strings.TrimSpace(user) == "" || strings.TrimSpace(company) == "" {
-		return nil, errors.New("vacancy DB, user or company unavailable")
+	if strings.TrimSpace(company) == "" {
+		return nil, errors.New("vacancy company unavailable")
+	}
+	return r.relatedVacancies(ctx, user, company, 0)
+}
+
+func (r Repository) relatedVacancies(ctx context.Context, user, company string, channelID int64) ([]CompanyVacancy, error) {
+	if r.DB == nil || strings.TrimSpace(user) == "" {
+		return nil, errors.New("vacancy DB or user unavailable")
 	}
 	directory, err := (roles.Repository{DB: r.DB}).Read(ctx)
 	if err != nil {
@@ -56,10 +64,18 @@ func (r Repository) CompanyVacancies(ctx context.Context, user, company string) 
       (SELECT a.id FROM company_applications a WHERE a.user_name=? AND a.vacancy_id=v.id ORDER BY a.updated_at DESC,a.id DESC LIMIT 1),
       COALESCE((SELECT a.status FROM company_applications a WHERE a.user_name=? AND a.vacancy_id=v.id ORDER BY a.updated_at DESC,a.id DESC LIMIT 1),''),
       COALESCE(v.url,''),COALESCE(v.description_md,''),COALESCE(v.cover_letter_subject,''),COALESCE(v.cover_letter_md,'')
-      FROM company_vacancies v
-      WHERE v.company_name=? OR v.real_company_name=?
+      FROM company_vacancies v`
+	args := []any{user, user, user, user, user}
+	scope := ` WHERE v.company_name=? OR v.real_company_name=?
       ORDER BY v.published_at IS NULL,v.published_at DESC,v.id DESC LIMIT 100`
-	rows, err := tx.QueryContext(ctx, q, user, user, user, user, user, company, company)
+	if channelID > 0 {
+		scope = ` WHERE EXISTS (SELECT 1 FROM vacancy_telegram_sources s WHERE s.vacancy_id=v.id AND s.channel_id=?)
+      ORDER BY v.published_at IS NULL, BINARY v.published_at DESC,v.id DESC`
+		args = append(args, channelID)
+	} else {
+		args = append(args, company, company)
+	}
+	rows, err := tx.QueryContext(ctx, q+scope, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -207,6 +223,16 @@ func (r Repository) CompanyVacancies(ctx context.Context, user, company string) 
 	}
 	if err = tx.Commit(); err != nil {
 		return nil, err
+	}
+	if channelID > 0 {
+		// В Sites сортировка сначала по компании (SQLite NOCASE), затем по дате.
+		sort.SliceStable(result, func(i, j int) bool {
+			a, b := result[i].CompanyName, result[j].CompanyName
+			if left, right := sqliteNoCasePrefix(a), sqliteNoCasePrefix(b); left != right {
+				return left < right
+			}
+			return len(a) < len(b)
+		})
 	}
 	return result, nil
 }
