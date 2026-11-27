@@ -60,4 +60,20 @@ func TestMariaDBCatalogImportDisposable(t *testing.T) {
 	if err := f.reader.QueryRowContext(f.ctx, "SELECT full_name,specialization FROM hiring_contacts WHERE company_name='CI New Company' AND position=1").Scan(&name, &specialization); err != nil || name != "CI Contact" || specialization != "CI updated" {
 		t.Fatal("контакт не обновлён с сохранением ФИО", err)
 	}
+	t.Run("rating persists without losing imported data", func(t *testing.T) {
+		result, err := (catalog.Repository{DB: f.writer}).RecalculateRating(f.ctx)
+		if err != nil || !result.OK || result.Companies != 1 || result.AgenciesSkipped != 1 {
+			t.Fatalf("пересчёт: %+v, %v", result, err)
+		}
+		var stored string
+		if err := f.reader.QueryRowContext(f.ctx, "SELECT data_json FROM app_catalog WHERE id=1").Scan(&stored); err != nil {
+			t.Fatal(err)
+		}
+		for _, value := range []string{"CI retained", "CI review", "CI New Agency"} {
+			if !strings.Contains(stored, value) {
+				t.Fatalf("пересчёт потерял %q", value)
+			}
+		}
+	})
+
 }
