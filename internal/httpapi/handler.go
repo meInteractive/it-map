@@ -52,6 +52,7 @@ type Options struct {
 	VacancyDetails       VacancyDetailer
 	VacancyExports       VacancyExporter
 	CompanyExports       CompanyExporter
+	CompanySourceExports CompanySourceExporter
 	CompanyImports       CompanyImporter
 	VacancyCreates       ManualVacancyCreator
 	VacancyDeletes       ManualVacancyDeleter
@@ -286,6 +287,8 @@ func NewHandlerWithOptions(logger *slog.Logger, opts Options) http.Handler {
 		mux.HandleFunc("/api/companies/import", companyImportHandler(opts.Auth, opts.CompanyImports))
 		mux.HandleFunc("/api/exports/vacancies", vacancyExportHandler(opts.Auth, opts.VacancyExports))
 		mux.HandleFunc("/api/exports/companies", companyExportHandler(opts.Auth, opts.CompanyExports))
+		mux.HandleFunc("/api/exports/companies-vacancies", companyVacancySourcesExportHandler(opts.Auth, opts.CompanySourceExports))
+		mux.HandleFunc("/api/exports/companies-reviews", companyReviewSourcesExportHandler(opts.Auth, opts.CompanySourceExports))
 		if opts.VacancyCreates != nil {
 			mux.HandleFunc("POST /api/vacancies", ManualVacancyCreateHandler(opts.Auth, opts.VacancyCreates))
 		}

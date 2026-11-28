@@ -17,6 +17,35 @@ type CompanyExporter interface {
 	ExportCompaniesXLSX(context.Context) ([]byte, error)
 }
 
+type CompanySourceExporter interface {
+	ExportVacancySourcesXLSX(context.Context, string, bool) ([]byte, error)
+	ExportReviewSourcesXLSX(context.Context, string) ([]byte, error)
+}
+
+func companyVacancySourcesExportHandler(manager *auth.Manager, exporter CompanySourceExporter) http.HandlerFunc {
+	var read func(*http.Request, string) ([]byte, string, error)
+	if exporter != nil {
+		read = func(r *http.Request, user string) ([]byte, string, error) {
+			unranked := r.URL.Query().Get("unranked") == "1"
+			filename := "vacancy-sources"
+			if unranked {
+				filename += "-unranked"
+			}
+			file, err := exporter.ExportVacancySourcesXLSX(r.Context(), user, unranked)
+			return file, filename, err
+		}
+	}
+	return xlsxDownloadHandler(manager, read, "источников вакансий")
+}
+
+func companyReviewSourcesExportHandler(manager *auth.Manager, exporter CompanySourceExporter) http.HandlerFunc {
+	var read func(context.Context, string) ([]byte, error)
+	if exporter != nil {
+		read = exporter.ExportReviewSourcesXLSX
+	}
+	return xlsxExportHandler(manager, read, "источников отзывов", "review-sources")
+}
+
 func vacancyExportHandler(manager *auth.Manager, exporter VacancyExporter) http.HandlerFunc {
 	var read func(context.Context, string) ([]byte, error)
 	if exporter != nil {
@@ -34,6 +63,17 @@ func companyExportHandler(manager *auth.Manager, exporter CompanyExporter) http.
 }
 
 func xlsxExportHandler(manager *auth.Manager, read func(context.Context, string) ([]byte, error), label, filename string) http.HandlerFunc {
+	var download func(*http.Request, string) ([]byte, string, error)
+	if read != nil {
+		download = func(r *http.Request, user string) ([]byte, string, error) {
+			file, err := read(r.Context(), user)
+			return file, filename, err
+		}
+	}
+	return xlsxDownloadHandler(manager, download, label)
+}
+
+func xlsxDownloadHandler(manager *auth.Manager, read func(*http.Request, string) ([]byte, string, error), label string) http.HandlerFunc {
 	return RequireSession(manager, func(w http.ResponseWriter, r *http.Request) {
 		user, _ := sessionFromRequest(manager, r)
 		w.Header().Set("Cache-Control", "private, no-store")
@@ -52,7 +92,7 @@ func xlsxExportHandler(manager *auth.Manager, read func(context.Context, string)
 		}
 		ctx, cancel := context.WithTimeout(r.Context(), 45*time.Second)
 		defer cancel()
-		file, err := read(ctx, user.Name)
+		file, filename, err := read(r.WithContext(ctx), user.Name)
 		if err != nil {
 			jsonReply(w, http.StatusServiceUnavailable, map[string]string{"error": "Не удалось подготовить выгрузку " + label + "."})
 			return
