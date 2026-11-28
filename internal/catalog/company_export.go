@@ -43,18 +43,8 @@ func (r Repository) ExportCompaniesXLSX(ctx context.Context) ([]byte, error) {
 		return nil, err
 	}
 	defer tx.Rollback()
-	var data []byte
-	if err = tx.QueryRowContext(ctx, "SELECT data_json FROM app_catalog WHERE id=1").Scan(&data); err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return nil, err
-	}
-	normalized, err := backup.NormalizeStoredCatalog(data)
+	source, err := loadExportCatalog(ctx, tx)
 	if err != nil {
-		return nil, err
-	}
-	var source sourceCatalog
-	decoder := json.NewDecoder(bytes.NewReader(normalized))
-	decoder.UseNumber()
-	if err = decoder.Decode(&source); err != nil {
 		return nil, err
 	}
 	companyIDs, err := exportIDs(ctx, tx, "SELECT company_name,id FROM company_identity")
@@ -73,6 +63,24 @@ func (r Repository) ExportCompaniesXLSX(ctx context.Context) ([]byte, error) {
 		return nil, err
 	}
 	return companyWorkbook(source, companyIDs, agencyIDs, contacts)
+}
+
+func loadExportCatalog(ctx context.Context, tx *sql.Tx) (sourceCatalog, error) {
+	var data []byte
+	if err := tx.QueryRowContext(ctx, "SELECT data_json FROM app_catalog WHERE id=1").Scan(&data); err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return sourceCatalog{}, err
+	}
+	normalized, err := backup.NormalizeStoredCatalog(data)
+	if err != nil {
+		return sourceCatalog{}, err
+	}
+	var source sourceCatalog
+	decoder := json.NewDecoder(bytes.NewReader(normalized))
+	decoder.UseNumber()
+	if err := decoder.Decode(&source); err != nil {
+		return sourceCatalog{}, err
+	}
+	return source, nil
 }
 
 func exportIDs(ctx context.Context, tx *sql.Tx, query string) (map[string]int64, error) {

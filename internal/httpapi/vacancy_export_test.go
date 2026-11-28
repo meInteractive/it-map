@@ -84,3 +84,66 @@ func TestVacancyExportRoute(t *testing.T) {
 	}
 
 }
+
+type sourceExportProbe struct {
+	users    []string
+	unranked []bool
+}
+
+func (p *sourceExportProbe) ExportVacancySourcesXLSX(_ context.Context, user string, unranked bool) ([]byte, error) {
+	p.users = append(p.users, user)
+	p.unranked = append(p.unranked, unranked)
+	return []byte("vacancy sources"), nil
+}
+
+func (p *sourceExportProbe) ExportReviewSourcesXLSX(_ context.Context, user string) ([]byte, error) {
+	p.users = append(p.users, user)
+	return []byte("review sources"), nil
+}
+
+func TestCompanySourceExportRoutes(t *testing.T) {
+	manager, err := auth.NewManager(strings.Repeat("k", 64), map[string]string{"eugene": "synthetic", "demo": "synthetic"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	probe := &sourceExportProbe{}
+	handler := NewHandlerWithOptions(nil, Options{Auth: manager, CompanySourceExports: probe})
+	for _, tc := range []struct {
+		user, method, path string
+		status             int
+		filename, body     string
+	}{
+		{"", "GET", "companies-vacancies", 401, "", ""},
+		{"demo", "GET", "companies-reviews", 403, "", ""},
+		{"eugene", "POST", "companies-vacancies", 405, "", ""},
+		{"eugene", "HEAD", "companies-reviews", 405, "", ""},
+		{"eugene", "GET", "companies-vacancies?unranked=0", 200, "vacancy-sources-", "vacancy sources"},
+		{"eugene", "GET", "companies-vacancies?unranked=1", 200, "vacancy-sources-unranked-", "vacancy sources"},
+		{"eugene", "GET", "companies-reviews?unranked=1", 200, "review-sources-", "review sources"},
+	} {
+		req := httptest.NewRequest(tc.method, "/api/exports/"+tc.path, nil)
+		if tc.user != "" {
+			user, _ := manager.Authenticate(tc.user, "synthetic")
+			token, err := manager.Issue(user, time.Now())
+			if err != nil {
+				t.Fatal(err)
+			}
+			req.AddCookie(&http.Cookie{Name: auth.CookieName, Value: token})
+		}
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, req)
+		if w.Code != tc.status {
+			t.Fatalf("%s %s: HTTP %d, ожидается %d", tc.method, tc.path, w.Code, tc.status)
+		}
+		if tc.status == 200 && (w.Body.String() != tc.body ||
+			!strings.Contains(w.Header().Get("Content-Disposition"), "it-employers-"+tc.filename+time.Now().UTC().Format("2006-01-02")+".xlsx") ||
+			!strings.HasSuffix(w.Header().Get("Content-Type"), ".spreadsheetml.sheet") ||
+			w.Header().Get("Cache-Control") != "private, no-store") {
+			t.Fatalf("%s: неверный ответ скачивания", tc.path)
+		}
+	}
+	if !strings.EqualFold(strings.Join(probe.users, ","), "eugene,eugene,eugene") ||
+		len(probe.unranked) != 2 || probe.unranked[0] || !probe.unranked[1] {
+		t.Fatalf("неверные параметры экспорта: %v %v", probe.users, probe.unranked)
+	}
+}
