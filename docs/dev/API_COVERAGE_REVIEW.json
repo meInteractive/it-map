@@ -784,10 +784,11 @@
     },
     {
       "id": "catalog-operations",
-      "implementation": "unported",
-      "level": "Legacy UI action only",
-      "gap": "POST recalculate-rating/import agency/companies отдельно; GO-032 остаётся средним.",
+      "implementation": "partial",
+      "level": "Go POST: пересчёт рейтинга компаний и агентств",
+      "gap": "Нужна приёмка на синтетической MariaDB и в рабочем интерфейсе.",
       "evidence": [
+        {"file": "internal/httpapi/catalog_rating_test.go", "symbol": "TestCatalogRatingRoute"},
         {
           "file": "internal/httpapi/handler.go"
         },
@@ -852,7 +853,7 @@
   ],
   "sourceHashes": {
     "frontend/api/client.ts": "bf28292cedd86d0446ede754335663b7eeb7db27cd284edd423bddffa74bbfa6",
-    "internal/httpapi/handler.go": "96ad0ac2ad4517fdd3b32aba2b053c3f6dc3845bd93c490632b929b98fb9eef9",
+    "internal/httpapi/handler.go": "f6f0d1567507e301621bc27b5c7a6acd2646ba5efc6535b7b38c9d690563824f",
     "server/routes/index.js": "6134004f682975cb51ea13cd2ec4de8e85a5957deff6a5392fbad3fd70ccb1e4"
   },
   "clientExports": [

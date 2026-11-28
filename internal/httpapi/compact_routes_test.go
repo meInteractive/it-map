@@ -98,7 +98,7 @@ func TestCompactRoutesAccessAndContract(t *testing.T) {
 	}
 	// Unported endpoints do NOT become entity lookups or return success.
 	before := p.Calls
-	for _, path := range []string{"/api/companies/recalculate-rating", "/api/agencies/unported"} {
+	for _, path := range []string{"/api/agencies/unported"} {
 		if w := send("GET", path, true); w.Code != 503 {
 			t.Fatalf("unported GET %s %d", path, w.Code)
 		}
